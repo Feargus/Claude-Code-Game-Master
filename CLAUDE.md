@@ -48,7 +48,7 @@ SWAP (make the chosen character the active PC):
 ## Action Router — load the matching Skill on demand
 | Player says | Workflow | Skill |
 |---|---|---|
-| "I attack..." | Skill contest, using the campaign's combat rules | `gm-skills` |
+| "I attack..." | Skill contest, see `gm-skills/combat.md` | `gm-skills` |
 | "I talk to..." / "I ask..." | Social/NPC | `gm-social` |
 | "I try to..." | Skill contest | `gm-skills` |
 | "I go to..." (cave/ruin) | Dungeon exploration | `gm-dungeon` |

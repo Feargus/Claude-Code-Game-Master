@@ -4,6 +4,17 @@
 
 The anchor is in **bold** and is always one of the three dice. The other two follow the description of the action; the applications below are examples, not a closed list. Attributes are always written in the order STR, AGI, DFT, VIG, LOG, ITU, NRV, PRS, EMP.
 
+## Fights
+
+- **Order:** the GM decides who acts when, from the situation. There is no initiative roll.
+- **Attack:** a contest of the attacker's weapon skill against the defender's Guard (close combat) or Evasion (ranged). The attacker is the active side. Cover is a modifier; full cover blocks the attack.
+- **Damage:** a hit deals HP damage equal to its quality, so quality 0 is at most a graze. Weapons don't change this. Track damage to each mob separately in the scene: all instances start at the HP in `mobs.json`.
+- **Wounded:** at half HP or less, −2 to physical rolls.
+- **0 HP:** mobs and minor NPCs are out of the fight. The player and important NPCs are dying: each beat, an Endurance roll against difficulty 20. Three successes stabilize them, three failures kill them.
+- **Massive damage:** a single hit dealing at least the target's max HP kills outright.
+
+The campaign's rules may add armor and other setting details.
+
 ## Brawling
 
 *Anchor: STR · Untrained: −1 · Status: canon*
