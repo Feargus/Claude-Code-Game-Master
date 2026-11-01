@@ -5,7 +5,7 @@ description: D&D-kit combat mechanics — initiative, attack/damage resolution, 
 
 # Combat Mechanics (D&D kit)
 
-**STEP 0 — KIT GUARD.** If the scene-context KIT block is not `dnd5e`, close this skill and resolve the fight through the generic core (`game_core`) and the active ruleset.
+**STEP 0 — KIT GUARD.** If the scene-context KIT block is not `dnd5e`, close this skill and resolve the fight through `gm-skills` and the campaign's combat rules.
 
 Persist combat with `bash tools/gm-combat.sh` (start/add-enemy/hp/condition/next-turn/end) so HP and initiative survive resumes.
 

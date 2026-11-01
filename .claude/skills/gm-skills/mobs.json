@@ -14,7 +14,11 @@
       "Stealth": 3,
       "Awareness": 3
     },
-    "note": "Rust-level vermin. Bites, carries disease, comes in swarms."
+    "note": "Rust-level vermin. Bites, carries disease, comes in swarms.",
+    "hp": {
+      "current": 10,
+      "max": 10
+    }
   },
   "street thug": {
     "attributes": {
@@ -30,7 +34,11 @@
       "Evasion": 1,
       "Intimidation": 2
     },
-    "note": "Hired muscle with a pipe or a cheap knife. Runs when it stops being worth it."
+    "note": "Hired muscle with a pipe or a cheap knife. Runs when it stops being worth it.",
+    "hp": {
+      "current": 16,
+      "max": 16
+    }
   },
   "ganger": {
     "attributes": {
@@ -47,7 +55,11 @@
       "Stealth": 2,
       "Streetwise": 3
     },
-    "note": "Armed, young and local, with cheap chrome. Fights in packs on home ground."
+    "note": "Armed, young and local, with cheap chrome. Fights in packs on home ground.",
+    "hp": {
+      "current": 16,
+      "max": 16
+    }
   },
   "corp guard": {
     "attributes": {
@@ -65,7 +77,11 @@
       "Awareness": 3,
       "Composure": 2
     },
-    "note": "Trained and well equipped, with backup a call away. Follows procedure, not loyalty."
+    "note": "Trained and well equipped, with backup a call away. Follows procedure, not loyalty.",
+    "hp": {
+      "current": 20,
+      "max": 20
+    }
   },
   "repo agent": {
     "attributes": {
@@ -85,7 +101,11 @@
       "Investigation": 3,
       "Tech": 2
     },
-    "note": "Takes back limbs, eyes and bodies from people behind on payments. Patient and carries a lawful-looking warrant."
+    "note": "Takes back limbs, eyes and bodies from people behind on payments. Patient and carries a lawful-looking warrant.",
+    "hp": {
+      "current": 24,
+      "max": 24
+    }
   },
   "combat merc": {
     "attributes": {
@@ -107,6 +127,10 @@
       "Tactics": 4,
       "Composure": 4
     },
-    "note": "Veteran in a military sleeve. Rare, expensive, and only sent when someone means it."
+    "note": "Veteran in a military sleeve. Rare, expensive, and only sent when someone means it.",
+    "hp": {
+      "current": 30,
+      "max": 30
+    }
   }
 }

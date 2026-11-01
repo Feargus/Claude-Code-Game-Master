@@ -97,7 +97,7 @@ def test_no_skill_instructs_world_kit_info():
 
 
 def test_judgment_skills_defer_five_e_tables_to_kit_block():
-    for name in ("gm-social", "gm-conditions"):
+    for name in ("gm-conditions",):
         text = (ROOT / ".claude" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
         assert "KIT" in text, f"{name} must defer 5e tables to the KIT block"
         assert "dnd5e" in text, f"{name} must name dnd5e as the kit that unlocks them"

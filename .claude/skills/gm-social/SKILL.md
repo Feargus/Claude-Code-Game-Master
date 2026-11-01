@@ -1,11 +1,9 @@
 ---
 name: gm-social
-description: Social / NPC interaction workflow — load NPC context, attitude check, social mechanics (Persuasion/Deception/Intimidation/Insight DCs), and persisting NPC memory + consequences. Load whenever the player talks to, persuades, or reads an NPC ("I talk to...", "I ask...").
+description: Social / NPC interaction workflow — load NPC context, attitude check, social mechanics (Persuasion/Deception/Intimidation/Insight difficulties), and persisting NPC memory + consequences. Load whenever the player talks to, persuades, or reads an NPC ("I talk to...", "I ask...").
 ---
 
 # Social / NPC Interaction
-
-The DCs below are 5e — use them only when the scene-context KIT block says `dnd5e`.
 
 ## 1. Load NPC context
 `bash tools/gm-context.sh "[npc]"` + `bash tools/gm-npc.sh status "[name]"`. Surface the NPC's `goal`, `current_mood`, secret-EXISTENCE (never the text), `bonds`, and `voice` (`gm-npc.sh voice`). Check prior interactions + active quests.
@@ -21,14 +19,16 @@ Only on real contact — do not pre-flesh NPCs the player never engages. Once se
 Friendly (helpful, warm) · Neutral (professional, cautious) · Hostile (dismissive, cold). Derive from history + bonds.
 
 ## 3. Social mechanics — when to roll
-| Skill | DC (Friendly / Neutral / Hostile) | Use |
-|-------|-----------------------------------|-----|
-| Persuasion | 10 / 15 / 20 | Change their mind |
-| Deception | 10 / 15 / 20 (plausible→outrageous) | Hide truth |
-| Intimidation | 10 / 15 / 20 (weak→strong-willed) | Force compliance |
-| Insight | opposed vs Deception, or DC 10-20 | Read them |
+Roll with `gm-skill-contest.sh` (see `gm-skills`).
 
-Modifiers: unreasonable request +5 DC; good rapport -2 DC.
+| Skill | Difficulty (Friendly / Neutral / Hostile) | Use |
+|-------|-----------------------------------|-----|
+| Persuasion | 15 / 20 / 25 | Change their mind |
+| Deception | 15 / 20 / 25 (plausible→outrageous) | Hide truth |
+| Intimidation | 15 / 20 / 25 (weak→strong-willed) | Force compliance |
+| Insight | opposed vs Deception, or 15-25 | Read them |
+
+Modifiers for the player: unreasonable request −5; good rapport +2.
 **No roll needed:** public info, normal commerce at listed prices, casual talk, giving things freely.
 
 ## 4. Persist NPC memory
@@ -37,7 +37,7 @@ Modifiers: unreasonable request +5 DC; good rapport -2 DC.
 ## 5. Consequences
 Positive (NPC helps later) / negative (NPC hinders) → `bash tools/gm-consequence.sh add "[event]" "[trigger]" [--trigger-type on_npc --match "[name]"]`. **Mandatory** whenever the interaction leaves ongoing fallout — a failed ask that changes how this NPC treats you later is exactly that.
 
-## Failure — the ask is DENIED and it costs (see `gm-skills → Failure consequences`)
+## Failure — the ask is DENIED and it costs (see `gm-skills → Narrate by quality`)
 Decide before rolling what refusal COSTS (never tell the player). On a failed social check:
 - **The ask does not happen.** Don't refund the stake by ending on a softer re-ask that costs nothing. If the NPC leaves a door open, that's escalation the fiction has to price — new leverage, new information, or something the player gives up.
 - **Whatever was on the table is spent.** If the player was bargaining for lives, cargo, passage, or mercy, the failure is where that thing is lost — not deferred. The NPC responds from their own goals and power; sometimes that's ugly.

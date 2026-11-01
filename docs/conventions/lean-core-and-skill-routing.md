@@ -67,9 +67,9 @@ context now prints.)
 The guard is still an instruction a model follows, not a hard interlock — the honest
 enforcement tier is "tested prompt", one step below "lint rule".
 
-`gm-social` and `gm-conditions` load freely as judgment frameworks, but their DC
-ladders and 5e condition lists apply only when the KIT block says `dnd5e`.
-`gm-skills`, `gm-dungeon` and `gm-craft` stay kit-agnostic.
+`gm-conditions` loads freely as a judgment framework, but its 5e condition list
+applies only when the KIT block says `dnd5e`. `gm-skills`, `gm-social`, `gm-dungeon`
+and `gm-craft` stay kit-agnostic.
 
 ## Related
 
