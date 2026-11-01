@@ -1,0 +1,19 @@
+{
+  "rat": {
+    "attributes": {
+      "default": 6,
+      "STR": 4,
+      "AGI": 12,
+      "VIG": 8,
+      "ITU": 10,
+      "NRV": 8
+    },
+    "skills": {
+      "Brawling": 1,
+      "Evasion": 2,
+      "Stealth": 3,
+      "Awareness": 3
+    },
+    "note": "Rust-level vermin. Bites, carries disease, comes in swarms."
+  }
+}
