@@ -38,15 +38,14 @@ def test_action_menu_off_changes_play_style_line(dcc_world):
     assert "action menu ON" not in ctx
 
 
-def test_action_menu_on_is_a_few_numbered_not_exactly_three(dcc_world):
+def test_action_menu_on_is_exactly_three_numbered(dcc_world):
     ctx = _context(dcc_world)
     assert "action menu ON" in ctx
-    assert "a few numbered" in ctx
-    assert "exactly 3" not in ctx
+    assert "exactly THREE" in ctx
 
 
-def test_choices_on_confirmation_has_no_digit_option_count(dcc_world, capsys, monkeypatch):
-    """The choices CLI confirmation must not re-inject a numeric option cap."""
+def test_choices_on_confirmation_says_exactly_three(dcc_world, capsys, monkeypatch):
+    """The choices CLI confirmation must match the exactly-three rule."""
     import sys
     import lib.session_manager as sm_mod
 
@@ -54,8 +53,7 @@ def test_choices_on_confirmation_has_no_digit_option_count(dcc_world, capsys, mo
     monkeypatch.setattr(sm_mod, "SessionManager", lambda: SessionManager(dcc_world))
     sm_mod.main()
     out = capsys.readouterr().out
-    assert "a few numbered" in out
-    assert "3 numbered" not in out
+    assert "exactly three numbered" in out
 
 
 def test_adaptive_pacing_sets_no_numeric_cap(dcc_world):

@@ -22,7 +22,7 @@ def test_only_schemas_defines_the_enum():
     hits = subprocess.run(
         ["grep", "-rln", "PLOT_TYPE_SORT = {", str(REPO / "lib")],
         capture_output=True, text=True,
-    ).stdout.split()
+    ).stdout.splitlines()
     assert hits == [str(REPO / "lib" / "schemas.py")]
 
 
