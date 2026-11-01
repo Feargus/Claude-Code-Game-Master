@@ -49,7 +49,6 @@ SWAP (make the chosen character the active PC):
 | Player says | Workflow | Skill |
 |---|---|---|
 | "I attack..." | Combat (persist via `gm-combat.sh`) | `gm-combat` |
-| "I cast..." | Spellcasting | `gm-spellcasting` |
 | "I talk to..." / "I ask..." | Social/NPC | `gm-social` |
 | "I try to..." | Skill check (d20 vs DC) | `gm-skills` |
 | "I go to..." (cave/ruin) | Dungeon exploration | `gm-dungeon` |

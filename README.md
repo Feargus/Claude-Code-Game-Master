@@ -168,7 +168,6 @@ The lean core loads these only when the moment calls for it:
 | Skill | Loaded when |
 |-------|-------------|
 | `gm-combat` | A fight breaks out |
-| `gm-spellcasting` | You cast something |
 | `gm-social` | You talk to / read an NPC |
 | `gm-skills` | You attempt something uncertain |
 | `gm-dungeon` | You enter a cave, ruin, or complex |

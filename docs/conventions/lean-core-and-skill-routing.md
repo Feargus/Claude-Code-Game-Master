@@ -1,7 +1,7 @@
 ---
 type: Convention
 title: Lean core, skills on demand
-description: Why CLAUDE.md stays thin, what the router is allowed to keep inline, and the kit-awareness trap in three of the eight skills.
+description: Why CLAUDE.md stays thin, what the router is allowed to keep inline, and the kit-awareness trap in two of the seven skills.
 sources:
   - { resource: /tests/test_lean_core.py }
   - { resource: /.claude/skills/gm-combat/SKILL.md }
@@ -14,7 +14,7 @@ verified: { by: cursor-grok-4.6, at: 2026-08-14T18:59:59Z }
 
 # Lean core, skills on demand
 
-`CLAUDE.md` is always in context; the eight `gm-*` Skills are not. The core routes; the
+`CLAUDE.md` is always in context; the seven `gm-*` Skills are not. The core routes; the
 Skills hold the mechanics. The alternative — one large always-on ruleset — spends the
 model's attention on rules that have nothing to do with the current beat, and it is what
 this repo migrated *away* from (the pre-lean `CLAUDE.md` is 1227 lines, in git history).
@@ -25,8 +25,8 @@ this repo migrated *away* from (the pre-lean `CLAUDE.md` is 1227 lines, in git h
 output format, the search guide, the memory policy, the golden rules, and stakes/death.
 These are needed *every* turn or needed to decide *which* skill to load.
 
-**Skills hold:** anything you need only in a specific moment — combat resolution, spell
-slots, condition tables, XP thresholds, dungeon procedure, narration craft.
+**Skills hold:** anything you need only in a specific moment — combat resolution,
+condition tables, XP thresholds, dungeon procedure, narration craft.
 
 The practical test is the one the router itself fails first: **an XP-by-CR table inline in
 `CLAUDE.md` is the smell.** `test_lean_core.py:34` asserts `"25,000" not in text` for
@@ -39,7 +39,7 @@ exactly that reason.
 - `CLAUDE.md` must be **under 320 lines** and contain `LEAN CORE`
 - it must still contain the load-bearing sections by name (Core Loop, Action Router,
   Movement, Output Format, Search Guide, Auto Memory Policy, Golden Rules, `uv run python`)
-- it must name **all eight** skills, so a skill can't be orphaned by a router edit
+- it must name **all seven** skills, so a skill can't be orphaned by a router edit
 - every skill must exist with matching `name:` frontmatter
 - `gm-craft` must still contain `"Yes, and"` and `"Persist before narrating"` — the one
   content assertion, guarding what the test calls the soul
@@ -47,10 +47,9 @@ exactly that reason.
 Adding a skill without adding it to `ALL_SKILLS` and the router leaves it unroutable and
 untested.
 
-## Three of the eight skills are D&D-only; STEP-0 defers to the KIT block
+## Two of the seven skills are D&D-only; STEP-0 defers to the KIT block
 
-`gm-combat`, `gm-levelup`, and `gm-spellcasting` encode 5e — hit dice, spell slots, an XP
-table, death saves. Each opens with a **one-line STEP 0**: read the scene-context KIT
+`gm-combat` and `gm-levelup` encode 5e — hit dice, an XP table, death saves. Each opens with a **one-line STEP 0**: read the scene-context KIT
 block, and unless it is `dnd5e`, close the skill and use the generic core + the active
 ruleset. That is context deference, not a tool call — no skill instructs
 `world_kit.py info` for what the brief now carries. Enforcement:

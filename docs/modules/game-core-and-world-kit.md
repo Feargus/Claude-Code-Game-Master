@@ -151,8 +151,7 @@ by vibes. `/import` and `/new-game` author 1–3 at world creation.
 
 ## The kit decides which mechanics Skills are legitimate
 
-`gm-combat`, `gm-levelup`, and `gm-spellcasting` encode D&D 5e — hit dice, spell slots, a
-level-20 XP table. None of that exists in `game_core`. Loading them for a non-5e kit
+`gm-combat` and `gm-levelup` encode D&D 5e — hit dice and a level-20 XP table. None of that exists in `game_core`. Loading them for a non-5e kit
 imports rules the world never declared. The routing rule — STEP-0 defers to the
 scene-context KIT block — is in [lean core and skill routing](../conventions/lean-core-and-skill-routing.md).
 

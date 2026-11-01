@@ -4,7 +4,7 @@
 
 ## Convention
 
-* [Lean core, skills on demand](lean-core-and-skill-routing.md) - Why CLAUDE.md stays thin, what the router is allowed to keep inline, and the kit-awareness trap in three of the eight skills.
+* [Lean core, skills on demand](lean-core-and-skill-routing.md) - Why CLAUDE.md stays thin, what the router is allowed to keep inline, and the kit-awareness trap in two of the seven skills.
 * [Persist before narrate](persist-before-narrate.md) - The rule the whole harness exists to enforce — and the honest state of its enforcement, which is advisory.
 * [The dream — holodeck, not gazetteer](the-dream.md) - The campaign file is a journal of where the table has been. The book is the world. Play writes the next page.
 * [The tool wrapper contract](tool-wrapper-contract.md) - Every capability is a bash wrapper over a Python manager over per-campaign JSON — and every manager speaks the same --json envelope.

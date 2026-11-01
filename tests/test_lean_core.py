@@ -6,7 +6,7 @@ CLAUDE.md was swapped to the lean core (the 1227-line original is in git history
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ALL_SKILLS = ["gm-combat", "gm-spellcasting", "gm-conditions", "gm-levelup",
+ALL_SKILLS = ["gm-combat", "gm-conditions", "gm-levelup",
               "gm-dungeon", "gm-craft", "gm-skills", "gm-social"]
 
 
@@ -75,7 +75,7 @@ def test_craft_skill_preserves_the_soul():
     assert "Yes, and" in text and "Persist before narrating" in text
 
 
-DND_ONLY_SKILLS = ["gm-combat", "gm-levelup", "gm-spellcasting"]
+DND_ONLY_SKILLS = ["gm-combat", "gm-levelup"]
 
 
 def test_dnd_only_skills_carry_the_kit_guard():
