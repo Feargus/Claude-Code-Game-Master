@@ -213,19 +213,48 @@ def test_npcs_never_spend_luck(campaign):
     assert result["quality"] == -1 and not result["lucky"]
 
 
+def _log_blocks(campaign):
+    """The log's rolls, each as {label: value}. A blank line separates them."""
+    text = (campaign / "skill-contest.log").read_text()
+    blocks = []
+    for block in text.strip().split("\n\n"):
+        lines = dict(line.split(": ", 1) for line in block.split("\n"))
+        blocks.append({k: v if k == "time" else json.loads(v) for k, v in lines.items()})
+    return blocks
+
+
 def test_every_roll_is_logged_with_its_dice_and_labels(campaign):
     run_contest(_args(*SHOOT, *DODGE, "--mod", "-2", "darkness"), ScriptedDice(1, 2, 3, 4, 5, 6))
-    entry = json.loads((campaign / "skill-contest-log.jsonl").read_text())
+    entry = _log_blocks(campaign)[0]
     assert entry["active"]["dice"]["DFT"]["rolled"] == [1]
     assert entry["reactive"]["skill"] == "Evasion"
     assert entry["mods"] == [{"value": -2, "label": "darkness"}]
+    assert "quality" in entry["result"]
 
 
-def test_untrained_skill_adds_nothing(campaign):
-    args = _args("--active", "Fearghas", "untrained", "DFT", "AGI", "ITU",
-                 "--reactive-dc", "10", "door", "--mod", "-3", "untrained Medicine")
+def test_log_gives_each_part_its_own_line_and_separates_rolls(campaign):
+    for _ in range(2):
+        run_contest(_args(*SHOOT, *DODGE), ScriptedDice(1, 2, 3, 4, 5, 6))
+    blocks = _log_blocks(campaign)
+    assert len(blocks) == 2
+    assert list(blocks[1]) == ["time", "active", "reactive", "mods", "result"]
+
+
+def test_untrained_skill_adds_nothing_and_logs_its_real_name(campaign):
+    args = _args("--active", "Fearghas", "Medicine", "DFT", "AGI", "ITU", "--active-untrained",
+                 "--reactive-dc", "10", "door", "--mod", "-3", "untrained skill")
     result = run_contest(args, ScriptedDice(5, 5, 5))
     assert result["active_total"] == 15 and result["quality"] == 2
+    entry = _log_blocks(campaign)[0]
+    assert entry["active"]["skill"] == "Medicine"
+    assert entry["mods"] == [{"value": -3, "label": "untrained skill"}]
+
+
+def test_reactive_side_can_be_untrained(campaign):
+    args = _args(*SHOOT, "--reactive", "Dekker", "Tech", "AGI", "ITU", "NRV",
+                 "--reactive-untrained", "--mod", "+1", "untrained skill")
+    result = run_contest(args, ScriptedDice(5, 5, 5, 3, 3, 3))
+    assert result["reactive_total"] == 9
 
 
 # --- Refusals ---
@@ -241,6 +270,8 @@ def test_untrained_skill_adds_nothing(campaign):
     ((*SHOOT, *DODGE, "--active-adv", "STR"), "isn't rolling it"),
     ((*SHOOT, *DODGE, "--mod", "lots", "feint"), "whole number"),
     ((*SHOOT, "--reactive", "Fearghas", "Long guns", "DFT", "AGI", "ITU"), "both sides"),
+    ((*SHOOT, *DODGE, "--active-untrained"), "isn't untrained"),
+    (("--active-dc", "10", "gas", *DODGE, "--active-untrained"), "A DC doesn't roll"),
 ])
 def test_refusals(campaign, words, message):
     with pytest.raises(ContestError, match=message):
@@ -250,7 +281,7 @@ def test_refusals(campaign, words, message):
 def test_a_refused_contest_leaves_no_trace(campaign):
     with pytest.raises(ContestError):
         run_contest(_args("--active", "Nobody", "Tech", "DFT", "AGI", "ITU", *DODGE))
-    assert not (campaign / "skill-contest-log.jsonl").exists()
+    assert not (campaign / "skill-contest.log").exists()
 
 
 # --- The real command ---

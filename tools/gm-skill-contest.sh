@@ -8,6 +8,7 @@ if [ "$#" -lt 1 ]; then
     echo "                           --reactive NAME SKILL ATTR ATTR ATTR | --reactive-dc DC LABEL"
     echo "                           [--active-adv ATTR...] [--active-dis ATTR...]"
     echo "                           [--reactive-adv ATTR...] [--reactive-dis ATTR...]"
+    echo "                           [--active-untrained] [--reactive-untrained]"
     echo "                           [--mod VALUE LABEL]..."
     echo ""
     echo "Prints the quality. >= 0 means the active side succeeds."

@@ -31,10 +31,9 @@ from json_ops import JsonOperations
 
 ATTRIBUTES = ("STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP")
 DICE_PER_ROLL = 3
-UNTRAINED = "untrained"
 
 REPO_MOBS = Path(__file__).parent.parent / ".claude" / "skills" / "gm-skills" / "mobs.json"
-LOG_FILE = "skill-contest-log.jsonl"
+LOG_FILE = "skill-contest.log"
 
 
 class ContestError(Exception):
@@ -152,19 +151,22 @@ def dice_sizes(sheet: Dict[str, Any], name: str, attributes: List[str]) -> Dict[
     return sizes
 
 
-def skill_value(sheet: Dict[str, Any], name: str, skill: str) -> int:
-    if skill.lower() == UNTRAINED:
-        return 0
+def skill_value(sheet: Dict[str, Any], name: str, skill: str, untrained: bool) -> int:
     value = _find(sheet.get("skills") or {}, skill)
+    if untrained:
+        if value is not None:
+            raise ContestError(f"{name} has the skill '{skill}', so the roll isn't untrained.")
+        return 0
     if value is None:
         raise ContestError(
-            f"{name} doesn't have the skill '{skill}'. Roll again with the skill written as "
-            f"'{UNTRAINED}' and the untrained penalty as a --mod, relative to the active side.")
+            f"{name} doesn't have the skill '{skill}'. Roll again with --active-untrained or "
+            f"--reactive-untrained, and the penalty as --mod VALUE \"untrained skill\", "
+            f"relative to the active side.")
     return value
 
 
 def build_side(campaign_dir: Path, spec: List[str], advantages: Optional[List[str]],
-               disadvantages: Optional[List[str]]) -> Dict[str, Any]:
+               disadvantages: Optional[List[str]], untrained: bool = False) -> Dict[str, Any]:
     """Turn `NAME SKILL ATTR ATTR ATTR` into a side that is ready to roll."""
     name, skill, *attributes = spec
     attributes = [attribute.upper() for attribute in attributes]
@@ -183,7 +185,7 @@ def build_side(campaign_dir: Path, spec: List[str], advantages: Optional[List[st
     return {
         "name": name,
         "skill": skill,
-        "skill_value": skill_value(sheet, name, skill),
+        "skill_value": skill_value(sheet, name, skill, untrained),
         "attributes": attributes,
         "advantages": advantages,
         "disadvantages": disadvantages,
@@ -210,31 +212,41 @@ def spend_luck(campaign_dir: Path) -> None:
     ops.save_json("character.json", character)
 
 
+def format_log_entry(time: str, active: Dict[str, Any], reactive: Dict[str, Any],
+                     mods: List[Dict[str, Any]], result: Dict[str, Any]) -> str:
+    """One roll as a block of labeled lines, followed by a blank line."""
+    fields = {"active": active, "reactive": reactive, "mods": mods, "result": result}
+    lines = [f"time: {time}"]
+    lines += [f"{key}: {json.dumps(value, ensure_ascii=False)}" for key, value in fields.items()]
+    return "\n".join(lines) + "\n\n"
+
+
 def write_log(campaign_dir: Path, active: Dict[str, Any], reactive: Dict[str, Any],
               mods: List[Dict[str, Any]], result: Dict[str, Any]) -> None:
-    entry = {"time": datetime.now().isoformat(timespec="seconds"),
-             "active": active, "reactive": reactive, "mods": mods, **result}
+    time = datetime.now().isoformat(timespec="seconds")
     with (campaign_dir / LOG_FILE).open("a", encoding="utf-8") as f:
-        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        f.write(format_log_entry(time, active, reactive, mods, result))
 
 
 def run_contest(args: argparse.Namespace, rng=random) -> Dict[str, Any]:
     """The full contest: look up both sides, roll, spend luck, write the log."""
     if args.active_dc and args.reactive_dc:
         raise ContestError("Both sides are DCs, so nothing rolls. At least one side needs a skill.")
-    if args.active_dc and (args.active_adv or args.active_dis):
-        raise ContestError("A DC doesn't roll, so it can't have advantage or disadvantage.")
-    if args.reactive_dc and (args.reactive_adv or args.reactive_dis):
-        raise ContestError("A DC doesn't roll, so it can't have advantage or disadvantage.")
+    if args.active_dc and (args.active_adv or args.active_dis or args.active_untrained):
+        raise ContestError("A DC doesn't roll, so it can't have advantage, disadvantage or be untrained.")
+    if args.reactive_dc and (args.reactive_adv or args.reactive_dis or args.reactive_untrained):
+        raise ContestError("A DC doesn't roll, so it can't have advantage, disadvantage or be untrained.")
 
     campaign_dir = CampaignManager().get_active_campaign_dir()
     if campaign_dir is None:
         raise ContestError("No active campaign.")
 
     active = build_dc(args.active_dc) if args.active_dc else \
-        build_side(campaign_dir, args.active, args.active_adv, args.active_dis)
+        build_side(campaign_dir, args.active, args.active_adv, args.active_dis,
+                   args.active_untrained)
     reactive = build_dc(args.reactive_dc) if args.reactive_dc else \
-        build_side(campaign_dir, args.reactive, args.reactive_adv, args.reactive_dis)
+        build_side(campaign_dir, args.reactive, args.reactive_adv, args.reactive_dis,
+                   args.reactive_untrained)
     if active.get("is_player") and reactive.get("is_player"):
         raise ContestError("The player can't be on both sides of a contest.")
 
@@ -268,6 +280,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--active-dis", nargs="+", metavar="ATTR")
     parser.add_argument("--reactive-adv", nargs="+", metavar="ATTR")
     parser.add_argument("--reactive-dis", nargs="+", metavar="ATTR")
+    parser.add_argument("--active-untrained", action="store_true",
+                        help="the active side doesn't have the skill")
+    parser.add_argument("--reactive-untrained", action="store_true",
+                        help="the reactive side doesn't have the skill")
     parser.add_argument("--mod", nargs=2, action="append", metavar=("VALUE", "LABEL"),
                         help="net modifier relative to the active side; repeatable")
     return parser

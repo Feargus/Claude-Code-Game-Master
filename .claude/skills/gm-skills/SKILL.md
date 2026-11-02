@@ -115,7 +115,7 @@ bash tools/gm-skill-contest.sh --active-dc 20 "nerve toxin" --reactive Fearghas 
 - **Unknown name or no stats:** the script refuses. Add the entry, using `mobs.json` in this folder as the scale, then roll again.
 - **Advantage and disadvantage** belong to an attribute and affect all its dice in the roll. Repeat the attribute to stack them.
 - **`--mod`** is one net list, relative to the active side: positive helps the active side, negative helps the reactive side. Leave out anything that affects both sides equally. Every modifier has a label.
-- **Untrained:** write `untrained` as the skill and add the penalty as a `--mod`. If the reactive side is untrained, the penalty helps the active side, so its sign flips.
+- **Untrained:** still write the skill's real name, add `--active-untrained` or `--reactive-untrained`, and give the penalty from [Untrained](#untrained) (−1 or −3) as `--mod VALUE "untrained skill"`. If the reactive side is untrained, the penalty helps the active side, so its sign flips.
 - **Difficulties:** easy 15, normal 20, hard 25, very hard 30 or more.
 
 The script prints one line, such as `quality: 7`. Quality 0 or more means the **active** side succeeds, so a tie goes to the active side. When the player is the reactive side, read the result from their opponent's point of view: a positive quality is bad for the player.
