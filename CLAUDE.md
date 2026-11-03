@@ -160,17 +160,4 @@ flows (play turn, import, new-game, death hand-off, illustration), modules (core
 scene context, memory, living world, RAG, entity graph, bible, sheets), conventions,
 gotchas, playbooks. Read the gotchas before debugging.
 
-## OKF — the documentation brain
-`docs/` carries OKF frontmatter; drift against code is machine-checked.
-- **Before editing code, ask which docs claim it:**
-  `node ~/.claude/skills/okf/scripts/okf.mjs status <files…>`.
-- **Update claiming docs in the SAME commit as the code.** Body rewritten →
-  `restamp --by <model-id>`. Re-read and still true → `restamp --by <model-id> --verify`.
-  Never hand-type stamps; never stamp a body you did not read.
-- **Every okf command uses the settled flags** in "## The settled command" in
-  `docs/log.md` (`check --root . docs`). Never invent flags per run.
-- **Docs never replace code** — open the cited sources before asserting behavior. A doc
-  that restates code gets deleted, not maintained.
-- Added/moved docs → rerun `okf.mjs index docs`. Drift is a work queue, never a gate.
-
 *Run `/gm` to play.*

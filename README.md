@@ -237,7 +237,7 @@ If your world *is* D&D-flavored, declare `"kit": "dnd5e"` in the campaign's `rul
 
 ### The documentation brain
 
-Everything about how the harness works lives in **[`docs/`](docs/index.md)** — a knowledge layer where every doc declares the source files whose change would make it wrong, and staleness is machine-checked against git ([OKF](docs/log.md)). Start with the flows (a play turn, importing a book, authoring a world, the death hand-off) and read `docs/gotchas/` before debugging anything. Docs are updated in the same commit as the code they describe; `okf drift` reports when the two diverge.
+Everything about how the harness works lives in **[`docs/`](docs/index.md)**. Each doc's header lists the source files it describes. Start with the flows (a play turn, importing a book, authoring a world, the death hand-off) and read `docs/gotchas/` before debugging anything. Docs are updated by hand, in the same commit as the code they describe.
 
 ### Dependencies
 
