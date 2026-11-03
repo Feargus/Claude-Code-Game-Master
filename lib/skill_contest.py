@@ -34,6 +34,7 @@ DICE_PER_ROLL = 3
 
 REPO_MOBS = Path(__file__).parent.parent / ".claude" / "skills" / "gm-skills" / "mobs.json"
 LOG_FILE = "skill-contest.log"
+UNTRAINED = -1  # skill value for a skill the sheet doesn't list, unless the sheet sets a default
 
 
 class ContestError(Exception):
@@ -50,6 +51,10 @@ def roll_attribute(rng, sides: int, count: int, advantages: int = 0,
     return {"sides": sides, "rolled": rolled, "kept": kept}
 
 
+def _count(edges: List[Dict[str, str]], attribute: str) -> int:
+    return sum(1 for edge in edges if edge["attribute"] == attribute)
+
+
 def roll_side(rng, side: Dict[str, Any]) -> int:
     """Roll a side and return its total. Fills in side["dice"] for the log."""
     if "dc" in side:
@@ -62,8 +67,8 @@ def roll_side(rng, side: Dict[str, Any]) -> int:
             rng,
             side["dice_sizes"][attribute],
             side["attributes"].count(attribute),
-            side["advantages"].count(attribute),
-            side["disadvantages"].count(attribute),
+            _count(side["advantages"], attribute),
+            _count(side["disadvantages"], attribute),
         )
         side["dice"][attribute] = result
         total += sum(result["kept"])
@@ -151,41 +156,47 @@ def dice_sizes(sheet: Dict[str, Any], name: str, attributes: List[str]) -> Dict[
     return sizes
 
 
-def skill_value(sheet: Dict[str, Any], name: str, skill: str, untrained: bool) -> int:
-    value = _find(sheet.get("skills") or {}, skill)
-    if untrained:
-        if value is not None:
-            raise ContestError(f"{name} has the skill '{skill}', so the roll isn't untrained.")
-        return 0
-    if value is None:
-        raise ContestError(
-            f"{name} doesn't have the skill '{skill}'. Roll again with --active-untrained or "
-            f"--reactive-untrained, and the penalty as --mod VALUE \"untrained skill\", "
-            f"relative to the active side.")
-    return value
+def skill_value(sheet: Dict[str, Any], skill: str) -> Optional[int]:
+    """The sheet's value for a skill, or None if the sheet doesn't list it."""
+    skills = sheet.get("skills") or {}
+    return None if skill.lower() == "default" else _find(skills, skill)
 
 
-def build_side(campaign_dir: Path, spec: List[str], advantages: Optional[List[str]],
-               disadvantages: Optional[List[str]], untrained: bool = False) -> Dict[str, Any]:
+def untrained_value(sheet: Dict[str, Any]) -> int:
+    """A skill the sheet doesn't list. Mobs and NPCs may set a `default`."""
+    return (sheet.get("skills") or {}).get("default", UNTRAINED)
+
+
+def _edges(name: str, attributes: List[str], pairs: Optional[List[List[str]]]) -> List[Dict[str, str]]:
+    """`ATTR REASON` pairs from the command line, checked against the attributes rolled."""
+    edges = [{"attribute": attribute.upper(), "label": label} for attribute, label in pairs or []]
+    for edge in edges:
+        if edge["attribute"] not in attributes:
+            raise ContestError(
+                f"{edge['attribute']} has advantage or disadvantage, but {name} isn't rolling it.")
+    return edges
+
+
+def build_side(campaign_dir: Path, spec: List[str], advantages: Optional[List[List[str]]],
+               disadvantages: Optional[List[List[str]]]) -> Dict[str, Any]:
     """Turn `NAME SKILL ATTR ATTR ATTR` into a side that is ready to roll."""
     name, skill, *attributes = spec
     attributes = [attribute.upper() for attribute in attributes]
-    advantages = [attribute.upper() for attribute in advantages or []]
-    disadvantages = [attribute.upper() for attribute in disadvantages or []]
 
     for attribute in attributes:
         if attribute not in ATTRIBUTES:
             raise ContestError(f"Unknown attribute '{attribute}'. Use one of: {', '.join(ATTRIBUTES)}.")
-    for attribute in advantages + disadvantages:
-        if attribute not in attributes:
-            raise ContestError(f"{attribute} has advantage or disadvantage, but {name} isn't rolling it.")
+    advantages = _edges(name, attributes, advantages)
+    disadvantages = _edges(name, attributes, disadvantages)
 
     sheet = find_sheet(campaign_dir, name)
-    sizes = dice_sizes(sheet, name, attributes)  # first, so "no stats yet" beats "no skill"
+    sizes = dice_sizes(sheet, name, attributes)
+    value = skill_value(sheet, skill)
     return {
         "name": name,
         "skill": skill,
-        "skill_value": skill_value(sheet, name, skill, untrained),
+        "skill_value": untrained_value(sheet) if value is None else value,
+        "untrained": value is None,
         "attributes": attributes,
         "advantages": advantages,
         "disadvantages": disadvantages,
@@ -232,21 +243,19 @@ def run_contest(args: argparse.Namespace, rng=random) -> Dict[str, Any]:
     """The full contest: look up both sides, roll, spend luck, write the log."""
     if args.active_dc and args.reactive_dc:
         raise ContestError("Both sides are DCs, so nothing rolls. At least one side needs a skill.")
-    if args.active_dc and (args.active_adv or args.active_dis or args.active_untrained):
-        raise ContestError("A DC doesn't roll, so it can't have advantage, disadvantage or be untrained.")
-    if args.reactive_dc and (args.reactive_adv or args.reactive_dis or args.reactive_untrained):
-        raise ContestError("A DC doesn't roll, so it can't have advantage, disadvantage or be untrained.")
+    if args.active_dc and (args.active_adv or args.active_dis):
+        raise ContestError("A DC doesn't roll, so it can't have advantage or disadvantage.")
+    if args.reactive_dc and (args.reactive_adv or args.reactive_dis):
+        raise ContestError("A DC doesn't roll, so it can't have advantage or disadvantage.")
 
     campaign_dir = CampaignManager().get_active_campaign_dir()
     if campaign_dir is None:
         raise ContestError("No active campaign.")
 
     active = build_dc(args.active_dc) if args.active_dc else \
-        build_side(campaign_dir, args.active, args.active_adv, args.active_dis,
-                   args.active_untrained)
+        build_side(campaign_dir, args.active, args.active_adv, args.active_dis)
     reactive = build_dc(args.reactive_dc) if args.reactive_dc else \
-        build_side(campaign_dir, args.reactive, args.reactive_adv, args.reactive_dis,
-                   args.reactive_untrained)
+        build_side(campaign_dir, args.reactive, args.reactive_adv, args.reactive_dis)
     if active.get("is_player") and reactive.get("is_player"):
         raise ContestError("The player can't be on both sides of a contest.")
 
@@ -276,14 +285,9 @@ def build_parser() -> argparse.ArgumentParser:
     reactive.add_argument("--reactive", nargs=2 + DICE_PER_ROLL, metavar=spec)
     reactive.add_argument("--reactive-dc", nargs=2, metavar=("DC", "LABEL"))
 
-    parser.add_argument("--active-adv", nargs="+", metavar="ATTR")
-    parser.add_argument("--active-dis", nargs="+", metavar="ATTR")
-    parser.add_argument("--reactive-adv", nargs="+", metavar="ATTR")
-    parser.add_argument("--reactive-dis", nargs="+", metavar="ATTR")
-    parser.add_argument("--active-untrained", action="store_true",
-                        help="the active side doesn't have the skill")
-    parser.add_argument("--reactive-untrained", action="store_true",
-                        help="the reactive side doesn't have the skill")
+    for flag in ("--active-adv", "--active-dis", "--reactive-adv", "--reactive-dis"):
+        parser.add_argument(flag, nargs=2, action="append", metavar=("ATTR", "REASON"),
+                            help="an attribute and the reason; repeatable")
     parser.add_argument("--mod", nargs=2, action="append", metavar=("VALUE", "LABEL"),
                         help="net modifier relative to the active side; repeatable")
     return parser

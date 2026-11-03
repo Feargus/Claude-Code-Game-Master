@@ -1,6 +1,6 @@
 # Combat skills
 
-**Load for:** any fight: attacking and defending, armed or unarmed. **Untrained:** −1.
+**Load for:** any fight: attacking and defending, armed or unarmed.
 
 The anchor is in **bold** and is always one of the three dice. The other two follow the description of the action; the applications below are examples, not a closed list. Attributes are always written in the order STR, AGI, DFT, VIG, LOG, ITU, NRV, PRS, EMP.
 
@@ -17,7 +17,7 @@ The campaign's rules may add armor and other setting details.
 
 ## Brawling
 
-*Anchor: STR · Untrained: −1 · Status: canon*
+*Anchor: STR · Status: canon*
 
 The body as a weapon: striking, grappling, joint locks, and every dirty trick at arm's length. Also covers cyberclaws and fists in armored gloves.
 
@@ -29,7 +29,7 @@ The body as a weapon: striking, grappling, joint locks, and every dirty trick at
 
 ## Bludgeons
 
-*Anchor: STR · Untrained: −1 · Status: canon*
+*Anchor: STR · Status: canon*
 
 Any blow that relies on momentum rather than a precise edge: bats, pipes, hammers, axes, rifle butts, chairs.
 
@@ -40,7 +40,7 @@ Any blow that relies on momentum rather than a precise edge: bats, pipes, hammer
 
 ## Slashing
 
-*Anchor: AGI · Untrained: −1 · Status: canon*
+*Anchor: AGI · Status: canon*
 
 Cutting with the whole body, closer to a dance than a duel: sabers, katanas, machetes, the cutting strokes of a longsword, and whips, including monofilament ones.
 
@@ -51,7 +51,7 @@ Cutting with the whole body, closer to a dance than a duel: sabers, katanas, mac
 
 ## Throwing
 
-*Anchor: AGI · Untrained: −1 · Status: canon*
+*Anchor: AGI · Status: canon*
 
 Throwing and catching: knives, grenades, bottles, a gun tossed to an ally.
 
@@ -62,7 +62,7 @@ Throwing and catching: knives, grenades, bottles, a gun tossed to an ally.
 
 ## Evasion
 
-*Anchor: AGI · Untrained: −1 · Status: canon*
+*Anchor: AGI · Status: canon*
 
 Defending against ranged attacks: dodging, diving, moving under fire, and using cover well (knowing when and where to peek, which direction matters).
 
@@ -72,7 +72,7 @@ Defending against ranged attacks: dodging, diving, moving under fire, and using 
 
 ## Fencing
 
-*Anchor: DFT · Untrained: −1 · Status: canon*
+*Anchor: DFT · Status: canon*
 
 Point work: daggers, rapiers, monoblades, bayonets, and the thrusts of a longsword.
 
@@ -83,7 +83,7 @@ Point work: daggers, rapiers, monoblades, bayonets, and the thrusts of a longswo
 
 ## Handguns
 
-*Anchor: DFT · Untrained: −1 · Status: canon*
+*Anchor: DFT · Status: canon*
 
 Any gun held in one hand or two without a stock. Firing modes apply only if the weapon supports them (burst and full auto: machine pistols).
 
@@ -95,7 +95,7 @@ Any gun held in one hand or two without a stock. Firing modes apply only if the 
 
 ## Long guns
 
-*Anchor: DFT · Untrained: −1 · Status: canon*
+*Anchor: DFT · Status: canon*
 
 Assault rifles, shotguns, carbines, hunting rifles, SMGs with stocks. Firing modes apply only if the weapon supports them.
 
@@ -107,7 +107,7 @@ Assault rifles, shotguns, carbines, hunting rifles, SMGs with stocks. Firing mod
 
 ## Guard
 
-*Anchor: ITU · Untrained: −1 · Status: canon*
+*Anchor: ITU · Status: canon*
 
 Meeting an attack in close combat. The anchor is reading it in time; the other attributes decide how it is met: blocking, parrying, slipping, breaking free.
 
@@ -118,7 +118,7 @@ Meeting an attack in close combat. The anchor is reading it in time; the other a
 
 ## Heavy weapons
 
-*Anchor: NRV · Untrained: −1 · Status: canon*
+*Anchor: NRV · Status: canon*
 
 Anything rested on the ground, a bipod, a mount or a vehicle, including sniper and anti-materiel rifles, belt-fed guns and launchers. Firing modes apply only if the weapon supports them.
 

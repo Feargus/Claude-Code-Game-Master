@@ -60,7 +60,7 @@ def campaign(isolated_world_state):
             "Auntie Ro": {"description": "No stats yet."},
         },
         "mobs.json": {"cockroach": {"attributes": {"default": 4, "AGI": 10},
-                                    "skills": {"Evasion": 3}}},
+                                    "skills": {"default": -3, "Evasion": 3}}},
     }
     for filename, data in sheets.items():
         (directory / filename).write_text(json.dumps(data))
@@ -96,7 +96,7 @@ def test_mixed_advantage_and_disadvantage_keep_the_middle():
 def test_advantage_affects_every_die_of_that_attribute():
     """STR twice with advantage: three dice, keep the best two."""
     dice = ScriptedDice(2, 8, 6, 4)
-    active = _side(("STR", "STR", "VIG"), advantages=("STR",))
+    active = _side(("STR", "STR", "VIG"), advantages=[{"attribute": "STR", "label": "rested"}])
     result = resolve_contest(dice, active, {"dc": 0}, [])
     assert active["dice"]["STR"]["kept"] == [6, 8]
     assert result["active_total"] == 6 + 8 + 4
@@ -240,38 +240,58 @@ def test_log_gives_each_part_its_own_line_and_separates_rolls(campaign):
     assert list(blocks[1]) == ["time", "active", "reactive", "mods", "result"]
 
 
-def test_untrained_skill_adds_nothing_and_logs_its_real_name(campaign):
-    args = _args("--active", "Fearghas", "Medicine", "DFT", "AGI", "ITU", "--active-untrained",
-                 "--reactive-dc", "10", "door", "--mod", "-3", "untrained skill")
+def test_a_missing_skill_counts_minus_one_and_is_logged_as_untrained(campaign):
+    args = _args("--active", "Fearghas", "Medicine", "DFT", "AGI", "ITU",
+                 "--reactive-dc", "10", "door")
     result = run_contest(args, ScriptedDice(5, 5, 5))
-    assert result["active_total"] == 15 and result["quality"] == 2
+    assert result["active_total"] == 15 - 1
     entry = _log_blocks(campaign)[0]
     assert entry["active"]["skill"] == "Medicine"
-    assert entry["mods"] == [{"value": -3, "label": "untrained skill"}]
+    assert entry["active"]["untrained"] is True
 
 
-def test_reactive_side_can_be_untrained(campaign):
-    args = _args(*SHOOT, "--reactive", "Dekker", "Tech", "AGI", "ITU", "NRV",
-                 "--reactive-untrained", "--mod", "+1", "untrained skill")
+def test_a_listed_skill_is_logged_as_trained(campaign):
+    run_contest(_args(*SHOOT, "--reactive-dc", "10", "door"), ScriptedDice(5, 5, 5))
+    assert _log_blocks(campaign)[0]["active"]["untrained"] is False
+
+
+def test_a_sheet_can_set_its_own_untrained_value(campaign):
+    args = _args(*SHOOT, "--reactive", "cockroach", "Tech", "AGI", "ITU", "NRV")
     result = run_contest(args, ScriptedDice(5, 5, 5, 3, 3, 3))
-    assert result["reactive_total"] == 9
+    assert result["reactive_total"] == 9 - 3
+
+
+def test_default_is_not_a_skill(campaign):
+    """A skill called "default" is never looked up as the sheet's default."""
+    args = _args(*SHOOT, "--reactive", "cockroach", "default", "AGI", "ITU", "NRV")
+    result = run_contest(args, ScriptedDice(5, 5, 5, 3, 3, 3))
+    assert result["reactive_total"] == 9 - 3
+    assert _log_blocks(campaign)[0]["reactive"]["untrained"] is True
+
+
+def test_advantage_reasons_are_logged(campaign):
+    args = _args(*SHOOT, *DODGE, "--active-adv", "dft", "rested",
+                 "--active-adv", "DFT", "stim", "--reactive-dis", "ITU", "surprised")
+    run_contest(args, ScriptedDice(*[1] * 9))
+    entry = _log_blocks(campaign)[0]
+    assert entry["active"]["advantages"] == [{"attribute": "DFT", "label": "rested"},
+                                             {"attribute": "DFT", "label": "stim"}]
+    assert entry["reactive"]["disadvantages"] == [{"attribute": "ITU", "label": "surprised"}]
+    assert len(entry["active"]["dice"]["DFT"]["rolled"]) == 3
 
 
 # --- Refusals ---
 
 @pytest.mark.parametrize("words, message", [
     (("--active-dc", "10", "a", "--reactive-dc", "10", "b"), "Both sides are DCs"),
-    (("--active-dc", "10", "gas", *DODGE, "--active-adv", "STR"), "A DC doesn't roll"),
+    (("--active-dc", "10", "gas", *DODGE, "--active-adv", "STR", "rested"), "A DC doesn't roll"),
     (("--active", "Nobody", "Tech", "DFT", "AGI", "ITU", *DODGE), "Unknown name"),
     (("--active", "Auntie Ro", "Tech", "DFT", "AGI", "ITU", *DODGE), "no stats yet"),
-    (("--active", "Fearghas", "Science", "DFT", "AGI", "ITU", *DODGE), "doesn't have the skill"),
     (("--active", "Fearghas", "Long guns", "DEX", "AGI", "ITU", *DODGE), "Unknown attribute"),
     (("--active", "Fearghas", "Long guns", "NRV", "AGI", "ITU", *DODGE), "no usable die"),
-    ((*SHOOT, *DODGE, "--active-adv", "STR"), "isn't rolling it"),
+    ((*SHOOT, *DODGE, "--active-adv", "STR", "rested"), "isn't rolling it"),
     ((*SHOOT, *DODGE, "--mod", "lots", "feint"), "whole number"),
     ((*SHOOT, "--reactive", "Fearghas", "Long guns", "DFT", "AGI", "ITU"), "both sides"),
-    ((*SHOOT, *DODGE, "--active-untrained"), "isn't untrained"),
-    (("--active-dc", "10", "gas", *DODGE, "--active-untrained"), "A DC doesn't roll"),
 ])
 def test_refusals(campaign, words, message):
     with pytest.raises(ContestError, match=message):
@@ -292,7 +312,7 @@ def _run(*words):
 
 
 def test_wrapper_prints_only_the_quality(campaign):
-    result = _run(*SHOOT, *DODGE, "--active-adv", "DFT", "--mod", "-2", "darkness",
+    result = _run(*SHOOT, *DODGE, "--active-adv", "DFT", "rested", "--mod", "-2", "darkness",
                   "--mod", "+1", "good feint")
     assert result.returncode == 0, result.stderr
     words = result.stdout.split()

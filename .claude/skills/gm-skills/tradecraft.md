@@ -1,12 +1,12 @@
 # Tradecraft skills
 
-**Load for:** technical work learned over years: locks, machines, computers, bodies. **Untrained:** −3.
+**Load for:** technical work learned over years: locks, machines, computers, bodies.
 
 The anchor is in **bold** and is always one of the three dice. The other two follow the description of the action; the applications below are examples, not a closed list. Attributes are always written in the order STR, AGI, DFT, VIG, LOG, ITU, NRV, PRS, EMP.
 
 ## Larceny
 
-*Anchor: DFT · Untrained: −3 · Status: canon*
+*Anchor: DFT · Status: canon*
 
 Locks, safes, alarms by hand, pickpocketing, palming, planting.
 
@@ -17,7 +17,7 @@ Locks, safes, alarms by hand, pickpocketing, palming, planting.
 
 ## Tech
 
-*Anchor: LOG · Untrained: −3 · Status: canon*
+*Anchor: LOG · Status: canon*
 
 Repairing, building and modifying electronics, weapons, vehicles, cyberware and explosives.
 
@@ -29,7 +29,7 @@ Repairing, building and modifying electronics, weapons, vehicles, cyberware and 
 
 ## Netrunning
 
-*Anchor: LOG · Untrained: −3 · Status: canon*
+*Anchor: LOG · Status: canon*
 
 Intrusion, data digs, digital forgery, fighting ICE.
 
@@ -40,7 +40,7 @@ Intrusion, data digs, digital forgery, fighting ICE.
 
 ## Medicine
 
-*Anchor: LOG · Untrained: −3 · Status: canon*
+*Anchor: LOG · Status: canon*
 
 First aid, surgery, drugs, diagnosis, installing cyberware. Chrome limbs are repaired with Tech, not Medicine.
 

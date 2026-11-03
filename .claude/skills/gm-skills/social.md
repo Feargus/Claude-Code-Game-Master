@@ -1,12 +1,12 @@
 # Social skills
 
-**Load for:** convincing, threatening, lying, fitting in. **Untrained:** −1.
+**Load for:** convincing, threatening, lying, fitting in.
 
 The anchor is in **bold** and is always one of the three dice. The other two follow the description of the action; the applications below are examples, not a closed list. Attributes are always written in the order STR, AGI, DFT, VIG, LOG, ITU, NRV, PRS, EMP.
 
 ## Persuasion
 
-*Anchor: PRS · Untrained: −1 · Status: canon*
+*Anchor: PRS · Status: canon*
 
 Arguing, haggling, negotiating, seducing.
 
@@ -17,7 +17,7 @@ Arguing, haggling, negotiating, seducing.
 
 ## Intimidation
 
-*Anchor: PRS · Untrained: −1 · Status: canon*
+*Anchor: PRS · Status: canon*
 
 Threats, pressure, commands, shouting someone down.
 
@@ -29,7 +29,7 @@ Threats, pressure, commands, shouting someone down.
 
 ## Streetwise
 
-*Anchor: PRS · Untrained: −1 · Status: canon*
+*Anchor: PRS · Status: canon*
 
 Gangs, fences, codes, who to ask and how. On the street, how you carry yourself decides whether you get answers or a knife.
 
@@ -41,7 +41,7 @@ Gangs, fences, codes, who to ask and how. On the street, how you carry yourself 
 
 ## Deception
 
-*Anchor: EMP · Untrained: −1 · Status: canon*
+*Anchor: EMP · Status: canon*
 
 Lies, cons, acting, disguise.
 
@@ -52,7 +52,7 @@ Lies, cons, acting, disguise.
 
 ## Corpspeak
 
-*Anchor: EMP · Untrained: −1 · Status: canon*
+*Anchor: EMP · Status: canon*
 
 Corporate protocol, bureaucracy, high society, and looking like you belong there, mostly by mirroring the people around you.
 

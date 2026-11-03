@@ -1,12 +1,12 @@
 # Physical skills
 
-**Load for:** moving the body: climbing, running, balancing, sneaking. **Untrained:** −1.
+**Load for:** moving the body: climbing, running, balancing, sneaking.
 
 The anchor is in **bold** and is always one of the three dice. The other two follow the description of the action; the applications below are examples, not a closed list. Attributes are always written in the order STR, AGI, DFT, VIG, LOG, ITU, NRV, PRS, EMP.
 
 ## Athletics
 
-*Anchor: STR · Untrained: −1 · Status: canon*
+*Anchor: STR · Status: canon*
 
 Pitting the body against the world: climbing, swimming, jumping far, lifting, forcing doors.
 
@@ -17,7 +17,7 @@ Pitting the body against the world: climbing, swimming, jumping far, lifting, fo
 
 ## Acrobatics
 
-*Anchor: AGI · Untrained: −1 · Status: canon*
+*Anchor: AGI · Status: canon*
 
 The circus and the rooftops: balance, tumbling, parkour, falling well, contortion.
 
@@ -28,7 +28,7 @@ The circus and the rooftops: balance, tumbling, parkour, falling well, contortio
 
 ## Stealth
 
-*Anchor: AGI · Untrained: −1 · Status: canon*
+*Anchor: AGI · Status: canon*
 
 Moving silently, hiding, shadowing someone.
 

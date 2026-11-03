@@ -1,12 +1,12 @@
 # Perception skills
 
-**Load for:** noticing, searching, reading people. **Untrained:** −1.
+**Load for:** noticing, searching, reading people.
 
 The anchor is in **bold** and is always one of the three dice. The other two follow the description of the action; the applications below are examples, not a closed list. Attributes are always written in the order STR, AGI, DFT, VIG, LOG, ITU, NRV, PRS, EMP.
 
 ## Investigation
 
-*Anchor: LOG · Untrained: −1 · Status: canon*
+*Anchor: LOG · Status: canon*
 
 Combing a scene, research, forensics, connecting clues.
 
@@ -17,7 +17,7 @@ Combing a scene, research, forensics, connecting clues.
 
 ## Awareness
 
-*Anchor: ITU · Untrained: −1 · Status: canon*
+*Anchor: ITU · Status: canon*
 
 Seeing, hearing, smelling, sensing danger. Senses beyond the human come from cyberware and gear, not from this skill.
 
@@ -29,7 +29,7 @@ Seeing, hearing, smelling, sensing danger. Senses beyond the human come from cyb
 
 ## Insight
 
-*Anchor: EMP · Untrained: −1 · Status: canon*
+*Anchor: EMP · Status: canon*
 
 Motives, lies, moods, wants. Reading your own reactions ("why do I trust him?") leans on Intuition instead.
 
