@@ -3,7 +3,9 @@
 Threat clocks — felt, mounting pressure (DCC's floor-collapse countdown).
 
 Named segmented clocks that advance on time or events, surfaced in the session
-context so stakes are visible and trustworthy. A filled clock is the trigger for a
+context so stakes are visible and trustworthy. A time clock runs on the in-game
+wall clock: it stores when it started and when it is due, and every time change
+recomputes how many segments are filled. An event clock is advanced by hand. A filled clock is the trigger for a
 dramatic beat / book-native milestone. Tone-respecting: a kit/campaign that wants
 no doom clock simply declares none. Dramatic choices made at inflection points are
 recorded as consequences (via consequence_manager), tying the fork into the
@@ -11,6 +13,7 @@ reactive world.
 """
 
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -28,14 +31,49 @@ class ThreatClockManager(EntityManager):
     def _load(self) -> Dict[str, Any]:
         return self.json_ops.load_json(self.clocks_file) or {}
 
+    def _game_time(self) -> Optional[datetime]:
+        # Imported here: time_manager imports this module.
+        from time_manager import STORED_FORMAT
+        stored = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
+        return datetime.strptime(stored, STORED_FORMAT) if stored else None
+
+    @staticmethod
+    def _schedule(clock: Dict[str, Any], now: datetime) -> None:
+        """Give a time clock its start and due time if it lacks them.
+
+        A clock added before the campaign had a game time, or before clocks ran on
+        the wall clock, gets one day per segment: it counts as started one day per
+        filled segment ago, and is due one day per empty segment from now.
+        """
+        from time_manager import STORED_FORMAT
+        cur, mx = int(clock.get("current", 0)), int(clock.get("max", 1))
+        clock.setdefault("starts_at", (now - timedelta(days=cur)).strftime(STORED_FORMAT))
+        clock.setdefault("due_at", (now + timedelta(days=mx - cur)).strftime(STORED_FORMAT))
+
     def add_clock(self, name: str, segments: int, advance_on: str = "time",
-                  consequence: str = None, linked_plot: str = None) -> Dict[str, Any]:
+                  consequence: str = None, linked_plot: str = None,
+                  due_at: datetime = None, due_in_minutes: int = None) -> Dict[str, Any]:
+        """Add a clock. A time clock is due at `due_at`, or `due_in_minutes` from
+        now, or by default one day per segment from now."""
+        from time_manager import STORED_FORMAT
         data = self._load()
         entry = {"current": 0, "max": int(segments), "advance_on": advance_on}
         if consequence:
             entry["consequence"] = consequence
         if linked_plot:
             entry["linked_plot"] = linked_plot
+        if advance_on == "time":
+            now = self._game_time()
+            if due_in_minutes is not None:
+                if now is None:
+                    raise ValueError("The campaign has no game time yet, so a clock can't "
+                                     "be due in a duration. Set the time first, or use --due.")
+                due_at = now + timedelta(minutes=due_in_minutes)
+            if due_at is not None:
+                entry["due_at"] = due_at.strftime(STORED_FORMAT)
+            if now is not None:
+                entry["starts_at"] = now.strftime(STORED_FORMAT)
+                self._schedule(entry, now)
         data[name] = entry
         self.json_ops.save_json(self.clocks_file, data)
         return data[name]
@@ -80,29 +118,46 @@ class ThreatClockManager(EntityManager):
         self.json_ops.save_json(self.clocks_file, data)
         return c
 
-    def tick_time_clocks(self, ticks: int = 1) -> Dict[str, Any]:
-        """Advance every advance_on=='time' clock that isn't already full.
+    def update_time_clocks(self, now: datetime) -> Dict[str, Any]:
+        """Recompute every time clock from the game time.
 
-        The automatic pressure wire: `gm-time.sh advance` calls this with the
-        number of midnights crossed, so short time skips leave clocks alone.
-        Event clocks (advance_on != 'time')
-        are untouched — the GM advances those by hand.
-        Returns {name: clock} for the clocks that moved.
+        Filled segments are the share of the time between start and due that has
+        passed, so a 4-segment clock due in 4 days fills one segment a day, and is
+        full once the due time is reached. Clocks only ever fill up: setting the
+        time back never empties one. `gm-time.sh` calls this after every change.
+        Event clocks (advance_on != 'time') are untouched — the GM advances those
+        by hand. Returns {name: clock} for the clocks that moved.
         """
+        from time_manager import STORED_FORMAT
         data = self._load()
-        advanced = {}
+        moved = {}
+        changed = False
         for name, c in data.items():
             if c.get("advance_on", "time") != "time":
                 continue
+            if "starts_at" not in c or "due_at" not in c:
+                self._schedule(c, now)
+                changed = True
             cur, mx = int(c.get("current", 0)), int(c.get("max", 1))
             if cur >= mx:
                 continue
-            c["current"] = min(mx, cur + int(ticks))
+            starts = datetime.strptime(c["starts_at"], STORED_FORMAT)
+            due = datetime.strptime(c["due_at"], STORED_FORMAT)
+            if now >= due:
+                filled = mx
+            else:
+                span = int((due - starts).total_seconds() // 60)
+                elapsed = int((now - starts).total_seconds() // 60)
+                filled = mx * elapsed // span if span > 0 else 0
+            if filled <= cur:
+                continue
+            c["current"] = filled
             self._fire_if_filled(name, c, was_full=False)  # full clocks skipped above
-            advanced[name] = c
-        if advanced:
+            moved[name] = c
+            changed = True
+        if changed:
             self.json_ops.save_json(self.clocks_file, data)
-        return advanced
+        return moved
 
     def remove_clock(self, name: str) -> bool:
         data = self._load()
@@ -140,6 +195,15 @@ class ThreatClockManager(EntityManager):
         return cm.add_consequence(text, trigger, trigger_type=trigger_type, match=match)
 
     @staticmethod
+    def due_text(clock: Dict[str, Any]) -> str:
+        """', due <time and date>' for a time clock that has a due time, else ''."""
+        if clock.get("advance_on", "time") != "time" or not clock.get("due_at"):
+            return ""
+        from time_manager import STORED_FORMAT, derive_date
+        due = datetime.strptime(clock["due_at"], STORED_FORMAT)
+        return f", due {due:%H:%M}, {derive_date(due)}"
+
+    @staticmethod
     def render(clocks: Dict[str, Any]) -> str:
         """Render clocks as filled/empty segment bars for the GM-visible context."""
         lines = []
@@ -147,7 +211,8 @@ class ThreatClockManager(EntityManager):
             cur, mx = int(c.get("current", 0)), int(c.get("max", 1))
             bar = "●" * cur + "○" * max(0, mx - cur)
             flag = "  ⚠ FULL" if cur >= mx else ""
-            lines.append(f"{name}: [{bar}] {cur}/{mx} (on {c.get('advance_on', 'time')}){flag}")
+            due = ThreatClockManager.due_text(c)
+            lines.append(f"{name}: [{bar}] {cur}/{mx} (on {c.get('advance_on', 'time')}{due}){flag}")
         return "\n".join(lines)
 
 
@@ -162,8 +227,9 @@ def main():
     p.add_argument("--on", default="time")
     p.add_argument("--consequence", help="what happens when it fills (fired into the world)")
     p.add_argument("--linked-plot", dest="linked_plot")
+    p.add_argument("--due-in", dest="due_in", help="time clock: due after this long, e.g. 3d, 12h")
+    p.add_argument("--due", help='time clock: due at "YYYY-MM-DD HH:MM"')
     p = sub.add_parser("advance"); p.add_argument("name"); p.add_argument("--ticks", type=int, default=1)
-    p = sub.add_parser("tick-time"); p.add_argument("--ticks", type=int, default=1)
     p = sub.add_parser("remove"); p.add_argument("name")
     sub.add_parser("list")
     sub.add_parser("beats")  # filled clocks = beats due
@@ -179,17 +245,17 @@ def main():
 
     m = ThreatClockManager()
     if args.action == "add":
-        out = m.add_clock(args.name, args.segments, advance_on=args.on,
-                          consequence=args.consequence, linked_plot=args.linked_plot)
+        from time_manager import TimeError, parse_duration, parse_time
+        try:
+            out = m.add_clock(args.name, args.segments, advance_on=args.on,
+                              consequence=args.consequence, linked_plot=args.linked_plot,
+                              due_at=parse_time(args.due) if args.due else None,
+                              due_in_minutes=parse_duration(args.due_in) if args.due_in else None)
+        except (TimeError, ValueError) as error:
+            print(f"Error: {error}", file=sys.stderr)
+            sys.exit(1)
     elif args.action == "advance":
         out = m.advance(args.name, args.ticks)
-    elif args.action == "tick-time":
-        out = m.tick_time_clocks(args.ticks)
-        if not json_mode:
-            for n, c in out.items():
-                if c.get("current", 0) >= c.get("max", 1):
-                    print(f"⚠ {n} is FULL — a dramatic beat is due"
-                          + (f": {c['consequence']}" if c.get("consequence") else ""))
     elif args.action == "remove":
         out = {"removed": m.remove_clock(args.name)}
     elif args.action == "beats":

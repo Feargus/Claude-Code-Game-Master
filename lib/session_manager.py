@@ -19,6 +19,7 @@ from entity_manager import EntityManager, npcs_present
 from character_schema import to_flat
 from schemas import PLOT_TYPE_SORT
 from world_kit import WorldKit
+from threat_clocks import ThreatClockManager
 
 
 class SessionManager(EntityManager):
@@ -856,7 +857,8 @@ class SessionManager(EntityManager):
                 cur, mx = int(c.get('current', 0)), int(c.get('max', 1))
                 bar = "●" * cur + "○" * max(0, mx - cur)
                 flag = "  ⚠ FULL — a beat is due" if cur >= mx else ""
-                lines.append(f"{clock_name}: [{bar}] {cur}/{mx}{flag}")
+                due = "" if flag else ThreatClockManager.due_text(c)
+                lines.append(f"{clock_name}: [{bar}] {cur}/{mx}{due}{flag}")
 
         # --- Character ---
         lines.append("")

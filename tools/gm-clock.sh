@@ -3,10 +3,12 @@
 #
 #   gm-clock.sh list                          Show all clocks
 #   gm-clock.sh add "Name" 6 [--on time|event] [--consequence "..."] [--linked-plot "..."]
+#                    [--due-in 3d | --due "YYYY-MM-DD HH:MM"]
 #                                             New clock with N segments; the
-#                                             consequence fires into the world when it fills
+#                                             consequence fires into the world when it fills.
+#                                             A time clock fills as game time passes and is
+#                                             full when due (default: one day per segment)
 #   gm-clock.sh advance "Name" [--ticks 2]    Advance one clock by hand
-#   gm-clock.sh tick-time                     Advance all time-clocks (auto-run by gm-time.sh)
 #   gm-clock.sh beats                         Filled clocks = dramatic beats due
 #   gm-clock.sh remove "Name"                 Remove a clock
 #   gm-clock.sh choose "prompt" "fork" [--trigger ...]  Record a dramatic-choice fork

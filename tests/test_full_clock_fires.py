@@ -6,8 +6,11 @@ notice rather than a beat that arrived. These assert it fires into the
 consequence engine exactly once.
 """
 
+from datetime import datetime
+
 from lib.consequence_manager import ConsequenceManager
 from lib.threat_clocks import ThreatClockManager
+from lib.time_manager import TimeManager
 
 DOOM = "The floor collapses and the level is lost."
 
@@ -39,16 +42,17 @@ def test_a_full_clock_does_not_fire_twice(dcc_world):
     m.advance("Floor Collapse")
     m.advance("Floor Collapse")
     m.advance("Floor Collapse")
-    m.tick_time_clocks()
+    m.update_time_clocks(datetime(2200, 1, 1))
     assert len(_fired(dcc_world)) == 1
 
 
-def test_time_ticks_fire_the_clock_they_fill(dcc_world):
+def test_time_passing_fires_the_clock_it_fills(dcc_world):
+    TimeManager(dcc_world).set_time(datetime(2187, 10, 26, 10, 0))
     m = ThreatClockManager(dcc_world)
     m.add_clock("Pulse", 1, advance_on="time", consequence=DOOM)
-    m.tick_time_clocks()
+    m.update_time_clocks(datetime(2187, 10, 27, 10, 0))
     assert len(_fired(dcc_world)) == 1
-    m.tick_time_clocks()
+    m.update_time_clocks(datetime(2187, 10, 28, 10, 0))
     assert len(_fired(dcc_world)) == 1
 
 
@@ -84,7 +88,7 @@ def test_cli_add_accepts_a_consequence(dcc_world):
 
 
 def test_firing_keeps_stdout_parseable(dcc_world, capsys):
-    """The fire happens inside advance/tick-time, whose --json output is parsed."""
+    """The fire happens inside advance/a time update, whose --json output is parsed."""
     m = ThreatClockManager(dcc_world)
     m.add_clock("Doom", 1, consequence=DOOM)
     capsys.readouterr()

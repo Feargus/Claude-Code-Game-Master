@@ -48,7 +48,7 @@ appears in the transcript:
 | Trigger | What fires | Where |
 |---|---|---|
 | `gm-session.sh move` | consequence tick, then a lore brief on *first* visit to a place with retained book text | `tools/gm-session.sh` |
-| `gm-time.sh advance` | time-clock advance, one segment per midnight crossed, then consequence tick | `tools/gm-time.sh` |
+| `gm-time.sh advance` / `set` | time clocks recomputed from the new time (`update_time_clocks`), then consequence tick | `tools/gm-time.sh` |
 | every turn end | `session-autosave.sh` Stop hook → `gm-session.sh save autosave` | `.claude/settings.json` |
 
 So moving the party is never *only* moving the party — it can surface a consequence that

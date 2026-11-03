@@ -1,4 +1,4 @@
-"""Tests for in-game time: durations, derived words, and clocks that follow midnights."""
+"""Tests for in-game time: durations, derived words, and time clocks following the time."""
 
 import json
 import os
@@ -13,7 +13,6 @@ from lib.time_manager import (
     TIMES_OF_DAY,
     TimeError,
     TimeManager,
-    days_crossed,
     derive_date,
     derive_time_of_day,
     parse_duration,
@@ -74,11 +73,6 @@ def test_unreadable_time_is_refused():
         parse_time("late October")
 
 
-def test_days_crossed_counts_midnights_not_hours():
-    assert days_crossed(parse_time("2187-10-26 23:50"), parse_time("2187-10-27 00:10")) == 1
-    assert days_crossed(parse_time("2187-10-26 00:10"), parse_time("2187-10-26 23:50")) == 0
-
-
 # --- Advancing a campaign ---
 
 def test_advance_needs_a_time_to_start_from(dcc_world):
@@ -95,32 +89,33 @@ def test_set_writes_the_time_and_both_words(dcc_world):
     assert overview["current_date"] == "Friday, 26 October 2187"
 
 
-def test_a_short_walk_leaves_clocks_alone(dcc_world):
-    ThreatClockManager(dcc_world).add_clock("Siege", segments=4, advance_on="time")
+def test_a_short_walk_leaves_a_four_day_clock_alone(dcc_world):
     manager = TimeManager(dcc_world)
     manager.set_time(parse_time("2187-10-26 10:00"))
+    ThreatClockManager(dcc_world).add_clock("Siege", segments=4, advance_on="time")
     assert manager.advance(parse_duration("1h")) == {}
     assert ThreatClockManager(dcc_world).get_clocks()["Siege"]["current"] == 0
 
 
-def test_each_midnight_crossed_moves_clocks_one_segment(dcc_world):
-    ThreatClockManager(dcc_world).add_clock("Siege", segments=10, advance_on="time")
-    ThreatClockManager(dcc_world).add_clock("Rumor", segments=10, advance_on="event")
+def test_a_day_fills_one_segment_of_a_four_day_clock(dcc_world):
     manager = TimeManager(dcc_world)
     manager.set_time(parse_time("2187-10-26 23:30"))
-    manager.advance(parse_duration("1h"))
-    manager.advance(parse_duration("3d"))
+    ThreatClockManager(dcc_world).add_clock("Siege", segments=4, advance_on="time")
+    ThreatClockManager(dcc_world).add_clock("Rumor", segments=4, advance_on="event")
+    manager.advance(parse_duration("1h"))  # crossing midnight alone is not a day
+    manager.advance(parse_duration("23h"))
     clocks = ThreatClockManager(dcc_world).get_clocks()
-    assert clocks["Siege"]["current"] == 4
+    assert clocks["Siege"]["current"] == 1
     assert clocks["Rumor"]["current"] == 0
 
 
-def test_set_never_moves_clocks(dcc_world):
-    ThreatClockManager(dcc_world).add_clock("Siege", segments=4, advance_on="time")
+def test_set_moves_clocks_forward_but_never_back(dcc_world):
     manager = TimeManager(dcc_world)
     manager.set_time(parse_time("2187-10-26 10:00"))
-    manager.set_time(parse_time("2187-11-26 10:00"))
-    assert ThreatClockManager(dcc_world).get_clocks()["Siege"]["current"] == 0
+    ThreatClockManager(dcc_world).add_clock("Siege", segments=4, advance_on="time")
+    assert "Siege" in manager.set_time(parse_time("2187-10-28 10:00"))
+    manager.set_time(parse_time("2187-10-26 10:00"))
+    assert ThreatClockManager(dcc_world).get_clocks()["Siege"]["current"] == 2
 
 
 # --- The real command ---

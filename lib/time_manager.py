@@ -8,7 +8,8 @@ system reads, `time_of_day` and `current_date`, are derived from it on every
 change, so the GM never writes them by hand. The GM estimates how long something
 takes; this script does the arithmetic, the same way the dice script does.
 
-Time clocks advance one segment for every midnight that `advance` crosses.
+Every change, `advance` or `set`, recomputes the time clocks from the new time
+(see threat_clocks.py).
 """
 
 import re
@@ -98,11 +99,6 @@ def describe(moment: datetime) -> str:
     return f"{moment:%H:%M} ({derive_time_of_day(moment)}), {derive_date(moment)}"
 
 
-def days_crossed(before: datetime, after: datetime) -> int:
-    """How many midnights lie between two times."""
-    return (after.date() - before.date()).days
-
-
 class TimeManager:
     """Read and change a campaign's game time."""
 
@@ -126,9 +122,13 @@ class TimeManager:
         if not self.json_ops.save_json("campaign-overview.json", data):
             raise TimeError("Failed to save the time.")
 
-    def set_time(self, moment: datetime) -> None:
-        """Set the time outright. Clocks don't move: use advance for time passing."""
+    def _update_clocks(self, moment: datetime) -> Dict[str, Dict]:
+        return ThreatClockManager(self.world_state_dir).update_time_clocks(moment)
+
+    def set_time(self, moment: datetime) -> Dict[str, Dict]:
+        """Set the time outright. Returns the time clocks that moved."""
         self._write(moment)
+        return self._update_clocks(moment)
 
     def advance(self, minutes: int) -> Dict[str, Dict]:
         """Let time pass. Returns the time clocks that moved."""
@@ -138,8 +138,15 @@ class TimeManager:
                             "Set it once with: gm-time.sh set \"YYYY-MM-DD HH:MM\"")
         after = before + timedelta(minutes=minutes)
         self._write(after)
-        days = days_crossed(before, after)
-        return ThreatClockManager(self.world_state_dir).tick_time_clocks(days) if days else {}
+        return self._update_clocks(after)
+
+
+def print_clocks(moved: Dict[str, Dict]) -> None:
+    for name, clock in moved.items():
+        print(f"Clock {name}: {clock['current']}/{clock['max']}")
+        if clock["current"] >= clock["max"]:
+            print(f"⚠ {name} is FULL — a dramatic beat is due"
+                  + (f": {clock['consequence']}" if clock.get("consequence") else ""))
 
 
 def main(argv) -> int:
@@ -151,14 +158,11 @@ def main(argv) -> int:
         if action == "advance" and value:
             moved = manager.advance(parse_duration(value))
             print(f"Time: {describe(manager.get_game_time())}")
-            for name, clock in moved.items():
-                print(f"Clock {name}: {clock['current']}/{clock['max']}")
-                if clock["current"] >= clock["max"]:
-                    print(f"⚠ {name} is FULL — a dramatic beat is due"
-                          + (f": {clock['consequence']}" if clock.get("consequence") else ""))
+            print_clocks(moved)
         elif action == "set" and value:
-            manager.set_time(parse_time(value))
+            moved = manager.set_time(parse_time(value))
             print(f"Time set: {describe(manager.get_game_time())}")
+            print_clocks(moved)
         elif action == "show" and not value:
             moment = manager.get_game_time()
             print(f"Time: {describe(moment)}" if moment else

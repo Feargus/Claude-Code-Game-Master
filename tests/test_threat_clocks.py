@@ -1,10 +1,14 @@
 """Tests for threat-clocks-choice-beats: named segmented pressure clocks."""
 
 import json
+from datetime import timedelta
+
+import pytest
 from pathlib import Path
 
 from lib.threat_clocks import ThreatClockManager
 from lib.session_manager import SessionManager
+from lib.time_manager import TimeManager, parse_time
 
 
 
@@ -74,28 +78,86 @@ def test_clocks_surface_in_session_context(dcc_world):
     assert "Floor Collapse" in ctx and "2/4" in ctx
 
 
-def test_tick_time_advances_only_time_clocks(dcc_world):
+def _start_time(dcc_world, text="2187-10-26 10:00"):
+    TimeManager(dcc_world).set_time(parse_time(text))
+    return parse_time(text)
+
+
+def test_time_clock_fills_evenly_until_due(dcc_world):
+    now = _start_time(dcc_world)
     m = ThreatClockManager(dcc_world)
-    m.add_clock("Collapse", segments=3, advance_on="time")
+    m.add_clock("Siege", segments=4, due_in_minutes=4 * 24 * 60)
+    assert m.update_time_clocks(now + timedelta(hours=23)) == {}
+    assert "Siege" in m.update_time_clocks(now + timedelta(days=1))
+    assert m.get_clocks()["Siege"]["current"] == 1
+    m.update_time_clocks(now + timedelta(days=2, hours=12))
+    assert m.get_clocks()["Siege"]["current"] == 2
+    m.update_time_clocks(now + timedelta(days=4))
+    assert m.is_full("Siege")
+
+
+def test_update_leaves_event_clocks_alone(dcc_world):
+    now = _start_time(dcc_world)
+    m = ThreatClockManager(dcc_world)
     m.add_clock("Ritual", segments=3, advance_on="event")
-    advanced = m.tick_time_clocks()
-    assert "Collapse" in advanced and "Ritual" not in advanced
-    assert m.get_clocks()["Collapse"]["current"] == 1
+    assert m.update_time_clocks(now + timedelta(weeks=5)) == {}
     assert m.get_clocks()["Ritual"]["current"] == 0
+    assert "due_at" not in m.get_clocks()["Ritual"]
 
 
-def test_tick_time_scales_with_ticks(dcc_world):
+def test_default_due_time_is_one_day_per_segment(dcc_world):
+    _start_time(dcc_world)
     m = ThreatClockManager(dcc_world)
-    m.add_clock("Siege", segments=10, advance_on="time")
-    advanced = m.tick_time_clocks(3)
-    assert "Siege" in advanced
-    assert m.get_clocks()["Siege"]["current"] == 3
+    m.add_clock("Siege", segments=3)
+    assert m.get_clocks()["Siege"]["starts_at"] == "2187-10-26T10:00"
+    assert m.get_clocks()["Siege"]["due_at"] == "2187-10-29T10:00"
 
 
-def test_tick_time_stops_at_full(dcc_world):
+def test_due_at_a_fixed_time(dcc_world):
+    _start_time(dcc_world)
     m = ThreatClockManager(dcc_world)
-    m.add_clock("Doom", segments=1, advance_on="time")
-    m.tick_time_clocks()
-    assert m.is_full("Doom")
+    m.add_clock("Auction", segments=2, due_at=parse_time("2187-10-26 20:00"))
+    assert m.get_clocks()["Auction"]["due_at"] == "2187-10-26T20:00"
+
+
+def test_due_in_needs_a_game_time(dcc_world):
+    with pytest.raises(ValueError, match="no game time"):
+        ThreatClockManager(dcc_world).add_clock("Siege", segments=4, due_in_minutes=60)
+
+
+def test_an_old_clock_gets_one_day_per_empty_segment(dcc_world):
+    """Clocks from before the wall clock: 3 of 4 filled means full one day from now."""
+    m = ThreatClockManager(dcc_world)
+    m.json_ops.save_json(m.clocks_file, {"Old": {"current": 3, "max": 4, "advance_on": "time"}})
+    now = parse_time("2187-10-26 04:30")
+    assert m.update_time_clocks(now) == {}
+    clock = m.get_clocks()["Old"]
+    assert (clock["current"], clock["starts_at"], clock["due_at"]) == (
+        3, "2187-10-23T04:30", "2187-10-27T04:30")
+    m.update_time_clocks(now + timedelta(days=1))
+    assert m.is_full("Old")
+
+
+def test_clocks_never_empty_when_time_goes_back(dcc_world):
+    now = _start_time(dcc_world)
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Siege", segments=4)
+    m.update_time_clocks(now + timedelta(days=2))
+    m.update_time_clocks(now)
+    assert m.get_clocks()["Siege"]["current"] == 2
+
+
+def test_a_full_clock_stays_out_of_updates(dcc_world):
+    now = _start_time(dcc_world)
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Doom", segments=1)
+    assert "Doom" in m.update_time_clocks(now + timedelta(days=1))
     # A full clock is a pending beat, not a re-ticking counter.
-    assert "Doom" not in m.tick_time_clocks()
+    assert "Doom" not in m.update_time_clocks(now + timedelta(days=9))
+
+
+def test_context_shows_when_a_time_clock_is_due(dcc_world):
+    _start_time(dcc_world)
+    ThreatClockManager(dcc_world).add_clock("Siege", segments=4)
+    ctx = SessionManager(dcc_world).get_full_context()
+    assert "Siege: [○○○○] 0/4, due 10:00, Tuesday, 30 October 2187" in ctx

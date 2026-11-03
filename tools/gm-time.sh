@@ -5,8 +5,7 @@
 #   gm-time.sh advance <duration>       Let time pass: 10m, 4h, 2d, 1w, "1h 30m"
 #   gm-time.sh set "YYYY-MM-DD HH:MM"   Set the time outright (campaign start, or a correction)
 #
-# Time clocks advance one segment per midnight crossed by `advance`. `set` never
-# moves them.
+# Both `advance` and `set` recompute the time clocks from the new time.
 
 source "$(dirname "$0")/common.sh"
 

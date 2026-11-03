@@ -28,11 +28,11 @@ developments. **They are wired to very different degrees.** Verified 2026-08-13:
 | System | Automatic trigger | How it actually runs |
 |---|---|---|
 | Consequences | **Yes** | `gm-session.sh move` and `gm-time.sh advance` both call `gm-consequence.sh tick` after they write |
-| Threat clocks | **Time-clocks: yes** (since 2026-08-13) | `gm-time.sh advance <duration>` moves the campaign's `game_time` and gives every `advance_on: "time"` clock one segment per midnight crossed (a short walk gives none). Event clocks stay manual: `gm-clock.sh advance "<name>"`. Filling one fires its consequence (below) |
+| Threat clocks | **Time-clocks: yes** (since 2026-08-13) | `gm-time.sh advance <duration>` (or `set`) moves the campaign's `game_time`, and every `advance_on: "time"` clock is recomputed from it: it stores `starts_at` and `due_at`, and its filled share is the share of that span that has passed. A clock with no due time gets one day per segment. Event clocks stay manual: `gm-clock.sh advance "<name>"`. Filling one fires its consequence (below) |
 | World tick | **No** — GM-invoked by design | the developments are a model call; `gm-session.sh world-tick '<json>'` persists every proposal, warns (naming the overflow) when the count exceeds the advisory cap of 3, and stays logged / rollback-able. Before 2026-08-13 `WorldTick` had no caller at all |
 
 So three weeks and ten minutes are not the same pressure: the GM passes how much time
-actually elapsed, a same-day hop still costs one segment, and a full clock announces
+actually elapsed, a clock is full exactly when its due time arrives, and a full clock announces
 itself (`⚠ FULL — a dramatic beat is due`) in the tick output and the session brief.
 Clocks that must not move on the calendar are declared `advance_on: "event"` and only
 ever move by hand.
