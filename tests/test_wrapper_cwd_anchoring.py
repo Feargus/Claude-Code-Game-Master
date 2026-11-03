@@ -152,7 +152,7 @@ def test_gm_time_persists_to_the_pinned_campaign_from_a_foreign_cwd(active_fixtu
     """The write side of the same guarantee, with the per-wrapper `cd` removed."""
     import json
 
-    result = _run_from(foreign_cwd, "tools/gm-time.sh", "Dusk", "Day of Ash")
+    result = _run_from(foreign_cwd, "tools/gm-time.sh", "set", "2187-10-26 19:30")
     assert result.returncode == 0, result.stdout + result.stderr
 
     overview = json.loads((active_fixture_campaign / "campaign-overview.json").read_text())

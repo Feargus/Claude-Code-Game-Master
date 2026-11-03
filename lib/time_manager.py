@@ -1,157 +1,176 @@
 #!/usr/bin/env python3
-"""Time management module for GM tools."""
+"""
+In-game time: one real date and time, advanced by durations.
+
+`game_time` in campaign-overview.json is the single source of truth, e.g.
+"2187-10-26T04:30", on the real (Gregorian) calendar. The words the rest of the
+system reads, `time_of_day` and `current_date`, are derived from it on every
+change, so the GM never writes them by hand. The GM estimates how long something
+takes; this script does the arithmetic, the same way the dice script does.
+
+Time clocks advance one segment for every midnight that `advance` crosses.
+"""
 
 import re
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
-# Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
 from campaign_manager import CampaignManager
 from json_ops import JsonOperations
+from threat_clocks import ThreatClockManager
 
-# Small elapsed-magnitude map for threat-clock ticks. Not a calendar parser:
-# minutes / hours / same-day time-of-day → 1
-# N day/days → N
-# N week/weeks → 7*N
-# anything else (including empty) → 1
-_DURATION_WEEK = re.compile(r"(\d+)\s*weeks?", re.IGNORECASE)
-_DURATION_DAY = re.compile(r"(\d+)\s*days?", re.IGNORECASE)
+# (first hour of the day, word), in order. Same words as validators.py. Midnight
+# wraps around 00:00, so it appears at both ends; "Small hours" keeps the night
+# from being cut in two.
+TIMES_OF_DAY = [
+    (0, "Midnight"),
+    (1, "Small hours"),
+    (5, "Dawn"),
+    (7, "Morning"),
+    (11, "Noon"),
+    (13, "Afternoon"),
+    (17, "Evening"),
+    (19, "Dusk"),
+    (21, "Night"),
+    (23, "Midnight"),
+]
+
+# Spelled out rather than taken from the system locale, so the date always reads
+# the same.
+DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+MONTHS = ("January", "February", "March", "April", "May", "June", "July",
+          "August", "September", "October", "November", "December")
+
+MINUTES_PER_UNIT = {
+    "m": 1, "min": 1, "mins": 1, "minute": 1, "minutes": 1,
+    "h": 60, "hr": 60, "hrs": 60, "hour": 60, "hours": 60,
+    "d": 1440, "day": 1440, "days": 1440,
+    "w": 10080, "week": 10080, "weeks": 10080,
+}
+_DURATION_PART = re.compile(r"(\d+)\s*([a-z]+)")
+
+STORED_FORMAT = "%Y-%m-%dT%H:%M"
 
 
-def ticks_from_duration(text: str) -> int:
-    """Map a free-text duration to threat-clock ticks (minimum 1)."""
-    if not text or not str(text).strip():
-        return 1
-    s = str(text).strip()
-    m = _DURATION_WEEK.search(s)
-    if m:
-        return max(1, 7 * int(m.group(1)))
-    m = _DURATION_DAY.search(s)
-    if m:
-        return max(1, int(m.group(1)))
-    return 1
+class TimeError(Exception):
+    """A time command that can't be carried out. The message says how to fix it."""
 
 
-def ticks_for_elapsed(ticks: Optional[int] = None, duration: Optional[str] = None) -> int:
-    """Resolve clock ticks for a time advance.
+def parse_duration(text: str) -> int:
+    """Turn "10m", "4h", "2 days" or "1h 30m" into minutes. Refuses to guess."""
+    cleaned = str(text).strip().lower().replace(",", " ")
+    parts = _DURATION_PART.findall(cleaned)
+    leftover = _DURATION_PART.sub(" ", cleaned).replace(" and ", " ").strip()
+    if not parts or leftover:
+        raise TimeError(f"Can't read the duration '{text}'. Use e.g. 10m, 4h, 2d, 1w or \"1h 30m\".")
 
-    Explicit ticks win over duration. Default (neither given) is 1, so a
-    Dawn→Noon hop stays +1.
-    """
-    if ticks is not None:
-        return max(1, int(ticks))
-    if duration:
-        return ticks_from_duration(duration)
-    return 1
+    minutes = 0
+    for number, unit in parts:
+        if unit not in MINUTES_PER_UNIT:
+            raise TimeError(f"Unknown unit '{unit}' in '{text}'. Use m, h, d or w.")
+        minutes += int(number) * MINUTES_PER_UNIT[unit]
+    if minutes <= 0:
+        raise TimeError("A duration must be longer than zero.")
+    return minutes
+
+
+def parse_time(text: str) -> datetime:
+    """Read an absolute time such as "2187-10-26 04:30"."""
+    try:
+        return datetime.fromisoformat(str(text).strip()).replace(second=0, microsecond=0)
+    except ValueError:
+        raise TimeError(f"Can't read the time '{text}'. Use \"YYYY-MM-DD HH:MM\".")
+
+
+def derive_time_of_day(moment: datetime) -> str:
+    return [word for start, word in TIMES_OF_DAY if start <= moment.hour][-1]
+
+
+def derive_date(moment: datetime) -> str:
+    return f"{DAYS[moment.weekday()]}, {moment.day} {MONTHS[moment.month - 1]} {moment.year}"
+
+
+def describe(moment: datetime) -> str:
+    return f"{moment:%H:%M} ({derive_time_of_day(moment)}), {derive_date(moment)}"
+
+
+def days_crossed(before: datetime, after: datetime) -> int:
+    """How many midnights lie between two times."""
+    return (after.date() - before.date()).days
 
 
 class TimeManager:
-    """Manage campaign time state."""
+    """Read and change a campaign's game time."""
 
-    def __init__(self, world_state_dir: str = "world-state"):
-        self.campaign_mgr = CampaignManager(world_state_dir)
-        self.campaign_dir = self.campaign_mgr.get_active_campaign_dir()
-
+    def __init__(self, world_state_dir: Optional[str] = None):
+        self.world_state_dir = world_state_dir
+        manager = CampaignManager(world_state_dir) if world_state_dir else CampaignManager()
+        self.campaign_dir = manager.get_active_campaign_dir()
         if self.campaign_dir is None:
-            raise RuntimeError("No active campaign. Run /new-game or /import first.")
-
+            raise TimeError("No active campaign. Run /new-game or /import first.")
         self.json_ops = JsonOperations(str(self.campaign_dir))
 
-    def update_time(self, time_of_day: str, date: str) -> bool:
-        """Update the campaign time and date."""
-        data = self.json_ops.load_json("campaign-overview.json")
+    def get_game_time(self) -> Optional[datetime]:
+        stored = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
+        return datetime.strptime(stored, STORED_FORMAT) if stored else None
 
-        data['time_of_day'] = time_of_day
-        data['current_date'] = date
-
+    def _write(self, moment: datetime) -> None:
+        data = self.json_ops.load_json("campaign-overview.json") or {}
+        data["game_time"] = moment.strftime(STORED_FORMAT)
+        data["time_of_day"] = derive_time_of_day(moment)
+        data["current_date"] = derive_date(moment)
         if not self.json_ops.save_json("campaign-overview.json", data):
-            print(f"[ERROR] Failed to update time")
-            return False
+            raise TimeError("Failed to save the time.")
 
-        print(f"[SUCCESS] Time updated to: {time_of_day}, {date}")
-        return True
+    def set_time(self, moment: datetime) -> None:
+        """Set the time outright. Clocks don't move: use advance for time passing."""
+        self._write(moment)
 
-    def get_time(self) -> dict:
-        """Get current campaign time."""
-        data = self.json_ops.load_json("campaign-overview.json")
-        return {
-            'time_of_day': data.get('time_of_day', 'Unknown'),
-            'current_date': data.get('current_date', 'Unknown')
-        }
-
-
-def _parse_ticks_flags(argv):
-    """Parse [--ticks N] [--duration TEXT] from argv. No campaign required."""
-    ticks = None
-    duration = None
-    i = 0
-    while i < len(argv):
-        if argv[i] == "--ticks":
-            if i + 1 >= len(argv):
-                print("[ERROR] --ticks requires a number", file=sys.stderr)
-                sys.exit(1)
-            try:
-                ticks = int(argv[i + 1])
-            except ValueError:
-                print("[ERROR] --ticks must be an integer", file=sys.stderr)
-                sys.exit(1)
-            i += 2
-        elif argv[i] == "--duration":
-            if i + 1 >= len(argv):
-                print("[ERROR] --duration requires a value", file=sys.stderr)
-                sys.exit(1)
-            duration = argv[i + 1]
-            i += 2
-        else:
-            print(f"[ERROR] Unknown argument: {argv[i]}", file=sys.stderr)
-            sys.exit(1)
-    return ticks, duration
+    def advance(self, minutes: int) -> Dict[str, Dict]:
+        """Let time pass. Returns the time clocks that moved."""
+        before = self.get_game_time()
+        if before is None:
+            raise TimeError("The campaign has no game time yet. "
+                            "Set it once with: gm-time.sh set \"YYYY-MM-DD HH:MM\"")
+        after = before + timedelta(minutes=minutes)
+        self._write(after)
+        days = days_crossed(before, after)
+        return ThreatClockManager(self.world_state_dir).tick_time_clocks(days) if days else {}
 
 
-def main():
-    """CLI interface for time management."""
-    if len(sys.argv) < 2:
-        print("Usage: python lib/time_manager.py update <time_of_day> <date>")
-        print("       python lib/time_manager.py get")
-        print("       python lib/time_manager.py ticks [--ticks N] [--duration TEXT]")
-        sys.exit(1)
-
-    action = sys.argv[1]
-
-    # ticks is a pure mapping — no campaign, so it can run before TimeManager().
-    if action == "ticks":
-        ticks, duration = _parse_ticks_flags(sys.argv[2:])
-        print(ticks_for_elapsed(ticks=ticks, duration=duration))
-        return
-
+def main(argv) -> int:
+    usage = ("Usage: time_manager.py show | advance <duration> | set \"YYYY-MM-DD HH:MM\"")
+    action = argv[0] if argv else "show"
+    value = " ".join(argv[1:])
     try:
         manager = TimeManager()
-
-        if action == 'update':
-            if len(sys.argv) < 4:
-                print("Usage: python lib/time_manager.py update <time_of_day> <date>")
-                sys.exit(1)
-            time_of_day = sys.argv[2]
-            date = sys.argv[3]
-            if not manager.update_time(time_of_day, date):
-                sys.exit(1)
-
-        elif action == 'get':
-            time_info = manager.get_time()
-            print(f"Time: {time_info['time_of_day']}")
-            print(f"Date: {time_info['current_date']}")
-
+        if action == "advance" and value:
+            moved = manager.advance(parse_duration(value))
+            print(f"Time: {describe(manager.get_game_time())}")
+            for name, clock in moved.items():
+                print(f"Clock {name}: {clock['current']}/{clock['max']}")
+                if clock["current"] >= clock["max"]:
+                    print(f"⚠ {name} is FULL — a dramatic beat is due"
+                          + (f": {clock['consequence']}" if clock.get("consequence") else ""))
+        elif action == "set" and value:
+            manager.set_time(parse_time(value))
+            print(f"Time set: {describe(manager.get_game_time())}")
+        elif action == "show" and not value:
+            moment = manager.get_game_time()
+            print(f"Time: {describe(moment)}" if moment else
+                  "No game time yet. Set it once with: gm-time.sh set \"YYYY-MM-DD HH:MM\"")
         else:
-            print(f"Unknown action: {action}")
-            sys.exit(1)
-
-    except RuntimeError as e:
-        print(f"[ERROR] {e}")
-        sys.exit(1)
+            print(usage, file=sys.stderr)
+            return 1
+    except TimeError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main(sys.argv[1:]))

@@ -27,8 +27,8 @@ developments. **They are wired to very different degrees.** Verified 2026-08-13:
 
 | System | Automatic trigger | How it actually runs |
 |---|---|---|
-| Consequences | **Yes** | `gm-session.sh move` and `gm-time.sh` both call `gm-consequence.sh tick` after they write |
-| Threat clocks | **Time-clocks: yes** (since 2026-08-13) | `gm-time.sh` runs `threat_clocks.py tick-time` — every `advance_on: "time"` clock gains ticks scaled to elapsed magnitude when `--ticks` / `--duration` is passed (default 1, so Dawn→Noon stays +1). Event clocks stay manual: `gm-clock.sh advance "<name>"`. Filling one fires its consequence (below) |
+| Consequences | **Yes** | `gm-session.sh move` and `gm-time.sh advance` both call `gm-consequence.sh tick` after they write |
+| Threat clocks | **Time-clocks: yes** (since 2026-08-13) | `gm-time.sh advance <duration>` moves the campaign's `game_time` and gives every `advance_on: "time"` clock one segment per midnight crossed (a short walk gives none). Event clocks stay manual: `gm-clock.sh advance "<name>"`. Filling one fires its consequence (below) |
 | World tick | **No** — GM-invoked by design | the developments are a model call; `gm-session.sh world-tick '<json>'` persists every proposal, warns (naming the overflow) when the count exceeds the advisory cap of 3, and stays logged / rollback-able. Before 2026-08-13 `WorldTick` had no caller at all |
 
 So three weeks and ten minutes are not the same pressure: the GM passes how much time

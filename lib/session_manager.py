@@ -603,6 +603,9 @@ class SessionManager(EntityManager):
         location = campaign.get('player_position', {}).get('current_location', 'Unknown')
         time_of_day = campaign.get('time', {}).get('time_of_day', campaign.get('time_of_day', ''))
         current_date = campaign.get('time', {}).get('current_date', campaign.get('current_date', ''))
+        game_time = campaign.get('game_time') or ''
+        if len(game_time) >= 16:
+            time_of_day = f"{time_of_day} ({game_time[11:16]})"
         time_str = f"{time_of_day}, {current_date}" if time_of_day and current_date else time_of_day or current_date or 'Unknown'
 
         lines.append("=== SESSION CONTEXT ===")

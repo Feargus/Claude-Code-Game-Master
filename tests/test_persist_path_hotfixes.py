@@ -80,7 +80,7 @@ def _live_campaign_with_facts():
 
 @pytest.mark.parametrize("argv", [
     ("tools/gm-note.sh", "categories"),
-    ("tools/gm-time.sh", "Dusk", "16th day of Harvestmoon"),
+    ("tools/gm-time.sh", "set", "2187-10-26 19:30"),
 ], ids=["gm-note", "gm-time"])
 def test_wrapper_runs_from_foreign_cwd(active_fixture_campaign, foreign_cwd, argv):
     result = _run_from(foreign_cwd, *argv)
@@ -92,10 +92,10 @@ def test_wrapper_runs_from_foreign_cwd(active_fixture_campaign, foreign_cwd, arg
 
 
 def test_gm_time_persists_to_the_campaign_from_foreign_cwd(active_fixture_campaign, foreign_cwd):
-    assert _run_from(foreign_cwd, "tools/gm-time.sh", "Dusk", "Day of Ash").returncode == 0
+    assert _run_from(foreign_cwd, "tools/gm-time.sh", "set", "2187-10-26 19:30").returncode == 0
     overview = json.loads((active_fixture_campaign / "campaign-overview.json").read_text())
     assert overview["time_of_day"] == "Dusk"
-    assert overview["current_date"] == "Day of Ash"
+    assert overview["current_date"] == "Friday, 26 October 2187"
 
 
 @pytest.mark.skipif(
@@ -132,7 +132,7 @@ def test_the_live_world_state_is_never_touched(active_fixture_campaign, foreign_
     before_mtime = LIVE_ACTIVE_FILE.stat().st_mtime_ns if LIVE_ACTIVE_FILE.exists() else None
 
     assert _run_from(foreign_cwd, "tools/gm-note.sh", "categories").returncode == 0
-    assert _run_from(foreign_cwd, "tools/gm-time.sh", "Dusk", "Day of Ash").returncode == 0
+    assert _run_from(foreign_cwd, "tools/gm-time.sh", "set", "2187-10-26 19:30").returncode == 0
 
     after = LIVE_ACTIVE_FILE.read_bytes() if LIVE_ACTIVE_FILE.exists() else None
     assert after == before

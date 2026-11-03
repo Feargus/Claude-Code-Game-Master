@@ -196,8 +196,8 @@ class Validators:
         Returns: (is_valid, error_message)
         """
         valid_times = [
-            'dawn', 'morning', 'midday', 'afternoon',
-            'dusk', 'evening', 'night', 'midnight'
+            'small hours', 'dawn', 'morning', 'noon',
+            'afternoon', 'evening', 'dusk', 'night', 'midnight'
         ]
 
         time_lower = time.lower().strip()

@@ -83,9 +83,9 @@ class ThreatClockManager(EntityManager):
     def tick_time_clocks(self, ticks: int = 1) -> Dict[str, Any]:
         """Advance every advance_on=='time' clock that isn't already full.
 
-        The automatic pressure wire: gm-time.sh calls this after each time
-        update, passing ticks scaled to elapsed magnitude (--ticks / --duration).
-        Default ticks=1 (Dawn→Noon stays +1). Event clocks (advance_on != 'time')
+        The automatic pressure wire: `gm-time.sh advance` calls this with the
+        number of midnights crossed, so short time skips leave clocks alone.
+        Event clocks (advance_on != 'time')
         are untouched — the GM advances those by hand.
         Returns {name: clock} for the clocks that moved.
         """
