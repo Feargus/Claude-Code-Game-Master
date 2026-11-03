@@ -47,7 +47,7 @@ appears in the transcript:
 
 | Trigger | What fires | Where |
 |---|---|---|
-| `gm-session.sh move` | consequence tick, then a lore brief on *first* visit to a place with retained book text | `tools/gm-session.sh` |
+| `gm-session.sh move` | with `--takes`, time passes first (clocks recomputed); then one consequence tick at the destination, then a lore brief on *first* visit to a place with retained book text | `tools/gm-session.sh` |
 | `gm-time.sh advance` / `set` | time clocks recomputed from the new time (`update_time_clocks`), then consequence tick | `tools/gm-time.sh` |
 | every turn end | `session-autosave.sh` Stop hook → `gm-session.sh save autosave` | `.claude/settings.json` |
 

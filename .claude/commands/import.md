@@ -223,12 +223,14 @@ off-screen whether or not the player engages — the book's looming danger (Yara
 sorcery, the caravan fleeing the city, the cult's ritual):
 
 ```bash
-bash tools/gm-clock.sh add "<the antagonist's aim>" 4 --on time \
+bash tools/gm-time.sh set "<YYYY-MM-DD HH:MM>"   # the story's start, if not set yet
+bash tools/gm-clock.sh add "<the antagonist's aim>" 4 --due-in <duration> \
   --consequence "<what happens in the world when it fills>"
 ```
 
-One clock, grounded in the book's plot — not a gazetteer of doom. It rides into
-every scene as a THREAT CLOCK and ticks on `gm-time.sh`.
+The due time comes from the plot: how long until the aim completes if nobody
+interferes (`3d`, `2w`). One clock, grounded in the book's plot — not a gazetteer
+of doom. It rides into every scene as a THREAT CLOCK and fills as game time passes.
 
 When play walks toward a new name: `bash tools/gm-playpack.sh from-book "<name>"` then RAG.
 

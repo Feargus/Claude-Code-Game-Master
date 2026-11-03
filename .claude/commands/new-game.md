@@ -137,9 +137,12 @@ bash tools/gm-playpack.sh stage
    off-screen (the looming danger your tone/themes imply), so the world moves on
    the player whether or not they engage:
    ```bash
-   bash tools/gm-clock.sh add "<the antagonist's aim>" 4 --on time \
+   bash tools/gm-time.sh set "<YYYY-MM-DD HH:MM>"   # the story's start, if not set yet
+   bash tools/gm-clock.sh add "<the antagonist's aim>" 4 --due-in <duration> \
      --consequence "<what happens when it fills>"
    ```
+   The due time comes from the fiction: how long until the aim completes if
+   nobody interferes (`3d`, `2w`). It fills evenly until then.
    One clock, not a doom gazetteer — it rides into every scene as a THREAT CLOCK.
 
 4. Optional thin binder: a short `authored-canon.md` of *this street only*, then
@@ -180,8 +183,9 @@ bash tools/gm-npc.sh set-appearance "<NPC name>" \
   --face "..." --eyes "..." --clothing "..." --gear "..." --demeanor "..." --size "..."
 ```
 
-Update `campaign-overview.json` (date/time, `session_count: 0`, and
-`player_position.current_location` = the play pack's `room`) and append the world
+Update `campaign-overview.json` (`session_count: 0` and
+`player_position.current_location` = the play pack's `room`; the date and time
+come from `gm-time.sh set` in step 3b, never by hand) and append the world
 summary to `session-log.md` (starting location, the people on stage, the hook).
 Then display a summary box and hand off:
 

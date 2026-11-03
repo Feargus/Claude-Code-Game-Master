@@ -63,8 +63,9 @@ bash tools/gm-plot.sh add "<Thread Name>" --type <type> --status dormant \
   --objective "<beat 1>" --objective "<beat 2>" \
   --npc "<existing NPC>" --location "<existing place>"
 
-# The timer that brings it to a head. Its consequence NAMES the plot so the GM knows to wake it.
-bash tools/gm-clock.sh add "<the thread's countdown>" 4 --on time --linked-plot "<Thread Name>" \
+# The timer that brings it to a head: due when the thread would come to a head if left
+# alone (e.g. 3d, 2w). Its consequence NAMES the plot so the GM knows to wake it.
+bash tools/gm-clock.sh add "<the thread's countdown>" 4 --due-in <duration> --linked-plot "<Thread Name>" \
   --consequence "Surface the dormant thread '<Thread Name>' — <what comes to a head>"
 
 # The on-contact surfacing trigger (fires the moment play walks toward the central NPC/place).

@@ -10,7 +10,8 @@ show_usage() {
     echo "  start                    - Begin new session, show world state"
     echo "  end <summary>            - End session with summary"
     echo "  status                   - Show current campaign status"
-    echo "  move <location>          - Move party to new location"
+    echo "  move <location> [--takes <duration>]"
+    echo "                           - Move party; --takes 20m lets that much time pass first"
     echo "  context                  - Full session context (character, party, consequences, rules)"
     echo "  choices [on|off|toggle]  - Toggle the [A]-[E] action menu (no arg: show state)"
     echo "  dice [on|off|toggle]     - Toggle player rolling their own dice (no arg: show state)"
@@ -154,9 +155,35 @@ case "$ACTION" in
         ;;
 
     move)
+        # Split off `--takes <duration>`; everything else is the location.
+        TAKES=""
+        PLACE=()
+        while [ "$#" -gt 0 ]; do
+            if [ "$1" = "--takes" ]; then
+                if [ "$#" -lt 2 ]; then
+                    echo "[ERROR] --takes requires a duration, e.g. 20m or 2h" >&2
+                    exit 1
+                fi
+                TAKES="$2"
+                shift 2
+            else
+                PLACE+=("$1")
+                shift
+            fi
+        done
+        set -- "${PLACE[@]}"
         if [ "$#" -lt 1 ]; then
-            echo "Usage: gm-session.sh move <location>"
+            echo "Usage: gm-session.sh move <location> [--takes <duration>]"
             exit 1
+        fi
+        # The journey's time passes first, so clocks fill and the time is right on
+        # arrival. time_manager.py is called directly, not gm-time.sh, so the
+        # consequence check below runs once, at the destination.
+        if [ -n "$TAKES" ]; then
+            $PYTHON_CMD "$LIB_DIR/time_manager.py" advance "$TAKES"
+            RESULT=$?
+            if [ $RESULT -ne 0 ]; then exit $RESULT; fi
+            echo ""
         fi
         echo "Moving Party"
         echo "============"

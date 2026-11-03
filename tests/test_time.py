@@ -151,3 +151,41 @@ def test_every_derived_word_is_a_valid_time_of_day():
     from lib.validators import Validators
     for _, word in TIMES_OF_DAY:
         assert Validators.validate_time_of_day(word)[0], word
+
+
+# --- Moving with --takes ---
+
+def _move(dcc_world, *args):
+    return subprocess.run(["bash", str(ROOT / "tools" / "gm-session.sh"), "move", *args],
+                          capture_output=True, text=True,
+                          env={**os.environ, "GM_WORLD_STATE_BASE": str(dcc_world)})
+
+
+def _overview(dcc_world):
+    return json.loads((Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
+                       / "campaign-overview.json").read_text())
+
+
+def test_move_takes_time_then_moves_and_checks_consequences_once(dcc_world):
+    _gm_time(dcc_world, "set", "2187-10-26 22:00")
+    result = _move(dcc_world, "The Old Spine Bridge", "--takes", "1h 30m")
+    assert result.returncode == 0, result.stdout + result.stderr
+    overview = _overview(dcc_world)
+    assert overview["game_time"] == "2187-10-26T23:30"
+    assert overview["player_position"]["current_location"] == "The Old Spine Bridge"
+    assert result.stdout.count("[REACTIVITY]") == 1
+
+
+def test_move_without_takes_lets_no_time_pass(dcc_world):
+    _gm_time(dcc_world, "set", "2187-10-26 22:00")
+    assert _move(dcc_world, "The Old Spine Bridge").returncode == 0
+    assert _overview(dcc_world)["game_time"] == "2187-10-26T22:00"
+
+
+def test_a_bad_travel_time_stops_the_move(dcc_world):
+    _gm_time(dcc_world, "set", "2187-10-26 22:00")
+    before = _overview(dcc_world)["player_position"]["current_location"]
+    result = _move(dcc_world, "The Old Spine Bridge", "--takes", "a while")
+    assert result.returncode != 0
+    assert "Can't read the duration" in result.stderr
+    assert _overview(dcc_world)["player_position"]["current_location"] == before
