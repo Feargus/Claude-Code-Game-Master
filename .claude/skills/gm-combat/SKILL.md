@@ -1,38 +1,67 @@
 ---
 name: gm-combat
-description: D&D-kit combat mechanics — initiative, attack/damage resolution, XP-by-CR awards, combat modifiers, and death saves. Load when a hostile action is declared or combat starts in a campaign whose World Kit is dnd5e. For non-D&D kits, use the generic core (game_core.py) and the active ruleset instead.
+description: Running a fight — tracking enemies, order, attack and defense, common situations, damage, dying, and ending it. Load when a hostile action is declared or a fight starts. How a roll works is in gm-skills.
 ---
 
-# Combat Mechanics (D&D kit)
+# Fights
 
-**STEP 0 — KIT GUARD.** If the scene-context KIT block is not `dnd5e`, close this skill and resolve the fight through `gm-skills` and the campaign's combat rules.
+Every roll in a fight is a skill contest. How to build and run one is in [gm-skills](../gm-skills/SKILL.md), and the fighting skills are in [combat skills](../gm-skills/combat.md). This file covers only what is specific to fights.
 
-Persist combat with `bash tools/gm-combat.sh` (start/add-enemy/hp/condition/next-turn/end) so HP and initiative survive resumes.
+Before a fight can kill, make the danger readable: see Stakes & Death in `CLAUDE.md`.
 
-## Flow
-1. Get enemy stats (`features/dnd-api/monsters/dnd_monster.py "[creature]" --combat` or quick: AC 13, HP 15, +3, 1d6+1).
-2. Initiative: `uv run python lib/dice.py "1d20+[dex]"` per combatant; order high→low.
-3. Each turn: attack `1d20+bonus` vs AC; on hit roll damage; update HP via `gm-combat.sh hp`.
-4. Resolution: award XP, handle loot (persist BEFORE narrating), advance time.
+## Start
 
-## XP by Challenge Rating
-| CR | XP | CR | XP | CR | XP |
-|----|-----|----|----|----|----|
-| 0 | 10 | 4 | 1,100 | 10 | 5,900 |
-| 1/8 | 25 | 5 | 1,800 | 11 | 7,200 |
-| 1/4 | 50 | 6 | 2,300 | 13 | 10,000 |
-| 1/2 | 100 | 7 | 2,900 | 15 | 13,000 |
-| 1 | 200 | 8 | 3,900 | 17 | 18,000 |
-| 2 | 450 | 9 | 5,000 | 20 | 25,000 |
-| 3 | 700 | | | | |
+Track every fight with more than one enemy or more than a couple of beats. Each enemy gets its own line, numbered, with the HP from its sheet (`npcs.json` or `mobs.json`):
 
-Bonus: clever tactics +25%, creative environment +10-25%, social victory +50%.
+```
+bash tools/gm-combat.sh start
+bash tools/gm-combat.sh add-enemy "street thug 1" 18
+bash tools/gm-combat.sh add-enemy "street thug 2" 18
+```
 
-**Non-kill wins still earn XP.** When a fight is won WITHOUT a kill — driving the enemy off a ledge, baiting two enemies into each other, an environmental kill, a daring escape from a lethal foe, surviving telegraphed over-CR odds — award it like a kill: `bash tools/gm-player.sh award --tier minor|major|legendary --reason "..."` (kit-aware, level-scaled; co-awards followers in DCC). See `gm-craft → Reward the spectacle`. Combat's CR→XP is just one source of XP among many.
+Contests use the sheet's name ("street thug"), not the numbered line. An enemy without stats is added first, as [Rolling](../gm-skills/SKILL.md#rolling) describes.
 
-## Modifiers
-Advantage = 2d20 keep high; Disadvantage = keep low. Half cover +2 AC; 3/4 cover +5. Flanking = advantage (melee). Prone: advantage melee / disadvantage ranged. Crit (nat 20) = double damage dice then add mods. Nat 1 = auto-miss.
+## Order
 
-## Death & Dying
-0 HP → unconscious + death saves (DC 10 Con each turn): 3 successes = stable, 3 failures = death. Nat 20 = 1 HP + conscious. Nat 1 = 2 failures. Damage ≥ max HP = instant death.
-Death is real and reachable — don't fudge saves to keep a doomed PC alive. Telegraph lethal fights first (an over-CR enemy should *read* as deadly), but once the player commits against the odds, let the dice fall. On PC death, run the **Death Protocol** (CLAUDE.md): persist → narrate → offer the character hand-off. The session does not end.
+There is no initiative roll. The GM decides who acts when, from the situation.
+
+## Attack and defense
+
+- **Attack:** the attacker's weapon skill, as the active side, against the defender's Guard (close combat) or Evasion (ranged).
+- **Several attackers:** a defender facing several attackers in the same beat defends against each, at −2 per other attacker: [several things at once](../gm-skills/SKILL.md#several-things-at-once). Flanking is this and nothing more.
+
+## Common situations
+
+Sorted by [advantage or modifier](../gm-skills/SKILL.md#advantage-or-modifier).
+
+| Situation | How |
+|---|---|
+| Cover | Modifier against the attacker. Full cover blocks the attack. |
+| Surprise | The surprised side has disadvantage on ITU. |
+| Wounded (half HP or less) | −2 to physical rolls. |
+
+## Damage
+
+A hit deals HP damage equal to its quality, so quality 0 is at most a graze. Weapons don't change this. Persist the damage before narrating it:
+
+```
+bash tools/gm-combat.sh hp "street thug 1" -7    # an enemy
+bash tools/gm-player.sh hp Fearghas -7           # the player
+bash tools/gm-npc.sh hp "Carl" -4                # a party member
+```
+
+**Massive damage:** a single hit dealing at least the target's max HP kills outright.
+
+## 0 HP
+
+- **Mobs and minor NPCs** are out of the fight.
+- **The player and important NPCs are dying.** Each beat, an Endurance roll against difficulty 20, rolled like the nerve toxin in [Rolling](../gm-skills/SKILL.md#rolling). Three successes stabilize them, three failures kill them.
+- **When the player dies,** run the Death Protocol in `CLAUDE.md`.
+
+## End
+
+```
+bash tools/gm-combat.sh end
+```
+
+A fight is won by any means, not only by killing: driving the enemy off, an escape, a trick. Rewards work as in [Reward a great success](../gm-skills/SKILL.md#reward-a-great-success).

@@ -74,7 +74,7 @@ Permanent features are on the sheet already, as die sizes, skills or traits. Don
 
 ## Several things at once
 
-Doing several things at once is always allowed. Every roll involved gets −5 for each other thing done at the same time. Abilities that reduce this, such as ambidexterity, are traits.
+Doing several things at once is always allowed. Every roll involved gets −2 for each other thing done at the same time. Abilities that reduce this, such as ambidexterity, are traits.
 
 ## Cooperating with yourself
 

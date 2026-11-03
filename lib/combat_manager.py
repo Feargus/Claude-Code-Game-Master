@@ -112,7 +112,7 @@ class CombatManager(EntityManager):
             marker = '>' if i == data.get('turn_index', 0) else ' '
             dead = ' 💀' if c.get('hp_current', 1) <= 0 else ''
             cond = f" [{', '.join(c['conditions'])}]" if c.get('conditions') else ""
-            lines.append(f"{marker} {c['name']}: {c['hp_current']}/{c['hp_max']} HP, AC {c['ac']}{cond}{dead}")
+            lines.append(f"{marker} {c['name']}: {c['hp_current']}/{c['hp_max']} HP{cond}{dead}")
         return "\n".join(lines)
 
 

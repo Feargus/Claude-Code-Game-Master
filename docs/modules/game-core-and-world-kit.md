@@ -137,7 +137,7 @@ omitted. `uv run python lib/game_core.py` runs their edge-case self-check.
 classifier returning `{new_hp, outcome}` (`ok`/`dying`/`dead`) under the kit's
 `WorldKit.lethality()` model. Default `death-saves` is 5e-faithful (0 HP → dying,
 massive overkill → dead); `gritty` makes 0 HP death; `massive_damage_at` lowers the
-instant-death bar. The death-save ceremony itself stays in `gm-combat` / the Death
+instant-death bar. The dying rules themselves are in `gm-combat` and the Death
 Protocol — the core only says whether a hit is survivable, dying, or fatal.
 
 **The World Kit binds them per world** (as of 2026-08-15). `ruleset.json` may carry
@@ -151,7 +151,7 @@ by vibes. `/import` and `/new-game` author 1–3 at world creation.
 
 ## The kit decides which mechanics Skills are legitimate
 
-`gm-combat` and `gm-levelup` encode D&D 5e — hit dice and a level-20 XP table. None of that exists in `game_core`. Loading them for a non-5e kit
+`gm-levelup` encodes D&D 5e — hit dice and a level-20 XP table. None of that exists in `game_core`. Loading them for a non-5e kit
 imports rules the world never declared. The routing rule — STEP-0 defers to the
 scene-context KIT block — is in [lean core and skill routing](../conventions/lean-core-and-skill-routing.md).
 

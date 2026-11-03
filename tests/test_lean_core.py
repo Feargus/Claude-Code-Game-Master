@@ -75,7 +75,7 @@ def test_craft_skill_preserves_the_soul():
     assert "Yes, and" in text and "Persist before narrating" in text
 
 
-DND_ONLY_SKILLS = ["gm-combat", "gm-levelup"]
+DND_ONLY_SKILLS = ["gm-levelup"]
 
 
 def test_dnd_only_skills_carry_the_kit_guard():

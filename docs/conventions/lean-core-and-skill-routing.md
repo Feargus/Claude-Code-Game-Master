@@ -47,9 +47,9 @@ exactly that reason.
 Adding a skill without adding it to `ALL_SKILLS` and the router leaves it unroutable and
 untested.
 
-## Two of the seven skills are D&D-only; STEP-0 defers to the KIT block
+## The D&D-only skill; STEP-0 defers to the KIT block
 
-`gm-combat` and `gm-levelup` encode 5e — hit dice, an XP table, death saves. Each opens with a **one-line STEP 0**: read the scene-context KIT
+`gm-levelup` encodes 5e — hit dice and an XP table. (`gm-combat` was D&D-only too; in this fork it's the fight procedure for the skill-contest system.) It opens with a **one-line STEP 0**: read the scene-context KIT
 block, and unless it is `dnd5e`, close the skill and use the generic core + the active
 ruleset. That is context deference, not a tool call — no skill instructs
 `world_kit.py info` for what the brief now carries. Enforcement:
