@@ -75,17 +75,6 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/player_manager.py" level-check "$1"
         ;;
 
-    "hp")
-        if [ -z "$1" ] || [ -z "$2" ]; then
-            echo "Usage: gm-player.sh hp <character_name> <+/-amount>"
-            echo "Example: gm-player.sh hp conan -3  (take 3 damage)"
-            echo "Example: gm-player.sh hp conan +5  (heal 5 HP)"
-            exit 1
-        fi
-        NAME="$1"; AMT="$2"; shift 2
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" hp "$NAME" "$AMT" "$@"
-        ;;
-
     "vital")
         if [ -z "$1" ]; then
             echo "Usage: gm-player.sh vital <vital_name> [<+/-amount> | set <value>]"
@@ -116,17 +105,6 @@ case "$ACTION" in
         fi
         NAME="$1"; shift
         $PYTHON_CMD "$LIB_DIR/player_manager.py" kill "$NAME" "$@"
-        ;;
-
-    "revive")
-        if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh revive <character_name> [--hp N] [--reason \"<how>\"]"
-            echo "Bring a dead character back: status alive, HP restored (default 1), death stamps cleared."
-            echo "Example: gm-player.sh revive Tandy --hp 12 --reason \"the Sunken Priest paid her debt\""
-            exit 1
-        fi
-        NAME="$1"; shift
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" revive "$NAME" "$@"
         ;;
 
     "become")
@@ -219,10 +197,8 @@ case "$ACTION" in
         echo "  set <name>                   - Set character as current active PC"
         echo "  xp <name> +<amount>          - Award XP to character"
         echo "  award [name] --tier T        - Spectacle XP for a clever/effective/unique/punishing beat (T=minor|major|legendary; --reason \"...\"; co-awards followers)"
-        echo "  hp <name> <+/-amount>        - Modify character HP"
         echo "  vital <vital> <+/-N|set N>   - Read/change a kit vital (vigor, corruption, ...)"
         echo "  kill <name> [--cause ...]    - Mark PC dead (then run Death Protocol)"
-        echo "  revive <name> [--hp N]       - Bring a dead PC back (--reason \"...\"; HP defaults to 1)"
         echo "  become <party_member>        - Take over a party member as the active PC"
         echo "  gold <name> [+/-amount]      - Modify or show character gold"
         echo "  inventory [name] [action]    - Manage inventory (add/remove/list; defaults to active PC + list)"
@@ -232,6 +208,10 @@ case "$ACTION" in
         echo "  save-json '<json>'           - Save complete character from JSON"
         echo ""
         echo "Note: Character is stored in the active campaign's character.json"
+        if [ -n "$ACTION" ]; then
+            echo "Error: unknown action '$ACTION'" >&2
+            exit 1
+        fi
         ;;
 esac
 

@@ -96,11 +96,8 @@ ordering exists to prevent.
    wizard builder. `CLAUDE.md` SWAP is the runtime instruction.
 4. Swap, bridge the fiction, resume.
 
-That hand-off stays the narrative default — death is meant to move the story to someone
-else, not to be undone. The deliberate exit from the dead state is
-`gm-player.sh revive "<name>"` (`--hp`, `--reason`), for the stories that earn it: a
-resurrection, a miracle, a death the fiction walks back. It works only on the sitting PC,
-never on a hero already archived to `fallen/`. See
+That hand-off is the only way on — death moves the story to someone else and is not
+undone. (There used to be a `revive` command; it was removed with HP.) See
 [the player character sheet](../modules/player-character.md).
 
 ## `become()` is the only path that moves a sheet

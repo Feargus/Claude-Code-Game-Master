@@ -26,7 +26,7 @@ def test_hook_scripts_exist_and_parse():
 
 
 def test_post_tool_hook_never_blocks(tmp_path):
-    inp = '{"tool_input": {"command": "bash tools/gm-player.sh hp Tandy -5"}}'
+    inp = '{"tool_input": {"command": "bash tools/gm-body.sh hit chest 1"}}'
     r = subprocess.run(
         ["bash", str(ROOT / ".claude" / "hooks" / "post-tool-state-log.sh")],
         input=inp, capture_output=True, text=True,
@@ -35,7 +35,7 @@ def test_post_tool_hook_never_blocks(tmp_path):
     assert r.returncode == 0
     # It should have logged the state write under the project dir.
     log = tmp_path / ".ship-it" / "state-writes.log"
-    assert log.exists() and "gm-player.sh hp" in log.read_text(encoding="utf-8")
+    assert log.exists() and "gm-body.sh hit" in log.read_text(encoding="utf-8")
 
 
 def test_post_tool_hook_ignores_non_state_commands(tmp_path):

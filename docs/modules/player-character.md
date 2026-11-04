@@ -43,11 +43,8 @@ one fallback, so a campaign whose kit declares no vitals at all (no ruleset, no
 having every vital refused.
 
 Two shapes are honored because sheets use both — a `{current, max}` dict clamps to its max
-and stays a dict, a plain number stays a plain number. `hp` is declared like any other
-vital but keeps its dedicated path: a `vital hp` call delegates to `modify_hp`, so the
-dying gate described under [death](#death-is-a-state-not-a-deletion) still fires. That
-delegated result is re-keyed to `vital`/`previous`/`current`/`max` (keeping `modify_hp`'s
-own keys) so one verb never returns two response shapes.
+and stays a dict, a plain number stays a plain number. `hp` is refused even where it is
+declared: wounds replaced HP, and they go through `gm-body.sh` (`lib/body.py`).
 
 `save_character.py` is kit-aware at the same boundary. It takes the kit's own stat key
 `attributes` (`stats` remains a legacy alias) and derives HP from the class hit die + CON
@@ -109,35 +106,15 @@ which is the point: non-kill achievements advance the same axis kills do. See
 
 ## Death is a state, not a deletion
 
-`kill_character` sets `status: 'dead'`, HP to 0, and stamps `died_at` + cause. The sheet
+`kill_character` sets `status: 'dead'` (and HP to 0 on a sheet that still has HP), and stamps `died_at` + cause. The sheet
 stays. `become(npc_name)` then copies a party member's sheet into `character.json` and
 archives the fallen PC to `fallen/<name>-<id>.json`, clearing `died_at` and the dead status
 on the new sheet. Nothing is destroyed, which is what lets the world keep referencing,
 mourning, and avenging the dead hero.
 
-`modify_hp` refuses outright once `status == 'dead'` (`lib/player_manager.py`) — a
-corpse neither takes damage nor heals; the call returns `success: False` and the sheet is
-untouched. `kill_character` writes HP itself and never routes through `modify_hp`, so the
-guard cannot block a death. Below that gate, `modify_hp` still runs the *dying* gate: 0 HP
-sets `status: 'dying'`, healing off 0 sets it back to `alive`.
-
-The guard is sticky on purpose, so there is a door beside it: `revive(name, hp, reason)`
-is the only thing that clears a `dead` status. It restores HP (the given value, else 1,
-clamped to 1..max, so a revive never lands anyone alive at 0), drops `died_at` and `cause`,
-and records `revived_at` + `revived_reason` where the death's cause was — so a resurrection,
-a healer's miracle, or a death the fiction walks back is a persisted event rather than a
-hand-edited file. The two stamp pairs are mutually exclusive and the last event wins:
-`kill_character` clears `revived_at`/`revived_reason` exactly as `revive` clears
-`died_at`/`cause`. After a revive, `modify_hp` works again and a second death lands
-normally.
-
-Two refusals guard it, both explicit rather than silent. Reviving a character who is not
-dead returns `error: 'character is not dead'` and touches nothing, so a misfired revive can
-never top a living PC up. And **only the sitting PC can be revived**: in single-character
-mode `_load_character` ignores the name it is given and returns `character.json`, so a
-name that doesn't match the loaded sheet is refused by name rather than quietly reviving
-whoever currently holds the file. A hero already archived to `fallen/` is therefore out of
-reach of this verb — bringing them back means `become()` or a fresh sheet.
+The player's wounds, armor and cyberware are on the same sheet, changed only through
+`gm-body.sh`. There is no HP and no way back from death: `gm-player.sh hp` and `revive`
+were removed.
 
 ## Related
 

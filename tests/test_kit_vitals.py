@@ -155,29 +155,23 @@ def test_undeclared_vital_is_refused(hyborian_world):
     assert result["success"] is False
 
 
-def test_hp_keeps_its_dedicated_path(hyborian_world):
-    """hp is a declared vital, but routes through modify_hp (dying gate + clamp)."""
+def test_hp_is_refused_because_wounds_replaced_it(hyborian_world):
     _save(hyborian_world, CONAN)
     mgr = PlayerManager(str(hyborian_world))
-    result = mgr.modify_vital(None, "hp", -58)
-    assert result["success"] and result["current_hp"] == 0
-    assert _sheet(hyborian_world)["status"] == "dying"
+    result = mgr.modify_vital(None, "hp", -8)
+    assert result["success"] is False and "gm-body.sh" in result["error"]
+    assert _sheet(hyborian_world)["hp"]["current"] == 58
 
 
 def test_every_vital_response_has_the_same_shape(hyborian_world):
-    """hp delegates to modify_hp but still answers with vital/current/max."""
     _save(hyborian_world, CONAN)
     mgr = PlayerManager(str(hyborian_world))
 
-    hp = mgr.modify_vital(None, "hp", -8)
     vigor = mgr.modify_vital(None, "vigor", -2)
     read = mgr.modify_vital(None, "corruption")
 
     keys = {"success", "name", "vital", "current", "max"}
-    assert keys <= hp.keys() and keys <= vigor.keys() and keys <= read.keys()
-    assert hp["vital"] == "hp" and hp["current"] == 50 and hp["max"] == 58
-    assert hp["previous"] == 58
-    assert hp["current_hp"] == 50 and hp["max_hp"] == 58   # modify_hp's own keys kept
+    assert keys <= vigor.keys() and keys <= read.keys()
 
 
 def test_dnd5e_still_derives_hp_and_saves(dnd_world):

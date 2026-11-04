@@ -87,10 +87,9 @@ def test_reading_level_status_writes_nothing(milestone_world):
     assert "xp" not in _sheet(milestone_world, "long-road")
 
 
-def test_vitals_and_hp_changes_leave_xp_alone(milestone_world):
+def test_vital_changes_leave_xp_alone(milestone_world):
     mgr = PlayerManager(str(milestone_world))
     assert mgr.modify_vital(None, "resolve", -1)["current"] == 2
-    assert mgr.modify_hp("Pilgrim", -5)["success"]
     assert "xp" not in _sheet(milestone_world, "long-road")
 
 
@@ -165,33 +164,19 @@ def test_level_alias_kit_gets_scaled_spectacle_xp(tmp_path):
 
 # --- a campaign with no ruleset at all -----------------------------------------
 
-def test_ruleset_less_campaign_can_still_change_hp(tmp_path):
-    """WorldKit's DEFAULT_RULESET declares ['hp'], so the vital is not refused."""
-    world = _world(tmp_path, "bare", None)
-    mgr = PlayerManager(str(world))
-
-    assert mgr._kit_vitals() == ["hp"]
-    result = mgr.modify_vital(None, "hp", -6)
-    assert result["success"] and result["current"] == 14
-    assert _sheet(world, "bare")["hp"]["current"] == 14
-
-
 def test_ruleset_less_campaign_refuses_an_undeclared_vital(tmp_path):
     world = _world(tmp_path, "bare", None)
     assert PlayerManager(str(world)).modify_vital(None, "resolve", -1)["success"] is False
 
 
-def test_ruleset_without_a_stat_schema_still_has_hp(tmp_path):
-    """A ruleset that exists but declares no vitals is the same failure class as no
-    ruleset at all — every world has a body."""
-    world = _world(tmp_path, "schemaless", {"name": "Half-Authored", "kit": "custom"})
-    mgr = PlayerManager(str(world))
-
-    assert mgr._kit_vitals() == ["hp"]
-    assert mgr.modify_vital(None, "hp", -6)["current"] == 14
-
-
-def test_empty_declared_vitals_list_still_has_hp(tmp_path):
-    world = _world(tmp_path, "emptyvitals", {
-        "stat_schema": {"attributes": ["grit"], "vitals": []}})
-    assert PlayerManager(str(world)).modify_vital(None, "hp", -1)["success"] is True
+@pytest.mark.parametrize("ruleset", [
+    None,                                                      # no ruleset at all
+    {"name": "Half-Authored", "kit": "custom"},                # no stat_schema
+    {"stat_schema": {"attributes": ["grit"], "vitals": []}},   # empty vitals list
+])
+def test_hp_is_refused_even_as_the_default_vital(tmp_path, ruleset):
+    """The kit's default vital is still 'hp', but wounds replaced it (gm-body.sh)."""
+    world = _world(tmp_path, "bare", ruleset)
+    result = PlayerManager(str(world)).modify_vital(None, "hp", -6)
+    assert result["success"] is False
+    assert _sheet(world, "bare")["hp"]["current"] == 20

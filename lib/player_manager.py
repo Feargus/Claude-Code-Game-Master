@@ -411,81 +411,6 @@ class PlayerManager(EntityManager):
             'xp_remaining': remaining
         }
 
-    def modify_hp(self, name: str, amount: int) -> Dict[str, Any]:
-        """
-        Modify character HP (positive = heal, negative = damage)
-        Returns dict with HP status info
-        """
-        char = self._load_character(name)
-        if not char:
-            print(f"[ERROR] Character '{name}' not found")
-            return {'success': False}
-
-        hp = char.get('hp', {})
-        current_hp = hp.get('current', 0)
-        max_hp = hp.get('max', 0)
-
-        # A corpse does not take damage and does not heal. kill_character sets HP
-        # itself and never routes through here, so the guard cannot block a death.
-        if char.get('status') == 'dead':
-            char_name = char.get('name', name)
-            print(f"[ERROR] {char_name} is dead — HP is frozen at "
-                  f"{current_hp}/{max_hp}. Run the Death Protocol (become a "
-                  f"party member / new character) to continue play, or "
-                  f"`gm-player.sh revive` if the story brings them back.")
-            return {
-                'success': False,
-                'name': char_name,
-                'hp_change': 0,
-                'current_hp': current_hp,
-                'max_hp': max_hp,
-                'status': 'dead',
-                'error': 'character is dead',
-            }
-
-        # Apply change and clamp between 0 and max
-        new_hp = max(0, min(current_hp + amount, max_hp))
-        char['hp']['current'] = new_hp
-
-        # Track the dying gate. 0 HP -> dying (unless already dead). Healing off
-        # 0 -> alive. A 'dead' status is sticky (only kill_character sets it; only
-        # an explicit revive would clear it), so it is never silently overwritten.
-        if char.get('status') != 'dead':
-            if new_hp == 0:
-                char['status'] = 'dying'
-            elif new_hp > 0 and char.get('status') == 'dying':
-                char['status'] = 'alive'
-
-        # Save character
-        if not self._save_character(name, char):
-            return {'success': False}
-
-        char_name = char.get('name', name)
-
-        # Determine status
-        if amount < 0:
-            print(f"DAMAGE {char_name} took {abs(amount)} damage!")
-        else:
-            print(f"HEAL {char_name} healed {amount} HP!")
-
-        print(f"HP: {new_hp}/{max_hp}")
-
-        if new_hp == 0:
-            print("STATUS: UNCONSCIOUS")
-        elif new_hp <= max_hp // 4:
-            print("STATUS: BLOODIED")
-
-        return {
-            'success': True,
-            'name': char_name,
-            'hp_change': amount,
-            'current_hp': new_hp,
-            'max_hp': max_hp,
-            'unconscious': new_hp == 0,
-            'bloodied': 0 < new_hp <= max_hp // 4,
-            'status': char.get('status', 'alive'),
-        }
-
     def _kit_vitals(self) -> List[str]:
         """Vital tracks the active World Kit declares — 'hp' plus whatever else the
         world runs on (vigor, corruption, water, heat).
@@ -522,11 +447,15 @@ class PlayerManager(EntityManager):
                      set_value: Optional[int] = None) -> Dict[str, Any]:
         """Read or change any vital the active World Kit declares.
 
-        `hp` keeps its dedicated path (dying gate, max clamp) — a vital call for it
-        delegates to modify_hp. Other tracks keep whatever shape the sheet stores:
+        `hp` is refused: wounds replaced it (`gm-body.sh`). Other tracks keep whatever
+        shape the sheet stores:
         a {current, max} dict stays a dict (and clamps to max), a plain number
         stays a plain number. A vital the kit never declared is refused.
         """
+        if vital == 'hp':
+            print("[ERROR] HP isn't used. Wounds go through gm-body.sh.")
+            return {'success': False, 'error': 'hp is not used; use gm-body.sh'}
+
         declared = self._kit_vitals()
         if vital not in declared:
             print(f"[ERROR] '{vital}' is not a vital in this world. "
@@ -546,16 +475,6 @@ class PlayerManager(EntityManager):
             print(f"{char_name} - {vital}: {value}")
             return {'success': True, 'name': char_name, 'vital': vital,
                     'current': current, 'max': maximum}
-
-        if vital == 'hp':
-            delta = (set_value - current) if set_value is not None else amount
-            result = self.modify_hp(char_name, delta)
-            if result.get('success'):
-                # One verb, one response shape: every vital result carries
-                # vital/current/max, hp's own keys included.
-                result.update({'vital': 'hp', 'previous': current,
-                               'current': result['current_hp'], 'max': result['max_hp']})
-            return result
 
         new_value = set_value if set_value is not None else current + amount
         new_value = max(0, new_value)
@@ -602,10 +521,6 @@ class PlayerManager(EntityManager):
         char['died_at'] = self.get_timestamp()
         if cause:
             char['cause'] = cause
-        # A death and a revival are mutually exclusive states, so the last one
-        # wins: dying again clears the stamps a previous revive left behind.
-        char.pop('revived_at', None)
-        char.pop('revived_reason', None)
 
         if not self._save_character(name, char):
             return {'success': False}
@@ -623,83 +538,6 @@ class PlayerManager(EntityManager):
             'status': 'dead',
             'died_at': char['died_at'],
             'cause': cause,
-        }
-
-    def revive(self, name: Optional[str] = None, hp: Optional[int] = None,
-               reason: Optional[str] = None) -> Dict[str, Any]:
-        """Bring a dead character back: status 'alive', HP restored, death stamps cleared.
-
-        The escape hatch for the stories that end a death differently — a
-        resurrection, a healer's miracle, a death the fiction walks back. The
-        corpse guard in modify_hp is what makes this an explicit verb rather than
-        a heal: only this clears a 'dead' status.
-
-        ``hp`` defaults to 1 (back on their feet, barely) and clamps to 1..max —
-        a revive never lands a character alive at 0. ``reason`` is recorded on the
-        sheet where the death's cause was, so the world remembers how they came
-        back.
-        """
-        char = self._load_character(name)
-        if not char:
-            print(f"[ERROR] Character '{name}' not found")
-            return {'success': False}
-
-        char_name = char.get('name', name)
-        # In single-character mode _load_character ignores the name and hands back
-        # the sitting PC, so a revive aimed at a hero already archived to fallen/
-        # would silently hit whoever holds character.json. Refuse instead.
-        if name and str(char_name).strip().lower() != str(name).strip().lower():
-            print(f"[ERROR] The active character is {char_name}, not '{name}'. "
-                  f"Only the sitting PC can be revived — a hero archived to "
-                  f"fallen/ has to be brought back with `gm-player.sh become` or "
-                  f"a fresh sheet.")
-            return {
-                'success': False,
-                'name': char_name,
-                'error': f"active character is {char_name}, not '{name}'",
-            }
-
-        if char.get('status') != 'dead':
-            print(f"[ERROR] {char_name} is not dead (status: "
-                  f"{char.get('status', 'alive')}) — nothing to revive. Use "
-                  f"`gm-player.sh hp` to heal them.")
-            return {
-                'success': False,
-                'name': char_name,
-                'status': char.get('status', 'alive'),
-                'error': 'character is not dead',
-            }
-
-        max_hp = char.get('hp', {}).get('max', 0)
-        new_hp = max(1, 1 if hp is None else hp)   # never alive at 0
-        if max_hp:
-            new_hp = min(new_hp, max_hp)
-        char.setdefault('hp', {})
-        char['hp']['current'] = new_hp
-        char['status'] = 'alive'
-        char.pop('died_at', None)
-        char.pop('cause', None)
-        char['revived_at'] = self.get_timestamp()
-        if reason:
-            char['revived_reason'] = reason
-
-        if not self._save_character(name, char):
-            return {'success': False}
-
-        print(f"REVIVED {char_name} lives again.")
-        if reason:
-            print(f"How: {reason}")
-        print(f"HP: {new_hp}/{max_hp}")
-        print("STATUS: ALIVE")
-
-        return {
-            'success': True,
-            'name': char_name,
-            'status': 'alive',
-            'current_hp': new_hp,
-            'max_hp': max_hp,
-            'revived_at': char['revived_at'],
-            'reason': reason,
         }
 
     def become(self, npc_name: str) -> Dict[str, Any]:
@@ -1067,11 +905,6 @@ def main():
     level_parser = subparsers.add_parser('level-check', help='Check XP and level status')
     level_parser.add_argument('name', help='Character name')
 
-    # Modify HP
-    hp_parser = subparsers.add_parser('hp', help='Modify character HP')
-    hp_parser.add_argument('name', help='Character name')
-    hp_parser.add_argument('amount', help='HP change (+5 to heal, -3 for damage)')
-
     # Modify any vital the active World Kit declares (vigor, corruption, ...)
     vital_parser = subparsers.add_parser('vital', help="Read or change a kit vital on the active PC")
     vital_parser.add_argument('vital', help='Vital name as declared in ruleset.json stat_schema.vitals')
@@ -1082,12 +915,6 @@ def main():
     kill_parser = subparsers.add_parser('kill', help='Mark character dead (status + HP 0 + cause)')
     kill_parser.add_argument('name', help='Character name')
     kill_parser.add_argument('--cause', help='How they died')
-
-    # Revive a dead character (the story brought them back)
-    revive_parser = subparsers.add_parser('revive', help='Bring a dead character back (status alive + HP)')
-    revive_parser.add_argument('name', help='Character name')
-    revive_parser.add_argument('--hp', type=int, help='HP to restore to (default 1, clamped to max)')
-    revive_parser.add_argument('--reason', help='How they came back (recorded on the sheet)')
 
     # Become a party member (Death Protocol hand-off)
     become_parser = subparsers.add_parser('become', help='Take over a party member as the active PC')
@@ -1147,20 +974,6 @@ def main():
         else:
             sys.exit(emit_error("player not found", json_mode=True))
         return
-    if json_mode and args.action == 'hp':
-        import contextlib
-        import io
-        try:
-            amount = int(args.amount.lstrip('+'))
-        except ValueError:
-            sys.exit(emit_error(f"invalid HP amount: {args.amount}", json_mode=True))
-        with contextlib.redirect_stdout(io.StringIO()):
-            result = manager.modify_hp(args.name, amount)
-        if result.get('success'):
-            emit(result, json_mode=True)
-        else:
-            sys.exit(emit_error(result.get('error', 'hp update failed'), json_mode=True))
-        return
     if json_mode and args.action == 'vital':
         import contextlib
         import io
@@ -1176,15 +989,12 @@ def main():
         else:
             sys.exit(emit_error(result.get('error', 'vital update failed'), json_mode=True))
         return
-    if json_mode and args.action in ('kill', 'become', 'revive'):
+    if json_mode and args.action in ('kill', 'become'):
         import contextlib
         import io
         with contextlib.redirect_stdout(io.StringIO()):
             if args.action == 'kill':
                 result = manager.kill_character(args.name, getattr(args, 'cause', None))
-            elif args.action == 'revive':
-                result = manager.revive(args.name, getattr(args, 'hp', None),
-                                        getattr(args, 'reason', None))
             else:
                 result = manager.become(args.name)
         if result.get('success'):
@@ -1247,22 +1057,6 @@ def main():
         if not manager.get_xp_status(args.name):
             sys.exit(1)
 
-    elif args.action == 'hp':
-        # Parse amount (handle +5 or -3 format)
-        amount_str = args.amount
-        try:
-            if amount_str.startswith('+'):
-                amount = int(amount_str[1:])
-            else:
-                amount = int(amount_str)
-        except ValueError:
-            print(f"[ERROR] Invalid HP amount: {args.amount}")
-            sys.exit(1)
-
-        result = manager.modify_hp(args.name, amount)
-        if not result.get('success'):
-            sys.exit(1)
-
     elif args.action == 'vital':
         try:
             amount, set_value = _parse_vital_change(args)
@@ -1275,12 +1069,6 @@ def main():
 
     elif args.action == 'kill':
         result = manager.kill_character(args.name, getattr(args, 'cause', None))
-        if not result.get('success'):
-            sys.exit(1)
-
-    elif args.action == 'revive':
-        result = manager.revive(args.name, getattr(args, 'hp', None),
-                                getattr(args, 'reason', None))
         if not result.get('success'):
             sys.exit(1)
 

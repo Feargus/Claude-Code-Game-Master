@@ -1,12 +1,12 @@
 """Tests for persist-path-hotfixes.
 
-Three unrelated leaks on the persist path, fixed together:
+Unrelated leaks on the persist path, fixed together:
 
 1. `gm-note.sh` / `gm-time.sh` resolved both their Python module and `world-state`
    against the caller's working directory, so they blew up (and dropped a stray
    `world-state/` behind them) whenever the GM ran them from anywhere but the
    project root.
-2. `modify_hp` happily healed and damaged a corpse.
+2. `kill` still marks a character dead (the corpse guard went with `modify_hp`).
 3. `get_xp_status` — a read verb — rewrote `character.json` on every call.
 
 The wrapper tests run the real scripts against a fixture campaign built under
@@ -141,49 +141,13 @@ def test_the_live_world_state_is_never_touched(active_fixture_campaign, foreign_
     assert not (PROJECT_ROOT / "world-state" / "campaigns" / active_fixture_campaign.name).exists()
 
 
-# --- 2. a corpse neither takes damage nor heals --------------------------------
+# --- 2. kill ------------------------------------------------------------------
 
-def _dead_pc(world_state_dir):
-    mgr = PlayerManager(world_state_dir)
-    assert mgr.kill_character("Tandy", cause="crushed by the Iron Tangle")["success"]
-    return mgr
-
-
-def test_healing_a_corpse_is_refused(dcc_world, capsys):
-    mgr = _dead_pc(dcc_world)
-    result = mgr.modify_hp("Tandy", +10)
-
-    assert result["success"] is False
-    assert result["status"] == "dead"
-    assert "dead" in capsys.readouterr().out.lower()
-
-    char = mgr.get_player("Tandy")
-    assert char["hp"]["current"] == 0
-    assert char["status"] == "dead"
-
-
-def test_damaging_a_corpse_is_refused(dcc_world):
-    mgr = _dead_pc(dcc_world)
-    assert mgr.modify_hp("Tandy", -5)["success"] is False
-
-    char = mgr.get_player("Tandy")
-    assert char["hp"]["current"] == 0
-    assert char["status"] == "dead"
-
-
-def test_kill_still_works_through_the_guard(dcc_world):
+def test_kill_marks_the_character_dead(dcc_world):
     mgr = PlayerManager(dcc_world)
     result = mgr.kill_character("Tandy", cause="the Iron Tangle")
     assert result["success"] and result["status"] == "dead"
     assert mgr.get_player("Tandy")["hp"]["current"] == 0
-
-
-def test_dying_gate_still_fires_for_the_living(dcc_world):
-    mgr = PlayerManager(dcc_world)
-    assert mgr.modify_hp("Tandy", -999)["success"]
-    assert mgr.get_player("Tandy")["status"] == "dying"
-    assert mgr.modify_hp("Tandy", +5)["success"]
-    assert mgr.get_player("Tandy")["status"] == "alive"
 
 
 # --- 3. get_xp_status is read-only ---------------------------------------------
