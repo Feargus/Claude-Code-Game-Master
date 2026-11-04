@@ -100,7 +100,7 @@ class ThreatClockManager(EntityManager):
         import contextlib
         from consequence_manager import ConsequenceManager
         # add_consequence announces itself on stdout; this one fires from inside
-        # advance/tick-time, whose --json output must stay parseable.
+        # advance and time updates, whose --json output must stay parseable.
         with contextlib.redirect_stdout(sys.stderr):
             cid = ConsequenceManager(self._wsd).add_consequence(
                 f"[Clock — {name}] {text}", trigger=f"the {name} clock ran out")

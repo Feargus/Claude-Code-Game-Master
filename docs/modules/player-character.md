@@ -5,7 +5,6 @@ description: Why the sheet has two shapes, which one is canonical, and how XP, d
 sources:
   - { resource: /lib/new_character.py }
   - { resource: /lib/player_manager.py }
-  - { resource: /features/character-creation/save_character.py }
 generated: { by: cursor-grok-4.6, at: 2026-08-14T19:39:48Z }
 ---
 

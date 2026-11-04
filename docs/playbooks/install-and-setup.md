@@ -44,10 +44,10 @@ nothing in it. See [RAG stack](../modules/rag-stack.md). Its first run downloads
 
 **Two declared dependencies have no importer in the codebase:** `anthropic` (core) and
 `elevenlabs` (the `voice` extra). Verified 2026-08-13 — no `import anthropic` or
-`elevenlabs` anywhere in `lib/`, `tools/`, or `features/`. The harness runs *inside* Claude
+`elevenlabs` anywhere in `lib/` or `tools/`. The harness runs *inside* Claude
 Code, so play needs no API key of its own; `anthropic` survives as the venv-health probe
 the startup check uses, and `voice` is a declared-but-unimplemented feature. Re-derive with
-`grep -rn "import anthropic" lib/ tools/ features/` rather than trusting this line.
+`grep -rn "import anthropic" lib/ tools/` rather than trusting this line.
 
 ## Every environment variable the code reads
 

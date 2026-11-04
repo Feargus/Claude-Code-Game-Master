@@ -178,7 +178,6 @@ Understanding the project structure helps with contributions:
 
 - `tools/` - Core bash scripts for GM operations
 - `lib/` - Python utility libraries
-- `features/` - D&D 5e specific features
 - `world-state/` - Campaign data storage
 - `.claude/` - Claude Code configuration
 - `tests/` - Test suite

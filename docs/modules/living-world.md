@@ -52,7 +52,7 @@ fills. That is what keeps it to once per countdown without a flag to keep in syn
 `consequence` fires nothing.
 
 The write is wrapped in `redirect_stdout(sys.stderr)`: `add_consequence` announces itself
-on stdout, and this fires from inside `advance` / `tick-time`, whose `--json` output is
+on stdout, and this fires from inside `advance` and time updates, whose `--json` output is
 parsed. `gm-clock.sh add` also gained `--consequence` / `--linked-plot`, which `add_clock`
 had always accepted and the parser could never pass — so hand-made clocks were
 structurally incapable of carrying the payload.

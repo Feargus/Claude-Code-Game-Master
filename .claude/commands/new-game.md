@@ -214,7 +214,7 @@ them to the first character and leaves them in place after that.
 ## COMPLETION CHECKLIST (play tonight)
 - [ ] `world-seed.json` (premise, voice, art style)
 - [ ] `world-bible.json` approved and confirmed (voice + signature systems, not a planet)
-- [ ] `ruleset.json` World Kit derived from this world (not a silent 5e default)
+- [ ] `ruleset.json` drafted with the nine attributes and `xp-levels`, plus the world's signature systems
 - [ ] `play_pack` set + `gm-playpack.sh stage` (one room, present NPCs, exits, hook)
 - [ ] chronicler locked (`gm-image.sh chronicler`)
 - [ ] handed off to the one question and the `/create-character` interview (`gm-player.sh create`)

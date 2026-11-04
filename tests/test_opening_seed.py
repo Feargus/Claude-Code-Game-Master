@@ -349,7 +349,7 @@ def test_import_then_set_character_opening_matches(isolated_world_state):
 
 
 def test_set_reseeds_when_opening_not_yet_matched(isolated_world_state):
-    """save-json path: current_character may already be filled; flag unset → reseed."""
+    """A first `set` with current_character already filled and the flag unset re-seeds."""
     cm = CampaignManager()
     cdir = cm.create("Hyboria", "Hyboria")
     assert cm.set_active("Hyboria")
