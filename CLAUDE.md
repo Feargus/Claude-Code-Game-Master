@@ -119,7 +119,8 @@ later facts), ask the player out of character before narrating or noting it.
 | PC death | `gm-player.sh kill` (status dead + log) — then run Death Protocol |
 | Play pack / one name from the book | `gm-playpack.sh set` / `stage` / `from-book "<name>"` |
 | Location moved | `gm-session.sh move "<loc>" --takes <travel time>` |
-| Consequence (structured) | `gm-consequence.sh add "..." "<trigger>" --trigger-type ... --match ...` |
+| Consequence (structured) | `gm-consequence.sh add "..." "<trigger>" --trigger-type on_location\|on_npc\|on_time\|on_event --match ...` (`on_time` matches the time-of-day word, e.g. `night`) |
+| Deadline at a date and time | `gm-clock.sh add "<name>" 1 --due "YYYY-MM-DD HH:MM" --consequence "<what happens>"` (or `--due-in 2h`); the consequence fires when the clock is full |
 | Fight (enemies' wounds) | `gm-combat.sh` (for fights worth tracking) |
 | Fact / note | `gm-note.sh` |
 | New plot thread (seed a dormant thread; or async via `plot-weaver`) | `gm-plot.sh add "<name>" --type … --status dormant --description "…" [--npc …] [--location …]` |

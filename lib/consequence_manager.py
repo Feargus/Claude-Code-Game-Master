@@ -49,8 +49,17 @@ class ConsequenceManager(EntityManager):
           expiry:       optional date or condition after which the consequence ages out
         Structured fields are additive; legacy consequences omit them.
 
-        Returns the consequence ID.
+        Returns the consequence ID, or "" if refused.
         """
+        if trigger_type == 'on_time':
+            ok, _ = self.validators.validate_time_of_day(match or '')
+            if not ok:
+                print(f"[ERROR] on_time matches the time-of-day word (small hours, dawn, morning, "
+                      f"noon, afternoon, evening, dusk, night, midnight), not '{match}'. For a "
+                      f"deadline at a date and time, use a clock: gm-clock.sh add \"<name>\" 1 "
+                      f"--due \"YYYY-MM-DD HH:MM\" --consequence \"<what happens>\"", file=sys.stderr)
+                return ""
+
         data = self.json_ops.load_json(self.consequences_file)
 
         consequence_id = str(uuid.uuid4())[:8]

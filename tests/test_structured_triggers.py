@@ -64,3 +64,18 @@ def test_expiry_matches_whole_words_not_substrings(dcc_world):
 
     at_dawn = {"location": "camp", "time": "dawn", "present_npcs": [], "events": []}
     assert cm._is_expired({"expiry": "dawn"}, at_dawn)
+
+
+def test_on_time_refuses_a_date_and_points_to_a_clock(dcc_world, capsys):
+    """on_time matches the time-of-day word; a date would silently never fire."""
+    cm = ConsequenceManager(dcc_world)
+    before = _consq_path(dcc_world).read_text(encoding="utf-8")
+    assert cm.add_consequence("The scrub finishes", "in 2 hours",
+                              trigger_type="on_time", match="2187-10-26 07:15") == ""
+    assert "gm-clock.sh add" in capsys.readouterr().err
+    assert _consq_path(dcc_world).read_text(encoding="utf-8") == before
+
+
+def test_on_time_accepts_a_time_of_day_word(dcc_world):
+    assert ConsequenceManager(dcc_world).add_consequence(
+        "The market closes", "tonight", trigger_type="on_time", match="Small hours")
