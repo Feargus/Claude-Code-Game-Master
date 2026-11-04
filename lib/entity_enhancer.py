@@ -36,13 +36,13 @@ ENTITY_QUERIES = {
         "{name} hazards dangers traps",
         "{name} secrets hidden",
     ],
-    "dungeon": [
-        "{name} layout rooms areas chambers",
-        "{name} entrance entry way in",
-        "{name} inhabitants monsters creatures",
-        "{name} treasure loot gold rewards",
+    "site": [
+        "{name} layout areas floors levels",
+        "{name} entrance way in access",
+        "{name} security guards defenses",
+        "{name} valuables data what is kept there",
         "{name} traps hazards dangers secrets",
-        "{name} boss leader chief final",
+        "{name} owner who runs it leader",
         "{name} history origin built purpose",
         "{name} description atmosphere feel",
     ],
@@ -60,6 +60,12 @@ ENTITY_QUERIES = {
     ],
 }
 
+
+
+def _is_site(name: str, locations: Dict[str, Any]) -> bool:
+    """A location is a site when other locations are its areas, named '<name> - <area>'."""
+    prefix = f"{name} - "
+    return any(other.startswith(prefix) for other in locations)
 
 class EntityEnhancer:
     """
@@ -119,7 +125,7 @@ class EntityEnhancer:
 
         Search order: NPCs -> Locations -> Items -> Plots
         Uses exact match first, then fuzzy matching.
-        Locations with 'dungeon' field are typed as 'dungeon'.
+        A location with areas saved as '<name> - <area>' is typed as 'site'.
 
         Args:
             name: Entity name to search for
@@ -144,10 +150,9 @@ class EntityEnhancer:
 
             for key in data.keys():
                 if key.lower() == name_lower:
-                    # Check if location is actually a dungeon
                     actual_type = entity_type
-                    if entity_type == "location" and data[key].get("dungeon"):
-                        actual_type = "dungeon"
+                    if entity_type == "location" and _is_site(key, data):
+                        actual_type = "site"
                     return {
                         "type": actual_type,
                         "name": key,
@@ -162,10 +167,9 @@ class EntityEnhancer:
 
             for key in data.keys():
                 if name_lower in key.lower():
-                    # Check if location is actually a dungeon
                     actual_type = entity_type
-                    if entity_type == "location" and data[key].get("dungeon"):
-                        actual_type = "dungeon"
+                    if entity_type == "location" and _is_site(key, data):
+                        actual_type = "site"
                     return {
                         "type": actual_type,
                         "name": key,
@@ -186,10 +190,9 @@ class EntityEnhancer:
                 score = SequenceMatcher(None, name_lower, key.lower()).ratio()
                 if score > best_score:
                     best_score = score
-                    # Check if location is actually a dungeon
                     actual_type = entity_type
-                    if entity_type == "location" and data[key].get("dungeon"):
-                        actual_type = "dungeon"
+                    if entity_type == "location" and _is_site(key, data):
+                        actual_type = "site"
                     best_match = {
                             "type": actual_type,
                             "name": key,
@@ -398,7 +401,7 @@ class EntityEnhancer:
         filename_map = {
             "npc": "npcs.json",
             "location": "locations.json",
-            "dungeon": "locations.json",  # Dungeons are stored in locations
+            "site": "locations.json",  # Sites are stored in locations
             "item": "items.json",
             "plot": "plots.json",
         }
@@ -465,60 +468,17 @@ class EntityEnhancer:
 
         return False
 
-    def count_dungeon_rooms(self, dungeon_name: str) -> int:
-        """
-        Count rooms belonging to a dungeon.
-
-        Searches locations.json for entries where the 'dungeon' field
-        matches the given dungeon name.
-
-        Args:
-            dungeon_name: Name of the dungeon to count rooms for
-
-        Returns:
-            Number of rooms belonging to this dungeon
-        """
+    def get_site_info(self, site_name: str) -> Dict[str, Any]:
+        """A site's areas: the locations saved as '<site> - <area>' by site-architect."""
         locations = self.json_ops.load_json("locations.json")
         if not isinstance(locations, dict):
-            return 0
-
-        return sum(
-            1 for loc in locations.values()
-            if loc.get("dungeon") == dungeon_name
-        )
-
-    def get_dungeon_info(self, dungeon_name: str) -> Dict[str, Any]:
-        """
-        Get information about a dungeon including room count and structure status.
-
-        Args:
-            dungeon_name: Name of the dungeon
-
-        Returns:
-            Dict with dungeon info: room_count, has_structure, rooms (if any)
-        """
-        locations = self.json_ops.load_json("locations.json")
-        if not isinstance(locations, dict):
-            return {"room_count": 0, "has_structure": False, "rooms": []}
-
-        rooms = []
-        for name, loc in locations.items():
-            if loc.get("dungeon") == dungeon_name:
-                rooms.append({
-                    "name": name,
-                    "room_number": loc.get("room_number", 0),
-                    "discovered": loc.get("state", {}).get("discovered", False),
-                    "cleared": loc.get("state", {}).get("cleared", False)
-                })
-
-        # Sort by room number
-        rooms.sort(key=lambda r: r.get("room_number", 0))
-
+            locations = {}
+        areas = sorted(name for name in locations if name.startswith(f"{site_name} - "))
         return {
-            "dungeon_name": dungeon_name,
-            "room_count": len(rooms),
-            "has_structure": len(rooms) > 0,
-            "rooms": rooms
+            "site_name": site_name,
+            "area_count": len(areas),
+            "has_structure": bool(areas),
+            "areas": areas,
         }
 
     def get_scene_context(self, location_name: str) -> Optional[Dict[str, Any]]:
@@ -599,7 +559,7 @@ class EntityEnhancer:
         enhanced when they are promoted into play, not up front.
 
         Args:
-            entity_type: Optional filter by type (npc, location, dungeon, item, plot)
+            entity_type: Optional filter by type (npc, location, site, item, plot)
 
         Returns:
             List of entity dicts with type, name, has_context
@@ -611,8 +571,8 @@ class EntityEnhancer:
             "plot": "plots.json",
         }
 
-        # Handle dungeon as a special case of location
-        if entity_type == "dungeon":
+        # A site is a special case of location
+        if entity_type == "site":
             entity_files = {"location": "locations.json"}
         elif entity_type:
             entity_files = {entity_type: entity_files.get(entity_type)}
@@ -630,13 +590,11 @@ class EntityEnhancer:
                 if not isinstance(entity_data, dict) or entity_data.get("background"):
                     continue
                 if not entity_data.get("enhanced"):
-                    # Determine actual type (location vs dungeon)
                     actual_type = etype
-                    if etype == "location" and entity_data.get("dungeon"):
-                        actual_type = "dungeon"
+                    if etype == "location" and _is_site(name, data):
+                        actual_type = "site"
 
-                    # Filter by dungeon if requested
-                    if entity_type == "dungeon" and actual_type != "dungeon":
+                    if entity_type == "site" and actual_type != "site":
                         continue
 
                     unenhanced.append({
@@ -839,8 +797,8 @@ def main():
     search_parser.add_argument('--excerpt-chars', type=int, default=350, help='Excerpt length when not using --full')
 
     # Dungeon check command
-    dungeon_parser = subparsers.add_parser('dungeon-check', help='Check dungeon room structure')
-    dungeon_parser.add_argument('name', help='Dungeon name to check')
+    site_parser = subparsers.add_parser('site-check', help='List the areas of a site')
+    site_parser.add_argument('name', help='Site name to check')
 
     # Scene context command (GM-internal, minimal output)
     scene_parser = subparsers.add_parser('scene', help='Get scene context for GM use (minimal output)')
@@ -953,33 +911,15 @@ def main():
         else:
             print("No passages found. Is the vector store populated?")
 
-    elif args.action == 'dungeon-check':
-        # First find the dungeon entity
-        entity = enhancer.find_entity(args.name)
-
-        if entity and entity['type'] == 'dungeon':
-            dungeon_name = entity['data'].get('dungeon', entity['name'])
-            info = enhancer.get_dungeon_info(dungeon_name)
+    elif args.action == 'site-check':
+        info = enhancer.get_site_info(args.name)
+        print(f"Site: {info['site_name']}")
+        print(f"Areas: {info['area_count']}")
+        if info['areas']:
+            for area in info['areas']:
+                print(f"  {area}")
         else:
-            # Try using the name directly as dungeon name
-            info = enhancer.get_dungeon_info(args.name)
-
-        print(f"Dungeon: {info['dungeon_name']}")
-        print(f"Room count: {info['room_count']}")
-        print(f"Has structure: {info['has_structure']}")
-
-        if info['rooms']:
-            print("\nRooms:")
-            for room in info['rooms']:
-                status = []
-                if room['discovered']:
-                    status.append('discovered')
-                if room['cleared']:
-                    status.append('cleared')
-                status_str = f" [{', '.join(status)}]" if status else ""
-                print(f"  {room['room_number']}. {room['name']}{status_str}")
-        else:
-            print("\n** No room structure defined **")
+            print("\n** No areas laid out yet **")
             print("Consider spawning site-architect to lay out its areas.")
 
         # Output JSON for script parsing

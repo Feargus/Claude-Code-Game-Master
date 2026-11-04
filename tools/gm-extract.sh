@@ -88,8 +88,6 @@ Commands:
                             is deleted (mention-frequency + plot-reference/party boost)
   stub-npcs [campaign]      Stub plot NPCs the source names but extraction never
                             produced; validate plot taxonomy (before the integrity gate)
-  stat-npcs [campaign]      Difficulty-proxy stats for combat NPCs; flag statless
-  fix-items [campaign]      Item correctness: cursed flag, type taxonomy, value field
   normalize-connections [campaign]  Canonicalize connection targets; move routing
                             rule-phrases into notes (runs before reconcile)
   reconcile [campaign]      Stub every location ref that doesn't resolve to a node
@@ -610,15 +608,6 @@ case "$1" in
         $PYTHON_CMD "$LIB_DIR/book_bible.py" "$verb" "$CAMPAIGN_DIR" "$@"
         ;;
 
-    stat-npcs)
-        # Assign difficulty-proxy stats to combat NPCs; flag non-combatants statless.
-        campaign_name=$(require_campaign "$2" "$1") || exit 1
-        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-        echo "Enriching NPC stats (difficulty proxy): $campaign_name"
-        echo "================================="
-        $PYTHON_CMD "$LIB_DIR/npc_stats.py" "$CAMPAIGN_DIR"
-        ;;
-
     stub-npcs)
         # Stub plot NPCs extraction never produced; validate plot taxonomy.
         campaign_name=$(require_campaign "$2" "$1") || exit 1
@@ -626,15 +615,6 @@ case "$1" in
         echo "Stubbing never-extracted NPC refs + validating plot taxonomy: $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/minor_stubs.py" "$CAMPAIGN_DIR"
-        ;;
-
-    fix-items)
-        # Item correctness: cursed flag, type taxonomy, value field.
-        campaign_name=$(require_campaign "$2" "$1") || exit 1
-        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-        echo "Fixing item correctness: $campaign_name"
-        echo "================================="
-        $PYTHON_CMD "$LIB_DIR/item_fixup.py" "$CAMPAIGN_DIR"
         ;;
 
     normalize-connections)

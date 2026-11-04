@@ -464,7 +464,7 @@ See [the player character sheet](modules/player-character.md).
   "ideals": "string",
   "traits": "string",
   "notes": [],
-  "gold": 0,
+  "credits": 20,
   "xp": {"current": 0, "next_level": 300},
 
   "conditions": [],

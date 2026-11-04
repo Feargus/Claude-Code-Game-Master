@@ -36,7 +36,7 @@ PILGRIM = {
     "hp": {"current": 20, "max": 20},
     "stats": {"grit": 12, "wits": 14},
     "resolve": {"current": 3, "max": 3},
-    "gold": 0,
+    "credits": 0,
 }
 
 

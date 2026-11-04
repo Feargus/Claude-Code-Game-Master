@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Agent Extraction Coordinator
-Manages concurrent agent extraction from D&D modules
+Manages concurrent agent extraction from source documents
 
 Uses RAG-based semantic extraction for document categorization.
 """
@@ -27,7 +27,7 @@ from lib.rag import check_rag_available, get_missing_deps
 
 
 class AgentExtractor:
-    """Coordinates concurrent agent extraction of D&D content"""
+    """Coordinates concurrent agent extraction of story content"""
 
     def __init__(self, world_state_dir: str = "world-state", campaign_name: str = None):
         self.world_state_dir = Path(world_state_dir)
@@ -253,8 +253,6 @@ class AgentExtractor:
             "locations": {},
             "items": {},
             "plot_hooks": {},
-            "monsters": {},
-            "traps": {},
             "factions": {}
         }
 
@@ -333,7 +331,7 @@ class AgentExtractor:
                             merged['plot_hooks'][name] = plot
 
                     # Merge other content types
-                    for content_type in ['monsters', 'traps', 'factions']:
+                    for content_type in ['factions']:
                         if content_type in data:
                             content = to_dict(data[content_type])
                             merged[content_type].update(content)
@@ -348,8 +346,6 @@ class AgentExtractor:
             "locations_extracted": len(merged['locations']),
             "items_extracted": len(merged['items']),
             "plot_hooks_extracted": len(merged['plot_hooks']),
-            "monsters_extracted": len(merged['monsters']),
-            "traps_extracted": len(merged['traps']),
             "factions_extracted": len(merged['factions']),
             "agent_files_processed": len(agent_files)
         }

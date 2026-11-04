@@ -59,7 +59,7 @@ def test_a_name_alone_gets_every_default(campaign):
     assert sheet == _sheet(campaign)
     assert sheet["level"] == 0 and sheet["xp"] == {"current": 0, "next_level": 100}
     assert sheet["stats"] == {a: 12 for a in ATTRIBUTES}
-    assert sheet["luck"] == {"current": 3, "max": 3} and sheet["gold"] == 20
+    assert sheet["luck"] == {"current": 3, "max": 3} and sheet["credits"] == 20
     assert sheet["traits"] == {} and sheet["perks"] == {} and sheet["features"] == []
     assert set(sheet["body"]) == {"head", "chest", "groin", "left_arm", "right_arm",
                                   "left_leg", "right_leg"}

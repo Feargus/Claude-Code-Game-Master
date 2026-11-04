@@ -59,7 +59,7 @@ def _party_sheet_for_npc(npc: dict):
         sheet["ac"] = ac
     difficulty = stats.get("difficulty")
     if difficulty:
-        source = f"from npc.stats (stat-npcs proxy, difficulty {difficulty})"
+        source = f"from npc.stats (difficulty {difficulty})"
     else:
         source = "from npc.stats"
     return sheet, source

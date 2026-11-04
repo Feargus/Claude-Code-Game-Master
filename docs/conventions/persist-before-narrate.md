@@ -11,7 +11,7 @@ generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
 
 # Persist before narrate
 
-**Nothing happened until it is written to disk.** Every state change — HP, XP, gold,
+**Nothing happened until it is written to disk.** Every state change — wounds, XP, credits,
 inventory, mood, location, condition, consequence, death — is persisted *before* a word of
 narration reaches the player. This is what makes a campaign survive a crash, a context
 reset, a week away, or a different machine.

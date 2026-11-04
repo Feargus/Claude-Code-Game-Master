@@ -880,10 +880,10 @@ class SessionManager(EntityManager):
                 xp_val = xp.get('current', 0)
             else:
                 xp_val = xp
-            gold = char.get('gold', 0)
+            credits = char.get('credits', 0)
             conditions = char.get('conditions', [])
             cond_str = ', '.join(conditions) if conditions else '(none)'
-            lines.append(f"{name} - Level {level} {race} {cls} | Wounds: {wound_summary(char)} | XP: {xp_val} | Gold: {gold}")
+            lines.append(f"{name} - Level {level} {race} {cls} | Wounds: {wound_summary(char)} | XP: {xp_val} | Credits: {credits}")
             lines.append(f"Conditions: {cond_str}")
         else:
             lines.append("No character found.")

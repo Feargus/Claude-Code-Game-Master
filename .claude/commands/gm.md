@@ -188,7 +188,7 @@ When `gm-session.sh start` or `move` runs, it queries source material for the cu
 
 ### Present Scene
 
-Show where they are, who is present, and what is happening, plus the header vitals (level, wounds, XP, gold, status). No fenced boxes; phone-friendly.
+Show where they are, who is present, and what is happening, plus the header vitals (level, wounds, XP, credits, status). No fenced boxes; phone-friendly.
 
 During a fight, convey who is acting, each enemy's state (wounded, disabled parts, out), and the result. When loot lands, convey what was found and its worth (persist first).
 
@@ -254,7 +254,7 @@ bash tools/gm-session.sh end "[brief summary of key events]"
 Ensure all changes from the session are persisted:
 - Wounds, armor, cyberware → `gm-body.sh`
 - Inventory changes → `gm-player.sh inventory`
-- Gold changes → `gm-player.sh gold`
+- Credits changes → `gm-player.sh credits`
 - NPC updates → `gm-npc.sh update`
 - Location changes → `gm-session.sh move`
 - Consequences → `gm-consequence.sh add`
@@ -284,7 +284,7 @@ bash tools/gm-body.sh show
 
 ### 2. Display Character Sheet
 
-Present the finished sheet clearly, phone-friendly: name, level, race, class, background, attributes (as die sizes), skills, luck, traits, perks, the campaign's own counters, the body picture with its notes, armor and cyberware, features, gold, and inventory. No fenced boxes.
+Present the finished sheet clearly, phone-friendly: name, level, race, class, background, attributes (as die sizes), skills, luck, traits, perks, the campaign's own counters, the body picture with its notes, armor and cyberware, features, credits, and inventory. No fenced boxes.
 
 If no active character: don't print a sheet — ask the one question (see ENTERING A WORLD)
 and run the `/create-character` interview.

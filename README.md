@@ -195,7 +195,7 @@ The harness is plumbing you can poke at: bash wrappers (`tools/`) → Python man
 | `gm-campaign.sh` | Create, list, switch, delete campaigns |
 | `gm-session.sh` | Session lifecycle, party movement, save/restore |
 | `gm-context.sh` | Assemble scene context (world state + source passages) |
-| `gm-player.sh` | Player stats — health, progression, gold, inventory |
+| `gm-player.sh` | Player stats — progression, credits, inventory |
 | `gm-npc.sh` | NPCs — creation, updates, mood/goal/voice, party members |
 | `gm-location.sh` | Locations and connections |
 | `gm-plot.sh` | Quest and storyline tracking |

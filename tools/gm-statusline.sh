@@ -19,7 +19,7 @@ GREEN=$'\033[38;5;42m'
 AMBER=$'\033[38;5;214m'
 RED=$'\033[38;5;203m'
 TEAL=$'\033[38;5;51m'
-GOLD=$'\033[38;5;220m'
+CRED=$'\033[38;5;220m'
 DIM=$'\033[38;5;244m'
 FAINT=$'\033[38;5;238m'
 BOLD=$'\033[1m'
@@ -70,13 +70,13 @@ if [ ! -f "$CHAR" ]; then
 fi
 
 # --- Character fields -------------------------------------------------------
-IFS=$'\t' read -r NAME RACE CLASS LEVEL GP XP_CUR XP_NEXT LOC < <(
+IFS=$'\t' read -r NAME RACE CLASS LEVEL CREDITS XP_CUR XP_NEXT LOC < <(
     jq -r '
       [ (.name // .identity.name // "?"),
         (.race // .identity.race // "?"),
         (.class // .identity.class // "?"),
         (.level // .progression.level // 1),
-        (.gold // .inventory.gold // 0),
+        (.credits // 0),
         (.xp.current // .progression.xp.current // .xp // 0),
         (.xp.next_level // .progression.xp.next_level // 0),
         (.current_location // .details.current_location // "?")
@@ -128,7 +128,7 @@ fi
 # Build each line as a string, then emit. Clearer than one packed printf.
 
 L1="${TEAL}⚔ ${BOLD}${NAME}${RESET}  ${DIM}Lv${LEVEL} ${RACE} ${CLASS}${RESET}  ${SEP}  ${AMBER}${LOC}${RESET}"
-L2="  ${DIM}Wounds${RESET} ${WC}${WOUNDS}${RESET} ${SEPV} ${GOLD}${GP}gp${RESET} ${SEPV} ${DIM}XP${RESET} ${XP_CUR}/${XP_NEXT} ${SEPV} ${STATEC}${STATE}${RESET}"
+L2="  ${DIM}Wounds${RESET} ${WC}${WOUNDS}${RESET} ${SEPV} ${CRED}${CREDITS}cr${RESET} ${SEPV} ${DIM}XP${RESET} ${XP_CUR}/${XP_NEXT} ${SEPV} ${STATEC}${STATE}${RESET}"
 
 # Top rule — frames the HUD off from the conversation above.
 divider "$RULEC" "$ORNC"

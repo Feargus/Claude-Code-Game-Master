@@ -15,11 +15,11 @@ show_usage() {
     echo "  list-unenhanced [type]   List entities needing enhancement"
     echo "  batch                    Enhance all unenhanced ACTIVE entities (background tier
                            skipped; enhance on promote). Run after /import"
-    echo "  dungeon-check <name>     Check if dungeon has room structure"
+    echo "  site-check <name>        List the areas of a site (laid out by site-architect)"
     echo "  scene <location>         Get scene context for gameplay (quick RAG)"
     echo ""
     echo "Options:"
-    echo "  --type <type>            Entity type: npc, location, item, plot"
+    echo "  --type <type>            Entity type: npc, location, site, item, plot"
     echo "  --context <text>         Context passage to add (can be repeated)"
     echo "  --description <text>     New description to set"
     echo "  -n, --num <count>        Max results (default: 10)"
@@ -27,7 +27,7 @@ show_usage() {
     echo "Examples:"
     echo "  gm-enhance.sh find \"Grimjaw\""
     echo "  gm-enhance.sh query \"The Rusty Blade Inn\" --type location"
-    echo "  gm-enhance.sh dungeon-check \"Goblin Caves\""
+    echo "  gm-enhance.sh site-check \"Vey Vault\""
     echo "  gm-enhance.sh scene \"Thunder River frontier\""
     echo ""
     echo "Workflow:"
@@ -101,14 +101,14 @@ case "$COMMAND" in
         $PYTHON_CMD "$LIB_DIR/entity_enhancer.py" list-unenhanced "$@"
         ;;
 
-    dungeon-check)
+    site-check)
         if [ $# -lt 1 ]; then
-            echo "Usage: gm-enhance.sh dungeon-check <dungeon-name>"
+            echo "Usage: gm-enhance.sh site-check <site-name>"
             exit 1
         fi
-        echo "Dungeon Structure Check"
-        echo "======================="
-        $PYTHON_CMD "$LIB_DIR/entity_enhancer.py" dungeon-check "$@"
+        echo "Site Check"
+        echo "=========="
+        $PYTHON_CMD "$LIB_DIR/entity_enhancer.py" site-check "$@"
         ;;
 
     scene)

@@ -4,7 +4,7 @@ Enhance entities or search for source material using RAG.
 
 ## Arguments
 
-$ARGUMENTS - Entity name OR search keywords (e.g., "Grimjaw", "second floor monsters", "dungeon layout")
+$ARGUMENTS - Entity name OR search keywords (e.g., "Grimjaw", "Vey Vault security", "who runs the Spine")
 
 ## Philosophy
 
@@ -23,8 +23,8 @@ bash tools/gm-enhance.sh find "$ARGUMENTS"
 This returns one of:
 - `npc` - Character enhancement
 - `location` - Place enhancement
-- `dungeon` - Dungeon with room structure potential
-- `item` - Magic item or treasure
+- `site` - The target of a run, a job or a dungeon, laid out as areas
+- `item` - A notable object
 - `plot` - Quest or story hook
 
 If no entity found, use **Option A: Exploratory Search** instead.
@@ -40,9 +40,9 @@ bash tools/gm-enhance.sh search "$ARGUMENTS" -n 15
 ```
 
 Examples:
-- `search "dungeon second level"` - Find dungeon content
+- `search "vault lower levels"` - Find content about a site
 - `search "Grimjaw background personality"` - Learn about an NPC
-- `search "boss monster final encounter"` - Find boss info
+- `search "who guards the server core"` - Find who stands in the way
 
 **Process the results:**
 1. Read through returned passages
@@ -95,130 +95,23 @@ For description updates:
 
 ---
 
-### Option C: Dungeon Enhancement
+### Option C: Site Enhancement
 
-When entity type is `dungeon`:
+When entity type is `site` (or a location the player is about to make a run on):
 
-#### Step 1: Check Existing Structure
-
-```bash
-bash tools/gm-enhance.sh dungeon-check "$ARGUMENTS"
-```
-
-This returns:
-- `room_count` - Number of rooms defined
-- `has_structure` - Whether rooms exist in locations.json
-- `rooms` - List of existing rooms
-
-#### Step 2: Query Source Passages
-
-```bash
-bash tools/gm-enhance.sh query "$ARGUMENTS" --type dungeon -n 15
-```
-
-#### Step 3: Present Options
-
-**If NO room structure exists:**
-
-```
-**Dungeon Found:** [Name]
-**Room Structure:** None defined
-
-**From Source Material:**
-Found [X] passages about this dungeon. I can extract:
-- Theme: [extracted theme]
-- Notable rooms mentioned: [room names from source]
-- Inhabitants: [monsters/NPCs mentioned]
-- Key features: [traps, treasures, secrets]
-
-**Options:**
-[G] Generate room structure - Spawn site-architect with source passages
-[E] Enhance description only - Add context without generating rooms
-[S] Skip - Do nothing
-```
-
-**If structure already exists:**
-
-```
-**Dungeon Found:** [Name]
-**Existing Rooms:** [count] rooms defined
-
-**Current Rooms:**
-1. [Room 1 name] [discovered/cleared status]
-2. [Room 2 name] ...
-
-**From Source Material:**
-Found [X] additional passages. I can:
-- Add context passages to dungeon entry
-- Update room descriptions with source details
-
-**Apply context enhancements?**
-```
-
-#### Step 4: Generate Structure (If Chosen)
-
-When user chooses [G]enerate:
-
-1. Tell the player to wait:
-   ```
-   **Generating dungeon structure...**
-   Please wait while I create the room layout from source material.
-   ```
-
-2. Spawn site-architect agent in **foreground** with source passages:
-
-   ```
-   Task(site-architect):
-     "Generate dungeon '[Dungeon Name]' using these source passages:
-
-     PASSAGE 1: '[text from RAG]'
-     PASSAGE 2: '[text from RAG]'
-     ...
-
-     Theme from source: [extracted theme]
-     Mentioned rooms: [room names from passages]
-     Mentioned inhabitants: [monsters/NPCs]
-
-     Generate room structure that matches the source:
-     - Use room names from source exactly
-     - Include mentioned monsters/NPCs
-     - Add traps/secrets mentioned
-     - Only improvise for gaps
-
-     Return complete JSON for all rooms."
-   ```
-
-3. Display generated rooms for approval:
-   ```
-   **Generated [N] rooms:**
-
-   1. [Room Name] - [brief description]
-   2. [Room Name] - [brief description]
-   ...
-
-   **Save to locations.json?**
-   ```
-
-4. If approved, add rooms to locations.json
-
----
-
-## Proactive Dungeon Generation
-
-**IMPORTANT:** When a player enters a dungeon location:
-
-1. Check if room structure exists:
+1. **Check whether it is laid out:**
    ```bash
-   bash tools/gm-enhance.sh dungeon-check "[Dungeon Name]"
+   bash tools/gm-enhance.sh site-check "$ARGUMENTS"
    ```
+   It lists the site's areas (locations saved as `<Site> - <Area>`).
+2. **Query the source:**
+   ```bash
+   bash tools/gm-enhance.sh query "$ARGUMENTS" --type site -n 15
+   ```
+3. **No areas yet:** spawn `site-architect` with the passages (names, security, who holds it, what's kept there). It saves the areas and connections itself. Use the source's names exactly; improvise only the gaps.
+4. **Areas exist:** offer to add the passages as context to the site, or to update area descriptions with source details (`gm-location.sh describe`).
 
-2. If `has_structure: false`:
-   - Tell the player: "Please wait a moment while I generate the dungeon layout..."
-   - Run the dungeon enhancement flow automatically
-   - Generate rooms from source material (or improvise if no source)
-   - Show the entry room description when ready
-
-This ensures dungeons have proper room structures before exploration begins.
+Lay a site out when the player commits to the job, not at the door. See `gm-sites`.
 
 ---
 
@@ -232,14 +125,14 @@ This ensures dungeons have proper room structures before exploration begins.
 | `apply "name"` | Save enhancements to entity |
 | `summary "name"` | Full entity + passages report |
 | `list-unenhanced` | Find entities needing enhancement |
-| `dungeon-check "name"` | Check dungeon room structure |
+| `site-check "name"` | List a site's areas |
 
 ## Notes
 
 - Requires a populated vector store (run `/import` first)
 - Uses additive merging - existing context is preserved
 - Context passages capped at 20 per entity
-- Works for NPCs, locations, items, plots, dungeons
+- Works for NPCs, locations, items, plots, sites
 - **No strict name filtering** - GM judges all passage relevance
 - **RAG Priority**: Use source material for accuracy over improvisation
-- **Dungeon auto-generation**: When player enters a dungeon without rooms, generate structure proactively
+- **Sites**: lay out a run's target with `site-architect` when the player commits to the job

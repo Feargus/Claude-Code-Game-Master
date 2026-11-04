@@ -39,7 +39,7 @@ def test_promote_derives_hp_ac_from_existing_stats(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "HP: 120/120" in out
     assert "AC: 15" in out
-    assert "from npc.stats (stat-npcs proxy, difficulty boss)" in out
+    assert "from npc.stats (difficulty boss)" in out
 
 
 def test_promote_statless_uses_defaults_and_discloses(tmp_path, capsys):

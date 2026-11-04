@@ -30,7 +30,7 @@ from world_kit import WorldKit
 
 DEFAULT_ATTRIBUTE = 12
 DEFAULT_LUCK = 3
-DEFAULT_GOLD = 20
+DEFAULT_CREDITS = 20
 
 
 class CharacterError(Exception):
@@ -133,7 +133,7 @@ def build_character(data: Dict[str, Any], kit: WorldKit,
         "background": data.get("background", ""),
         "alignment": data.get("alignment", ""),
         "equipment": list(data.get("equipment") or []),
-        "gold": int(data.get("gold", DEFAULT_GOLD)),
+        "credits": int(data.get("credits", DEFAULT_CREDITS)),
         "notes": list(data.get("notes") or []),
         "conditions": list(data.get("conditions") or []),
         "visual_appearance": va_mod.normalize(data.get("visual_appearance")),

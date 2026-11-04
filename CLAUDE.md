@@ -103,7 +103,7 @@ grounded source passages.
 ## State Persistence — if it happened, persist it FIRST
 | Change | Command |
 |---|---|
-| XP/gold/inventory (PC) | `gm-player.sh` |
+| XP/credits/inventory (PC) | `gm-player.sh` |
 | Wounds, armor, cyberware (PC) | `gm-body.sh` (`hit`, `heal`, `repair`, `show`; rules in `gm-combat`) |
 | Spectacle XP (clever/effective/unique/punishing non-kill beat) | `gm-player.sh award [name] --tier minor\|major\|legendary --reason "..."` (kit-aware, level-scaled; co-awards followers in DCC) |
 | Party NPC stats | `gm-npc.sh` |
@@ -134,7 +134,7 @@ plot-weaver (async story planning — spawn IN THE BACKGROUND; develops one dorm
 ## Output Format
 - Wounds: the body picture from `gm-body.sh show` (filled symbols are hits).
 - Status labels: Normal / Poisoned / Wounded / Critical / Exhausted / Inspired.
-- Use scene/combat/loot box templates (header bar: LVL · wounds · XP · GP · status). **Pacing: the story advances by player choice, like a D&D table.** One clear beat at a time; don't fast-forward past a choice. Match prose length to the beat (don't pad, don't truncate); big moments earn richer prose, never extra events. **When the player flavors an action (heroic / comical / cold / theatrical), lean into that tone HARD — within the beat**: amplify the flourish's tone and the weight of its immediate reaction, never flatten it to neutral — but a flourish buys intensity, not extra plot; it never fast-forwards the scene (see `gm-craft`). **Action menu (player-togglable):** scene context reports the play style. When action menu is ON (default), end each beat with exactly THREE numbered options followed by a final "Or something else..." line to remind the player they can always choose their own action; when OFF, close with an open prompt and offer NO menu. Player toggles anytime via `bash tools/gm-session.sh choices on|off|toggle` or natural language ("stop giving me choices" / "give me options again") — persist the change, then continue in that style. **Persist loot BEFORE showing the loot box.**
+- Use scene/combat/loot box templates (header bar: LVL · wounds · XP · credits · status). **Pacing: the story advances by player choice, like a D&D table.** One clear beat at a time; don't fast-forward past a choice. Match prose length to the beat (don't pad, don't truncate); big moments earn richer prose, never extra events. **When the player flavors an action (heroic / comical / cold / theatrical), lean into that tone HARD — within the beat**: amplify the flourish's tone and the weight of its immediate reaction, never flatten it to neutral — but a flourish buys intensity, not extra plot; it never fast-forwards the scene (see `gm-craft`). **Action menu (player-togglable):** scene context reports the play style. When action menu is ON (default), end each beat with exactly THREE numbered options followed by a final "Or something else..." line to remind the player they can always choose their own action; when OFF, close with an open prompt and offer NO menu. Player toggles anytime via `bash tools/gm-session.sh choices on|off|toggle` or natural language ("stop giving me choices" / "give me options again") — persist the change, then continue in that style. **Persist loot BEFORE showing the loot box.**
 - **Scene images:** currently disabled (no `OPENAI_API_KEY`). Never call `gm-image.sh` or mention images unless scene context reports `Scene images: ENABLED`; then load `gm-images`.
 
 ## Auto Memory Policy (safety)

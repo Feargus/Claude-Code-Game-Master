@@ -1,10 +1,10 @@
 ---
 type: Module
 title: The NPC model
-description: What an NPC carries beyond a description — inner life, canonical voice lines, party-member sheets, and proxy combat stats.
+description: What an NPC carries beyond a description — inner life, canonical voice lines, party-member sheets, and combat stats.
 sources:
   - { resource: /lib/npc_manager.py }
-  - { resource: /lib/npc_stats.py }
+  - { resource: /lib/skill_contest.py }
 generated: { by: gk-a8r14q, at: 2026-08-14T18:00:37Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
@@ -44,7 +44,7 @@ The `secret` field is surfaced to the model as **existence only**: the session b
 ## Party members carry a second sheet, in a different shape
 
 Promote copies existing combat stats into the party sheet when the NPC has them
-(the stat-npcs proxy); defaults apply only to a
+(written by the GM); defaults apply only to a
 genuinely statless NPC, and the output says which. Note what this is **not**: it is a
 nested sheet on the NPC record, not the flat top-level shape the PC uses
 (see [player character](player-character.md)). The two never converge except in
@@ -54,16 +54,12 @@ nested sheet on the NPC record, not the flat top-level shape the PC uses
 flag flips. Party membership is also what makes an NPC count as *present* everywhere,
 regardless of location tags (`lib/consequence_manager.py:263`).
 
-## Proxy stats are difficulty tiers, not statblocks
+## Combat stats are written by the GM
 
-Extracted NPCs arrive with null `ac`/`hp`/`cr`, so `npc_stats.enrich` assigns one of three
-coarse tiers — boss (hp 120 / cr 8), standard (hp 45 / cr 3), minion (hp 18 / cr 1) — and
-flags non-combatants `statless: True`.
-
-`statless` is meaningfully different from "no stats yet": it records the judgment that this
-character should never be rolled against. Treat a statless NPC as a scene, not an
-encounter; treat a tier as a difficulty dial to adjust in the moment, never as a canonical
-statblock.
+Extracted NPCs carry no game numbers. When an NPC needs to roll, the GM gives them
+`stats` (the nine attributes as die sizes), `skills` and `wounds` in `npcs.json`, scaled
+by `.claude/skills/gm-skills/mobs.json`. The skill contest refuses an NPC without stats
+and says so. (The old `npc_stats.py`, which assigned D&D HP/CR tiers, is gone.)
 
 ## Location tags: one field, since 2026-08-13
 

@@ -151,8 +151,8 @@ class PlayerManager(EntityManager):
             return None
 
         from body import summary as wound_summary
-        gold = char.get('gold', 0)
-        summary = f"{char.get('name', name)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (Wounds: {wound_summary(char)}, Gold: {gold})"
+        credits = char.get('credits', 0)
+        summary = f"{char.get('name', name)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (Wounds: {wound_summary(char)}, Credits: {credits})"
         summary += self._vitals_summary(char)
         status = char.get('status')
         if status in ('dying', 'dead'):
@@ -168,9 +168,9 @@ class PlayerManager(EntityManager):
         if not char:
             return []
         from body import summary as wound_summary
-        gold = char.get('gold', 0)
+        credits = char.get('credits', 0)
         return [
-            f"{char.get('name', 'Unknown')} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (Wounds: {wound_summary(char)}, Gold: {gold})"
+            f"{char.get('name', 'Unknown')} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (Wounds: {wound_summary(char)}, Credits: {credits})"
             + self._vitals_summary(char)
         ]
 
@@ -587,10 +587,10 @@ class PlayerManager(EntityManager):
             'archived': str(archived_path) if archived_path else None,
         }
 
-    def modify_gold(self, name: str, amount: Optional[int] = None) -> Dict[str, Any]:
+    def modify_credits(self, name: str, amount: Optional[int] = None) -> Dict[str, Any]:
         """
-        Modify character gold or show current gold if no amount given
-        Returns dict with gold status info
+        Modify character credits or show current credits if no amount given
+        Returns dict with credits status info
         """
         char = self._load_character(name)
         if not char:
@@ -599,26 +599,26 @@ class PlayerManager(EntityManager):
 
         char_name = char.get('name', name)
 
-        # Get current gold, handling migration from equipment string
-        current_gold = char.get('gold', 0)
-        if not isinstance(current_gold, (int, float)):
-            current_gold = 0
+        # Get current credits, handling migration from equipment string
+        current_credits = char.get('credits', 0)
+        if not isinstance(current_credits, (int, float)):
+            current_credits = 0
 
-        # If no amount specified, just show current gold
+        # If no amount specified, just show current credits
         if amount is None:
-            print(f"{char_name}: {current_gold} gold")
+            print(f"{char_name}: {current_credits} credits")
             return {
                 'success': True,
                 'name': char_name,
-                'gold': current_gold
+                'credits': current_credits
             }
 
         # Apply change
-        new_gold = current_gold + amount
-        if new_gold < 0:
-            print(f"[WARNING] {char_name} only has {current_gold} gold (tried to spend {abs(amount)}). Set to 0.")
-            new_gold = 0
-        char['gold'] = new_gold
+        new_credits = current_credits + amount
+        if new_credits < 0:
+            print(f"[WARNING] {char_name} only has {current_credits} credits (tried to spend {abs(amount)}). Set to 0.")
+            new_credits = 0
+        char['credits'] = new_credits
 
         # Save character
         if not self._save_character(name, char):
@@ -626,19 +626,19 @@ class PlayerManager(EntityManager):
 
         # Report change
         if amount > 0:
-            print(f"GOLD_GAINED {char_name} gained {amount} gold!")
+            print(f"CREDITS_GAINED {char_name} gained {amount} credits!")
         elif amount < 0:
-            print(f"GOLD_SPENT {char_name} spent {abs(amount)} gold!")
+            print(f"CREDITS_SPENT {char_name} spent {abs(amount)} credits!")
         else:
-            print(f"{char_name} gold unchanged.")
+            print(f"{char_name} credits unchanged.")
 
-        print(f"Gold: {new_gold}")
+        print(f"Credits: {new_credits}")
 
         return {
             'success': True,
             'name': char_name,
-            'gold_change': amount,
-            'current_gold': new_gold
+            'credits_change': amount,
+            'current_credits': new_credits
         }
 
     def modify_inventory(self, name: str, action: str, item: Optional[str] = None) -> Dict[str, Any]:
@@ -715,10 +715,10 @@ class PlayerManager(EntityManager):
             print(f"[ERROR] Unknown inventory action: {action}")
             return {'success': False}
 
-    def apply_loot(self, name: str, items: List[str], gold: int = 0) -> Dict[str, Any]:
+    def apply_loot(self, name: str, items: List[str], credits: int = 0) -> Dict[str, Any]:
         """
-        Apply multiple loot items and gold in a single operation.
-        Loads character once, adds all items + gold, saves once.
+        Apply multiple loot items and credits in a single operation.
+        Loads character once, adds all items + credits, saves once.
         Returns dict with loot summary.
         """
         char = self._load_character(name)
@@ -728,18 +728,18 @@ class PlayerManager(EntityManager):
 
         char_name = char.get('name', name)
         equipment = char.get('equipment', [])
-        current_gold = char.get('gold', 0)
-        if not isinstance(current_gold, (int, float)):
-            current_gold = 0
+        current_credits = char.get('credits', 0)
+        if not isinstance(current_credits, (int, float)):
+            current_credits = 0
 
         # Add items
         for item in items:
             equipment.append(item)
         char['equipment'] = equipment
 
-        # Add gold
-        if gold:
-            char['gold'] = current_gold + gold
+        # Add credits
+        if credits:
+            char['credits'] = current_credits + credits
 
         # Save once
         if not self._save_character(name, char):
@@ -747,18 +747,18 @@ class PlayerManager(EntityManager):
 
         # Print loot summary
         print(f"LOOT {char_name} received:")
-        if gold > 0:
-            print(f"  + {gold} gold")
+        if credits > 0:
+            print(f"  + {credits} credits")
         for item in items:
             print(f"  + {item}")
-        print(f"Gold: {current_gold} -> {char.get('gold', current_gold)}")
+        print(f"Credits: {current_credits} -> {char.get('credits', current_credits)}")
 
         return {
             'success': True,
             'name': char_name,
             'items_added': items,
-            'gold_added': gold,
-            'total_gold': char.get('gold', current_gold),
+            'credits_added': credits,
+            'total_credits': char.get('credits', current_credits),
             'equipment': char['equipment']
         }
 
@@ -954,10 +954,10 @@ def main():
     for _f in va_mod.VISUAL_FIELDS:
         setappear_parser.add_argument(f'--{_f}')
 
-    # Modify gold
-    gold_parser = subparsers.add_parser('gold', help='Modify or show character gold')
-    gold_parser.add_argument('name', help='Character name')
-    gold_parser.add_argument('amount', nargs='?', help='Gold change (+50 to gain, -10 to spend). Omit to show current.')
+    # Modify credits
+    credits_parser = subparsers.add_parser('credits', help='Modify or show character credits')
+    credits_parser.add_argument('name', help='Character name')
+    credits_parser.add_argument('amount', nargs='?', help='Credits change (+50 to gain, -10 to spend). Omit to show current.')
 
     # Manage inventory
     inv_parser = subparsers.add_parser('inventory', help='Manage character inventory')
@@ -966,9 +966,9 @@ def main():
     inv_parser.add_argument('item', nargs='?', help='Item name (required for add/remove)')
 
     # Batch loot
-    loot_parser = subparsers.add_parser('loot', help='Apply multiple items + gold at once')
+    loot_parser = subparsers.add_parser('loot', help='Apply multiple items + credits at once')
     loot_parser.add_argument('name', help='Character name')
-    loot_parser.add_argument('--gold', type=int, default=0, help='Gold to add')
+    loot_parser.add_argument('--credits', type=int, default=0, help='Credits to add')
     loot_parser.add_argument('--items', nargs='+', default=[], help='Items to add')
 
     # Manage conditions
@@ -1132,7 +1132,7 @@ def main():
             sys.exit(1)
         print("[SUCCESS] Updated visual_appearance for the active character")
 
-    elif args.action == 'gold':
+    elif args.action == 'credits':
         # Parse amount if provided
         amount = None
         if args.amount:
@@ -1143,10 +1143,10 @@ def main():
                 else:
                     amount = int(amount_str)
             except ValueError:
-                print(f"[ERROR] Invalid gold amount: {args.amount}")
+                print(f"[ERROR] Invalid credits amount: {args.amount}")
                 sys.exit(1)
 
-        result = manager.modify_gold(args.name, amount)
+        result = manager.modify_credits(args.name, amount)
         if not result.get('success'):
             sys.exit(1)
 
@@ -1168,10 +1168,10 @@ def main():
             sys.exit(1)
 
     elif args.action == 'loot':
-        if not args.items and args.gold == 0:
-            print("[ERROR] Provide --items and/or --gold")
+        if not args.items and args.credits == 0:
+            print("[ERROR] Provide --items and/or --credits")
             sys.exit(1)
-        result = manager.apply_loot(args.name, args.items, args.gold)
+        result = manager.apply_loot(args.name, args.items, args.credits)
         if not result.get('success'):
             sys.exit(1)
 

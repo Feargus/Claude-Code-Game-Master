@@ -105,18 +105,18 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/player_manager.py" become "$NAME" "$@"
         ;;
 
-    "gold")
+    "credits")
         if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh gold <character_name> [+/-amount]"
-            echo "Example: gm-player.sh gold theron +50  (gain 50 gold)"
-            echo "Example: gm-player.sh gold theron -10  (spend 10 gold)"
-            echo "Example: gm-player.sh gold theron      (show current gold)"
+            echo "Usage: gm-player.sh credits <character_name> [+/-amount]"
+            echo "Example: gm-player.sh credits theron +50  (gain 50 credits)"
+            echo "Example: gm-player.sh credits theron -10  (spend 10 credits)"
+            echo "Example: gm-player.sh credits theron      (show current credits)"
             exit 1
         fi
         if [ -z "$2" ]; then
-            $PYTHON_CMD "$LIB_DIR/player_manager.py" gold "$1"
+            $PYTHON_CMD "$LIB_DIR/player_manager.py" credits "$1"
         else
-            $PYTHON_CMD "$LIB_DIR/player_manager.py" gold "$1" "$2"
+            $PYTHON_CMD "$LIB_DIR/player_manager.py" credits "$1" "$2"
         fi
         ;;
 
@@ -128,12 +128,12 @@ case "$ACTION" in
 
     "loot")
         if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh loot <character_name> --gold <amount> --items \"Item1\" \"Item2\" ..."
+            echo "Usage: gm-player.sh loot <character_name> --credits <amount> --items \"Item1\" \"Item2\" ..."
             echo ""
             echo "Examples:"
-            echo "  gm-player.sh loot Tandy --gold 47 --items \"Silvered Shortsword\" \"Potion of Healing\""
+            echo "  gm-player.sh loot Fearghas --credits 47 --items \"Data chip\" \"Stim pak\""
             echo "  gm-player.sh loot Tandy --items \"Scroll of Fireball\""
-            echo "  gm-player.sh loot Tandy --gold 100"
+            echo "  gm-player.sh loot Fearghas --credits 100"
             exit 1
         fi
         $PYTHON_CMD "$LIB_DIR/player_manager.py" loot "$@"
@@ -205,12 +205,12 @@ case "$ACTION" in
         echo "  vital <vital> <+/-N|set N>   - Read/change a kit vital (vigor, corruption, ...)"
         echo "  kill <name> [--cause ...]    - Mark PC dead (then run Death Protocol)"
         echo "  become <party_member>        - Take over a party member as the active PC"
-        echo "  gold <name> [+/-amount]      - Modify or show character gold"
+        echo "  credits <name> [+/-amount]   - Modify or show character credits"
         echo "  inventory [name] [action]    - Manage inventory (add/remove/list; defaults to active PC + list)"
         echo "  condition <name> <action>    - Manage conditions (add/remove/list)"
         echo "  raise attribute|skill <x>    - Level-up: +1 to an attribute (die size) or a skill"
         echo "  perk <name> <what it does>   - Add or rewrite a perk"
-        echo "  loot <name> --gold X --items - Batch add items + gold at once"
+        echo "  loot <name> --credits X --items - Batch add items + credits at once"
         echo "  level-check <name>           - Check XP and level status"
         echo ""
         echo "Note: Character is stored in the active campaign's character.json"
