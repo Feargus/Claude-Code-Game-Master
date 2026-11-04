@@ -17,7 +17,10 @@ When user invokes `/gm <subcommand>`, route to the appropriate section:
 | character | Jump to CHARACTER DISPLAY section |
 | overview | Jump to CAMPAIGN OVERVIEW section |
 | status | Run `bash tools/gm-overview.sh` and display results |
-| end | Jump to ENDING SESSION section |
+| end | Jump to ENDING SESSION: record what is, invent nothing |
+| cliffhanger | Jump to ENDING SESSION, ending on a cliffhanger |
+| world | Jump to OFF-SCREEN DEVELOPMENTS (does not end the session) |
+| world cliffhanger, cliffhanger world | OFF-SCREEN DEVELOPMENTS first, then ENDING SESSION on a cliffhanger |
 | choices [on\|off\|toggle] | Run `bash tools/gm-session.sh choices <arg>`, confirm the new play style, and continue the current scene in it |
 
 ---
@@ -212,13 +215,31 @@ Repeat.
 
 ## ENDING SESSION
 
-When player says they're done:
+When the player says they're done, or types `/gm end`: **record what is, invent nothing.**
 
 ```bash
-bash tools/gm-session.sh end "[brief summary of what happened]"
+bash tools/gm-session.sh end "<summary of what happened>" --cliffhanger "<the situation as it stands>" --open-thread "<...>"
+bash tools/gm-recall.sh arc '{"summary": "...", "who_matters": [...], "open_debts": [...]}'
 ```
 
+- **The cliffhanger is where we paused,** exactly as it stands: where the character is, what's unresolved, who's waiting, what's at stake. If the player stopped mid-action, record it mid-action. No new events, twists, arrivals or reveals, and no off-screen developments.
+- **`/gm cliffhanger`:** the same, but you may close on a real new development: a twist, an arrival, a reveal. Persist it properly as well (a fact, a consequence or a plot), not only in the cliffhanger, so the next session treats it as established.
+
 Confirm the session is saved: who rests where, and that progress is recorded. No fenced boxes; phone-friendly.
+
+---
+
+## OFF-SCREEN DEVELOPMENTS
+
+**Invoked via:** `/gm world`. Only when the player asks; never on your own, and never as part of a plain `/gm end`.
+
+The world moves while the character is away or resting: the end of a session, a long rest, a week in hiding. Propose a few SMALL developments grounded in the plots, clocks, consequences and NPC goals, and persist them:
+
+```bash
+bash tools/gm-session.sh world-tick '<json list>'
+```
+
+It applies all of them (warns if more than 3); `gm-session.sh world-tick-rollback` undoes the last one. Tell the player only what the character could know, or nothing, and let the rest surface in play. `/gm world` does not end the session; with `cliffhanger` as well, end the session on a cliffhanger afterwards.
 
 ---
 

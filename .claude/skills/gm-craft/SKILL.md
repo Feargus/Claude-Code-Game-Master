@@ -58,7 +58,7 @@ A clever, effective, unique, daring, or punishing-but-cool beat EARNS progress �
 - **Reactions compound.** Insult the merchant last session, he remembers. Use `gm-npc.sh mood` + `update`.
 
 ## Pacing
-- **End sessions on cliffhangers.** Record them: `gm-session.sh end "<summary>" --cliffhanger "..." --open-thread "..."`.
+- **End sessions on the open situation.** The cliffhanger is the situation as it stands: what's unresolved, who's waiting, what's at stake. Don't invent new events for it; that's only for `/gm cliffhanger`, and then the new event is persisted as a fact, consequence or plot too. Record it: `gm-session.sh end "<summary>" --cliffhanger "..." --open-thread "..."`.
 - **Vary the rhythm.** Action → quiet → tension → climax.
 - **Compress dull time, expand big moments.** "Three uneventful days pass." vs every heartbeat of the dragon's approach.
 - **Read the energy** and mirror the player's investment.

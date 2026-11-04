@@ -91,6 +91,11 @@ goal/mood + canonical lines), THREAT CLOCKS, PENDING CONSEQUENCES, and YOUR
 WORLD'S RULES (full, never truncated). `bash tools/gm-context.sh ["loc"]` adds
 grounded source passages.
 
+**Never write a guess as a fact.** When resuming, the context can be incomplete: the last
+session may not have been ended, so PREVIOUSLY ON can be older than the latest facts. If
+something doesn't add up (a condition with no recorded cause, a pause that contradicts
+later facts), ask the player out of character before narrating or noting it.
+
 ## The living world (fires on its own)
 - **Plan as you go, never pre-build.** The world grows from the table, not from a gazetteer authored before play. When you see a long-game opportunity, seed it with one of these tools and let it develop — a threat clock, an open thread, a new plot beat, or a triggered consequence. That IS the campaign's mid- to long-term planning; do not fan out a book's worth of canon up front (`/new-game` and `/import` both stop at one stage on purpose).
 - **Async plot planning — don't break narration to plan.** When you spot a long-game opportunity mid-scene and don't want to stop narrating, **spawn the `plot-weaver` agent IN THE BACKGROUND** (Agent tool, `run_in_background: true`) with a one-line seed. It grounds the idea in RAG, weaves it onto EXISTING entities/factions/clocks (via the WORLD INDEX), and persists **one dormant thread** — a `gm-plot.sh add` plot + a linked clock + an on-contact surfacing trigger — then returns one line you drop later. Keep narrating. The dormant thread stays out of the way and **resurfaces on its own** under `--- READY THREADS ---` when its NPC/place comes into play or its clock matures; `gm-plot.sh update` wakes it. Inline fallback (no background): `gm-plot.sh add "<name>" --status dormant …` + `gm-clock.sh add … --linked-plot "<name>"`. Still ONE grounded thread — never a gazetteer.
@@ -98,7 +103,7 @@ grounded source passages.
 - **Reactivity:** `gm-session.sh move` / `gm-time.sh advance` / `set` auto-run `gm-consequence.sh tick` — consequences whose triggers match fire (with a reason; veto for timing). `gm-consequence.sh log` / `rollback` for provenance.
 - **Threat clocks:** `gm-clock.sh` — named pressure. Time-clocks run on the game time: `gm-clock.sh add "<name>" 4 --due-in 3d` is full 3 days from now, filling evenly on the way (no due time: one day per segment). Event clocks advance by hand (`gm-clock.sh advance`). A full clock is a beat due (`gm-clock.sh beats`); record a dramatic-choice fork with `gm-clock.sh choose`.
 - **Memory:** `gm-recall.sh recall "..."` surfaces prior events (memory refreshes on save). For a new/important scene, `gm-lore.sh "<location>" [--important]` returns a grounded chapter brief from the source book.
-- **Between sessions:** at session end, optionally propose a few SMALL off-screen developments (grounded in plots/RAG) and persist them: `gm-session.sh world-tick '<json list>'` (applies all, warns if more than 3, `world-tick-rollback` undoes).
+- **Off-screen developments:** only when the player asks with `/gm world` (at session end, or during a long rest); never on your own. How: `/gm` → OFF-SCREEN DEVELOPMENTS.
 
 ## State Persistence — if it happened, persist it FIRST
 | Change | Command |
@@ -118,7 +123,7 @@ grounded source passages.
 | Fight (enemies' wounds) | `gm-combat.sh` (for fights worth tracking) |
 | Fact / note | `gm-note.sh` |
 | New plot thread (seed a dormant thread; or async via `plot-weaver`) | `gm-plot.sh add "<name>" --type … --status dormant --description "…" [--npc …] [--location …]` |
-| End session | `gm-session.sh end "<summary>" --cliffhanger "..." --open-thread "..."` — then write the arc entry: `gm-recall.sh arc '{"summary": "...", "who_matters": [...], "open_debts": [...]}'` (this is what long-term recall surfaces) |
+| End session (record what is; a twist only on `/gm cliffhanger`) | `gm-session.sh end "<summary>" --cliffhanger "<the situation as it stands>" --open-thread "..."` — then write the arc entry: `gm-recall.sh arc '{"summary": "...", "who_matters": [...], "open_debts": [...]}'` (this is what long-term recall surfaces) |
 All tools take `--json` for structured returns. **Always prefix with `bash tools/`.**
 
 ## Search Guide (which tool)
