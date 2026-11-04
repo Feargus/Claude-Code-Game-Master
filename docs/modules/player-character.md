@@ -3,7 +3,7 @@ type: Module
 title: The player character sheet
 description: Why the sheet has two shapes, which one is canonical, and how XP, death, and the spectacle award are persisted.
 sources:
-  - { resource: /lib/character_schema.py }
+  - { resource: /lib/new_character.py }
   - { resource: /lib/player_manager.py }
   - { resource: /features/character-creation/save_character.py }
 generated: { by: cursor-grok-4.6, at: 2026-08-14T19:39:48Z }
@@ -11,56 +11,17 @@ generated: { by: cursor-grok-4.6, at: 2026-08-14T19:39:48Z }
 
 # The player character sheet
 
-## Flat is canonical; open is a legacy input
+## One sheet shape
 
-Two shapes exist, and only one is written: **flat** (`name`, `hp`, `stats`, `level`,
-`gold` as top-level keys) is what the entire runtime reads — `player_manager`, the session
-brief, `gm-campaign.sh list`, and the jq statusline. The **open** shape
-(`identity`/`vitals`/`attributes`/…) is accepted on read and converted.
-
-`to_flat` and `to_open_schema` are lossless inverses. That matters for kit-agnosticism: a
-kit vital the schema has never heard of (`water`, `heat`, `corruption`) survives a
-round-trip because unrecognized keys are swept into `details` on the way out and lifted
-back to the top level on the way in. `stats` is an open dict, so "flat" does not mean
-"D&D's six abilities" despite the legacy field names.
-
-**Migration happens on first read.** `_normalize_loaded` (`lib/player_manager.py`)
-converts an open-schema file and **writes it back immediately**. So loading a legacy
-character mutates it on disk as a side effect — expected, but surprising the first time a
-read-only operation dirties the campaign.
-
-## Kit vitals are tracked, not just carried
-
-Surviving the round-trip is the floor, not the ceiling. Any vital the active kit declares
-in `ruleset.json` → `stat_schema.vitals` is readable and writable through
-`modify_vital` (`lib/player_manager.py`) and `gm-player.sh vital <vital> <±N|set N>` — the
-argument is the vital's name, not a character's, unlike every sibling verb — and appears in
-`show` output. The declaration is the authority: a vital the kit never declared is refused
-rather than silently created, so a typo does not quietly grow a new track. That
-declaration is read by *asking the `WorldKit`*, not by reaching into `ruleset.json` here —
-one fallback, so a campaign whose kit declares no vitals at all (no ruleset, no
-`stat_schema`, or an empty list) inherits `['hp']` and can still take damage instead of
-having every vital refused.
-
-Two shapes are honored because sheets use both — a `{current, max}` dict clamps to its max
-and stays a dict, a plain number stays a plain number. `hp` is refused even where it is
-declared: wounds replaced HP, and they go through `gm-body.sh` (`lib/body.py`).
-
-`save_character.py` takes the kit's own stat key `attributes` (`stats` remains a legacy
-alias). It no longer derives HP from a hit die or writes 5e saves. An authored HP is
-preserved verbatim.
-
-The landmine is the *unauthored* path: the code cannot guess HP, so it persists 10/10. That used to be silent — a Conan death-replacement
-could save as an unplayable 10/10 with no signal. The fallback is still 10/10 (refusing
-would strand the save), but the return payload now carries a `warnings` list naming it.
-Author the vital; do not rely on the default. `race`/`class` are never required,
-matching `schemas.validate_character` (only `name` and `level` are universal).
-Declared kit vitals supplied at creation are carried onto the sheet. See
-[the schema reference](../schema-reference.md) for where the declaration lives.
+The sheet is one flat JSON object (`name`, `stats`, `skills`, `luck`, `body`, …) that the
+whole runtime reads. New sheets are written by `gm-player.sh create`
+(`lib/new_character.py`); `stats` holds the nine attributes as die sizes. The old
+two-shape converter (`character_schema.py`) is gone: nothing writes the other shape any
+more.
 
 ## One validator: `schemas.validate_character`
 
-Shape-agnostic (normalizes via `to_flat`), kit-aware: given a `WorldKit`, stats outside
+Kit-aware: given a `WorldKit`, stats outside
 the kit's declared `stat_schema.attributes` are reported. Only `name` and `level` are
 required (level 0 counts) — `race`/`class` are optional flavor. An empty declared stat
 schema disables the kit check.

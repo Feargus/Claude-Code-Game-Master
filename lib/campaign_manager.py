@@ -15,7 +15,6 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 sys.path.insert(0, str(Path(__file__).parent))
-from character_schema import to_flat
 
 # The default base dir every manager falls back to when the caller names none.
 DEFAULT_WORLD_STATE = "world-state"
@@ -138,7 +137,7 @@ class CampaignManager:
             if char_file.exists():
                 try:
                     with open(char_file, 'r', encoding='utf-8') as f:
-                        char = to_flat(json.load(f))
+                        char = json.load(f)
                     campaign_info["character"] = {
                         "name": char.get("name", "Unknown"),
                         "race": char.get("race", "?"),
@@ -319,7 +318,7 @@ class CampaignManager:
         if char_file.exists():
             try:
                 with open(char_file, 'r', encoding='utf-8') as f:
-                    info["character"] = to_flat(json.load(f))
+                    info["character"] = json.load(f)
             except (json.JSONDecodeError, IOError) as e:
                 print(f"[WARNING] Could not read character for {name}: {e}", file=sys.stderr)
 

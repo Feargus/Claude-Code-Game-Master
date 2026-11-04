@@ -16,7 +16,6 @@ from datetime import datetime, timezone
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager, npcs_present
-from character_schema import to_flat
 from schemas import PLOT_TYPE_SORT
 from world_kit import WorldKit
 from threat_clocks import ThreatClockManager
@@ -367,7 +366,7 @@ class SessionManager(EntityManager):
 
         # Update the active character's location if a sheet exists
         if self.character_file.exists():
-            char_data = to_flat(self.json_ops.load_json("character.json"))
+            char_data = self.json_ops.load_json("character.json")
             char_data['current_location'] = location
             self.json_ops.save_json("character.json", char_data)
 
@@ -866,7 +865,7 @@ class SessionManager(EntityManager):
             import json as _json
             try:
                 with open(self.character_file, 'r', encoding='utf-8') as f:
-                    char = to_flat(_json.load(f))
+                    char = _json.load(f)
             except (ValueError, IOError):
                 pass
 

@@ -11,7 +11,6 @@ from typing import Dict, Any, List, Tuple, Optional
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from character_schema import to_flat
 
 # Valid attitudes for NPCs
 VALID_ATTITUDES = {'ally', 'neutral', 'enemy', 'friendly', 'hostile', 'suspicious', 'helpful'}
@@ -267,8 +266,7 @@ def validate_campaign_overview(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
 
 
 def validate_character(data: Dict[str, Any], kit=None) -> Tuple[bool, List[str]]:
-    """Validate player character data against schema. THE character validator —
-    accepts either shape (open is normalized via to_flat first).
+    """Validate player character data against schema. THE character validator.
 
     With a World Kit supplied, also checks that the character's stats are within
     the kit's declared stat schema (an empty declared schema disables the check).
@@ -276,9 +274,6 @@ def validate_character(data: Dict[str, Any], kit=None) -> Tuple[bool, List[str]]
     Returns (is_valid, list of error messages).
     """
     errors = []
-
-    # Accept either shape: normalize legacy open-schema to canonical flat first.
-    data = to_flat(data)
 
     # Kit check: stats must be within the active kit's declared attributes.
     if kit is not None:
@@ -295,11 +290,8 @@ def validate_character(data: Dict[str, Any], kit=None) -> Tuple[bool, List[str]]
     if data.get('level') is None:
         errors.append("Character: missing level")
 
-    # Validate numeric fields
-    numeric_fields = ['level', 'ac', 'proficiency_bonus', 'speed']
-    for field in numeric_fields:
-        if field in data and not isinstance(data[field], (int, float)):
-            errors.append(f"Character: {field} must be a number")
+    if 'level' in data and not isinstance(data['level'], (int, float)):
+        errors.append("Character: level must be a number")
 
     # Validate XP (can be number or {current, next_level} object)
     xp = data.get('xp')
@@ -310,22 +302,6 @@ def validate_character(data: Dict[str, Any], kit=None) -> Tuple[bool, List[str]]
                     errors.append(f"Character: xp.{key} must be a number")
         elif not isinstance(xp, (int, float)):
             errors.append("Character: xp must be a number or dict with current/next_level")
-
-    # Validate HP structure
-    hp = data.get('hp', {})
-    if isinstance(hp, dict):
-        for key in ['current', 'max']:
-            if key in hp and not isinstance(hp[key], (int, float)):
-                errors.append(f"Character: hp.{key} must be a number")
-    elif hp:
-        errors.append("Character: hp must be a dict with current/max")
-
-    # Validate abilities
-    abilities = data.get('abilities', {})
-    if isinstance(abilities, dict):
-        for stat in ['str', 'dex', 'con', 'int', 'wis', 'cha']:
-            if stat in abilities and not isinstance(abilities[stat], (int, float)):
-                errors.append(f"Character: abilities.{stat} must be a number")
 
     return len(errors) == 0, errors
 

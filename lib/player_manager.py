@@ -13,7 +13,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
-from character_schema import to_flat, is_open_schema
 
 
 class PlayerManager(EntityManager):
@@ -54,21 +53,10 @@ class PlayerManager(EntityManager):
         except (json.JSONDecodeError, IOError) as e:
             print(f"[ERROR] Failed to load character: {e}")
             return None
-        return self._normalize_loaded(raw, "character.json")
-
-    def _normalize_loaded(self, raw: Dict, save_path: str) -> Dict:
-        """Return the character in canonical FLAT shape, migrating any legacy
-        open-schema file on disk to flat the first time it is read."""
-        if is_open_schema(raw):
-            flat = to_flat(raw)
-            self.json_ops.save_json(save_path, flat)
-            return flat
         return raw
 
     def _save_character(self, name: str, data: Dict) -> bool:
         """Save character data to file using atomic writes via json_ops"""
-        # Persist in canonical flat shape (no-op if already flat).
-        data = to_flat(data)
         return self.json_ops.save_json("character.json", data)
 
     def world_kit(self):
@@ -552,7 +540,7 @@ class PlayerManager(EntityManager):
             return {'success': False}
 
         # Build the new flat PC sheet from the party member's sheet.
-        new_char = to_flat(dict(sheet))
+        new_char = dict(sheet)
         new_char['name'] = npc_name
         new_char.setdefault('status', 'alive')
         # A new PC is taking the helm; clear any stale death stamps.
