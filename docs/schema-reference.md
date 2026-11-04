@@ -559,7 +559,6 @@ how a world plays without baking in D&D 5e.
 ```json
 {
   "name": "Dungeon Crawler Carl",
-  "kit": "custom | dnd5e   (absent = custom; dnd5e unlocks the D&D mechanics skills)",
   "stat_schema": { "attributes": ["str","con","dex","int"], "vitals": ["hp"] },
   "progression": { "model": "milestone | xp-levels | resource-axis", "...": "model config (thresholds/tiers/resource)" },
   "systems": [ {"primitive": "named_track|price_roll|reaction_roll|guarded_payoff", "name": "Menace", "config": {}} ],

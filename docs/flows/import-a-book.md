@@ -61,8 +61,8 @@ protagonist picks the page; the stage is built from that page.
 `draft-bible` writes what the source can prove (the empty World Index scaffold,
 verbatim voice filter, skeleton keys — as of 2026-08-15 it no longer persists a
 chapter map; `segment_into_chapters` now feeds only the RAG coarse index). The
-model authors tone / themes / a *handful* of factions and places. `draft-ruleset` takes attributes, progression, and `kit`
-from the importer — `dnd5e` only when the file is a D&D module. Signature
+model authors tone / themes / a *handful* of factions and places. `draft-ruleset` takes attributes and progression
+from the importer (always this fork's nine attributes and `xp-levels`). Signature
 systems live in the bible and map into `campaign_rules`. A missing
 `current-document.txt` means `prepare` did not finish; an already-confirmed
 bible refuses a silent overwrite.

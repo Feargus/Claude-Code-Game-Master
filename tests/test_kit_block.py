@@ -27,24 +27,12 @@ def _kit_section(ctx: str) -> str:
 
 # --- scene context -----------------------------------------------------------
 
-def test_dcc_context_kit_block_names_custom_resource_axis(dcc_world):
+def test_dcc_context_kit_block_names_resource_axis(dcc_world):
     ctx = SessionManager(dcc_world).get_full_context()
     kit = _kit_section(ctx)
-    assert "kit: custom" in kit
+    assert "kit:" not in kit
     assert "progression: resource-axis" in kit
     assert "vitals: hp" in kit
-
-
-def test_dnd5e_kit_named_in_context(tmp_path):
-    world = _world(tmp_path, "realms", {
-        "name": "Forgotten Realms",
-        "kit": "dnd5e",
-        "stat_schema": {"attributes": ["str"], "vitals": ["hp"]},
-        "progression": {"model": "xp-levels"},
-        "active_agents": [],
-    })
-    kit = _kit_section(SessionManager(world).get_full_context())
-    assert "kit: dnd5e" in kit
 
 
 def test_signature_systems_list_appear_in_world_rules(tmp_path):
@@ -113,7 +101,6 @@ def test_kit_block_skipped_when_worldkit_fails(dcc_world, monkeypatch):
 
 def test_worldkit_accepts_dcc_world_dir(dcc_world):
     kit = WorldKit(dcc_world)
-    assert kit.kit() == "custom"
     assert kit.progression_model() == "resource-axis"
     assert kit.skills() == []
     assert kit.signature_systems() == []

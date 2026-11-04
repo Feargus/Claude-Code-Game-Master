@@ -46,18 +46,15 @@ Two shapes are honored because sheets use both — a `{current, max}` dict clamp
 and stays a dict, a plain number stays a plain number. `hp` is refused even where it is
 declared: wounds replaced HP, and they go through `gm-body.sh` (`lib/body.py`).
 
-`save_character.py` is kit-aware at the same boundary. It takes the kit's own stat key
-`attributes` (`stats` remains a legacy alias) and derives HP from the class hit die + CON
-and writes a 5e `saves` block **only** when the active kit is `dnd5e`. An authored HP is
-preserved verbatim in **every** kit, `dnd5e` included — authoring beats deriving, so a
-rolled or hand-tuned sheet is never silently recomputed.
+`save_character.py` takes the kit's own stat key `attributes` (`stats` remains a legacy
+alias). It no longer derives HP from a hit die or writes 5e saves. An authored HP is
+preserved verbatim.
 
-The landmine is the *unauthored* path on a non-dnd5e kit: the code cannot guess that
-world's HP curve, so it persists 10/10. That used to be silent — a Conan death-replacement
+The landmine is the *unauthored* path: the code cannot guess HP, so it persists 10/10. That used to be silent — a Conan death-replacement
 could save as an unplayable 10/10 with no signal. The fallback is still 10/10 (refusing
 would strand the save), but the return payload now carries a `warnings` list naming it.
-Author the vital; do not rely on the default. `race`/`class` are required only for
-`dnd5e`, matching `schemas.validate_character` (only `name` and `level` are universal).
+Author the vital; do not rely on the default. `race`/`class` are never required,
+matching `schemas.validate_character` (only `name` and `level` are universal).
 Declared kit vitals supplied at creation are carried onto the sheet. See
 [the schema reference](../schema-reference.md) for where the declaration lives.
 

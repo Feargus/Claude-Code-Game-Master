@@ -7,8 +7,9 @@ been**, not an encyclopedia of the book. Index the book; build one stage;
 materialize the next face or place when play walks toward it. Do not scrape a
 gazetteer "so it's ready."
 
-The world's rules come from its **World Kit** (`ruleset.json`). Each book plays
-as its own game on a generic core. Every roll is a skill contest (`gm-skills`).
+The rules are this repo's: every roll is a skill contest (`gm-skills`), fights and
+wounds are in `gm-combat`. A campaign adds only its setting: its `rules.md` and the
+signature systems in its `ruleset.json`.
 The world remembers the player and pushes the right thing into the scene.
 Heavy mechanics + craft live in on-demand Skills (`.claude/skills/gm-*`).
 
@@ -57,9 +58,8 @@ SWAP (make the chosen character the active PC):
 | Narrate / voice an NPC | Narration craft | `gm-craft` |
 
 If a skill fails to load, fall back to the matching section in the archived full
-ruleset (`docs/` / git history). The RULES SYSTEM is the active World Kit's skill —
-a Dune import ships its own combat/progression, not 5e. Conditions and the
-three progression models live in `lib/game_core.py`.
+ruleset (`docs/` / git history). Conditions and the progression models live in
+`lib/game_core.py`.
 
 ## Dice
 **ROLL FOR ANYTHING THAT CAN FAIL.** If an action has a variable or failable

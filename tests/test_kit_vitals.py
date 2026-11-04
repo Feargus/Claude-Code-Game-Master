@@ -29,16 +29,6 @@ HYBORIAN_RULESET = {
     "active_agents": [],
 }
 
-DND5E_RULESET = {
-    "name": "Forgotten Realms",
-    "kit": "dnd5e",
-    "stat_schema": {
-        "attributes": ["str", "dex", "con", "int", "wis", "cha"],
-        "vitals": ["hp"],
-    },
-    "progression": {"model": "xp-levels"},
-    "active_agents": [],
-}
 
 CONAN = {
     "name": "Conan",
@@ -66,9 +56,7 @@ def hyborian_world(tmp_path):
     return _make_world(tmp_path, "hyborian", HYBORIAN_RULESET)
 
 
-@pytest.fixture
-def dnd_world(tmp_path):
-    return _make_world(tmp_path, "forgotten-realms", DND5E_RULESET)
+
 
 
 def _save(world, payload):
@@ -170,31 +158,6 @@ def test_every_vital_response_has_the_same_shape(hyborian_world):
 
     keys = {"success", "name", "vital", "current", "max"}
     assert keys <= vigor.keys() and keys <= read.keys()
-
-
-def test_dnd5e_still_derives_hp_and_saves(dnd_world):
-    r = _save(dnd_world, {
-        "name": "Thorin", "race": "Dwarf", "class": "Fighter", "level": 1,
-        "stats": {"str": 16, "dex": 12, "con": 15, "int": 10, "wis": 13, "cha": 8},
-    })
-    assert r.returncode == 0, r.stdout + r.stderr
-    sheet = _sheet(dnd_world)
-    assert sheet["hp"] == {"current": 12, "max": 12}   # d10 hit die + CON +2
-    assert sheet["saves"]["str"] == 5                  # +3 mod + proficiency
-    assert sheet["saves"]["dex"] == 1
-
-
-def test_dnd5e_authored_hp_is_preserved_verbatim(dnd_world):
-    """Authoring beats deriving in every kit — a rolled sheet is not recomputed."""
-    r = _save(dnd_world, {
-        "name": "Thorin", "race": "Dwarf", "class": "Fighter", "level": 1,
-        "stats": {"str": 16, "dex": 12, "con": 15, "int": 10, "wis": 13, "cha": 8},
-        "hp": {"current": 7, "max": 14},
-    })
-    assert r.returncode == 0, r.stdout + r.stderr
-    sheet = _sheet(dnd_world)
-    assert sheet["hp"] == {"current": 7, "max": 14}     # not the formula's 12/12
-    assert sheet["saves"]["str"] == 5                   # 5e derivation still runs
 
 
 def test_non_dnd5e_missing_hp_warns_and_defaults_to_10(hyborian_world):

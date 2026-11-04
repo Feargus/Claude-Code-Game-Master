@@ -122,15 +122,13 @@ places). Nodes with no edges are a cast list, not a world; a couple of real
 relationships (the villain's faction vs the player's, the caravan vs the hunt)
 pay off in every scene. Do not build a full relationship map.
 
-Kit — `dnd5e` only when the file is a D&D module. Everything else is `custom`.
-D&D-lean resolution (d20, six abilities) is fine as the table's foundation.
+Attributes are always the nine from `gm-skills`; rolls are always skill contests.
 
 ```bash
 CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 [ -f "$CAMPAIGN_DIR/ruleset.json" ] || bash tools/gm-extract.sh draft-ruleset \
-  --attributes "str,dex,con,int,wis,cha" \
-  --progression-model "milestone" \
-  --kit "custom"
+  --attributes "STR,AGI,DFT,VIG,LOG,ITU,NRV,PRS,EMP" \
+  --progression-model "xp-levels"
 ```
 
 ```bash

@@ -83,7 +83,7 @@ def test_no_skill_instructs_world_kit_info():
         )
 
 
-def test_world_kit_exposes_kit_identity():
+def test_world_kit_info_runs():
     import json
     import subprocess
     import sys as _sys
@@ -91,4 +91,4 @@ def test_world_kit_exposes_kit_identity():
                        capture_output=True, text=True, cwd=str(ROOT))
     assert r.returncode == 0, r.stderr
     data = json.loads(r.stdout)["data"]
-    assert data["kit"] in ("dnd5e", "custom") or isinstance(data["kit"], str)
+    assert "kit" not in data and "progression_model" in data

@@ -71,8 +71,8 @@ live sheet. See [the player character sheet](../modules/player-character.md).
 
 This is the *default* entry path, and the three prompt surfaces that reach it say so:
 `/gm`'s startup checklist and character display, `/import` Step 8, and `/new-game`'s
-Phase F hand-off all route the no-character moment here. Kit-aware `/create-character`
-(generic spine, or the dnd5e race/class/spell branch) is still the opt-in deep dive,
+Phase F hand-off all route the no-character moment here. `/create-character`
+(one path for every world, no D&D branch) is still the opt-in deep dive,
 offered and never imposed. The design bet: a player arrives with an "I love this book"
 spike, and spending it on ability scores wastes it.
 
@@ -91,9 +91,8 @@ ordering exists to prevent.
 2. Narrate the death with weight. **No menu yet.**
 3. Offer three continuations: take over a **party member**, roll a **new character**, or
    step in as a **canon figure**. (Solo with no party and no fitting canon figure: options
-   2 and 3 only.) Rolling a new character spawns kit-aware `create-character` — it
-   branches on the KIT block / `WorldKit.kit()`, so a Conan death does not open a 5e
-   wizard builder. `CLAUDE.md` SWAP is the runtime instruction.
+   2 and 3 only.) Rolling a new character spawns `create-character`, which
+   has no 5e wizard builder any more. `CLAUDE.md` SWAP is the runtime instruction.
 4. Swap, bridge the fiction, resume.
 
 That hand-off is the only way on — death moves the story to someone else and is not

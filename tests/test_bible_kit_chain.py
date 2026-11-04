@@ -94,24 +94,18 @@ def test_draft_bible_without_source_text_fails_loudly(tmp_path):
         book_bible.draft_bible(tmp_path)
 
 
-def test_ruleset_carries_a_kit_and_no_spellcaster_for_custom(campaign):
+def test_ruleset_is_drafted_from_the_bible(campaign):
     book_bible.draft_bible(campaign, name="The Iron Tangle")
     ruleset = book_bible.write_ruleset(
         campaign, progression_model="resource-axis", attributes=["str", "dex", "int"],
         resource="viewers")
 
     assert json.loads((campaign / "ruleset.json").read_text(encoding="utf-8")) == ruleset
-    assert ruleset["kit"] == "custom"
+    assert "kit" not in ruleset
     assert ruleset["name"] == "The Iron Tangle"
     assert ruleset["active_agents"] == ["npc-builder"]
     assert ruleset["stat_schema"]["attributes"] == ["str", "dex", "int"]
     assert ruleset["progression"] == {"model": "resource-axis", "resource": "viewers"}
-
-
-def test_dnd5e_kit_is_recorded(campaign):
-    book_bible.draft_bible(campaign)
-    ruleset = book_bible.write_ruleset(campaign, kit="dnd5e")
-    assert ruleset["kit"] == "dnd5e"
 
 
 def test_ruleset_will_not_clobber_a_sibling_kit(campaign):
@@ -173,7 +167,7 @@ def test_cli_drives_the_whole_chain(campaign):
 
     ruleset = json.loads((campaign / "ruleset.json").read_text(encoding="utf-8"))
     overview = json.loads((campaign / "campaign-overview.json").read_text(encoding="utf-8"))
-    assert ruleset["kit"] == "custom" and ruleset["stat_schema"]["attributes"] == ["str", "dex"]
+    assert ruleset["stat_schema"]["attributes"] == ["str", "dex"]
     assert overview["campaign_rules"]["signature_systems"] == ["loot boxes"]
 
     # Second draft-ruleset is refused rather than silently overwriting.

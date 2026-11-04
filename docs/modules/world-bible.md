@@ -56,12 +56,8 @@ Three things the source decides are passed in rather than inferred — the attri
 the progression model, and `kit`. Nothing later infers them, and a kit with no attributes
 is indistinguishable from the `DEFAULT_RULESET` fallback.
 
-`kit` is the machine-readable router, and `dnd5e` is the only value that unlocks the D&D
-mechanics skills.
-Every other book is `custom` — its magic is a signature system, not spell slots. A
-`ruleset.json` written before the field existed has no `kit`; `WorldKit.kit()` reads that
-as `custom` (`lib/world_kit.py:74`), which is the right answer for every non-D&D import.
-See [game core and World Kit](game-core-and-world-kit.md).
+There is no `kit` field any more: every world plays by this fork's rules, and a book's
+magic is a signature system, not spell slots. See [game core and World Kit](game-core-and-world-kit.md).
 
 ## Voice is grounded by a verbatim filter
 

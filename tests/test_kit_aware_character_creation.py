@@ -1,6 +1,5 @@
-"""Tests for kit-aware-character-creation: create-character branches on the
-active kit; non-dnd5e saves warn on the 10/10 HP fallback and do not require
-5e race/class.
+"""Tests for character creation: one path for every world (no D&D branch); saves
+warn on the 10/10 HP fallback and do not require 5e race/class.
 """
 
 import json
@@ -26,7 +25,7 @@ VA_KEYS = (
     "clothing", "gear", "demeanor", "size",
 )
 
-# Live Conan bug: ruleset has NO kit field → WorldKit.kit() == 'custom'.
+# Live Conan bug: ruleset has NO kit field.
 CONAN_LIVE_RULESET = {k: v for k, v in HYBORIAN_RULESET.items() if k != "kit"}
 
 
@@ -45,11 +44,7 @@ def _section(text, start, end):
 
 
 def _generic(text):
-    return _section(text, "## Generic spine", "## dnd5e branch")
-
-
-def _dnd(text):
-    return text[text.index("## dnd5e branch"):]
+    return _section(text, "## Steps", "## Shared")
 
 
 def _save_json_blobs(text):
@@ -59,15 +54,13 @@ def _save_json_blobs(text):
     return blobs
 
 
-def test_command_and_agent_have_generic_spine_and_dnd5e_branch():
+def test_command_and_agent_have_one_path_and_no_dnd5e_branch():
     for text in (_cmd(), _agent()):
-        assert "## Generic spine" in text
-        assert "## dnd5e branch" in text
+        assert "## Steps" in text
+        assert "dnd5e branch" not in text
         assert "stat_schema" in _generic(text)
         assert "attributes" in _generic(text)
         assert "vitals" in _generic(text)
-        generic = _generic(text).lower()
-        assert "exactly" in generic or "dnd5e" in text.lower()
 
 
 def test_generic_spine_never_mentions_5e_races_classes_or_spell_slots():
@@ -84,24 +77,6 @@ def test_generic_spine_never_mentions_5e_races_classes_or_spell_slots():
         assert "point buy" not in generic
 
 
-def test_dnd5e_branch_keeps_race_class_spells_and_hit_die_hp():
-    for text in (_cmd(), _agent()):
-        dnd = _dnd(text)
-        assert "get_races.py" in dnd
-        assert "get_classes.py" in dnd
-        assert "get_spells.py" in dnd
-        assert "Hit Die max + Constitution" in dnd
-        assert "Step 2 - Race" in dnd
-        assert "Step 3 - Class" in dnd or "Step 4 - Background" in dnd
-
-
-def test_hit_die_hp_is_gated_to_dnd5e_not_the_only_rule():
-    for text in (_cmd(), _agent()):
-        assert "Hit Die max + Constitution" in _dnd(text)
-        assert "Hit Die max + Constitution" not in _generic(text)
-        assert "does not derive HP" in _generic(text) or "Author HP" in _generic(text)
-
-
 def test_no_ascii_art_or_ascii_interface_mandate():
     for text in (_cmd(), _agent()):
         lower = text.lower()
@@ -109,19 +84,6 @@ def test_no_ascii_art_or_ascii_interface_mandate():
         assert "ascii art" not in lower
         assert "ascii-art" not in lower
         assert "phone-friendly" in lower
-
-
-def test_step_numbers_do_not_skip_2():
-    for text in (_cmd(), _agent()):
-        assert "Step 2 -" in text
-        # Old bug: Step 1 - Introduction jumped to Step 3 - Background.
-        intro = text.find("Step 1 - Introduction")
-        assert intro != -1
-        window = text[intro:intro + 600]
-        assert "Step 2 -" in window
-        assert not re.search(
-            r"Step 1 - Introduction\s*\n\s*\n\s*\*?Step 3 - Background", text
-        )
 
 
 def test_save_json_examples_include_hp_and_visual_appearance():
@@ -154,7 +116,6 @@ def test_gm_player_banner_is_kit_neutral():
 
 def test_custom_kit_sheet_without_race_class_saves_and_validates(tmp_path):
     world = _make_world(tmp_path, "conan-live", CONAN_LIVE_RULESET)
-    assert WorldKit(str(world)).kit() == "custom"
 
     payload = {
         "name": "Nameless",
@@ -182,17 +143,3 @@ def test_save_warnings_on_10_10_fallback(tmp_path):
     warnings = result["warnings"]
     assert isinstance(warnings, list) and warnings
     assert any("10/10" in w for w in warnings)
-
-
-def test_dnd5e_still_requires_race_and_class(tmp_path):
-    from tests.test_kit_vitals import DND5E_RULESET
-
-    world = _make_world(tmp_path, "forgotten-realms", DND5E_RULESET)
-    r = _save(world, {
-        "name": "Thorin", "level": 1,
-        "stats": {"str": 16, "dex": 12, "con": 15, "int": 10, "wis": 13, "cha": 8},
-    })
-    assert r.returncode == 1
-    err = json.loads(r.stdout)
-    assert "error" in err
-    assert "race" in err["error"] or "class" in err["error"]

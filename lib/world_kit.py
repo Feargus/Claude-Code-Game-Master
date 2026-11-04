@@ -13,7 +13,6 @@ play-time rules surface (rendered in scene context). campaign-overview's
 ruleset.json shape:
 {
   "name": "Dungeon Crawler Carl",
-  "kit": "custom",
   "stat_schema": { "attributes": ["str","con","dex","int"], "vitals": ["hp"] },
   "progression": { "model": "resource-axis", "resource": "viewers",
                    "tiers": [1000000, 1000000000] },
@@ -37,7 +36,6 @@ from game_core import make_progression
 
 DEFAULT_RULESET = {
     "name": "Generic Adventure",
-    "kit": "custom",
     "stat_schema": {"attributes": [], "vitals": ["hp"]},
     "progression": {"model": "milestone"},
     "active_agents": [],
@@ -65,15 +63,6 @@ class WorldKit:
     # --- declared configuration ---
     def name(self) -> str:
         return self.ruleset.get("name", "Generic Adventure")
-
-    def kit(self) -> str:
-        """Kit identity: 'dnd5e' unlocks the D&D mechanics skills.
-
-        Anything else (default 'custom') runs the generic core + this ruleset.
-        Legacy rulesets without the field are 'custom' — the safe reading, since
-        loading 5e mechanics into a bespoke world is the failure this prevents.
-        """
-        return self.ruleset.get("kit", "custom")
 
     def stat_schema(self) -> Dict[str, Any]:
         return self.ruleset.get("stat_schema", {})
@@ -209,7 +198,6 @@ def main():
     kit = WorldKit()
     info = {
         "name": kit.name(),
-        "kit": kit.kit(),
         "stat_schema": kit.stat_schema(),
         "progression_model": kit.progression_model(),
         "active_agents": kit.active_agents(),
