@@ -29,10 +29,10 @@ Every interaction: **CONTEXT → DECIDE → EXECUTE → PERSIST → NARRATE.**
 The PC CAN die. This is not a guaranteed power-fantasy. Fail-forward does NOT mean immortal — it means failure changes the situation, and sometimes the change is death.
 - **Some plot armor is fine, lethal stakes are mandatory.** Never kill on one unlucky roll in a trivial moment. DO let death land from: reckless play against over-leveled threats, ignored warnings, or a string of bad outcomes that has visibly tightened.
 - **Telegraph lethality.** Before a beat can kill, the danger must be readable — name the threat's weight ("this is far beyond you"), let bad odds show, give an out. Death is earned, never ambush-by-GM-fiat.
-- **0 HP is dying, not dead.** The dying and massive-damage rules are in `gm-combat`. Death also comes when the fiction makes survival absurd (fall into lava, executed while helpless).
+- **Wounds, not HP.** The fourth wound in head, chest or groin kills, with no dying state in between; the rules are in `gm-combat`. Death also comes when the fiction makes survival absurd (fall into lava, executed while helpless).
 - **When the PC dies → run the Death Protocol** (below). Do not just end the session.
 
-## Death Protocol (PC hits 0 and dies)
+## Death Protocol (PC dies)
 PERSIST FIRST, then narrate, then offer the hand-off.
 1. Persist the death: `bash tools/gm-player.sh kill "<name>" --cause "<how>"` (sets status dead, HP 0, stamps died_at), and log it as a fact (`gm-note.sh`). Record any consequence the death triggers (`gm-consequence.sh add ...`).
 2. Narrate the death with weight — earn the moment, match prose to the beat. No menu yet.
@@ -103,7 +103,8 @@ grounded source passages.
 ## State Persistence — if it happened, persist it FIRST
 | Change | Command |
 |---|---|
-| HP/XP/gold/inventory (PC) | `gm-player.sh` |
+| XP/gold/inventory (PC) | `gm-player.sh` |
+| Wounds, armor, cyberware (PC) | `gm-body.sh` (`hit`, `heal`, `repair`, `show`; rules in `gm-combat`) |
 | Spectacle XP (clever/effective/unique/punishing non-kill beat) | `gm-player.sh award [name] --tier minor\|major\|legendary --reason "..."` (kit-aware, level-scaled; co-awards followers in DCC) |
 | Party NPC stats | `gm-npc.sh` |
 | NPC mood/goal/secret | `gm-npc.sh set-inner` / `mood` |
@@ -114,7 +115,7 @@ grounded source passages.
 | Play pack / one name from the book | `gm-playpack.sh set` / `stage` / `from-book "<name>"` |
 | Location moved | `gm-session.sh move "<loc>" --takes <travel time>` |
 | Consequence (structured) | `gm-consequence.sh add "..." "<trigger>" --trigger-type ... --match ...` |
-| Combat | `gm-combat.sh` (optional; for fights worth tracking) |
+| Fight (enemies' wounds) | `gm-combat.sh` (for fights worth tracking) |
 | Fact / note | `gm-note.sh` |
 | New plot thread (seed a dormant thread; or async via `plot-weaver`) | `gm-plot.sh add "<name>" --type … --status dormant --description "…" [--npc …] [--location …]` |
 | End session | `gm-session.sh end "<summary>" --cliffhanger "..." --open-thread "..."` — then write the arc entry: `gm-recall.sh arc '{"summary": "...", "who_matters": [...], "open_debts": [...]}'` (this is what long-term recall surfaces) |

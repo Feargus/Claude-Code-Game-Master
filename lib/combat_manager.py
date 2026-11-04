@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
 """
-Persisted combat state.
+Persisted fight state: each enemy's wounds, notes and conditions.
 
-Combat is the one subsystem that used to persist NOTHING — initiative, enemy HP,
-conditions, and the round lived only in the model's working memory and drifted
-across turns/compaction/resume. This manager keeps it in `combat_state.json` so
-combat is resumable and truthful. Combat is OPTIONAL: a narrated skirmish that
-never calls `start` still works; this is for fights worth tracking.
+Kept in `combat_state.json` so a fight survives turns, compaction and resume.
+Fights are OPTIONAL: a narrated skirmish that never calls `start` still works.
 
-Harm/conditions go through the generic game_core (no 5e assumptions).
+Each enemy instance has its own line ("street thug 1", "street thug 2") with the
+number of wounds that takes it out, from its sheet. Notes record disabled parts
+("right arm disabled"). The player's wounds live on the sheet (`gm-body.sh`).
 """
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
-from game_core import apply_harm, heal, add_condition, remove_condition
+from game_core import add_condition, remove_condition
 
 
 class CombatManager(EntityManager):
+
     def __init__(self, world_state_dir: str = None):
         super().__init__(world_state_dir)
         self.combat_file = "combat_state.json"
@@ -36,21 +36,17 @@ class CombatManager(EntityManager):
         return bool(self._load().get('combatants'))
 
     def start(self) -> Dict[str, Any]:
-        data = {'active': True, 'round': 1, 'turn_index': 0, 'combatants': []}
+        data = {'active': True, 'combatants': []}
         self._save(data)
         return data
 
-    def add_combatant(self, name: str, hp: int, ac: int = 10,
-                      initiative: int = 0, side: str = 'enemy') -> Dict[str, Any]:
+    def add_combatant(self, name: str, wounds: int) -> Dict[str, Any]:
         data = self._load()
         if not data.get('active'):
             data = self.start()
-        combatant = {
-            'name': name, 'hp_current': int(hp), 'hp_max': int(hp),
-            'ac': int(ac), 'conditions': [], 'initiative': int(initiative), 'side': side,
-        }
+        combatant = {'name': name, 'wounds': int(wounds), 'taken': 0,
+                     'notes': [], 'conditions': []}
         data.setdefault('combatants', []).append(combatant)
-        data['combatants'].sort(key=lambda c: c.get('initiative', 0), reverse=True)
         self._save(data)
         return combatant
 
@@ -60,15 +56,15 @@ class CombatManager(EntityManager):
                 return c
         return None
 
-    def modify_hp(self, name: str, delta: int) -> Optional[Dict[str, Any]]:
+    def wound(self, name: str, count: int = 1, note: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Deal wounds. A note records what they did, e.g. "right arm disabled"."""
         data = self._load()
         c = self._find(data, name)
         if c is None:
             return None
-        if delta < 0:
-            c['hp_current'] = apply_harm(c['hp_current'], -delta)
-        else:
-            c['hp_current'] = heal(c['hp_current'], c['hp_max'], delta)
+        c['taken'] = min(c['wounds'], c['taken'] + count)
+        if note:
+            c['notes'].append(note)
         self._save(data)
         return c
 
@@ -82,37 +78,25 @@ class CombatManager(EntityManager):
         self._save(data)
         return c
 
-    def next_turn(self) -> Dict[str, Any]:
-        data = self._load()
-        n = len(data.get('combatants', []))
-        if n == 0:
-            return data
-        data['turn_index'] = (data.get('turn_index', 0) + 1) % n
-        if data['turn_index'] == 0:
-            data['round'] = data.get('round', 1) + 1
-        self._save(data)
-        return data
-
     def end(self) -> Dict[str, Any]:
         data = self._load()
         summary = {
-            'rounds': data.get('round', 1),
             'combatants': [c['name'] for c in data.get('combatants', [])],
-            'defeated': [c['name'] for c in data.get('combatants', []) if c.get('hp_current', 1) <= 0],
+            'defeated': [c['name'] for c in data.get('combatants', []) if c['taken'] >= c['wounds']],
         }
-        self._save({})  # clear — combat is over
+        self._save({})  # clear — the fight is over
         return summary
 
     def header(self) -> str:
         data = self._load()
         if not data.get('combatants'):
             return "(no active combat)"
-        lines = [f"⚔ COMBAT — Round {data.get('round', 1)}"]
-        for i, c in enumerate(data['combatants']):
-            marker = '>' if i == data.get('turn_index', 0) else ' '
-            dead = ' 💀' if c.get('hp_current', 1) <= 0 else ''
-            cond = f" [{', '.join(c['conditions'])}]" if c.get('conditions') else ""
-            lines.append(f"{marker} {c['name']}: {c['hp_current']}/{c['hp_max']} HP{cond}{dead}")
+        lines = ["⚔ FIGHT"]
+        for c in data['combatants']:
+            boxes = '●' * c['taken'] + '○' * (c['wounds'] - c['taken'])
+            out = ', out' if c['taken'] >= c['wounds'] else ''
+            extra = ', '.join(c['notes'] + c['conditions'])
+            lines.append(f"  {c['name']}: {boxes}{out}" + (f" ({extra})" if extra else ""))
         return "\n".join(lines)
 
 
@@ -121,14 +105,13 @@ def main():
     import json
     from cli_output import wants_json, strip_json_flag, emit, emit_error
 
-    parser = argparse.ArgumentParser(description="Persisted combat state")
+    parser = argparse.ArgumentParser(description="Persisted fight state")
     sub = parser.add_subparsers(dest='action')
     sub.add_parser('start')
-    p = sub.add_parser('add-enemy'); p.add_argument('name'); p.add_argument('hp', type=int)
-    p.add_argument('--ac', type=int, default=10); p.add_argument('--init', type=int, default=0)
-    p = sub.add_parser('hp'); p.add_argument('name'); p.add_argument('delta', type=int)
+    p = sub.add_parser('add-enemy'); p.add_argument('name'); p.add_argument('wounds', type=int)
+    p = sub.add_parser('wound'); p.add_argument('name'); p.add_argument('count', type=int, nargs='?', default=1)
+    p.add_argument('--note')
     p = sub.add_parser('condition'); p.add_argument('name'); p.add_argument('op', choices=['add', 'remove']); p.add_argument('condition')
-    sub.add_parser('next-turn')
     sub.add_parser('header')
     sub.add_parser('status')
     sub.add_parser('end')
@@ -143,13 +126,11 @@ def main():
     if args.action == 'start':
         out = m.start()
     elif args.action == 'add-enemy':
-        out = m.add_combatant(args.name, args.hp, ac=args.ac, initiative=args.init)
-    elif args.action == 'hp':
-        out = m.modify_hp(args.name, args.delta)
+        out = m.add_combatant(args.name, args.wounds)
+    elif args.action == 'wound':
+        out = m.wound(args.name, args.count, args.note)
     elif args.action == 'condition':
         out = m.set_condition(args.name, args.op, args.condition)
-    elif args.action == 'next-turn':
-        out = m.next_turn()
     elif args.action == 'end':
         out = m.end()
     elif args.action in ('header', 'status'):

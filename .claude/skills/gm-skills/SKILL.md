@@ -150,7 +150,7 @@ The script prints one line, such as `quality: 7`. Quality 0 or more means the **
 | **Social** | Refused, and their attitude shifts or a bystander notices. Further down, attitude turns negative and a concrete price is paid: a favor burned, a term worsened, something taken. | They act against you. How that looks comes from the NPC's own goals and power, and sometimes it's ugly. | Hostile, and word spreads. |
 | **Information** | Partial and misleading in a way that matters. Further down, nothing usable, and the asking costs: time burned, a lead gone cold, an opportunity closed while you dug. | A wrong conclusion believed true. | It triggers a ward or alerts whoever owns the secret. |
 
-Whenever a failure creates ongoing fallout: `bash tools/gm-consequence.sh add "[what happens]" "[when]" [--trigger-type ...]`. Persist the cost (mood, HP, inventory, death) BEFORE narrating it.
+Whenever a failure creates ongoing fallout: `bash tools/gm-consequence.sh add "[what happens]" "[when]" [--trigger-type ...]`. Persist the cost (mood, wounds, inventory, death) BEFORE narrating it.
 
 ## Reward a great success
 

@@ -15,10 +15,7 @@
       "Awareness": 3
     },
     "note": "Rust-level vermin. Bites, carries disease, comes in swarms.",
-    "hp": {
-      "current": 10,
-      "max": 10
-    }
+    "wounds": 1
   },
   "street thug": {
     "attributes": {
@@ -35,10 +32,7 @@
       "Intimidation": 2
     },
     "note": "Hired muscle with a pipe or a cheap knife. Runs when it stops being worth it.",
-    "hp": {
-      "current": 16,
-      "max": 16
-    }
+    "wounds": 2
   },
   "ganger": {
     "attributes": {
@@ -56,10 +50,7 @@
       "Streetwise": 3
     },
     "note": "Armed, young and local, with cheap chrome. Fights in packs on home ground.",
-    "hp": {
-      "current": 16,
-      "max": 16
-    }
+    "wounds": 2
   },
   "corp guard": {
     "attributes": {
@@ -78,10 +69,7 @@
       "Composure": 2
     },
     "note": "Trained and well equipped, with backup a call away. Follows procedure, not loyalty.",
-    "hp": {
-      "current": 20,
-      "max": 20
-    }
+    "wounds": 2
   },
   "repo agent": {
     "attributes": {
@@ -102,10 +90,7 @@
       "Tech": 2
     },
     "note": "Takes back limbs, eyes and bodies from people behind on payments. Patient and carries a lawful-looking warrant.",
-    "hp": {
-      "current": 24,
-      "max": 24
-    }
+    "wounds": 3
   },
   "combat merc": {
     "attributes": {
@@ -128,9 +113,6 @@
       "Composure": 4
     },
     "note": "Veteran in a military sleeve. Rare, expensive, and only sent when someone means it.",
-    "hp": {
-      "current": 30,
-      "max": 30
-    }
+    "wounds": 4
   }
 }

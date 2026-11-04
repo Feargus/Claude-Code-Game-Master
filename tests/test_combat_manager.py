@@ -1,4 +1,4 @@
-"""Tests for combat-state-persistence: resumable, truthful combat state."""
+"""Tests for the fight tracker: each enemy's wounds and notes survive a resume."""
 
 from lib.combat_manager import CombatManager
 
@@ -6,50 +6,51 @@ from lib.combat_manager import CombatManager
 def test_start_and_add_enemy(dcc_world):
     m = CombatManager(dcc_world)
     m.start()
-    c = m.add_combatant("Orc Warrior", hp=22, ac=17, initiative=12)
-    assert c["hp_current"] == 22 and c["hp_max"] == 22 and c["ac"] == 17
+    c = m.add_combatant("street thug 1", 2)
+    assert c["wounds"] == 2 and c["taken"] == 0
     assert m.is_active()
 
 
-def test_hp_survives_a_simulated_resume(dcc_world):
+def test_wounds_survive_a_simulated_resume(dcc_world):
     m = CombatManager(dcc_world)
     m.start()
-    m.add_combatant("Orc Warrior", hp=22, ac=17)
-    m.modify_hp("Orc Warrior", -5)
+    m.add_combatant("corp guard 1", 2)
+    m.wound("corp guard 1", 1, note="right arm disabled")
     # New manager instance = fresh load from disk (simulates resume/compaction).
     resumed = CombatManager(dcc_world)
-    c = resumed._find(resumed._load(), "Orc Warrior")
-    assert c["hp_current"] == 17, "enemy HP must persist across a reload"
+    c = resumed._find(resumed._load(), "corp guard 1")
+    assert c["taken"] == 1 and c["notes"] == ["right arm disabled"]
 
 
-def test_hp_clamps_and_marks_dead(dcc_world):
+def test_wounds_stop_at_the_limit_and_mark_defeated(dcc_world):
     m = CombatManager(dcc_world)
     m.start()
-    m.add_combatant("Goblin", hp=7, ac=12)
-    c = m.modify_hp("Goblin", -100)
-    assert c["hp_current"] == 0
-    assert "Goblin" in m.end()["defeated"]
+    m.add_combatant("rat 1", 1)
+    m.add_combatant("rat 2", 1)
+    assert m.wound("rat 1", 5)["taken"] == 1
+    assert "rat 1: ●, out" in m.header()
+    assert m.end()["defeated"] == ["rat 1"]
 
 
-def test_conditions_and_turns(dcc_world):
+def test_header_shows_boxes_notes_and_conditions(dcc_world):
     m = CombatManager(dcc_world)
     m.start()
-    m.add_combatant("A", hp=10, initiative=20)
-    m.add_combatant("B", hp=10, initiative=5)
-    m.set_condition("A", "add", "prone")
-    assert "prone" in m._find(m._load(), "A")["conditions"]
-    # A has higher initiative -> first; next-turn moves to B; another wraps to round 2.
-    m.next_turn()
-    assert m._load()["turn_index"] == 1
-    m.next_turn()
-    data = m._load()
-    assert data["turn_index"] == 0 and data["round"] == 2
+    m.add_combatant("ganger 1", 2)
+    m.wound("ganger 1", note="left leg disabled")
+    m.set_condition("ganger 1", "add", "prone")
+    assert "ganger 1: ●○ (left leg disabled, prone)" in m.header()
+
+
+def test_unknown_enemy_is_none(dcc_world):
+    m = CombatManager(dcc_world)
+    m.start()
+    assert m.wound("nobody") is None
 
 
 def test_end_clears_state(dcc_world):
     m = CombatManager(dcc_world)
     m.start()
-    m.add_combatant("Orc", hp=10)
+    m.add_combatant("Orc", 2)
     m.end()
     assert not CombatManager(dcc_world).is_active()
 
