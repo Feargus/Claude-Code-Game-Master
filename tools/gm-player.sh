@@ -20,29 +20,16 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/player_manager.py" list
         ;;
 
-    "save-json")
-        # Save character from JSON data
-        CHARACTER_JSON="$*"
-        if [ -z "$CHARACTER_JSON" ]; then
-            echo "Usage: gm-player.sh save-json '<json_data>'"
-            echo "Example: gm-player.sh save-json '{\"name\":\"Thorin\",\"race\":\"Dwarf\",\"class\":\"Fighter\",\"level\":1}'"
-            exit 1
-        fi
-        $PYTHON_CMD "$PROJECT_ROOT/features/character-creation/save_character.py" "$CHARACTER_JSON"
-        ;;
-
-    "onboard")
-        # Identity-first entry: one question, three doors. Default over /create-character.
+    "create")
         if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh onboard canon <npc_name>"
-            echo "       gm-player.sh onboard original <name> [\"one-line concept\"]"
-            echo "       gm-player.sh onboard nameless"
+            echo "Usage: gm-player.sh create '<character json>' [--canon \"<NPC>\"] [--replace]"
             echo ""
-            echo "Refuses to overwrite an existing PC; add --replace to hand the story to"
-            echo "someone new (the outgoing sheet is archived to the campaign's fallen/)."
+            echo "Saves the character from a finished interview; anything left out gets a default."
+            echo "  --canon NPC   the character is this NPC from the campaign"
+            echo "  --replace     hand the story to a new PC (archives the current one to fallen/)"
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/identity_onboarding.py" onboard "$@"
+        $PYTHON_CMD "$LIB_DIR/new_character.py" "$@"
         ;;
 
     "set")
@@ -211,7 +198,7 @@ case "$ACTION" in
         echo "  show [name] [--json]         - Show summary (or full record with --json)"
         echo "  get <name>                   - Get full character JSON"
         echo "  list                         - List all player IDs"
-        echo "  onboard <mode> [args]        - Identity-first entry (canon <npc> | original <name> [concept] | nameless; --replace to swap PCs)"
+        echo "  create '<json>' [--canon N] [--replace] - Save a new character from the interview"
         echo "  set <name>                   - Set character as current active PC"
         echo "  xp <name> +<amount>          - Award XP to character"
         echo "  award [name] --tier T        - Spectacle XP for a clever/effective/unique/punishing beat (T=minor|major|legendary; --reason \"...\"; co-awards followers)"
@@ -225,7 +212,6 @@ case "$ACTION" in
         echo "  perk <name> <what it does>   - Add or rewrite a perk"
         echo "  loot <name> --gold X --items - Batch add items + gold at once"
         echo "  level-check <name>           - Check XP and level status"
-        echo "  save-json '<json>'           - Save complete character from JSON"
         echo ""
         echo "Note: Character is stored in the active campaign's character.json"
         if [ -n "$ACTION" ]; then

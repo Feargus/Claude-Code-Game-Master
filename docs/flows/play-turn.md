@@ -72,7 +72,7 @@ tool is invisible to the audit until it is added there.
 Before the first word to the player, the harness checks: is the venv built (else `/setup`),
 does any campaign exist (else route to `/gm` → New Adventure), do campaigns exist with none
 active (else campaign selection — `gm-campaign.sh list`, then `switch <name>`), does the
-active campaign have a `character.json` (else identity-first onboarding). Each failure has a
+active campaign have a `character.json` (else the one question and the `/create-character` interview). Each failure has a
 specific destination — see [onboarding and the death hand-off](onboarding-and-death.md) and
 [install and setup](../playbooks/install-and-setup.md).
 

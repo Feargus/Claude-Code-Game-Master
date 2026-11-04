@@ -23,8 +23,7 @@ juggling and the default output is quiet.
 ## Expected state: green, one dependency-gated skip
 
 As of 2026-08-13 the suite passes fully. **Any failure means something real broke.**
-(A stale identity-onboarding assertion was red from 2026-06-07 to 2026-08-13 — see
-[the schema-drift gotcha](../gotchas/identity-onboarding-schema-drift.md).)
+
 
 The one skip is dependency-gated: `test_creation_grounding.py:127` skips without
 `sentence_transformers`. Install the `rag` extra to run it —

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from lib.campaign_manager import CampaignManager
-from lib.identity_onboarding import IdentityOnboarding
+from lib.new_character import CharacterCreator
 from lib.opening_seed import reseed_opening, seed_opening
 from lib.player_manager import PlayerManager
 from lib.session_manager import SessionManager
@@ -373,8 +373,8 @@ def test_set_reseeds_when_opening_not_yet_matched(isolated_world_state):
     assert plots[KING_PLOT]["status"] == "available"
 
 
-def test_onboard_reseeds_opening_to_match_pc(isolated_world_state):
-    """The real product path: onboard writes current_character and re-seeds."""
+def test_create_reseeds_opening_to_match_pc(isolated_world_state):
+    """The real product path: create writes current_character and re-seeds."""
     cm = CampaignManager()
     cdir = cm.create("Hyboria", "Hyboria")
     assert cm.set_active("Hyboria")
@@ -382,9 +382,8 @@ def test_onboard_reseeds_opening_to_match_pc(isolated_world_state):
     seed_opening(str(cdir), timestamp="2026-01-01T00:00:00Z")
     assert json.loads((cdir / "plots.json").read_text())[KING_PLOT]["status"] == "available"
 
-    result = IdentityOnboarding().onboard(
-        "original", name="Conan", concept="pirate-era sailor on the Black Coast",
-    )
+    result = CharacterCreator().create(
+        {"name": "Conan", "background": "pirate-era sailor on the Black Coast"})
     assert result["success"]
 
     ov = json.loads((cdir / "campaign-overview.json").read_text())

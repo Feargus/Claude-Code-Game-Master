@@ -62,11 +62,8 @@ Declared kit vitals supplied at creation are carried onto the sheet. See
 
 Shape-agnostic (normalizes via `to_flat`), kit-aware: given a `WorldKit`, stats outside
 the kit's declared `stat_schema.attributes` are reported. Only `name` and `level` are
-required — `race`/`class` are 5e-flavored and legitimately absent on a nameless traveler
-or a non-D&D character. Two caveats: an empty declared stat schema disables the kit check
-(which is what the auto-drafted ruleset ships with), and the open-vs-flat trap that once
-produced a duplicate validator still exists at the builder boundary — see
-[the shape trap](../gotchas/identity-onboarding-schema-drift.md).
+required (level 0 counts) — `race`/`class` are optional flavor. An empty declared stat
+schema disables the kit check.
 
 ## XP delegates to the kit, then falls back
 

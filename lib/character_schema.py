@@ -88,7 +88,7 @@ def to_flat(char: Dict[str, Any]) -> Dict[str, Any]:
     session context, campaign list, schema validation, and the bash/jq statusline
     all read top-level keys (name, hp, stats, level, gold, ...). This is the
     inverse of to_open_schema and the normalizer applied on load so legacy
-    open-schema characters (e.g. from identity_onboarding) read correctly and are
+    open-schema characters (e.g. from the old identity onboarding) read correctly and are
     migrated to flat on first touch.
 
     Idempotent: a character already in flat shape is returned unchanged.

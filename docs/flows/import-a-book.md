@@ -9,7 +9,7 @@ sources:
   - { resource: /lib/book_bible.py }
   - { resource: /lib/world_bible.py }
   - { resource: /lib/opening_seed.py }
-  - { resource: /lib/identity_onboarding.py }
+  - { resource: /lib/new_character.py }
   - { resource: /lib/session_manager.py }
   - { resource: /lib/play_pack.py }
   - { resource: /tools/gm-playpack.sh }
@@ -36,8 +36,9 @@ the campaign file is a journal; the book is the world.
    and how the holodeck *sounds*. Horizon names, not a gazetteer. The player
    confirms the bible; `/import` never confirms on their behalf.
 4. **The stage.** One room, the exits you can see, the people in it, one hook.
-   Persist with `gm-playpack.sh set` + `stage`, then `onboard`. Enhance only the
-   people in this room. The pack is the opening; `onboard` keeps its room + hook
+   Persist with `gm-playpack.sh set` + `stage`, then the `/create-character` interview
+   (`gm-player.sh create`). Enhance only the people in this room. The pack is the
+   opening; `create` keeps its room + hook
    (`gm-playpack.sh set` marked it matched) — still not a fake session.
 5. **Play.** When someone new walks on, `gm-playpack.sh from-book "<name>"`, then
    RAG, then narrate. `move` already creates a blank destination; first visit

@@ -7,7 +7,7 @@ sources:
   - { resource: /.claude/commands/gm.md }
   - { resource: /.claude/skills/gm-craft/SKILL.md }
   - { resource: /lib/opening_seed.py }
-  - { resource: /lib/identity_onboarding.py }
+  - { resource: /lib/new_character.py }
   - { resource: /lib/session_manager.py }
   - { resource: /lib/play_pack.py }
   - { resource: /tools/gm-playpack.sh }

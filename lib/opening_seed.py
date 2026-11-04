@@ -7,7 +7,7 @@ the chosen hook on `overview.opening_hook` and as a `plot_local` KEY FACT
 does not fabricate a session-log `### Session Ended` block (PREVIOUSLY ON is
 earned play) and does not stamp a plot `active` or append an "Opening beat:"
 event — plots stay as they were, typically `available`. `reseed_opening`
-rewrites location + hook once the PC first exists (`IdentityOnboarding.onboard`,
+rewrites location + hook once the PC first exists (`CharacterCreator.create`,
 or the first `set_current_player` while `opening_matched_to_pc` is unset) so
 WHERE YOU STAND and WHICH HOOK is offered match the protagonist. It still does
 not start that plot. Provisional `seed_opening` does not set the flag;

@@ -472,9 +472,6 @@ See [the player character sheet](modules/player-character.md).
   "died_at": "ISO timestamp (set by gm-player.sh kill)",
   "cause": "string",
   "visual_appearance": {"…11 fixed fields — see lib/visual_appearance.py"},
-  "origin": "canon | original | nameless",
-  "concept": "string (original mode)",
-  "voice": ["canonical lines, when lifted from a canon NPC"],
   "current_location": "string",
   "id": "string"
 }

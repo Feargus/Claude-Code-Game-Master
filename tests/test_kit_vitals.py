@@ -16,7 +16,7 @@ import pytest
 from lib.player_manager import PlayerManager
 
 ROOT = Path(__file__).resolve().parent.parent
-SAVE_CHARACTER = ROOT / "features" / "character-creation" / "save_character.py"
+NEW_CHARACTER = ROOT / "lib" / "new_character.py"
 
 HYBORIAN_RULESET = {
     "name": "The Hyborian Age",
@@ -59,10 +59,10 @@ def hyborian_world(tmp_path):
 
 
 def _save(world, payload):
-    """Run save_character.py against `world` (it resolves world-state from cwd)."""
+    """Run `create` against `world`."""
     return subprocess.run(
-        [sys.executable, str(SAVE_CHARACTER), json.dumps(payload)],
-        capture_output=True, text=True, cwd=str(world.parent), env={**os.environ},
+        [sys.executable, str(NEW_CHARACTER), json.dumps(payload), "--replace"],
+        capture_output=True, text=True, env={**os.environ, "GM_WORLD_STATE_BASE": str(world)},
     )
 
 

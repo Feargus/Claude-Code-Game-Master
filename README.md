@@ -117,7 +117,7 @@ Then launch and play:
 1. Run `claude` to launch Claude Code
 2. Run `/gm` — the harness takes it from there
 
-`/gm` is the only command you need. It offers a **New Adventure** — author an original world (`/new-game`), import a book you've dropped in `source-material/` (`/import`), or spin up a quick one-shot — then builds your character and runs the game. First thing it asks once a world exists: **"Who are you in this world?"** — play a character lifted straight from the source, an original of your own, or a nameless traveler who wanders in. The mechanics get figured out behind the scenes.
+`/gm` is the only command you need. It offers a **New Adventure** — author an original world (`/new-game`), import a book you've dropped in `source-material/` (`/import`), or spin up a quick one-shot — then builds your character and runs the game. First thing it asks once a world exists: **"Who are you in this world?"** — play a character from the world, or one of your own. A short interview fills in the sheet: the GM proposes everything from a one-line concept, and you change what you like.
 
 ---
 
@@ -154,7 +154,7 @@ Under the hood, `/gm` calls these for you — you never have to run them yoursel
 |---------|--------------|
 | `/import` | Import a PDF/document as a new campaign |
 | `/new-game` | Build a world from scratch |
-| `/create-character` | Build a character in detail |
+| `/create-character` | The character-creation interview |
 | `/enhance` | Enrich entities with source-material passages |
 | `/world-check` | Validate campaign consistency |
 | `/reset` | Clear campaign state |
@@ -185,7 +185,6 @@ Spawn automatically during play, invisibly:
 | `world-builder` | Exploring new areas |
 | `site-architect` | Laying out a site before a run |
 | `scene-illustrator` | High-impact visual beats |
-| `create-character` | New characters |
 
 ### Bash Tools
 

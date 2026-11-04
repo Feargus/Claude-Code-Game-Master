@@ -232,15 +232,11 @@ of doom. It rides into every scene as a THREAT CLOCK and fills as game time pass
 
 When play walks toward a new name: `bash tools/gm-playpack.sh from-book "<name>"` then RAG.
 
-Onboard the PC (the play pack's room + hook are the opening; onboard keeps them):
-
-```bash
-bash tools/gm-player.sh onboard canon "<NPC name>"
-# or: onboard original "<name>" "<one-line concept>"
-# or: onboard nameless
-```
-
-If they want a full sheet, `/create-character` is opt-in — never the price of entry.
+Create the PC: ask who they are (someone from the book, or their own concept), then run
+the `/create-character` interview, the fast way by default. Save with
+`bash tools/gm-player.sh create '<json>'`, adding `--canon "<NPC name>"` for someone from
+the book. The play pack's room + hook are the opening; `create` fits them to the first
+character.
 
 Enhance **only** the people in this room (so they speak in the book's words):
 

@@ -88,20 +88,8 @@ One-shots start fast and stay tight; pick a hook that fits the player's appetite
 
 ### Character Creation
 
-Ask how they want to enter:
-1. QUICK BUILD - Pre-made character (instant play)
-2. CUSTOM BUILD - Create your own
-
-If QUICK BUILD:
-- Spawn `create-character` with pre-gen templates
-- Standard array stats (15, 14, 13, 12, 10, 8)
-- Basic equipment package
-- Generic backstory ("wandering adventurer")
-- Present the finished sheet clearly, phone-friendly.
-
-If CUSTOM BUILD:
-- Spawn `create-character` agent normally
-- Present the finished sheet clearly, phone-friendly.
+Run the `/create-character` interview. For a one-shot, use its fast way: ask for a one-line
+concept, propose a complete character, let the player change what they like, save.
 
 ### Temporary World State
 
@@ -125,29 +113,17 @@ A player arrives with an "I love this book" spike. They came to *talk to someone
 Spending that on ability scores — or on extracting every city in the book — wastes it.
 Entry costs **one question**: *"Who are you in this world — or who did you come to meet?"*
 
-Ask it in the world's tone. Three doors — someone from the book, someone of their own,
-or no one yet. Persist the answer, open **that** room (one stage, the people in it),
-and start playing. Mechanics are inferred silently. The rest of the book walks on
-when they do.
+Ask it in the world's tone. Two answers: **someone from this world** (an NPC in the
+campaign; offer names that actually exist, scene context and `gm-npc.sh` know who they are)
+or **someone of their own** (a one-line concept). Then run the `/create-character`
+interview, the fast way by default: propose a complete character, let the player change
+what they like, save with `gm-player.sh create` (`--canon "<NPC>"` for someone from this
+world). Don't interrogate a player who wants to start playing.
 
-```bash
-bash tools/gm-player.sh onboard canon "<NPC name>"                 # a character from the source
-bash tools/gm-player.sh onboard original "<name>" "<one-line concept>"
-bash tools/gm-player.sh onboard nameless                           # a nameless traveler
-```
-
-- **canon** lifts that NPC's sheet and canonical voice from `npcs.json` — offer names that
-  actually exist in this world (scene context and `gm-npc.sh` know who they are).
-- **original** takes a name and a single line ("a thief with a debt"). Don't interrogate.
-- **nameless** is a real answer, not a fallback — the world names them in play.
-
-`onboard` refuses to overwrite a campaign that already has a PC (it names who is sitting
+`create` refuses to overwrite a campaign that already has a PC (it names who is sitting
 there). That refusal is a signal you asked the question at the wrong moment — check before
 you offer. If the player really is handing the story to someone new, add `--replace`, which
 archives the outgoing sheet to `fallen/` first.
-
-The full builder is the **opt-in deep dive**: if the player wants to roll stats, pick a
-class, and build a sheet properly, run `/create-character` instead. Offer it, never impose it.
 
 **After identity, before you open the scene, ask where/when they want to start.** Offer a
 fitting default (an iconic opening for this world/character) but make it plain they can name
@@ -257,8 +233,8 @@ When the PC dies (see Stakes & Death in CLAUDE.md and the wound rules in `gm-com
 3. **Offer the hand-off** (the show goes on — not GAME OVER). The three routes — take over a party member already in the scene, roll a new character, or step in as a canon figure from the source. Frame them however CLAUDE.md's Death Protocol calls for. (If solo with no party and no fitting canon figure, offer the last two only.)
 4. **SWAP in the new PC:**
    - Party member → `bash tools/gm-player.sh become "<name>"` (copies their party sheet into character.json, archives the fallen PC to `fallen/`).
-   - New character → spawn `create-character`, `gm-player.sh save-json '<json>'`, then `gm-player.sh set "<name>"`.
-   - Canon figure → onboarding canon path → flesh out via `create-character` if thin → save to character.json → `gm-player.sh set "<name>"`.
+   - New character → run the `/create-character` interview and save with `gm-player.sh create '<json>' --replace` (it archives the fallen PC to `fallen/`).
+   - Canon figure → the same interview with that NPC's data as suggestions, saved with `gm-player.sh create '<json>' --canon "<NPC>" --replace`.
 5. **Bridge the fiction** (how/why control passes), update location/scene, then resume play. The dead hero stays in the world's memory — referenced, mourned, looted, avenged. Threads and clocks persist.
 
 ---
@@ -308,11 +284,10 @@ bash tools/gm-body.sh show
 
 ### 2. Display Character Sheet
 
-Present the finished sheet clearly, phone-friendly: name, level, race, class, attributes (as die sizes), skills, luck, the body picture with its notes, armor and cyberware, features, gold, and inventory. No fenced boxes.
+Present the finished sheet clearly, phone-friendly: name, level, race, class, background, attributes (as die sizes), skills, luck, traits, perks, the campaign's own counters, the body picture with its notes, armor and cyberware, features, gold, and inventory. No fenced boxes.
 
 If no active character: don't print a sheet — ask the one question (see ENTERING A WORLD)
-and route to `bash tools/gm-player.sh onboard canon|original|nameless ...`, mentioning
-`/create-character` as the opt-in full builder for players who want the deep dive.
+and run the `/create-character` interview.
 
 ---
 

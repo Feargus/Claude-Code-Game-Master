@@ -10,7 +10,7 @@ sources:
   - { resource: /tools/gm-extract.sh }
   - { resource: /lib/opening_seed.py }
   - { resource: /lib/player_manager.py }
-  - { resource: /lib/identity_onboarding.py }
+  - { resource: /lib/new_character.py }
 generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:45:56Z }
 ---
 
@@ -35,7 +35,7 @@ distinct; those three do.
 | **A — Seed** | genre-aware questionnaire → `world-seed.json` (premise, tone, genre bend, voice, art style, chronicler) | — |
 | **B — Skeleton** | slim bible (voice + signature systems + this street), **shown for approval** | play gates on approval |
 | **C — Play pack** | draft the kit, then `gm-playpack.sh set` + `stage` — one room, present NPCs, exits, hook, primer | — |
-| **D — Handoff** | lock the chronicler + art style, author appearances for the stage, set `session_count: 0` + location from the pack, then the one identity question → `gm-player.sh onboard` | — |
+| **D — Handoff** | lock the chronicler + art style, author appearances for the stage, set `session_count: 0` + location from the pack, then the one identity question → the `/create-character` interview (`gm-player.sh create`) | — |
 
 ## The stage, not the planet
 
@@ -49,10 +49,9 @@ materializes it on demand. Do not census ahead.
 
 There is no pre-PC spine to open on. The opening comes from the play pack:
 `gm-playpack.sh set` writes the room + hook and marks the opening matched, so
-`gm-player.sh onboard` leaves it in place (`opening_seed.reseed_opening` fires
+`gm-player.sh create` leaves it in place (`opening_seed.reseed_opening` fires
 only for the legacy plot-spine path, read by both `player_manager.py` and
-`identity_onboarding.py`). `/create-character` remains the opt-in full sheet
-builder — never the price of entry.
+`new_character.py`). The character comes from the `/create-character` interview.
 
 ## Growing the world at the table
 
@@ -66,5 +65,5 @@ the campaign's mid- to long-term planning — authored as you run it, not before
 ## Related
 
 - [Import a book](import-a-book.md) — the same shelf, a PDF instead of authored canon
-- [Onboarding and death](onboarding-and-death.md) — the three-door identity handoff
+- [Onboarding and death](onboarding-and-death.md) — the one question and the interview
 - [Play a turn](play-turn.md) — the core loop the stage opens into

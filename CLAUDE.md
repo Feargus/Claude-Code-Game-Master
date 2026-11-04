@@ -19,7 +19,7 @@ Heavy mechanics + craft live in on-demand Skills (`.claude/skills/gm-*`).
 1. `[ -d ".venv" ] && uv run python -c "import anthropic"` fails → run `/setup`.
 2. `bash tools/gm-campaign.sh list` empty → route to `/gm` (offers New Adventure: create / import / one-shot).
 3. Campaigns exist but none is active (no `world-state/active-campaign.txt`) → show `bash tools/gm-campaign.sh list` and have the player pick, then `bash tools/gm-campaign.sh switch <name>`. Do NOT run `/setup`; state tools refuse to run until one is active.
-4. Active campaign but no `character.json` → identity-first onboarding ("Who are you in this world?": canon / original / nameless).
+4. Active campaign but no `character.json` → "Who are you in this world?" (someone from this world, or their own concept), then the `/create-character` interview.
 5. All good → greet, offer `/gm`.
 
 ## The Core Loop
@@ -43,8 +43,8 @@ PERSIST FIRST, then narrate, then offer the hand-off.
 
 SWAP (make the chosen character the active PC):
 - Party member → `bash tools/gm-player.sh become "<name>"` (copies their party sheet into character.json, archives the fallen PC to fallen/).
-- New character → spawn `create-character` (kit-aware: it follows the active kit, not a 5e wizard builder), persist via `gm-player.sh save-json '<json>'`, then `gm-player.sh set "<name>"`.
-- Canon figure → onboarding canon path (identity_onboarding from_canon) → flesh out via create-character if the sheet is thin → save to character.json → `gm-player.sh set "<name>"`.
+- New character → run the `/create-character` interview and save with `gm-player.sh create '<json>' --replace` (it archives the fallen PC to `fallen/`).
+- Canon figure → the same interview with that NPC's data as suggestions, saved with `gm-player.sh create '<json>' --canon "<NPC>" --replace`.
 
 ## Action Router — load the matching Skill on demand
 | Player says | Workflow | Skill |
@@ -128,7 +128,7 @@ All tools take `--json` for structured returns. **Always prefix with `bash tools
 - **WRONG**: `gm-enhance.sh query "free text"` (entity NAME lookup, not search). **RIGHT**: `gm-search.sh "free text" --rag-only`.
 
 ## Specialist agents (spawn proactively, invisibly)
-npc-builder, world-builder, site-architect (lays out a site before a run), create-character,
+npc-builder, world-builder, site-architect (lays out a site before a run),
 plot-weaver (async story planning — spawn IN THE BACKGROUND; develops one dormant thread from a seed).
 
 ## Output Format

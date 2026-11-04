@@ -193,23 +193,21 @@ Then display a summary box and hand off:
 Your world awaits its hero. Who are you in this world?
 ```
 
-Then ask that **one question** — identity first, mechanics later — and offer three doors:
+Then ask that **one question** — identity first — with two answers:
 
-- **someone from this world** → `bash tools/gm-player.sh onboard canon "<NPC name>"`.
-  The canon door draws from the NPCs in the play pack, so name a few of them (their
-  sheet and their canonical voice come along).
-- **someone of their own** → `bash tools/gm-player.sh onboard original "<name>" "<one-line concept>"`
-- **no one yet** → `bash tools/gm-player.sh onboard nameless`
+- **someone from this world:** an NPC from the play pack, so name a few of them.
+- **someone of their own:** a one-line concept.
+
+Then run the `/create-character` interview, the fast way by default: propose a complete
+character, let the player change what they like, and save with `gm-player.sh create`
+(`--canon "<NPC>"` for someone from this world).
 
 **After identity, before you open the scene, ask where/when they want to start.**
 Offer a fitting default but let them name their own opening — a specific location,
 scene, or point in the timeline — and build the play pack's `room`/`hook` around it.
 
-Persist the answer with `onboard` and open the scene — the play pack's room and
-hook are the opening; `onboard` leaves them in place. `/create-character`
-remains the **opt-in** full builder for a player who wants to roll a sheet properly
-— offer it, don't impose it. If they used `/create-character` (`save-json`), the
-first `gm-player.sh set` re-seeds the opening.
+Then open the scene. The play pack's room and hook are the opening; `create` fits
+them to the first character and leaves them in place after that.
 
 ---
 
@@ -219,7 +217,7 @@ first `gm-player.sh set` re-seeds the opening.
 - [ ] `ruleset.json` World Kit derived from this world (not a silent 5e default)
 - [ ] `play_pack` set + `gm-playpack.sh stage` (one room, present NPCs, exits, hook)
 - [ ] chronicler locked (`gm-image.sh chronicler`)
-- [ ] handed off to the one question (`gm-player.sh onboard ...`)
+- [ ] handed off to the one question and the `/create-character` interview (`gm-player.sh create`)
 
 ## Growing the world AT THE TABLE (the real "long-term planning")
 You do not pre-plan the campaign — you plan it as you run it. When you see a

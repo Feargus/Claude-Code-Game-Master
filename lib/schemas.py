@@ -288,12 +288,12 @@ def validate_character(data: Dict[str, Any], kit=None) -> Tuple[bool, List[str]]
             if extra:
                 errors.append(f"Character: attributes not in active kit schema: {sorted(extra)}")
 
-    # Required fields — only what every kit shares. race/class are 5e-flavored
-    # and legitimately absent on e.g. a nameless traveler or a Dune character.
-    required = ['name', 'level']
-    for field in required:
-        if not data.get(field):
-            errors.append(f"Character: missing {field}")
+    # Required fields — only what every kit shares. race/class are optional flavor.
+    # Level 0 is a real level (new characters start there), so only absence counts.
+    if not data.get('name'):
+        errors.append("Character: missing name")
+    if data.get('level') is None:
+        errors.append("Character: missing level")
 
     # Validate numeric fields
     numeric_fields = ['level', 'ac', 'proficiency_bonus', 'speed']
