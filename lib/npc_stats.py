@@ -4,9 +4,9 @@
 Extracted NPCs have null ac/hp/cr, so a GM can't run an encounter without inventing
 numbers. This assigns a difficulty-TIER proxy (hp + a cr/difficulty label) to
 combat-relevant NPCs and explicitly flags non-combatants as statless (distinct from
-"not yet enriched"). The proxy is kit-agnostic and intentionally coarse — exact stat
-blocks come from the kit's monster-manual agent at encounter time; this just makes
-every combatant runnable out of the box.
+"not yet enriched"). The proxy is kit-agnostic and intentionally coarse — the GM
+sets real stats at encounter time; this just makes every combatant runnable out of
+the box.
 """
 
 import json

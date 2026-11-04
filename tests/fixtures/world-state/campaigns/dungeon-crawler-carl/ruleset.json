@@ -10,6 +10,6 @@
     "tiers": [1000000, 100000000, 1000000000]
   },
   "resolution": { "model": "d20-vs-dc" },
-  "active_agents": ["monster-manual", "loot-dropper", "gear-master"],
+  "active_agents": ["npc-builder"],
   "rules_doc": "rules.md"
 }

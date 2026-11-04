@@ -132,7 +132,7 @@ def _make_npc_stub(name: str, referenced_by: str) -> dict:
     return {
         "name": name,
         "description": f"(Auto-stubbed minor character/threat referenced by '{referenced_by}' "
-                       f"but never extracted from the source. Spawn monster-manual/npc-builder "
+                       f"but never extracted from the source. Spawn npc-builder "
                        f"to flesh out.)",
         "attitude": "neutral",
         "tags": {"locations": [], "quests": []},

@@ -57,7 +57,7 @@ the progression model, and `kit`. Nothing later infers them, and a kit with no a
 is indistinguishable from the `DEFAULT_RULESET` fallback.
 
 `kit` is the machine-readable router, and `dnd5e` is the only value that unlocks the D&D
-mechanics skills and puts `spell-caster` in `active_agents` (`lib/book_bible.py:90-91`).
+mechanics skills.
 Every other book is `custom` — its magic is a signature system, not spell slots. A
 `ruleset.json` written before the field existed has no `kit`; `WorldKit.kit()` reads that
 as `custom` (`lib/world_kit.py:74`), which is the right answer for every non-D&D import.

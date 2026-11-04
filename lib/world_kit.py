@@ -18,7 +18,7 @@ ruleset.json shape:
   "progression": { "model": "resource-axis", "resource": "viewers",
                    "tiers": [1000000, 1000000000] },
   "resolution": { "model": "d20-vs-dc" },
-  "active_agents": ["monster-manual", "loot-dropper"],
+  "active_agents": ["npc-builder"],
   "skills": ["might", "guile"],  # optional; absent → []
   "signature_systems": [ { "name": "...", "summary": "...", "rules": "..." } ],
   "rules_doc": "rules.md"        # optional: campaign-scoped rules prose, loaded on demand
@@ -69,7 +69,7 @@ class WorldKit:
         return self.ruleset.get("name", "Generic Adventure")
 
     def kit(self) -> str:
-        """Kit identity: 'dnd5e' unlocks the D&D mechanics skills + dnd5eapi.
+        """Kit identity: 'dnd5e' unlocks the D&D mechanics skills.
 
         Anything else (default 'custom') runs the generic core + this ruleset.
         Legacy rulesets without the field are 'custom' — the safe reading, since

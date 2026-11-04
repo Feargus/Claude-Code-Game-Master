@@ -8,7 +8,7 @@ def test_loads_dcc_ruleset(dcc_world):
     assert k.name() == "Dungeon Crawler Carl"
     assert k.resolution_model() == "d20-vs-dc"
     assert k.progression_model() == "resource-axis"
-    assert "monster-manual" in k.active_agents()
+    assert "npc-builder" in k.active_agents()
 
 
 def test_resolves_through_generic_core(dcc_world):

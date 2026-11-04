@@ -103,16 +103,15 @@ def test_ruleset_carries_a_kit_and_no_spellcaster_for_custom(campaign):
     assert json.loads((campaign / "ruleset.json").read_text(encoding="utf-8")) == ruleset
     assert ruleset["kit"] == "custom"
     assert ruleset["name"] == "The Iron Tangle"
-    assert "spell-caster" not in ruleset["active_agents"]
+    assert ruleset["active_agents"] == ["npc-builder"]
     assert ruleset["stat_schema"]["attributes"] == ["str", "dex", "int"]
     assert ruleset["progression"] == {"model": "resource-axis", "resource": "viewers"}
 
 
-def test_dnd5e_kit_gets_the_spellcaster(campaign):
+def test_dnd5e_kit_is_recorded(campaign):
     book_bible.draft_bible(campaign)
     ruleset = book_bible.write_ruleset(campaign, kit="dnd5e")
     assert ruleset["kit"] == "dnd5e"
-    assert "spell-caster" in ruleset["active_agents"]
 
 
 def test_ruleset_will_not_clobber_a_sibling_kit(campaign):

@@ -44,7 +44,7 @@ The `secret` field is surfaced to the model as **existence only**: the session b
 ## Party members carry a second sheet, in a different shape
 
 Promote copies existing combat stats into the party sheet when the NPC has them
-(the stat-npcs proxy or a monster-manual lookup); defaults apply only to a
+(the stat-npcs proxy); defaults apply only to a
 genuinely statless NPC, and the output says which. Note what this is **not**: it is a
 nested sheet on the NPC record, not the flat top-level shape the PC uses
 (see [player character](player-character.md)). The two never converge except in
@@ -63,8 +63,7 @@ flags non-combatants `statless: True`.
 `statless` is meaningfully different from "no stats yet": it records the judgment that this
 character should never be rolled against. Treat a statless NPC as a scene, not an
 encounter; treat a tier as a difficulty dial to adjust in the moment, never as a canonical
-statblock. For a real statblock in a D&D-kit campaign, the `monster-manual` agent is the
-authority.
+statblock.
 
 ## Location tags: one field, since 2026-08-13
 

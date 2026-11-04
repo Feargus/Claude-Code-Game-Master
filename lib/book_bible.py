@@ -80,15 +80,13 @@ def draft_ruleset_from_bible(bible: Dict[str, Any], progression_model: str = "mi
 
     progression_model is chosen by the importer / human (default milestone, the
     safest book-native option). Resolution defaults to the universal d20-vs-dc core.
-    `kit` is the machine-readable router: 'dnd5e' unlocks the D&D mechanics skills
-    and the spell-caster agent, and the importer sets it ONLY when the book
+    `kit` is the machine-readable router: 'dnd5e' unlocks the D&D mechanics skills,
+    and the importer sets it ONLY when the book
     actually is a D&D module; every other book stays 'custom'.
     """
     progression = {"model": progression_model}
     progression.update(progression_config)
-    agents = ["monster-manual", "rules-master", "loot-dropper", "gear-master", "npc-builder"]
-    if kit == "dnd5e":
-        agents.append("spell-caster")
+    agents = ["npc-builder"]
     return {
         "name": bible.get("name", "Imported World"),
         "kit": kit,

@@ -128,9 +128,7 @@ All tools take `--json` for structured returns. **Always prefix with `bash tools
 - **WRONG**: `gm-enhance.sh query "free text"` (entity NAME lookup, not search). **RIGHT**: `gm-search.sh "free text" --rag-only`.
 
 ## Specialist agents (spawn proactively, invisibly)
-monster-manual + rules-master (book-first, kit-aware; dnd5eapi only for the
-dnd5e kit), spell-caster, gear-master, loot-dropper, npc-builder, world-builder,
-dungeon-architect, create-character, scene-illustrator (image gen — spawn IN THE BACKGROUND),
+npc-builder, world-builder, dungeon-architect, create-character, scene-illustrator (image gen — spawn IN THE BACKGROUND),
 plot-weaver (async story planning — spawn IN THE BACKGROUND; develops one dormant thread from a seed).
 
 ## Output Format

@@ -44,7 +44,7 @@ Every turn runs the same loop: **gather context → decide → execute → persi
 
 - **A world that keeps living.** Consequences you set in motion fire on their own when you return to a place or enough time passes. Named threat clocks tick whether you're watching or not. Between sessions, a small, bounded set of off-screen developments advance. The place feels alive because it *is* still running.
 
-- **Specialist sub-agents on tap.** A fight starts and a monster-manual agent grabs stats; you cast something and a spell-caster looks up the mechanics; you go shopping and a gear-master handles inventory; a haunting vista appears and a scene-illustrator paints it in the background. They're **book-first** — they read your world's own rules before reaching for anything external — and they spin up invisibly so the story never stops.
+- **Specialist sub-agents on tap.** A new face gets a backstory from npc-builder; a long-game idea becomes a dormant thread through plot-weaver; a haunting vista appears and a scene-illustrator paints it in the background. They're **book-first** — they read your world's own rules before reaching for anything external — and they spin up invisibly so the story never stops.
 
 - **Real stakes.** The character can die. Telegraphed, earned, never by GM fiat — but death is a valid forward outcome, and when it lands the harness runs a hand-off so the show goes on (take over a party member, roll a newcomer, step in as a canon figure). The world remembers the fallen.
 
@@ -181,11 +181,6 @@ Spawn automatically during play, invisibly:
 
 | Agent | Triggered by |
 |-------|--------------|
-| `monster-manual` | Combat encounters |
-| `spell-caster` | Casting spells |
-| `rules-master` | Mechanical edge cases |
-| `gear-master` | Shopping, identifying gear |
-| `loot-dropper` | Victory, treasure |
 | `npc-builder` | Meeting new NPCs |
 | `world-builder` | Exploring new areas |
 | `dungeon-architect` | Entering dungeons |
@@ -230,10 +225,6 @@ bash tools/gm-image.sh generate --title "The Sunken Crypt" \
 ```
 
 It calls OpenAI's `gpt-image-2`, saves the PNG into the campaign's `images/` folder, and prints a clickable `file://` link you open to view it (the VS Code terminal linkifies the path). Every generation is logged with an estimated cost — run `gm-image.sh log` for the running total. Requires `OPENAI_API_KEY` in `.env`; without it the GM just keeps narrating in text. Use `--quality low` for quick drafts, `high` for marquee moments.
-
-### The D&D 5e API, when it fits
-
-If your world *is* D&D-flavored, declare `"kit": "dnd5e"` in the campaign's `ruleset.json` and the harness pulls official rules, monsters, spells, and gear from the [D&D 5e API](https://www.dnd5eapi.co/) — grounding numbers in real mechanics instead of guessing. For every other book, your World Kit runs the show, and the D&D mechanics refuse to load (so a bespoke world can't be silently overwritten by 5e).
 
 ### The documentation brain
 
