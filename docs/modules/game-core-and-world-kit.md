@@ -109,11 +109,11 @@ Rolls and harm are not in the core any more: every roll is a skill contest
 (`lib/skill_contest.py`) and harm is wounds (`lib/body.py`). The old d20 / 2d6 /
 dice-pool resolution models and the HP lethality classifier were removed.
 
-## The kit decides which mechanics Skills are legitimate
+## No mechanics Skill is D&D-only any more
 
-`gm-levelup` encodes D&D 5e — hit dice and a level-20 XP table. None of that exists in `game_core`. Loading them for a non-5e kit
-imports rules the world never declared. The routing rule — STEP-0 defers to the
-scene-context KIT block — is in [lean core and skill routing](../conventions/lean-core-and-skill-routing.md).
+`gm-levelup` and `gm-conditions` were 5e and deferred to the KIT block. Both are now
+written for this fork's system (attributes as die sizes, skill contests, wounds), so no
+skill checks the kit any more.
 
 ## Related
 

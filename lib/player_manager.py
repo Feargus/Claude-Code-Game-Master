@@ -20,30 +20,10 @@ class PlayerManager(EntityManager):
     """Manage player character operations. Inherits from EntityManager for common functionality."""
 
     # Default XP thresholds (used only when the active World Kit does not declare
-    # its own xp-levels progression). NOT a hardcoded leveling path — see
-    # _xp_thresholds(), which delegates to the kit.
-    DEFAULT_XP_THRESHOLDS = [
-        0,       # Level 1
-        300,     # Level 2
-        900,     # Level 3
-        2700,    # Level 4
-        6500,    # Level 5
-        14000,   # Level 6
-        23000,   # Level 7
-        34000,   # Level 8
-        48000,   # Level 9
-        64000,   # Level 10
-        85000,   # Level 11
-        100000,  # Level 12
-        120000,  # Level 13
-        140000,  # Level 14
-        165000,  # Level 15
-        195000,  # Level 16
-        225000,  # Level 17
-        265000,  # Level 18
-        305000,  # Level 19
-        355000,  # Level 20
-    ]
+    # its own xp-levels progression). Index L = XP needed to go from level L to L+1:
+    # a character starts at level 0, and each level costs 100 more than the last
+    # (100, 300, 600, 1000, 1500, ...).
+    DEFAULT_XP_THRESHOLDS = [50 * (level + 1) * (level + 2) for level in range(20)]
 
     def __init__(self, world_state_dir: str = None):
         super().__init__(world_state_dir)
@@ -795,6 +775,60 @@ class PlayerManager(EntityManager):
             'equipment': char['equipment']
         }
 
+    def raise_stat(self, kind: str, target: str) -> Dict[str, Any]:
+        """Level-up: one attribute +1 (one die size up), or one skill +1.
+
+        A skill the sheet doesn't list yet starts at 1. Works on the active PC.
+        """
+        from skill_contest import ATTRIBUTES
+        char = self._load_character()
+        if not char:
+            print("[ERROR] No character yet")
+            return {'success': False, 'error': 'no character'}
+
+        if kind == 'attribute':
+            key = target.upper()
+            if key not in ATTRIBUTES:
+                print(f"[ERROR] Unknown attribute '{target}'. Use one of: {', '.join(ATTRIBUTES)}")
+                return {'success': False, 'error': f'unknown attribute: {target}'}
+            table = char.setdefault('stats', {})
+            old = table.get(key)
+            if not isinstance(old, int):
+                print(f"[ERROR] {char.get('name')} has no die for {key} yet")
+                return {'success': False, 'error': f'no die for {key}'}
+            table[key] = old + 1
+            new = table[key]
+        else:
+            if target.strip().lower() == 'default':
+                print("[ERROR] 'default' is not a skill")
+                return {'success': False, 'error': "'default' is not a skill"}
+            table = char.setdefault('skills', {})
+            key = next((k for k in table if k.lower() == target.lower()), target)
+            old = table.get(key)
+            new = 1 if old is None else old + 1
+            table[key] = new
+
+        if not self._save_character(char.get('name'), char):
+            return {'success': False}
+        shown = f"d{old} -> d{new}" if kind == 'attribute' else (f"{old} -> {new}" if old is not None else f"new, {new}")
+        print(f"RAISED {char.get('name')} {key}: {shown}")
+        return {'success': True, 'kind': kind, 'name': key, 'previous': old, 'current': new}
+
+    def set_perk(self, perk: str, function: str) -> Dict[str, Any]:
+        """Add or rewrite a perk on the active PC: its name and what it does."""
+        char = self._load_character()
+        if not char:
+            print("[ERROR] No character yet")
+            return {'success': False, 'error': 'no character'}
+        perks = char.setdefault('perks', {})
+        key = next((k for k in perks if k.lower() == perk.lower()), perk)
+        replaced = key in perks
+        perks[key] = function
+        if not self._save_character(char.get('name'), char):
+            return {'success': False}
+        print(f"PERK {char.get('name')} {'updated' if replaced else 'gained'} {key}: {function}")
+        return {'success': True, 'perk': key, 'function': function, 'replaced': replaced}
+
     def modify_condition(self, name: str, action: str, condition: Optional[str] = None) -> Dict[str, Any]:
         """
         Add, remove, or list conditions on a character
@@ -955,6 +989,16 @@ def main():
     cond_parser.add_argument('name', help='Character name')
     cond_parser.add_argument('cond_action', choices=['add', 'remove', 'list'], help='Action to perform')
     cond_parser.add_argument('condition', nargs='?', help='Condition name (required for add/remove)')
+
+    # Level-up: raise one attribute or one skill by 1
+    raise_parser = subparsers.add_parser('raise', help='Raise an attribute or a skill by 1')
+    raise_parser.add_argument('kind', choices=['attribute', 'skill'])
+    raise_parser.add_argument('target', help='Attribute (DFT) or skill name ("Long guns")')
+
+    # Perks: name and what it does
+    perk_parser = subparsers.add_parser('perk', help='Add or rewrite a perk')
+    perk_parser.add_argument('perk', help='Perk name')
+    perk_parser.add_argument('function', help='What it does')
 
     from cli_output import wants_json, strip_json_flag, emit, emit_error
     json_mode = wants_json()
@@ -1147,6 +1191,14 @@ def main():
     elif args.action == 'condition':
         result = manager.modify_condition(args.name, args.cond_action, args.condition)
         if not result.get('success'):
+            sys.exit(1)
+
+    elif args.action == 'raise':
+        if not manager.raise_stat(args.kind, args.target).get('success'):
+            sys.exit(1)
+
+    elif args.action == 'perk':
+        if not manager.set_perk(args.perk, args.function).get('success'):
             sys.exit(1)
 
 

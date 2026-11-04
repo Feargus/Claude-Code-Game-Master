@@ -53,7 +53,7 @@ SWAP (make the chosen character the active PC):
 | "I try to..." | Skill contest | `gm-skills` |
 | "I go to..." (cave/ruin) | Dungeon exploration | `gm-dungeon` |
 | Apply a condition | Conditions | `gm-conditions` |
-| LEVEL_UP / milestone | Progression (kit's model) | `gm-levelup` |
+| LEVEL_UP | Level-up | `gm-levelup` |
 | Narrate / voice an NPC | Narration craft | `gm-craft` |
 
 If a skill fails to load, fall back to the matching section in the archived full

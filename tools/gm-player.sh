@@ -152,6 +152,24 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/player_manager.py" loot "$@"
         ;;
 
+    "raise")
+        if [ -z "$1" ] || [ -z "$2" ]; then
+            echo "Usage: gm-player.sh raise attribute <ATTR>     (one die size up, e.g. DFT)"
+            echo "       gm-player.sh raise skill \"<skill>\"     (+1; a new skill starts at 1)"
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/player_manager.py" raise "$1" "$2"
+        ;;
+
+    "perk")
+        if [ -z "$1" ] || [ -z "$2" ]; then
+            echo "Usage: gm-player.sh perk \"<name>\" \"<what it does>\""
+            echo "Example: gm-player.sh perk \"Night eyes\" \"+2 Awareness in the dark, -2 in bright light\""
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/player_manager.py" perk "$1" "$2"
+        ;;
+
     "condition")
         if [ -z "$1" ] || [ -z "$2" ]; then
             echo "Usage: gm-player.sh condition <character_name> <action> [condition]"
@@ -203,6 +221,8 @@ case "$ACTION" in
         echo "  gold <name> [+/-amount]      - Modify or show character gold"
         echo "  inventory [name] [action]    - Manage inventory (add/remove/list; defaults to active PC + list)"
         echo "  condition <name> <action>    - Manage conditions (add/remove/list)"
+        echo "  raise attribute|skill <x>    - Level-up: +1 to an attribute (die size) or a skill"
+        echo "  perk <name> <what it does>   - Add or rewrite a perk"
         echo "  loot <name> --gold X --items - Batch add items + gold at once"
         echo "  level-check <name>           - Check XP and level status"
         echo "  save-json '<json>'           - Save complete character from JSON"

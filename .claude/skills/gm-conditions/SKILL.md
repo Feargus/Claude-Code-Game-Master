@@ -1,28 +1,34 @@
 ---
 name: gm-conditions
-description: Status conditions and exhaustion reference (blinded, charmed, frightened, grappled, paralyzed, poisoned, prone, restrained, stunned, unconscious, etc.). Load when applying or resolving a condition. Persist via gm-condition.sh (PC) / gm-npc.sh condition (party) / gm-combat.sh condition (enemies).
+description: Conditions — temporary states such as blinded, grappled, frightened, poisoned or exhausted, what each does, and how to persist them. Load when applying or resolving a condition.
 ---
 
 # Conditions
 
-The condition list below is 5e — apply it only when the scene-context KIT block says `dnd5e`.
+A condition is the character's own temporary state, so it is a **disadvantage** on the attribute it affects, or something the character **can't do**, never a modifier (see [advantage or modifier](../gm-skills/SKILL.md#advantage-or-modifier)). Wounds are not conditions; they are in [gm-combat](../gm-combat/SKILL.md).
 
-| Condition | Effect |
-|-----------|--------|
-| Blinded | Can't see; auto-fail sight checks; disadvantage on attacks |
-| Charmed | Can't attack charmer; charmer has advantage on social checks |
-| Deafened | Can't hear; auto-fail hearing checks |
-| Frightened | Disadvantage while source in sight; can't move closer |
-| Grappled | Speed 0 |
-| Incapacitated | No actions or reactions |
-| Paralyzed | Incapacitated; can't move/speak; auto-fail Str/Dex saves; melee crits |
-| Poisoned | Disadvantage on attacks and ability checks |
-| Prone | Disadvantage on attacks; melee vs it has advantage |
-| Restrained | Speed 0; disadvantage on attacks and Dex saves |
-| Stunned | Incapacitated; can't move; barely speak |
-| Unconscious | Incapacitated; can't move/speak; unaware; drops prone |
+Apply a condition when the story causes it, and remove it as soon as it ends. Pass its disadvantage with the condition as the reason: `--active-dis NRV "frightened"`.
 
-**Unconscious at 0 HP is the dying gate, not death.** It resolves to stable (healed/saves) or dead (kit's death rule). On PC death, persist it and run the Death Protocol (CLAUDE.md).
+```
+bash tools/gm-condition.sh add Fearghas "grappled"
+bash tools/gm-condition.sh remove Fearghas "grappled"
+bash tools/gm-combat.sh condition "street thug 1" add prone     # an enemy in a fight
+```
 
-## Exhaustion
-1: disadvantage on ability checks · 2: speed halved · 3: disadvantage on attacks & saves · 4: HP max halved · 5: speed 0 · 6: death.
+## Examples
+
+Not a closed list: use these as they are, adapt them, or invent new ones the same way.
+
+| Condition | Effect | Ends |
+|---|---|---|
+| Blinded | Disadvantage on DFT and ITU when sight matters. Can't aim at anything out of reach. | Sight returns. |
+| Deafened | Disadvantage on ITU when hearing matters. Can't follow speech. | Hearing returns. |
+| Dazed | Disadvantage on LOG and ITU. | After a beat. |
+| Stunned | No action. | After a beat. |
+| Frightened | Disadvantage on NRV. Won't move closer to the source on their own. | The source is gone, or a Composure roll. |
+| Grappled | Held: can't move away. Disadvantage on AGI. | Breaking free: Brawling or Athletics against the holder's Brawling. |
+| Restrained | Tied, pinned or trapped: can't move. Disadvantage on AGI and DFT. | Cut, picked or forced free. |
+| Prone | Lying down: disadvantage on AGI in close combat. Counts as cover against ranged attacks. | Standing up, which takes the move. |
+| Poisoned, drugged, drunk | Disadvantage on the attribute the substance hits: VIG for sickness, LOG or ITU for intoxication, NRV for fear toxins. | It wears off or is treated. |
+| Unconscious | No action, unaware of everything. An attack needs no roll to hit. | Waking up. |
+| Exhausted | After 48 hours without sleep or rest: disadvantage on every roll, on its anchor attribute. | Sleep or real rest. |

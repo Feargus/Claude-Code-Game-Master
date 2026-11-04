@@ -47,29 +47,12 @@ exactly that reason.
 Adding a skill without adding it to `ALL_SKILLS` and the router leaves it unroutable and
 untested.
 
-## The D&D-only skill; STEP-0 defers to the KIT block
+## No skill is D&D-only any more
 
-`gm-levelup` encodes 5e — hit dice and an XP table. (`gm-combat` was D&D-only too; in this fork it's the fight procedure for the skill-contest system.) It opens with a **one-line STEP 0**: read the scene-context KIT
-block, and unless it is `dnd5e`, close the skill and use the generic core + the active
-ruleset. That is context deference, not a tool call — no skill instructs
-`world_kit.py info` for what the brief now carries. Enforcement:
-`test_dnd_only_skills_carry_the_kit_guard` asserts KIT-block / `dnd5e` deference and
-forbids the old info-call. `WorldKit.kit()` still supplies the identity —
-`ruleset.json`'s `kit` field, defaulting to `"custom"` when absent, so a legacy or
-bespoke world can never accidentally qualify as D&D. A campaign that *wants* the 5e
-machinery declares `"kit": "dnd5e"` in its ruleset.
-
-(Until 2026-08-13 nothing enforced the split, and loading `gm-combat` in a Dune campaign
-silently imported 5e rules — the failure read as "the world isn't distinctive", not as an
-error. Until the KIT block landed, the guard paid a STEP-0 tool call to re-derive what
-context now prints.)
-
-The guard is still an instruction a model follows, not a hard interlock — the honest
-enforcement tier is "tested prompt", one step below "lint rule".
-
-`gm-conditions` loads freely as a judgment framework, but its 5e condition list
-applies only when the KIT block says `dnd5e`. `gm-skills`, `gm-social`, `gm-dungeon`
-and `gm-craft` stay kit-agnostic.
+`gm-combat`, `gm-levelup` and `gm-conditions` used to be 5e and opened with a STEP 0 that
+deferred to the scene-context KIT block. All three are now written for this fork's
+system, so the guard and its test are gone. `WorldKit.kit()` still reads `ruleset.json`'s
+`kit` field, defaulting to `"custom"`.
 
 ## Related
 

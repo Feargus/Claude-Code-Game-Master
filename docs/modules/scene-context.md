@@ -41,11 +41,10 @@ rendered "ROLL these", distinct from the prose rules block).
 Eight of those blocks carry design decisions that are not obvious from reading them:
 
 - **KIT is ambient so skills do not re-derive it.** It sits right under the campaign
-  header and names kit identity, resolution, progression, vitals, and skills, loaded
+  header and names kit identity, progression, vitals, and skills, loaded
   via `WorldKit(world_state_dir)`. A missing `kit` field reads as `custom` — DCC's
   fixture is that case. If `WorldKit` cannot load (no active campaign, a throw), the
-  block is skipped rather than crashing the brief. `gm-levelup`
-  defers to this block instead of calling `world_kit.py info`.
+  block is skipped rather than crashing the brief.
 
 - **PRIMER is tonight's table.** When `campaign-overview.json.play_pack` has any
   field set, `render_primer` appends `--- PRIMER ---` (whose story, this room,

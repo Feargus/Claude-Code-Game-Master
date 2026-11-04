@@ -172,7 +172,7 @@ The lean core loads these only when the moment calls for it:
 | `gm-skills` | You attempt something uncertain |
 | `gm-dungeon` | You enter a cave, ruin, or complex |
 | `gm-conditions` | A status effect is applied |
-| `gm-levelup` | You hit a milestone |
+| `gm-levelup` | You level up |
 | `gm-craft` | Narration and pacing wisdom |
 
 ### Specialist Agents

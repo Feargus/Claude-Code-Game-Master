@@ -145,7 +145,7 @@ def test_bare_string_progression_does_not_break_xp_reads(tmp_path):
 def test_bare_string_xp_progression_still_levels(tmp_path):
     world = _world(tmp_path, "terse-xp", {"progression": "xp-levels"})
     result = PlayerManager(str(world)).award_xp("Pilgrim", 300)
-    assert result["new_level"] == 2 and result["next_level_xp"] == 900
+    assert result["new_level"] == 2 and result["next_level_xp"] == 600
 
 
 def test_level_alias_kit_gets_scaled_spectacle_xp(tmp_path):

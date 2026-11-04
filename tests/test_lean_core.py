@@ -75,32 +75,12 @@ def test_craft_skill_preserves_the_soul():
     assert "Yes, and" in text and "Persist before narrating" in text
 
 
-DND_ONLY_SKILLS = ["gm-levelup"]
-
-
-def test_dnd_only_skills_carry_the_kit_guard():
-    for name in DND_ONLY_SKILLS:
-        text = (ROOT / ".claude" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
-        assert "KIT" in text, f"{name} must defer to the scene-context KIT block"
-        assert "dnd5e" in text, f"{name} must check for dnd5e"
-        assert "world_kit.py info" not in text, (
-            f"{name} must not instruct a world_kit.py info call"
-        )
-
-
 def test_no_skill_instructs_world_kit_info():
     for name in ALL_SKILLS:
         text = (ROOT / ".claude" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
         assert "world_kit.py info" not in text, (
             f"{name} must not instruct world_kit.py info for what context now carries"
         )
-
-
-def test_judgment_skills_defer_five_e_tables_to_kit_block():
-    for name in ("gm-conditions",):
-        text = (ROOT / ".claude" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
-        assert "KIT" in text, f"{name} must defer 5e tables to the KIT block"
-        assert "dnd5e" in text, f"{name} must name dnd5e as the kit that unlocks them"
 
 
 def test_world_kit_exposes_kit_identity():
