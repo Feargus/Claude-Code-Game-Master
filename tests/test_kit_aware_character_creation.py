@@ -1,5 +1,5 @@
 """Tests for character creation: one path for every world (no D&D branch); saves
-warn on the 10/10 HP fallback and do not require 5e race/class.
+do not require 5e race/class.
 """
 
 import json
@@ -120,26 +120,10 @@ def test_custom_kit_sheet_without_race_class_saves_and_validates(tmp_path):
     payload = {
         "name": "Nameless",
         "level": 1,
-        "attributes": {"might": 14, "guile": 11, "grit": 13},
-        "hp": {"current": 20, "max": 20},
+        "attributes": {"STR": 14, "AGI": 11, "VIG": 13},
     }
     r = _save(world, payload)
     assert r.returncode == 0, r.stdout + r.stderr
     sheet = _sheet(world)
     ok, errs = validate_character(sheet, WorldKit(str(world)))
     assert ok, errs
-
-
-def test_save_warnings_on_10_10_fallback(tmp_path):
-    world = _make_world(tmp_path, "conan-live", CONAN_LIVE_RULESET)
-    payload = {k: v for k, v in CONAN.items() if k != "hp"}
-    # No race/class either — custom kit must not require them.
-    payload.pop("race", None)
-    payload.pop("class", None)
-    r = _save(world, payload)
-    assert r.returncode == 0, r.stdout + r.stderr
-    result = json.loads(r.stdout)
-    assert _sheet(world)["hp"] == {"current": 10, "max": 10}
-    warnings = result["warnings"]
-    assert isinstance(warnings, list) and warnings
-    assert any("10/10" in w for w in warnings)

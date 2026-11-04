@@ -1,5 +1,5 @@
-"""Tests for character-save-kit-vitals: saving a PC and tracking vitals honors the
-active World Kit instead of hardcoding D&D 5e.
+"""Tests for the campaign's own counters (ruleset `stat_schema.vitals`): they are saved
+with a new character and read or changed with `gm-player.sh vital`.
 
 Both fixture worlds are built in tmp_path, so nothing here reads or writes the
 repo's world-state (the live active-campaign.txt is never touched).
@@ -22,8 +22,8 @@ HYBORIAN_RULESET = {
     "name": "The Hyborian Age",
     "kit": "hyborian",
     "stat_schema": {
-        "attributes": ["might", "guile", "grit"],
-        "vitals": ["hp", "vigor", "corruption"],
+        "attributes": ["STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP"],
+        "vitals": ["vigor", "corruption"],
     },
     "progression": {"model": "milestone"},
     "active_agents": [],
@@ -35,8 +35,7 @@ CONAN = {
     "race": "Cimmerian",
     "class": "Reaver",
     "level": 6,
-    "attributes": {"might": 18, "guile": 13, "grit": 17},
-    "hp": {"current": 58, "max": 58},
+    "attributes": {"STR": 18, "AGI": 13, "VIG": 17},
     "vigor": {"current": 5, "max": 5},
     "corruption": 0,
 }
@@ -75,7 +74,8 @@ def _sheet(world):
 def test_attributes_is_the_stat_key(hyborian_world):
     r = _save(hyborian_world, CONAN)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert _sheet(hyborian_world)["stats"] == CONAN["attributes"]
+    stats = _sheet(hyborian_world)["stats"]
+    assert stats["STR"] == 18 and stats["AGI"] == 13 and stats["LOG"] == 12
 
 
 def test_stats_is_still_accepted_as_a_legacy_alias(hyborian_world):
@@ -83,18 +83,13 @@ def test_stats_is_still_accepted_as_a_legacy_alias(hyborian_world):
     legacy["stats"] = CONAN["attributes"]
     r = _save(hyborian_world, legacy)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert _sheet(hyborian_world)["stats"] == CONAN["attributes"]
+    assert _sheet(hyborian_world)["stats"]["STR"] == 18
 
 
-def test_authored_max_hp_is_preserved(hyborian_world):
+def test_no_5e_fields_on_the_sheet(hyborian_world):
     _save(hyborian_world, CONAN)
-    hp = _sheet(hyborian_world)["hp"]
-    assert hp["max"] == 58 and hp["current"] == 58
-
-
-def test_no_5e_save_block_on_a_non_dnd5e_sheet(hyborian_world):
-    _save(hyborian_world, CONAN)
-    assert "saves" not in _sheet(hyborian_world)
+    sheet = _sheet(hyborian_world)
+    assert not {"saves", "hp", "ac"} & set(sheet)
 
 
 def test_kit_vitals_persist(hyborian_world):
@@ -146,7 +141,7 @@ def test_hp_is_refused_because_wounds_replaced_it(hyborian_world):
     mgr = PlayerManager(str(hyborian_world))
     result = mgr.modify_vital(None, "hp", -8)
     assert result["success"] is False and "gm-body.sh" in result["error"]
-    assert _sheet(hyborian_world)["hp"]["current"] == 58
+    assert "hp" not in _sheet(hyborian_world)
 
 
 def test_every_vital_response_has_the_same_shape(hyborian_world):
@@ -158,16 +153,3 @@ def test_every_vital_response_has_the_same_shape(hyborian_world):
 
     keys = {"success", "name", "vital", "current", "max"}
     assert keys <= vigor.keys() and keys <= read.keys()
-
-
-def test_non_dnd5e_missing_hp_warns_and_defaults_to_10(hyborian_world):
-    """Unauthored HP on a non-dnd5e kit persists 10/10 and names the fallback."""
-    payload = {k: v for k, v in CONAN.items() if k != "hp"}
-    r = _save(hyborian_world, payload)
-    assert r.returncode == 0, r.stdout + r.stderr
-    result = json.loads(r.stdout)
-    assert _sheet(hyborian_world)["hp"] == {"current": 10, "max": 10}
-    warnings = result["warnings"]
-    assert isinstance(warnings, list) and warnings
-    assert any("10/10" in w for w in warnings)
-    assert any("author" in w.lower() for w in warnings)
