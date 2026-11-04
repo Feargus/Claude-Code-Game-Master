@@ -170,7 +170,7 @@ The lean core loads these only when the moment calls for it:
 | `gm-combat` | A fight breaks out |
 | `gm-social` | You talk to / read an NPC |
 | `gm-skills` | You attempt something uncertain |
-| `gm-dungeon` | You enter a cave, ruin, or complex |
+| `gm-sites` | You set out on a run, a job or a dungeon |
 | `gm-conditions` | A status effect is applied |
 | `gm-levelup` | You level up |
 | `gm-craft` | Narration and pacing wisdom |
@@ -183,7 +183,7 @@ Spawn automatically during play, invisibly:
 |-------|--------------|
 | `npc-builder` | Meeting new NPCs |
 | `world-builder` | Exploring new areas |
-| `dungeon-architect` | Entering dungeons |
+| `site-architect` | Laying out a site before a run |
 | `scene-illustrator` | High-impact visual beats |
 | `create-character` | New characters |
 

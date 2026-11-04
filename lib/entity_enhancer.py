@@ -980,7 +980,7 @@ def main():
                 print(f"  {room['room_number']}. {room['name']}{status_str}")
         else:
             print("\n** No room structure defined **")
-            print("Consider spawning dungeon-architect to generate rooms.")
+            print("Consider spawning site-architect to lay out its areas.")
 
         # Output JSON for script parsing
         print("\n--- JSON ---")

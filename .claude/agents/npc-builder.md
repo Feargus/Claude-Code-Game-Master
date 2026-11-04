@@ -103,35 +103,7 @@ Effective queries for NPC inspiration:
 - Give them something to lose
 
 ### For Party Member NPCs:
-Party members (allies who travel with the player) have full character sheets with combat stats.
-
-**GM Control Reminder:** Party member stats are GM-controlled, not player-controlled. When setting up a party member's combat stats, you (the GM) determine appropriate values based on the NPC's narrative description and role. Players don't get to dictate these values.
-
-**Promoting an NPC to party member:**
-```bash
-bash tools/gm-npc.sh promote "Grimjaw"  # Adds default stats (HP 10, AC 10)
-```
-
-**Setting up combat stats:**
-```bash
-bash tools/gm-npc.sh set "Grimjaw" ac 12
-bash tools/gm-npc.sh set "Grimjaw" class "Fighter"
-bash tools/gm-npc.sh set "Grimjaw" level 2
-bash tools/gm-npc.sh set "Grimjaw" attack 4
-bash tools/gm-npc.sh set "Grimjaw" damage "1d8+2"
-bash tools/gm-npc.sh set "Grimjaw" hp_max 18
-bash tools/gm-npc.sh equip "Grimjaw" "Chainmail"
-bash tools/gm-npc.sh feature "Grimjaw" add "Second Wind"
-```
-
-**During combat:**
-```bash
-bash tools/gm-npc.sh hp "Grimjaw" -4       # Takes damage
-bash tools/gm-npc.sh condition "Grimjaw" add "poisoned"
-bash tools/gm-npc.sh party                 # Check all party members
-```
-
-When enhancing party members, consider both narrative depth AND their combat role.
+Allies who travel with the player. Give them their own goals and limits, so they are people, not tools. Their stats are not your job: the GM writes them in `npcs.json`, scaled by `.claude/skills/gm-skills/mobs.json`.
 
 ### For Merchant NPCs:
 - Add source of goods

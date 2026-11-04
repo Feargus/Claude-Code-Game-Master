@@ -132,7 +132,7 @@ Found [X] passages about this dungeon. I can extract:
 - Key features: [traps, treasures, secrets]
 
 **Options:**
-[G] Generate room structure - Spawn dungeon-architect with source passages
+[G] Generate room structure - Spawn site-architect with source passages
 [E] Enhance description only - Add context without generating rooms
 [S] Skip - Do nothing
 ```
@@ -165,10 +165,10 @@ When user chooses [G]enerate:
    Please wait while I create the room layout from source material.
    ```
 
-2. Spawn dungeon-architect agent in **foreground** with source passages:
+2. Spawn site-architect agent in **foreground** with source passages:
 
    ```
-   Task(dungeon-architect):
+   Task(site-architect):
      "Generate dungeon '[Dungeon Name]' using these source passages:
 
      PASSAGE 1: '[text from RAG]'
