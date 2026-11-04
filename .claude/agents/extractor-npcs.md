@@ -19,9 +19,7 @@ If you encounter errors or timeouts, write what you have so far. An empty file i
 
 Detect the document type and adjust extraction accordingly:
 
-**D&D/Game Modules**: Extract as NPCs
-- Look for: stat blocks, AC/HP/CR, attitudes, dialogue, encounter descriptions
-- Include: combat stats, abilities, quest involvement
+Extract story only: who, what, where, why it matters. Never extract game mechanics (stats, AC/HP/CR, rarity, prices, levels, encounter tables); the GM improvises those in play.
 
 **Fiction/Books**: Extract as Characters
 - Look for: character names, descriptions, relationships, motivations, dialogue
@@ -42,10 +40,9 @@ Focus on extracting:
 2. **Descriptions** - Physical appearance, personality, background (aim for 80+ words)
 3. **Attitudes** - How they typically interact (friendly/neutral/hostile/suspicious/helpful)
 4. **Locations** - Where they can be found or appear
-5. **Stats** - Combat stats if provided (D&D content)
-6. **Dialogue/quotes** - IMPORTANT: Extract actual quoted dialogue! Look for text in quotation marks spoken by or attributed to the character. Capture their exact words.
-7. **Relationships** - Connections to other characters
-8. **Role** - Their function in the story/document
+5. **Dialogue/quotes** - IMPORTANT: Extract actual quoted dialogue! Look for text in quotation marks spoken by or attributed to the character. Capture their exact words.
+6. **Relationships** - Connections to other characters
+7. **Role** - Their function in the story/document
 
 ### Dialogue Extraction (Critical!)
 
@@ -70,12 +67,6 @@ Write your extracted characters to a JSON file following this exact schema:
       "attitude": "friendly|neutral|hostile|suspicious|helpful",
       "location_tags": ["Location 1", "Location 2"],
       "events": ["Notable event or story involvement"],
-      "stats": {
-        "ac": 15,
-        "hp": 45,
-        "cr": "3",
-        "abilities": ["Multiattack", "Spellcasting"]
-      },
       "dialogue": ["Notable quote or conversation topic"],
       "source": "Document name or section"
     }
@@ -117,9 +108,7 @@ Process the query results, not raw chunk files. This is more efficient and finds
 - Include unnamed but notable characters (e.g., "the scarred orc blacksmith", "the mysterious woman in red")
 - Combine information if the same character appears in multiple chunks
 - Default attitude to "neutral" if not specified
-- Include combat stats only if explicitly provided
 - Make descriptions narrative and engaging
-- For non-D&D content, omit the stats field or leave it empty
 
 ## Quality Checks
 

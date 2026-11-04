@@ -19,9 +19,7 @@ If you encounter errors or timeouts, write what you have so far. An empty file i
 
 Detect the document type and adjust extraction accordingly:
 
-**D&D/Game Modules**: Extract as Locations
-- Look for: room descriptions, area maps, numbered rooms, dungeon layouts
-- Include: dimensions, hazards, inhabitants, connections, treasures
+Extract story only: who, what, where, why it matters. Never extract game mechanics (stats, AC/HP/CR, rarity, prices, levels, encounter tables); the GM improvises those in play.
 
 **Fiction/Books**: Extract as Settings
 - Look for: scene descriptions, setting details, world-building
@@ -126,7 +124,7 @@ Process the query results, not raw chunk files. This is more efficient and finds
 Before saving, ensure:
 - Each location has a unique, clear name
 - Descriptions are rich and atmospheric
-- Connections form a logical map (for D&D content)
+- Connections form a logical map
 - Position descriptions help understand layout
 - Important features aren't missed
 

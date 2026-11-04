@@ -19,9 +19,7 @@ If you encounter errors or timeouts, write what you have so far. An empty file i
 
 Detect the document type and adjust extraction accordingly:
 
-**D&D/Game Modules**: Extract as Items
-- Look for: magic items, treasure lists, equipment, loot tables
-- Include: rarity, attunement, mechanics, value, curses
+Extract story only: who, what, where, why it matters. Never extract game mechanics (stats, AC/HP/CR, rarity, prices, levels, encounter tables); the GM improvises those in play.
 
 **Fiction/Books**: Extract as Notable Objects
 - Look for: important objects, symbolic items, plot-relevant things
@@ -41,10 +39,9 @@ Focus on extracting:
 1. **Names** - Any named or distinctive objects
 2. **Descriptions** - Physical and narrative description
 3. **Type** - Category of object
-4. **Significance** - Why it matters (plot, mechanics, value)
+4. **Significance** - Why it matters in the story
 5. **Location** - Where it's found
 6. **Owner** - Who has it (if applicable)
-7. **Mechanics** - Game rules if applicable (D&D content)
 
 ## Output Format
 
@@ -56,13 +53,8 @@ Write your extracted objects to a JSON file following this exact schema:
     "Item Name": {
       "name": "Item Name",
       "description": "Physical and narrative description",
-      "type": "weapon|armor|potion|scroll|wondrous|treasure|equipment|prop|artifact",
-      "rarity": "common|uncommon|rare|very rare|legendary|artifact",
-      "mechanics": "Game mechanics, bonuses, and special abilities (if applicable)",
-      "value": "500 gp or narrative value",
+      "type": "weapon|armor|tool|device|treasure|equipment|prop|artifact",
       "location": "Where it's found or who has it",
-      "attunement": true,
-      "cursed": false,
       "source": "Document name or section"
     }
   }
@@ -72,13 +64,6 @@ Write your extracted objects to a JSON file following this exact schema:
 **Note**: Always use the "items" key in output for consistency with the merge system, regardless of document type.
 
 ## Object Categories
-
-### For D&D/Games
-- **Magic Items**: Weapons, armor, wondrous items, artifacts
-- **Treasures**: Coins, gems, art objects, valuable goods
-- **Equipment**: Special or notable mundane items
-- **Consumables**: Potions, scrolls, wands with charges
-- **Quest Items**: Keys, maps, plot-relevant objects
 
 ### For Fiction/Scripts
 - **Plot Objects**: Items central to the story
@@ -105,7 +90,7 @@ Write your extracted objects to a JSON file following this exact schema:
 Use the RAG query tool to find relevant chunks:
 ```bash
 bash tools/gm-search.sh --rag-only "items equipment weapons armor treasure" 50
-bash tools/gm-search.sh --rag-only "magic item legendary rare spell scroll" 30
+bash tools/gm-search.sh --rag-only "device weapon artifact relic heirloom" 30
 bash tools/gm-search.sh --rag-only "loot reward gold inventory" 30
 ```
 
@@ -121,12 +106,11 @@ Process the query results, not raw chunk files. This is more efficient and finds
 ## Important Notes
 
 - Include both magical/special items AND narratively significant mundane objects
-- For D&D content, include attunement requirements and curse status
 - Include monetary value when specified
 - Describe both appearance AND significance
 - Group similar items sensibly (e.g., "50 gp in mixed coins")
 - Include items found on characters or in shops/scenes
-- For non-D&D content, focus on narrative significance over mechanics
+- Focus on narrative significance, never on mechanics
 
 ## Quality Checks
 

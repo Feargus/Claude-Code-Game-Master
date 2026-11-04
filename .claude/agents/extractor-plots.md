@@ -19,9 +19,7 @@ If you encounter errors or timeouts, write what you have so far. An empty file i
 
 Detect the document type and adjust extraction accordingly:
 
-**D&D/Game Modules**: Extract as Quests/Plot Hooks
-- Look for: quest descriptions, objectives, rewards, encounters
-- Include: level requirements, NPCs involved, rewards, consequences
+Extract story only: who, what, where, why it matters. Never extract game mechanics (stats, AC/HP/CR, rarity, prices, levels, encounter tables); the GM improvises those in play.
 
 **Fiction/Books**: Extract as Plot Points/Themes
 - Look for: story beats, conflicts, themes, character arcs, mysteries
@@ -66,7 +64,6 @@ Write your extracted story elements to a JSON file following this exact schema:
       ],
       "rewards": "Outcomes, rewards, or resolutions",
       "consequences": "What happens if ignored or failed",
-      "level_range": "3-5 (for D&D) or narrative context",
       "source": "Document name or section"
     }
   }
@@ -76,12 +73,6 @@ Write your extracted story elements to a JSON file following this exact schema:
 **Note**: Always use the "plot_hooks" key in output for consistency with the merge system, regardless of document type.
 
 ## Story Element Types
-
-### For D&D/Games
-- **Main Quests**: Central storyline quests
-- **Side Quests**: Optional but rewarding
-- **Random Encounters**: Triggered by conditions
-- **Faction Quests**: Organization missions
 
 ### For Fiction/Books
 - **Plot Points**: Key story beats
@@ -147,7 +138,6 @@ Process the query results, not raw chunk files. This is more efficient and finds
 - Include failure conditions and alternate outcomes
 - Specify if elements are time-sensitive
 - Note moral choices and their impacts
-- Include random encounter tables if present (D&D)
 - For fiction, identify themes and symbolism
 
 ## Quality Checks
