@@ -70,23 +70,20 @@ if [ ! -f "$CHAR" ]; then
 fi
 
 # --- Character fields -------------------------------------------------------
-IFS=$'\t' read -r NAME RACE CLASS LEVEL AC GP HP_CUR HP_MAX XP_CUR XP_NEXT LOC < <(
+IFS=$'\t' read -r NAME RACE CLASS LEVEL GP XP_CUR XP_NEXT LOC < <(
     jq -r '
       [ (.name // .identity.name // "?"),
         (.race // .identity.race // "?"),
         (.class // .identity.class // "?"),
         (.level // .progression.level // 1),
-        (.ac // .vitals.ac // "?"),
         (.gold // .inventory.gold // 0),
-        (.hp.current // .vitals.hp.current // .hp // 0),
-        (.hp.max // .vitals.hp.max // .hp // 0),
         (.xp.current // .progression.xp.current // .xp // 0),
         (.xp.next_level // .progression.xp.next_level // 0),
         (.current_location // .details.current_location // "?")
       ] | @tsv' "$CHAR"
 )
 
-# Conditions array -> status label; fall back to HP-derived state.
+# Conditions array -> status label; fall back to the wound-derived state.
 CONDS=$(jq -r '(.conditions // []) | map(ascii_downcase) | join(", ")' "$CHAR" 2>/dev/null)
 
 # --- Overview fields (location/time/date) -----------------------------------
@@ -99,36 +96,39 @@ fi
 # Prefer overview's live location if present.
 [ -n "$OLOC" ] && LOC="$OLOC"
 
-# --- HP bar -----------------------------------------------------------------
-BAR_W=10
-if [ "$HP_MAX" -gt 0 ] 2>/dev/null; then
-    PCT=$(( HP_CUR * 100 / HP_MAX ))
-    FILLED=$(( HP_CUR * BAR_W / HP_MAX ))
-else
-    PCT=0 ; FILLED=0
-fi
-[ "$FILLED" -gt "$BAR_W" ] && FILLED=$BAR_W
-[ "$FILLED" -lt 0 ] && FILLED=0
-EMPTY=$(( BAR_W - FILLED ))
+# --- Wounds ------------------------------------------------------------------
+# One line of wounded zones (same words as lib/body.py summary), and a danger
+# level: 2 when head, chest or groin has 3 wounds, 1 when any part is injured or
+# nearly unusable. A destroyed limb is settled and doesn't keep the HUD amber.
+IFS=$'\t' read -r WOUNDS DANGER < <(
+    jq -r '
+      {head: "head", chest: "chest", groin: "groin", left_arm: "l.arm", right_arm: "r.arm",
+       left_leg: "l.leg", right_leg: "r.leg"} as $names
+      | ["", "bruised", "injured", "nearly unusable", "destroyed"] as $word
+      | (.body // {}) as $body
+      | [ $names | keys_unsorted[] | select(($body[.].wounds // 0) > 0)
+          | "\($names[.]) \($word[$body[.].wounds])" ] as $parts
+      | [ $body | to_entries[] | .key as $zone | (.value.wounds // 0) as $w
+          | if (["head", "chest", "groin"] | index($zone)) and $w >= 3 then 2
+            elif $w == 2 or $w == 3 then 1 else 0 end ] as $levels
+      | [ (if ($parts | length) > 0 then $parts | join(", ") else "unhurt" end),
+          ($levels | max // 0) ] | @tsv' "$CHAR"
+)
 
-# HP state drives the bar color AND the frame: calm when healthy, amber when
-# wounded, a bold red glow when critical.
-if   [ "$PCT" -ge 50 ]; then HPC="$GREEN"; STATE="Normal";   RULEC="$FAINT";        ORNC="$TEAL";          STATEC="$DIM"
-elif [ "$PCT" -ge 25 ]; then HPC="$AMBER"; STATE="Wounded";  RULEC="$AMBER";        ORNC="$AMBER";         STATEC="$AMBER"
-else                         HPC="$RED";   STATE="Critical"; RULEC="${BOLD}${RED}"; ORNC="${BOLD}${RED}";  STATEC="${BOLD}${RED}"
+# The danger level drives the color AND the frame: calm when fine, amber when
+# injured, a bold red glow when a vital zone is nearly gone.
+if   [ "${DANGER:-0}" -eq 0 ]; then WC="$GREEN"; STATE="Normal";   RULEC="$FAINT";        ORNC="$TEAL";          STATEC="$DIM"
+elif [ "$DANGER" -eq 1 ];      then WC="$AMBER"; STATE="Wounded";  RULEC="$AMBER";        ORNC="$AMBER";         STATEC="$AMBER"
+else                                WC="$RED";   STATE="Critical"; RULEC="${BOLD}${RED}"; ORNC="${BOLD}${RED}";  STATEC="${BOLD}${RED}"
 fi
-# A named condition (poisoned, etc.) overrides the label but keeps the HP color.
-[ -n "$CONDS" ] && { STATE="$CONDS"; [ "$PCT" -ge 50 ] && STATEC="$AMBER"; }
-
-BAR=""
-[ "$FILLED" -gt 0 ] && printf -v F "%${FILLED}s" && BAR="${F// /█}"
-[ "$EMPTY"  -gt 0 ] && printf -v E "%${EMPTY}s"  && BAR="${BAR}${E// /░}"
+# A named condition (poisoned, etc.) overrides the label but keeps the color.
+[ -n "$CONDS" ] && { STATE="$CONDS"; [ "${DANGER:-0}" -eq 0 ] && STATEC="$AMBER"; }
 
 # --- Render (3 lines) -------------------------------------------------------
 # Build each line as a string, then emit. Clearer than one packed printf.
 
 L1="${TEAL}⚔ ${BOLD}${NAME}${RESET}  ${DIM}Lv${LEVEL} ${RACE} ${CLASS}${RESET}  ${SEP}  ${AMBER}${LOC}${RESET}"
-L2="  HP ${HPC}${BAR}${RESET} ${HP_CUR}/${HP_MAX} ${SEPV} ${DIM}AC${RESET} ${AC} ${SEPV} ${GOLD}${GP}gp${RESET} ${SEPV} ${DIM}XP${RESET} ${XP_CUR}/${XP_NEXT} ${SEPV} ${STATEC}${STATE}${RESET}"
+L2="  ${DIM}Wounds${RESET} ${WC}${WOUNDS}${RESET} ${SEPV} ${GOLD}${GP}gp${RESET} ${SEPV} ${DIM}XP${RESET} ${XP_CUR}/${XP_NEXT} ${SEPV} ${STATEC}${STATE}${RESET}"
 
 # Top rule — frames the HUD off from the conversation above.
 divider "$RULEC" "$ORNC"

@@ -21,6 +21,7 @@ from lib.body import (
     remove,
     repair,
     show,
+    summary,
 )
 
 REPO = Path(__file__).resolve().parent.parent
@@ -245,6 +246,16 @@ def test_show_lists_notes_armor_and_cyberware():
     assert "left_arm: lost at the elbow" in text
     assert "armor: Coat (chest 2/2)" in text
     assert "cyberware: Jack (head, 1/1, working, +1 Netrunning)" in text
+
+
+def test_summary_names_wounded_zones_and_broken_chrome():
+    sheet = {}
+    assert summary(sheet) == "unhurt"
+    hit(sheet, "left_arm", 4, FLESH)
+    hit(sheet, "chest", 2, FLESH)
+    add_cyberware(sheet, "Cybereye", "head", 1)
+    hit(sheet, "head", 1, PickBoxes("Cybereye"))
+    assert summary(sheet) == "chest injured, l.arm destroyed, Cybereye broken"
 
 
 # --- The real command ---

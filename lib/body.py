@@ -234,6 +234,18 @@ def details(sheet: Dict[str, Any]) -> List[str]:
     return lines
 
 
+def summary(sheet: Dict[str, Any]) -> str:
+    """One line for the scene context: wounded zones and broken chrome, or "unhurt"."""
+    short = {1: "bruised", 2: "injured", 3: "nearly unusable", 4: "destroyed"}
+    parts = []
+    for zone in ZONES:
+        wounds = (sheet.get("body") or {}).get(zone, {}).get("wounds", 0)
+        if wounds:
+            parts.append(f"{LABELS[zone]} {short[wounds]}")
+    parts += [f"{item['name']} broken" for item in sheet.get("cyberware", []) if not _left(item)]
+    return ", ".join(parts) or "unhurt"
+
+
 def show(sheet: Dict[str, Any]) -> str:
     return "\n".join([picture(sheet), *details(sheet)])
 

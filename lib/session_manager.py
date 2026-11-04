@@ -877,10 +877,7 @@ class SessionManager(EntityManager):
             level = char.get('level', 1)
             race = char.get('race', '?')
             cls = char.get('class', '?')
-            hp = char.get('hp', {})
-            hp_cur = hp.get('current', 0)
-            hp_max = hp.get('max', 0)
-            ac = char.get('ac', '?')
+            from body import summary as wound_summary
             xp = char.get('xp', {})
             if isinstance(xp, dict):
                 xp_val = xp.get('current', 0)
@@ -889,7 +886,7 @@ class SessionManager(EntityManager):
             gold = char.get('gold', 0)
             conditions = char.get('conditions', [])
             cond_str = ', '.join(conditions) if conditions else '(none)'
-            lines.append(f"{name} - Level {level} {race} {cls} | HP: {hp_cur}/{hp_max} | AC: {ac} | XP: {xp_val} | Gold: {gold}")
+            lines.append(f"{name} - Level {level} {race} {cls} | Wounds: {wound_summary(char)} | XP: {xp_val} | Gold: {gold}")
             lines.append(f"Conditions: {cond_str}")
         else:
             lines.append("No character found.")

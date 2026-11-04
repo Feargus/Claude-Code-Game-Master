@@ -182,9 +182,9 @@ class PlayerManager(EntityManager):
             print(f"[ERROR] Character '{name}' not found")
             return None
 
-        hp = char.get('hp', {})
+        from body import summary as wound_summary
         gold = char.get('gold', 0)
-        summary = f"{char.get('name', name)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
+        summary = f"{char.get('name', name)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (Wounds: {wound_summary(char)}, Gold: {gold})"
         summary += self._vitals_summary(char)
         status = char.get('status')
         if status in ('dying', 'dead'):
@@ -199,10 +199,10 @@ class PlayerManager(EntityManager):
         char = self._load_character()
         if not char:
             return []
-        hp = char.get('hp', {})
+        from body import summary as wound_summary
         gold = char.get('gold', 0)
         return [
-            f"{char.get('name', 'Unknown')} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
+            f"{char.get('name', 'Unknown')} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (Wounds: {wound_summary(char)}, Gold: {gold})"
             + self._vitals_summary(char)
         ]
 
@@ -584,7 +584,7 @@ class PlayerManager(EntityManager):
         }
 
     def kill_character(self, name: str, cause: Optional[str] = None) -> Dict[str, Any]:
-        """Mark a character as dead: HP 0, status 'dead', stamp died_at + cause.
+        """Mark a character as dead: status 'dead', stamp died_at + cause (and HP 0 if the sheet has HP).
 
         Persists the death state. The Death Protocol (CLAUDE.md) handles the
         hand-off; this just records the fact on the sheet.
@@ -595,10 +595,9 @@ class PlayerManager(EntityManager):
             return {'success': False}
 
         char_name = char.get('name', name)
-        hp = char.get('hp', {})
-        max_hp = hp.get('max', 0)
-        char.setdefault('hp', {})
-        char['hp']['current'] = 0
+        hp = char.get('hp')
+        if isinstance(hp, dict):  # kits that still use HP
+            hp['current'] = 0
         char['status'] = 'dead'
         char['died_at'] = self.get_timestamp()
         if cause:
@@ -614,7 +613,8 @@ class PlayerManager(EntityManager):
         print(f"DEATH {char_name} has died.")
         if cause:
             print(f"Cause: {cause}")
-        print(f"HP: 0/{max_hp}")
+        if isinstance(hp, dict):
+            print(f"HP: 0/{hp.get('max', 0)}")
         print("STATUS: DEAD")
 
         return {

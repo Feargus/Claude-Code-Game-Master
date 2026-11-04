@@ -29,7 +29,7 @@ There is no initiative roll. The GM decides who acts when, from the situation.
 
 - **Attack:** the attacker's weapon skill, as the active side, against the defender's Guard (close combat) or Evasion (ranged).
 - **Several attackers:** a defender facing several attackers in the same beat defends against each, at −2 per other attacker: [several things at once](../gm-skills/SKILL.md#several-things-at-once). Flanking is this and nothing more.
-- **Where it lands:** where the attacker aimed. With no aim stated, pick the zone from the fiction. Zones: head, chest, groin, left arm, right arm, left leg, right leg.
+- **Where it lands:** where the attacker aimed. With no aim stated, pick the zone from the fiction. A low quality may land in a neighboring zone instead: aimed at the head, it hits the shoulder. Zones: head, chest, groin, left arm, right arm, left leg, right leg.
 
 ## Common situations
 
@@ -67,7 +67,7 @@ Each zone of the player's body takes four wounds. Wounds absorbed by armor or ch
 | Wounds in a zone | Effect |
 |---|---|
 | 1 | A bruise or scratch. It hurts, nothing more. |
-| 2 | Injured: **disadvantage** on rolls that use that part, on the attribute that depends on it most (arm: STR or DFT; leg: AGI; head: LOG or ITU; chest: VIG). Pass it with its reason: `--active-dis DFT "injured right arm"`. |
+| 2 | Injured: **disadvantage** on rolls that use that part, on the attribute that depends on it most (arm: STR or DFT; leg: AGI; head: LOG or ITU; chest: VIG; groin: NRV). Pass it with its reason: `--active-dis DFT "injured right arm"`. |
 | 3 | Nearly unusable, but still there. Only very basic use: no weapon or tool use with that arm, no running on that leg (only limping), no clear thinking (head), no cardio or exertion (chest). Rolls that need more aren't possible; basic use still has the disadvantage. |
 | 4 | Destroyed. An arm or leg is severed or useless for good. Head, chest or groin: **dead**. |
 
