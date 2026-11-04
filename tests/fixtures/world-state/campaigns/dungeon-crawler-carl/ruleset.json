@@ -1,15 +1,29 @@
 {
   "name": "Dungeon Crawler Carl",
   "stat_schema": {
-    "attributes": ["str", "con", "dex", "int", "wis", "cha"],
-    "vitals": ["hp"]
+    "attributes": [
+      "str",
+      "con",
+      "dex",
+      "int",
+      "wis",
+      "cha"
+    ],
+    "vitals": [
+      "hp"
+    ]
   },
   "progression": {
     "model": "resource-axis",
     "resource": "viewers",
-    "tiers": [1000000, 100000000, 1000000000]
+    "tiers": [
+      1000000,
+      100000000,
+      1000000000
+    ]
   },
-  "resolution": { "model": "d20-vs-dc" },
-  "active_agents": ["npc-builder"],
+  "active_agents": [
+    "npc-builder"
+  ],
   "rules_doc": "rules.md"
 }

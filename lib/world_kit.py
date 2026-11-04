@@ -3,7 +3,7 @@
 World Kit: the per-campaign ruleset that sits on top of the generic game core.
 
 A campaign's `ruleset.json` declares HOW that world plays — its stat schema, its
-progression model, its resolution model, and which specialist agents are active —
+progression model, and which specialist agents are active —
 without baking D&D 5e into the engine. The WorldKit loads it and drives play
 through `game_core`, so a Dune kit and a Dungeon Crawler Carl kit run the same
 core with entirely different rules. Signature systems on the kit are the
@@ -17,7 +17,6 @@ ruleset.json shape:
   "stat_schema": { "attributes": ["str","con","dex","int"], "vitals": ["hp"] },
   "progression": { "model": "resource-axis", "resource": "viewers",
                    "tiers": [1000000, 1000000000] },
-  "resolution": { "model": "d20-vs-dc" },
   "active_agents": ["npc-builder"],
   "skills": ["might", "guile"],  # optional; absent → []
   "signature_systems": [ { "name": "...", "summary": "...", "rules": "..." } ],
@@ -33,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from json_ops import JsonOperations
 from campaign_manager import CampaignManager
-from game_core import make_progression, opposed_check, resolve_check
+from game_core import make_progression
 
 
 DEFAULT_RULESET = {
@@ -41,7 +40,6 @@ DEFAULT_RULESET = {
     "kit": "custom",
     "stat_schema": {"attributes": [], "vitals": ["hp"]},
     "progression": {"model": "milestone"},
-    "resolution": {"model": "d20-vs-dc"},
     "active_agents": [],
     "rules_doc": None,
 }
@@ -89,23 +87,6 @@ class WorldKit:
         an under-declared kit refuse plain damage.
         """
         return (self.stat_schema() or {}).get("vitals") or ["hp"]
-
-    def resolution(self) -> Dict[str, Any]:
-        """{'model': name, 'params': {...}} regardless of ruleset syntax.
-
-        A kit may declare `"resolution": "dice-pool"` or the fuller
-        `{"model": "dice-pool", "target": 5}`; game_core.resolve_check gets the
-        same clean shape either way.
-        """
-        raw = self.ruleset.get("resolution") or {}
-        if isinstance(raw, str):
-            return {"model": raw, "params": {}}
-        params = {k: v for k, v in raw.items() if k != "model"}
-        params.update(params.pop("params", {}) or {})
-        return {"model": raw.get("model") or "d20-vs-dc", "params": params}
-
-    def resolution_model(self) -> str:
-        return self.resolution()["model"]
 
     def progression_model(self) -> str:
         prog = self.ruleset.get("progression") or {}
@@ -157,19 +138,6 @@ class WorldKit:
         """
         return _normalize_signature_systems(self.ruleset.get("signature_systems"))
 
-    def lethality(self) -> Dict[str, Any]:
-        """The kit's lethality model for `game_core.classify_harm`.
-
-        `{"model": "death-saves" | "gritty" | "none", "massive_damage_at": int?}`.
-        Absent → death-saves (the 5e default), so existing campaigns are
-        unchanged. A grim world sets `gritty` (0 HP is death) or lowers
-        `massive_damage_at` to make single blows lethal sooner.
-        """
-        raw = self.ruleset.get("lethality")
-        if isinstance(raw, str):
-            return {"model": raw}
-        return raw if isinstance(raw, dict) else {"model": "death-saves"}
-
     def systems(self) -> List[Dict[str, Any]]:
         """Executable signature-system primitives instantiated by this kit.
 
@@ -186,16 +154,6 @@ class WorldKit:
                 if isinstance(s, dict) and s.get("primitive") and s.get("name")]
 
     # --- play, driven through the generic core ---
-    def resolve(self, modifier: int = 0, dc: int = 10, advantage: str = None) -> Dict[str, Any]:
-        """Roll under THIS world's resolution model (d20, 2d6, dice pool, ...)."""
-        return resolve_check(modifier, dc, advantage, model=self.resolution())
-
-    def oppose(self, modifier_a: int = 0, modifier_b: int = 0,
-               advantage_a: str = None, advantage_b: str = None) -> Dict[str, Any]:
-        """Contest two sides under THIS world's resolution model."""
-        return opposed_check(modifier_a, modifier_b, advantage_a, advantage_b,
-                             model=self.resolution())
-
     def advance_progression(self, state: Dict[str, Any], **kw) -> Dict[str, Any]:
         return self.progression.advance(state, **kw)
 
@@ -253,7 +211,6 @@ def main():
         "name": kit.name(),
         "kit": kit.kit(),
         "stat_schema": kit.stat_schema(),
-        "resolution_model": kit.resolution_model(),
         "progression_model": kit.progression_model(),
         "active_agents": kit.active_agents(),
         "rules_doc": str(kit.rules_doc_path()) if kit.rules_doc_path() else None,

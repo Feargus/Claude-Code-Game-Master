@@ -26,7 +26,6 @@ HYBORIAN_RULESET = {
         "vitals": ["hp", "vigor", "corruption"],
     },
     "progression": {"model": "milestone"},
-    "resolution": {"model": "d20-vs-dc"},
     "active_agents": [],
 }
 
@@ -38,7 +37,6 @@ DND5E_RULESET = {
         "vitals": ["hp"],
     },
     "progression": {"model": "xp-levels"},
-    "resolution": {"model": "d20-vs-dc"},
     "active_agents": [],
 }
 

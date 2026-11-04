@@ -6,14 +6,8 @@ from lib.world_kit import WorldKit
 def test_loads_dcc_ruleset(dcc_world):
     k = WorldKit(dcc_world)
     assert k.name() == "Dungeon Crawler Carl"
-    assert k.resolution_model() == "d20-vs-dc"
     assert k.progression_model() == "resource-axis"
     assert "npc-builder" in k.active_agents()
-
-
-def test_resolves_through_generic_core(dcc_world):
-    r = WorldKit(dcc_world).resolve(modifier=100, dc=5)
-    assert r["success"] is True and "die" in r
 
 
 def test_progression_is_resource_axis_not_5e_xp(dcc_world):

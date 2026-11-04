@@ -17,7 +17,6 @@ MILESTONE_RULESET = {
     "kit": "custom",
     "stat_schema": {"attributes": ["grit", "wits"], "vitals": ["hp", "resolve"]},
     "progression": {"model": "milestone"},
-    "resolution": {"model": "2d6-plus-mod"},
     "active_agents": [],
 }
 
@@ -28,7 +27,6 @@ TWELVE_LEVEL_RULESET = {
     "stat_schema": {"attributes": ["grit"], "vitals": ["hp"]},
     "progression": {"model": "xp-levels",
                     "thresholds": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100]},
-    "resolution": {"model": "d20-vs-dc"},
     "active_agents": [],
 }
 

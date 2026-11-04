@@ -50,7 +50,7 @@ else afterward:
 Both are reachable from the shell as `gm-extract.sh campaign-rules` and
 `gm-extract.sh draft-ruleset`, which is how `/import` calls them.
 
-The drafted ruleset is deliberately **thin**: `hp` as the only vital, `d20-vs-dc`, and
+The drafted ruleset is deliberately **thin**: `hp` as the only vital and
 `milestone` progression as "the safest book-native option" (`lib/book_bible.py:76-101`).
 Three things the source decides are passed in rather than inferred — the attribute list,
 the progression model, and `kit`. Nothing later infers them, and a kit with no attributes

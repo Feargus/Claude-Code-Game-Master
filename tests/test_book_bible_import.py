@@ -39,7 +39,7 @@ def test_draft_ruleset_from_bible_is_valid_kit():
     ruleset = book_bible.draft_ruleset_from_bible(
         bible, progression_model="resource-axis", resource="viewers", tiers=[1000000])
     assert ruleset["name"] == "Dungeon Crawler Carl"
-    assert ruleset["resolution"]["model"] == "d20-vs-dc"
+    assert "resolution" not in ruleset
     assert ruleset["progression"]["model"] == "resource-axis"
     assert ruleset["progression"]["resource"] == "viewers"
 

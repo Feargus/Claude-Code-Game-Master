@@ -79,7 +79,7 @@ def draft_ruleset_from_bible(bible: Dict[str, Any], progression_model: str = "mi
     """Auto-draft a World Kit ruleset.json from a world-bible.
 
     progression_model is chosen by the importer / human (default milestone, the
-    safest book-native option). Resolution defaults to the universal d20-vs-dc core.
+    safest book-native option).
     `kit` is the machine-readable router: 'dnd5e' unlocks the D&D mechanics skills,
     and the importer sets it ONLY when the book
     actually is a D&D module; every other book stays 'custom'.
@@ -92,7 +92,6 @@ def draft_ruleset_from_bible(bible: Dict[str, Any], progression_model: str = "mi
         "kit": kit,
         "stat_schema": {"attributes": list(attributes or []), "vitals": ["hp"]},
         "progression": progression,
-        "resolution": {"model": "d20-vs-dc"},
         "active_agents": agents,
         "rules_doc": "rules.md",
     }

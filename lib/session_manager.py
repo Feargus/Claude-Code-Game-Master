@@ -628,7 +628,6 @@ class SessionManager(EntityManager):
             lines.append("--- KIT ---")
             lines.append(f"kit: {kit.kit()}")
             lines.append(f"name: {kit.name()}")
-            lines.append(f"resolution: {kit.resolution_model()}")
             lines.append(f"progression: {kit.progression_model()}")
             lines.append(f"vitals: {', '.join(vitals) if vitals else '(none)'}")
             lines.append(f"skills: {', '.join(skills) if skills else '(none)'}")

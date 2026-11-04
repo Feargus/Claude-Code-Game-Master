@@ -70,7 +70,7 @@ def test_xp_thresholds_delegate_to_kit(dcc_world, tmp_path):
     ruleset.write_text(json.dumps({
         "name": "Custom", "stat_schema": {"attributes": []},
         "progression": {"model": "xp-levels", "thresholds": [50, 120, 250]},
-        "resolution": {"model": "d20-vs-dc"}, "active_agents": [],
+        "active_agents": [],
     }), encoding="utf-8")
     pm = PlayerManager(dcc_world)
     assert pm._xp_thresholds() == [0, 50, 120, 250]  # kit-driven, not the 5e table

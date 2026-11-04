@@ -58,7 +58,7 @@ SWAP (make the chosen character the active PC):
 
 If a skill fails to load, fall back to the matching section in the archived full
 ruleset (`docs/` / git history). The RULES SYSTEM is the active World Kit's skill —
-a Dune import ships its own combat/progression, not 5e. Harm + conditions + the
+a Dune import ships its own combat/progression, not 5e. Conditions and the
 three progression models live in `lib/game_core.py`.
 
 ## Dice

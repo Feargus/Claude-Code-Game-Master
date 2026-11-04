@@ -562,17 +562,12 @@ how a world plays without baking in D&D 5e.
   "kit": "custom | dnd5e   (absent = custom; dnd5e unlocks the D&D mechanics skills)",
   "stat_schema": { "attributes": ["str","con","dex","int"], "vitals": ["hp"] },
   "progression": { "model": "milestone | xp-levels | resource-axis", "...": "model config (thresholds/tiers/resource)" },
-  "resolution": { "model": "d20-vs-dc" },
-  "lethality": { "model": "death-saves | gritty | none", "massive_damage_at": 20 },
   "systems": [ {"primitive": "named_track|price_roll|reaction_roll|guarded_payoff", "name": "Menace", "config": {}} ],
   "active_agents": ["npc-builder"],
   "rules_doc": "rules.md"
 }
 ```
 
-- `lethality` (optional; absent = `death-saves`, the 5e default) tunes
-  `game_core.classify_harm` via `WorldKit.lethality()`: `gritty` makes 0 HP death
-  (no saves), `massive_damage_at` lowers the instant-death overkill bar.
 - `systems` (optional) instantiates the `game_core` signature-system primitives
   (`WorldKit.systems()`); each rides scene context as an executable ROLL-these
   block. Written by `book_bible.write_systems` (`gm-extract.sh write-systems`).

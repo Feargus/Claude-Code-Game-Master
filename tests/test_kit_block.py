@@ -27,11 +27,10 @@ def _kit_section(ctx: str) -> str:
 
 # --- scene context -----------------------------------------------------------
 
-def test_dcc_context_kit_block_names_custom_d20_resource_axis(dcc_world):
+def test_dcc_context_kit_block_names_custom_resource_axis(dcc_world):
     ctx = SessionManager(dcc_world).get_full_context()
     kit = _kit_section(ctx)
     assert "kit: custom" in kit
-    assert "resolution: d20-vs-dc" in kit
     assert "progression: resource-axis" in kit
     assert "vitals: hp" in kit
 
@@ -42,7 +41,6 @@ def test_dnd5e_kit_named_in_context(tmp_path):
         "kit": "dnd5e",
         "stat_schema": {"attributes": ["str"], "vitals": ["hp"]},
         "progression": {"model": "xp-levels"},
-        "resolution": {"model": "d20-vs-dc"},
         "active_agents": [],
     })
     kit = _kit_section(SessionManager(world).get_full_context())
@@ -54,7 +52,6 @@ def test_signature_systems_list_appear_in_world_rules(tmp_path):
         "name": "Tideworld",
         "kit": "custom",
         "progression": {"model": "milestone"},
-        "resolution": {"model": "d20-vs-dc"},
         "signature_systems": [
             {"name": "Tide-oaths", "summary": "every spell is a debt the sea collects"},
         ],
@@ -71,7 +68,6 @@ def test_signature_systems_dict_appear_in_world_rules(tmp_path):
         "name": "The Hyborian Age",
         "kit": "hyborian",
         "progression": {"model": "milestone"},
-        "resolution": {"model": "d20-vs-dc"},
         "signature_systems": {
             "Blood-priced sorcery": "Casting costs HP; no spell slots",
         },
@@ -87,7 +83,6 @@ def test_campaign_rules_fallback_when_no_signature_systems(tmp_path):
         "name": "Old World",
         "kit": "custom",
         "progression": {"model": "milestone"},
-        "resolution": {"model": "d20-vs-dc"},
     }, overview={
         "name": "legacy",
         "campaign_rules": {"loot_box_system": "award a distinctive zzyzx box"},
@@ -119,7 +114,6 @@ def test_kit_block_skipped_when_worldkit_fails(dcc_world, monkeypatch):
 def test_worldkit_accepts_dcc_world_dir(dcc_world):
     kit = WorldKit(dcc_world)
     assert kit.kit() == "custom"
-    assert kit.resolution_model() == "d20-vs-dc"
     assert kit.progression_model() == "resource-axis"
     assert kit.skills() == []
     assert kit.signature_systems() == []

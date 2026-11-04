@@ -5,13 +5,13 @@ Generic, system-agnostic game core.
 NO D&D 5e assumptions live here: no fixed ability names, no level-20 cap, no spell
 slots. The core provides only the universal primitives every world runs on:
 
-  - resolution:  resolve_check (the kit's resolution model) + opposed_check (contest)
-  - harm:        apply_harm / heal on an abstract HP value
   - conditions:  add_condition / remove_condition on a list
   - progression: three interchangeable models (milestone / resource-axis / xp-levels)
 
 Stat names, combat feel, signature systems, and the choice of progression model are
 BESPOKE PER WORLD (a World Kit configures them). dice.py is the only RNG.
+Rolls and harm are not here: every roll is a skill contest (skill_contest.py) and
+harm is wounds (body.py).
 """
 
 import sys
@@ -24,155 +24,13 @@ from dice import DiceRoller
 
 _roller = DiceRoller()
 
-_ADV_NOTATION = {'advantage': '2d20kh1', 'disadvantage': '2d20kl1', None: '1d20'}
-_2D6_NOTATION = {'advantage': '3d6kh2', 'disadvantage': '3d6kl2', None: '2d6'}
-
-DEFAULT_RESOLUTION_MODEL = 'd20-vs-dc'
-
 
 def _warn(message: str) -> None:
     """Visible one-line warning on stderr — never stdout, which carries --json."""
     print(f"[WARNING] {message}", file=sys.stderr)
 
 
-def _split_model(model: Any) -> tuple:
-    """(name, params) from either 'd20-vs-dc' or {'model': ..., 'params': {...}}."""
-    if isinstance(model, dict):
-        params = {k: v for k, v in model.items() if k != 'model'}
-        params.update(params.pop('params', {}) or {})
-        return (model.get('model') or DEFAULT_RESOLUTION_MODEL), params
-    return (model or DEFAULT_RESOLUTION_MODEL), {}
-
-
-# ---------------------------------------------------------------- resolution
-
-def resolve_check(modifier: int = 0, dc: int = 10, advantage: Optional[str] = None,
-                  model: Any = None) -> Dict[str, Any]:
-    """Resolve a check under the active World Kit's RESOLUTION MODEL.
-
-    modifier/dc/advantage are model-agnostic; `model` is the kit's declared model
-    (a name, or the {model, params} shape WorldKit.resolution() returns). Omitted
-    -> 'd20-vs-dc', so every existing caller keeps d20 behavior unchanged.
-
-    Models:
-      d20-vs-dc      1d20 + mod vs DC. crit 'hit' on a natural 20, 'miss' on a 1.
-      2d6-plus-mod   2d6 + mod vs DC. crit 'hit' on 12, 'miss' on 2.
-      dice-pool      N d6 (N = modifier, min 1) counting `target`+ (default 5) as
-                     successes; DC is the successes REQUIRED. crit 'hit' when
-                     every die succeeds, 'miss' on zero successes.
-
-    Every model returns the same keys: die, modifier, total, dc, success, margin,
-    critical. For the pool, `die` is the success count and `modifier` the pool size.
-    An unrecognized model warns on stderr (per call) and falls back to d20.
-    """
-    name, params = _split_model(model)
-    if name == '2d6-plus-mod':
-        return _resolve_2d6(modifier, dc, advantage)
-    if name == 'dice-pool':
-        return _resolve_pool(modifier, dc, advantage, int(params.get('target', 5)))
-    if name != DEFAULT_RESOLUTION_MODEL:
-        _warn(f"unknown resolution model '{name}' — falling back to {DEFAULT_RESOLUTION_MODEL}")
-    return _resolve_d20(modifier, dc, advantage)
-
-
-def _result(die: int, modifier: int, total: int, dc: int, critical: Optional[str]) -> Dict[str, Any]:
-    return {
-        'die': die,
-        'modifier': modifier,
-        'total': total,
-        'dc': dc,
-        'success': total >= dc,
-        'margin': total - dc,
-        'critical': critical,
-    }
-
-
-def _resolve_d20(modifier: int, dc: int, advantage: Optional[str]) -> Dict[str, Any]:
-    r = _roller.roll(_ADV_NOTATION.get(advantage, '1d20'))
-    kept = r.get('kept', r.get('rolls', []))
-    die = kept[0] if kept else r['total']
-    return _result(die, modifier, r['total'] + modifier, dc,
-                   'hit' if die == 20 else 'miss' if die == 1 else None)
-
-
-def _resolve_2d6(modifier: int, dc: int, advantage: Optional[str]) -> Dict[str, Any]:
-    """PbtA-flavored 2d6 + mod. Advantage rolls 3d6 and keeps the best two."""
-    r = _roller.roll(_2D6_NOTATION.get(advantage, '2d6'))
-    kept = r.get('kept', r.get('rolls', []))
-    die = sum(kept) if kept else r['total']
-    return _result(die, modifier, die + modifier, dc,
-                   'hit' if die == 12 else 'miss' if die == 2 else None)
-
-
-def _resolve_pool(modifier: int, dc: int, advantage: Optional[str], target: int) -> Dict[str, Any]:
-    """Success-counting pool: the modifier IS the dice pool, the DC is successes needed."""
-    pool = max(1, modifier + (1 if advantage == 'advantage' else -1 if advantage == 'disadvantage' else 0))
-    rolls = _roller.roll(f"{pool}d6")['rolls']
-    successes = sum(1 for face in rolls if face >= target)
-    critical = 'hit' if successes == pool else 'miss' if successes == 0 else None
-    return _result(successes, pool, successes, dc, critical)
-
-
-def opposed_check(modifier_a: int = 0, modifier_b: int = 0,
-                  advantage_a: Optional[str] = None, advantage_b: Optional[str] = None,
-                  model: Any = None) -> Dict[str, Any]:
-    """Resolve an opposed contest between A and B under the kit's resolution model.
-
-    Both sides roll the SAME model and are compared on that model's own axis: totals
-    for d20 and 2d6, success COUNTS for a pool (where `total` is the count). There is
-    no DC in a contest — the sides are ranked against each other — so each side is
-    resolved at DC 0 and only its axis value is read. Ties go to neither.
-    """
-    a = resolve_check(modifier_a, 0, advantage_a, model=model)
-    b = resolve_check(modifier_b, 0, advantage_b, model=model)
-    if a['total'] > b['total']:
-        winner = 'a'
-    elif b['total'] > a['total']:
-        winner = 'b'
-    else:
-        winner = 'tie'
-    return {'a': a['total'], 'b': b['total'], 'winner': winner, 'margin': abs(a['total'] - b['total'])}
-
-
-# ---------------------------------------------------------------- harm / conditions
-
-def apply_harm(current_hp: int, amount: int) -> int:
-    """Reduce HP by amount, floored at 0."""
-    return max(0, current_hp - max(0, amount))
-
-
-def classify_harm(current_hp: int, max_hp: int, amount: int,
-                  lethality: Dict[str, Any] = None) -> Dict[str, Any]:
-    """Apply harm and classify the outcome under the kit's lethality model.
-
-    Returns ``{new_hp, outcome}`` with outcome ``'ok' | 'dying' | 'dead'``. The
-    default ``death-saves`` model matches 5e: dropping to 0 opens the *dying*
-    gate, and only massive overkill (damage past 0 >= max HP) or an explicit
-    lower ``massive_damage_at`` kills outright. A grittier kit sets model
-    ``'gritty'`` — 0 HP is *dead*, no saves — and any kit can lower
-    ``massive_damage_at`` to make single hits lethal sooner. Model ``'none'``
-    never instant-kills (pure damage floor).
-
-    This is a pure calculator; persistence + the death-save ceremony are the
-    caller's (gm-combat / the Death Protocol) job.
-    """
-    lethality = lethality or {}
-    model = lethality.get("model", "death-saves")
-    amount = max(0, amount)
-    new_hp = max(0, current_hp - amount)
-    overkill = max(0, amount - current_hp)  # damage dealt past 0
-    threshold = lethality.get("massive_damage_at", max_hp)
-    if model != "none" and overkill >= threshold:
-        return {"new_hp": 0, "outcome": "dead"}
-    if new_hp == 0:
-        return {"new_hp": 0, "outcome": "dead" if model == "gritty" else "dying"}
-    return {"new_hp": new_hp, "outcome": "ok"}
-
-
-def heal(current_hp: int, max_hp: int, amount: int) -> int:
-    """Increase HP by amount, capped at max_hp."""
-    return min(max_hp, current_hp + max(0, amount))
-
+# ---------------------------------------------------------------- conditions
 
 def add_condition(conditions: List[str], condition: str) -> List[str]:
     """Add a condition (idempotent). Returns a new list."""
