@@ -1,248 +1,96 @@
-# Game Master Claude
+# Rust & Chrome: a Cyberpunk Game Master for Claude Code
 
-**A harness that turns Claude Code into a persistent Game Master — a holodeck door and a fresh 1980s D&D table.**
+A solo tabletop RPG run by Claude Code, with homebrew rules and a cyberpunk setting.
 
-You do not load a wiki. You step through a door. Someone you came to meet is already talking. The book stays on the GM's chair; the campaign file is a journal of where you've been, not an encyclopedia of every city the book named.
+> **Work in progress.** This is a heavily modified fork of [Sstobo/Claude-Code-Game-Master](https://github.com/Sstobo/Claude-Code-Game-Master). The D&D rules are gone, replaced by a homebrew system that is still being playtested and changes often. Expect rough edges and breaking changes.
 
-This is not a chatbot you roleplay with. It's a *harness*: a thin, opinionated shell around Claude Code that gives the model the three things it lacks to run a real campaign — **durable memory, a custom rulebook, and a world that keeps moving when you look away.** Claude runs the table. The harness makes it stick.
+## About
 
-### Two front doors
+The idea: move one step away from fixed rulebooks towards the LLM's judgment, while dice still decide outcomes.
 
-There are two ways into a world, and both get the same living-world treatment:
+- **Claude judges.** It reads what you describe and turns it into a roll: which skill, which attributes, how hard, what helps or hinders.
+- **The dice decide,** rolled by a script that does all the arithmetic and logs every die.
+- **Claude narrates** the result. You never see dice, numbers or difficulties, only what happens to your character.
 
-- **🌍 Author something original — `/new-game`.** A genre-aware questionnaire interviews you, then Claude authors a *book's worth* of brand-new canon and a custom ruleset — and runs it through an anti-generic pipeline whose explicit job is to keep your world from collapsing into off-the-shelf high fantasy. This is the headline act. ([jump ↓](#-author-an-original-world--new-game))
-- **📖 Import a book you own — `/import`.** Drop in a PDF. The book goes on the shelf. Claude asks who you came to be (or meet), opens *that* page, and you talk. The rest of the book walks on when you do. ([jump ↓](#-import-a-book--import))
+The game keeps its state on disk (character, NPCs, places, threads, clocks, consequences), so a campaign survives across sessions, and the world keeps moving while you're away.
 
-Pick either. The persistence, the custom rulebook, the living world, the dying-and-handoff stakes — all identical underneath.
+## What's different from the original
 
----
+Kept from upstream: the harness itself (Claude Code as the GM, scripts that save state, scene context, threat clocks, consequences, plot threads, book import and recall). Changed or new:
 
-## The harness in one picture
+| Area | In this fork |
+|---|---|
+| **Rolls** | Every roll is a skill contest: nine attributes as die sizes (d6 to d20), 31 skills, advantage and disadvantage per attribute, labeled modifiers, automatic luck. One script, `tools/gm-skill-contest.sh`. |
+| **Harm** | No HP. Seven body zones with four wounds each; armor and cyberware absorb hits. `tools/gm-body.sh`. |
+| **Time** | A real in-game clock. Moves take time, and threat clocks fill as time passes. |
+| **Runs** | Targets of a job (a vault, a corp tower, a computer system) are laid out before you arrive, so exits can't appear just because you need one. |
+| **Characters** | Created in a short interview: the GM proposes everything from a one-line concept, you change what you like. Leveling raises attributes and skills, plus improvised perks. |
+| **Removed** | D&D 5e: its web API, monster, spell and gear agents, classes, death saves, the "World Kit" rule switch. |
 
-```
-        YOU                    THE HARNESS                      CLAUDE (Opus)
-   "I attack the    →   routes the beat, loads only    →   decides, narrates,
-    Terror Clown"       the rules it needs, hands           voices the NPC,
-                        Claude the scene + memory           rolls the dice
-                                    ↑                              ↓
-                        reads & writes campaign state   ←   "persist before you
-                        (HP, NPCs, threads, clocks,         narrate" — every
-                        consequences) on disk               change saved first
-```
+## Requirements
 
-Every turn runs the same loop: **gather context → decide → execute → persist state → narrate.** The harness enforces the boring, critical part — *nothing happened until it's written to disk* — so the story survives across days, machines, and context windows. Claude handles the part it's extraordinary at: making it feel alive.
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+- Python 3.11 or newer, [uv](https://docs.astral.sh/uv/) and `jq` (the install script sets these up)
+- Developed on Linux; macOS should work, Windows is untested.
 
----
-
-## What the harness actually gives the model
-
-- **A memory that outlives the conversation.** NPCs, locations, plot threads, facts, your character sheet, your whole history — all persisted as plain JSON per campaign. At each session's end the GM writes an **arc entry** (what changed, who matters now, what debts are open), and recall over your campaign's history is **semantic** — ask about "the clown" and it finds the summary that says *Grimaldi*. It tracks what's canon-from-the-book versus what *you* made happen. Close the laptop mid-fight; pick it up next week exactly where you left off.
-
-- **A rulebook written for *your* world, not D&D.** Whether you import a book or author one from scratch, Claude produces a **World Bible** (voice, tone, factions, geography, timeline) and from it a **World Kit** — a custom ruleset with its own stats, its own way of leveling, its own signature systems. A *Dune* import plays like *Dune*; a *Dungeon Crawler Carl* import plays like *Dungeon Crawler Carl*; and an original world plays like *itself*. D&D 5e is just one possible kit, not the foundation.
-
-- **A world that pushes context *to* the model.** The old failure mode of LLM roleplay is amnesia — the GM remembers your HP but forgot the cliffhanger. Here, every scene arrives pre-loaded: *previously on…*, open threads, key facts, which NPCs are present and how they talk, the clocks ticking in the background, and any consequence about to land. Claude doesn't have to remember to look — the harness puts it on the table.
-
-- **A world that keeps living.** Consequences you set in motion fire on their own when you return to a place or enough time passes. Named threat clocks tick whether you're watching or not. Between sessions, a small, bounded set of off-screen developments advance. The place feels alive because it *is* still running.
-
-- **Specialist sub-agents on tap.** A new face gets a backstory from npc-builder; a long-game idea becomes a dormant thread through plot-weaver; a haunting vista appears and a scene-illustrator paints it in the background. They're **book-first** — they read your world's own rules before reaching for anything external — and they spin up invisibly so the story never stops.
-
-- **Real stakes.** The character can die. Telegraphed, earned, never by GM fiat — but death is a valid forward outcome, and when it lands the harness runs a hand-off so the show goes on (take over a party member, roll a newcomer, step in as a canon figure). The world remembers the fallen.
-
-- **An illustrated campaign, drawn in-world.** *If* you drop an `OPENAI_API_KEY` into `.env`, the GM is encouraged to illustrate big beats — a new location, a boss reveal, a haunting vista, your styled flourish — with real generated images, presented diegetically as the work of an **in-world chronicler**: a named artist with a locked art style and persona, both designed at world-creation time to fit your plot and tone. The same hand "draws" every image across the campaign, so your gallery reads like one artist's sketchbook of your story. No key, no problem — the GM just keeps narrating in text and never mentions images.
-
----
-
-## In Action — Dungeon Crawler Carl
-
-A campaign imported from *Dungeon Crawler Carl*. Tandy the sasquatch rips the skin off a Terror Clown, forces Carl to wear it as a disguise, then performs a sasquatch mating dance to distract Grimaldi while Donut frees the dragon. Standard Tuesday. (Images generated in-world, on the fly, by the scene-illustrator agent.)
-
-![Tandy acquires Terror Clown skin disguise for Carl](public/622422010_1572097020675669_3114747955156903860_n.png)
-
-![Tandy performs a sasquatch mating dance to distract Grimaldi](public/625560066_33916991331281718_1129121114640091251_n.png)
-
-![Exploring The Laughing Crypt — thirty clown bodies wake up](public/623940676_2000130920531570_2521032782764513297_n.png)
-
----
-
-## 🌍 Author an original world — `/new-game`
-
-Anyone can ask an LLM for "a fantasy setting" and get the same tired tavern, the same chosen one, the same five elemental kingdoms. The interesting problem isn't *generating* a world — it's generating one that doesn't drift to generic. That's what this pipeline is built to defeat.
-
-You don't write the world. You answer a short **genre-aware questionnaire** (powered by interactive multiple-choice prompts), and Claude builds outward from your answers:
-
-- **A one-line premise** in your own words — *"Conan but on a drowned coast,"* *"cozy folk-horror in a town that forgets its dead,"* *"corporate clans fighting over charged ruins."*
-- **The genre bend** — the single most important anti-generic lever. Sword-and-sorcery (magic is blood-priced and villainous), high fantasy (deep lineage and old songs), sci-fantasy (nanomagic and clan politics), folk/cosmic horror (a wrongness beneath a fragile community) — each bend pushes the whole world somewhere specific.
-- **A narrative voice** — *whose* voice should narrate this world? Howard, Le Guin, Gibson, Pratchett, or your own pick. Claude writes original prose *in that author's fingerprint*, and narrates every beat in it. Your world doesn't read like a generic narrator; it reads like a book.
-- **A locked art style** — a deliberately surprising mashup (*"a gilded medieval illuminated manuscript depicting cyberpunk megacities"*) and an in-world chronicler who "draws" every image, so the whole gallery reads like one artist's sketchbook.
-
-From those answers Claude builds **one stage, not a planet** — *seed → skeleton → play pack → handoff*:
-
-1. **Seed.** Your answers become a structured world-seed — premise, tone, genre bend, voice, art style, chronicler. No gazetteer; the world's shape emerges at the table.
-2. **Skeleton.** Claude authors the world's coherent spine in one pass while the seed is fresh — name, voice, themes, factions, signature systems — then **shows it to you for approval before going further.**
-3. **Play pack.** Claude derives a custom **World Kit** from your world (never a silent 5e default), then stages exactly what tonight needs: one room you can stand in, the people in it, the exits you can see, and a hook that won't wait — never a continent.
-4. **Handoff.** Claude locks the chronicler and art style, then asks the one question — *who are you in this world?* — and the story begins.
-
-The world is a world with its own voice, its own rules, and its own art, and it grows **as you play**: when a long-game opportunity appears, Claude seeds a threat clock, a story thread, or a new plot and lets it tick. That is the campaign's real long-term planning — authored at the table, not pre-built. `/create-character` remains an opt-in full sheet whenever you want one.
-
-```
-You: /new-game
-GM:  A few questions first. One line — what's the world?
-You: Wandering swordsmen in a desert of glass where the gods drowned.
-GM:  Genre bend? (1) sword-and-sorcery  (2) high fantasy  (3) sci-fantasy  (4) folk/cosmic horror
-...
-```
-
-## 📖 Import a book — `/import`
-
-Got a favorite novel, a classic adventure module, a weird pulp paperback from the 70s? Drop the PDF into `source-material/`. Claude indexes the real text (the binder), writes a **World Bible** and **World Kit** so the room *sounds* like that book, then asks the only question that matters: **who did you come to meet?** You get that room, those voices, one hook. Not a gazetteer. Not a reskin. When you walk toward Stygia, Stygia is read from the book and written into the journal — not scraped on night zero.
-
-> **Where to find books:** the [Internet Archive](https://archive.org/) is a goldmine — thousands of free books, modules, and old pulp novels. Jump into *IT* and help the bad guys. Drop into *Lord of the Rings* and play from Gollum's perspective. It's your call.
-
----
-
-## Getting Started
-
-**Prerequisites:** [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+## Installation
 
 ```bash
-git clone https://github.com/Sstobo/Claude-Code-Game-Master.git
+git clone https://github.com/Feargus/Claude-Code-Game-Master.git
 cd Claude-Code-Game-Master
+git checkout Towards-Cyberpunk
 ./install.sh
 ```
 
-The install script sets up everything — Python, uv, jq, and all dependencies. It works on macOS and Linux with zero prior setup. (You can also just launch Claude Code and ask it to set things up.)
+The work happens on the `Towards-Cyberpunk` branch.
 
-Then launch and play:
+## Usage
 
-1. Run `claude` to launch Claude Code
-2. Run `/gm` — the harness takes it from there
-
-`/gm` is the only command you need. It offers a **New Adventure** — author an original world (`/new-game`), import a book you've dropped in `source-material/` (`/import`), or spin up a quick one-shot — then builds your character and runs the game. First thing it asks once a world exists: **"Who are you in this world?"** — play a character from the world, or one of your own. A short interview fills in the sheet: the GM proposes everything from a one-line concept, and you change what you like.
-
----
-
-## Why a harness, and not just a long prompt
-
-A single mega-prompt can fake a GM for one session. It can't remember your campaign next week, it can't enforce its own rules, and it drowns the model in mechanics it doesn't need this turn. The harness solves each of those directly:
-
-- **Thin always-on core, heavy rules on demand.** A lean router stays in context; combat, social, skill checks, conditions, leveling, dungeon crawls, and narration craft load *only* for the moment that needs them. The model spends its attention on the scene, not the manual.
-- **State on disk, not in the context window.** Memory is bounded by your filesystem, not the token limit. Campaigns can run indefinitely.
-- **Persist-before-narrate, enforced.** Every state change is written before a word reaches you, so a crash or a context reset never loses your progress.
-- **Grounded in a real corpus.** Scenes draw on actual passages — your imported book, or the canon Claude authored for your original world — via a local retrieval index, so narration stays true to the source until your choices change it.
-
-You never see any of this. You just see the story.
-
----
-
-## Advanced
-
-Everything below is handled automatically by `/gm`. These are here if you want manual control.
-
-### One Command
-
-There's really just one command you ever need:
-
-| Command | What it does |
-|---------|--------------|
-| `/gm` | **Everything.** Start or continue your story. The harness imports a book, builds a world, creates your character, runs a one-shot, saves, and shows your sheet — just talk to it. |
-
-`/gm` also takes shortcuts if you want them: `/gm save`, `/gm character`, `/gm overview`.
-
-Under the hood, `/gm` calls these for you — you never have to run them yourself, but they exist for manual control:
-
-| Command | What it does |
-|---------|--------------|
-| `/import` | Import a PDF/document as a new campaign |
-| `/new-game` | Build a world from scratch |
-| `/create-character` | The character-creation interview |
-| `/enhance` | Enrich entities with source-material passages |
-| `/world-check` | Validate campaign consistency |
-| `/reset` | Clear campaign state |
-| `/setup` | Verify/fix installation |
-| `/help` | Full command reference |
-
-### On-Demand Skills
-
-The lean core loads these only when the moment calls for it:
-
-| Skill | Loaded when |
-|-------|-------------|
-| `gm-combat` | A fight breaks out |
-| `gm-social` | You talk to / read an NPC |
-| `gm-skills` | You attempt something uncertain |
-| `gm-sites` | You set out on a run, a job or a dungeon |
-| `gm-conditions` | A status effect is applied |
-| `gm-levelup` | You level up |
-| `gm-craft` | Narration and pacing wisdom |
-
-### Specialist Agents
-
-Spawn automatically during play, invisibly:
-
-| Agent | Triggered by |
-|-------|--------------|
-| `npc-builder` | Meeting new NPCs |
-| `world-builder` | Exploring new areas |
-| `site-architect` | Laying out a site before a run |
-| `scene-illustrator` | High-impact visual beats |
-
-### Bash Tools
-
-The harness is plumbing you can poke at: bash wrappers (`tools/`) → Python managers (`lib/`) → per-campaign JSON (`world-state/campaigns/<name>/`). All tools follow the pattern `bash tools/gm-<tool>.sh <command> [args]`. Most accept `--json` for structured output.
-
-| Tool | Purpose |
-|------|---------|
-| `gm-campaign.sh` | Create, list, switch, delete campaigns |
-| `gm-session.sh` | Session lifecycle, party movement, save/restore |
-| `gm-context.sh` | Assemble scene context (world state + source passages) |
-| `gm-player.sh` | Player stats — progression, credits, inventory |
-| `gm-npc.sh` | NPCs — creation, updates, mood/goal/voice, party members |
-| `gm-location.sh` | Locations and connections |
-| `gm-plot.sh` | Quest and storyline tracking |
-| `gm-combat.sh` | Persisted, resumable combat tracking |
-| `gm-condition.sh` | Player conditions (poisoned, stunned, etc.) |
-| `gm-consequence.sh` | Schedule future events and triggers |
-| `gm-recall.sh` | Campaign memory — semantic recall, arc entries, memoir |
-| `gm-clock.sh` | Threat clocks — pressure that mounts as time passes |
-| `gm-lore.sh` | Grounded chapter briefs from the source book |
-| `gm-note.sh` | Record world facts by category |
-| `gm-time.sh` | Advance in-game time |
-| `gm-search.sh` | Search world state and/or source material |
-| `gm-enhance.sh` | RAG-powered entity enrichment |
-| `gm-extract.sh` | Document import and extraction pipeline |
-| `gm-overview.sh` | Quick world-state summary |
-| `gm-image.sh` | Generate a scene image with gpt-image-2 and print a clickable link |
-| `gm-reset.sh` | Reset campaign data |
-
-### Scene Images
-
-At high-impact beats — a new location, a boss reveal, a big find — the GM can illustrate the moment with a real image instead of describing it in text:
+Start Claude Code in the repo folder and run `/gm`:
 
 ```bash
-bash tools/gm-image.sh generate --title "The Sunken Crypt" \
-  --prompt "A flooded stone crypt lit by green torchlight, dark fantasy, cinematic"
+claude
 ```
 
-It calls OpenAI's `gpt-image-2`, saves the PNG into the campaign's `images/` folder, and prints a clickable `file://` link you open to view it (the VS Code terminal linkifies the path). Every generation is logged with an estimated cost — run `gm-image.sh log` for the running total. Requires `OPENAI_API_KEY` in `.env`; without it the GM just keeps narrating in text. Use `--quality low` for quick drafts, `high` for marquee moments.
+```
+/gm
+```
 
-### The documentation brain
+`/gm` lets you pick a campaign or start a new one (`/new-game` builds a world from a questionnaire, `/import` turns a book into one), then creates your character and starts playing. Useful commands during play:
 
-Everything about how the harness works lives in **[`docs/`](docs/index.md)**. Each doc's header lists the source files it describes. Start with the flows (a play turn, importing a book, authoring a world, the death hand-off) and read `docs/gotchas/` before debugging anything. Docs are updated by hand, in the same commit as the code they describe.
+| Command | What it does |
+|---|---|
+| `/gm end` | End the session, recording where you paused. Invents nothing. |
+| `/gm cliffhanger` | End the session on a cliffhanger. |
+| `/gm world` | Let the world move off-screen, e.g. during a long rest. |
+| `/gm character` | Show your character sheet. |
+| `/gm status` | A short overview of the campaign. |
 
-### Dependencies
+Campaign data lives in `world-state/campaigns/`, which git ignores: **back it up yourself.**
 
-Installed automatically during setup via [uv](https://docs.astral.sh/uv/):
+## How it's organized
 
-**Core:** `anthropic` (Claude API client), `pdfplumber` + `pypdf2` (PDF extraction), `python-docx` (Word docs), `python-dotenv` (env loading), `requests` (D&D 5e API).
+| Folder | Contents |
+|---|---|
+| `CLAUDE.md` | The GM's always-loaded instructions. |
+| `.claude/skills/` | The rules, loaded when needed: `gm-skills` (rolls, attributes, skills), `gm-combat` (fights and wounds), `gm-conditions`, `gm-levelup`, `gm-sites`, `gm-social`, `gm-craft` (narration). |
+| `.claude/commands/` | The slash commands (`/gm`, `/new-game`, `/create-character`, …). |
+| `.claude/agents/` | Helpers the GM starts by itself (plot threads, NPC backstories, site layouts, book extraction). |
+| `tools/` | The shell commands the GM runs; each wraps a Python module in `lib/`. |
+| `tests/` | The test suite. |
+| `docs/` | Design notes from upstream, only partly updated for this fork. |
 
-**RAG (document import):** `sentence-transformers` (embeddings), `chromadb` (vector index for source lookups).
+## Development
 
----
+```bash
+uv sync --extra rag --extra dev   # install test and book-search dependencies
+uv run pytest                     # run the tests
+```
+
+## Credits
+
+Based on [Claude Code Game Master](https://github.com/Sstobo/Claude-Code-Game-Master) by [Sean Stobo](https://www.linkedin.com/in/sean-stobo/). This fork is maintained by [Feargus](https://github.com/Feargus) and was built with Claude.
 
 ## License
 
-Licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) — free to share and adapt for non-commercial use. See [LICENSE](LICENSE) for details.
-
----
-
-Built by [Sean Stobo](https://www.linkedin.com/in/sean-stobo/). Your story awaits. Run `/gm` to begin.
+Licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), the same license as the original: free to share and adapt for non-commercial use, with attribution, under the same license. This is a modified version of the original work; see [What's different](#whats-different-from-the-original). See [LICENSE](LICENSE) for details.
