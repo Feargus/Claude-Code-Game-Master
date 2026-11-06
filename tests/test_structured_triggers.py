@@ -22,8 +22,7 @@ def test_add_with_structured_trigger(dcc_world):
     assert cid
     data = json.loads(_consq_path(dcc_world).read_text(encoding="utf-8"))
     new = next(c for c in data["active"] if c["id"] == cid)
-    assert new["trigger_type"] == "on_location"
-    assert new["match"] == "Market"
+    assert new["triggers"] == [{"type": "on_location", "match": "Market"}]
     assert new["expiry"] == "day 5"
     # free-text trigger + description still preserved
     assert new["trigger"] == "next day"
@@ -35,7 +34,7 @@ def test_legacy_add_omits_structured_fields(dcc_world):
     cid = cm.add_consequence("plain consequence", "someday")
     data = json.loads(_consq_path(dcc_world).read_text(encoding="utf-8"))
     new = next(c for c in data["active"] if c["id"] == cid)
-    assert "trigger_type" not in new and "match" not in new and "expiry" not in new
+    assert "triggers" not in new and "trigger_type" not in new and "expiry" not in new
 
 
 def test_fixture_exercises_all_trigger_types_and_a_legacy(dcc_world):

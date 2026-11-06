@@ -76,7 +76,8 @@ do not fire. `check_pending(..., world_state)` uses the same disclose-not-hide r
 
 ## Two ways a trigger matches, and one that misfires
 
-Structured triggers (`--trigger-type on_location|on_npc|on_time|on_event` with `--match`)
+Structured triggers (`--trigger-type on_location|on_npc|on_time|on_event` with `--match`,
+repeatable for several triggers, any one of which fires the consequence)
 score 1.0 on a substring hit against the corresponding world-state field. Legacy free-text
 triggers fall back to word-overlap scoring against the whole scene, and need **≥ 50% of
 non-stopword trigger words** present to fire at all. Prefer structured triggers; the fuzzy

@@ -38,7 +38,7 @@ def test_record_choice_writes_a_consequence(dcc_world):
     texts = " ".join(c["consequence"] for c in _active(dcc_world))
     assert "Carry it yourself" in texts
     fork = next(c for c in _active(dcc_world) if "Carry it yourself" in c["consequence"])
-    assert fork.get("trigger_type") == "on_location" and fork.get("match") == "Floor 4"
+    assert fork.get("triggers") == [{"type": "on_location", "match": "Floor 4"}]
 
 
 def test_add_advance_and_fill(dcc_world):

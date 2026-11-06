@@ -338,8 +338,10 @@ Tracks events that will trigger in the future.
       "trigger": "string (free-text, when it triggers)",
       "created": "ISO timestamp",
 
-      "trigger_type": "on_location | on_npc | on_time | on_event   (OPTIONAL, structured)",
-      "match": "string compared against world state (location name / npc / time keyword / event keyword)",
+      "triggers": [   (OPTIONAL, structured; any one fires it)
+        {"type": "on_location | on_npc | on_time | on_event",
+         "match": "string compared against world state (location name / npc / time keyword / event keyword)"}
+      ],
       "expiry": "string date or condition after which it ages out   (OPTIONAL)"
     }
   ],
@@ -366,8 +368,9 @@ A fired consequence also carries `last_fired_key` (the scene key that fired it) 
 in `active` — firing is not resolving. `_snapshot` is the **one-beat** rollback buffer,
 overwritten by the next tick. See [the living world](modules/living-world.md).
 
-**Structured triggers** (`trigger_type`/`match`/`expiry`) are additive and
-optional. When present, the reactivity engine fires the consequence automatically
+**Structured triggers** (`triggers`/`expiry`) are additive and
+optional. Entries written before 2026-11-06 store a single trigger as top-level
+`trigger_type` + `match` instead of a `triggers` list; they are read as a one-item list. When present, the reactivity engine fires the consequence automatically
 when world state matches (and expires it past `expiry`); when absent, the
 consequence is a legacy free-text entry matched fuzzily. A campaign may mix both.
 

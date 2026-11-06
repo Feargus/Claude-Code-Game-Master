@@ -42,7 +42,8 @@ class WorldTick:
                 continue
             cid = self.cm.add_consequence(
                 text, d.get("trigger", "off-screen development"),
-                trigger_type=d.get("trigger_type"), match=d.get("match"))
+                trigger_type=d.get("trigger_type"), match=d.get("match"),
+                triggers=d.get("triggers"))
             if cid:
                 applied.append({"id": cid, "text": text, "source": "world-tick"})
 
@@ -95,6 +96,8 @@ def main():
 
     apply '<json>'   json = [{"text": "...", "trigger": "...",
                               "trigger_type": "on_location", "match": "..."}]
+                     or, for several triggers (any one fires it):
+                     "triggers": [{"type": "on_location", "match": "..."}, ...]
     rollback         undo the most recent tick
     history          show all ticks
     """

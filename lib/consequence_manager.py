@@ -38,27 +38,39 @@ class ConsequenceManager(EntityManager):
 
     def add_consequence(self, description: str, trigger: str,
                         trigger_type: str = None, match: str = None,
-                        expiry: str = None) -> str:
+                        expiry: str = None, triggers: List[Dict[str, str]] = None) -> str:
         """
         Add a new consequence.
 
         Free-text `trigger` is always kept (human-readable + fuzzy fallback).
-        Optionally attach a STRUCTURED trigger the engine can fire/expire on:
-          trigger_type: one of TRIGGER_TYPES (on_location/on_npc/on_time/on_event)
-          match:        value compared against world state (location/npc/time/event keyword)
+        Optionally attach STRUCTURED triggers the engine can fire on; any one fires it:
+          triggers:     list of {"type": one of TRIGGER_TYPES, "match": value compared
+                        against world state (location/npc/time/event keyword)}
+          trigger_type, match: shorthand for a single trigger (added to `triggers`)
           expiry:       optional date or condition after which the consequence ages out
         Structured fields are additive; legacy consequences omit them.
 
         Returns the consequence ID, or "" if refused.
         """
-        if trigger_type == 'on_time':
-            ok, _ = self.validators.validate_time_of_day(match or '')
-            if not ok:
-                print(f"[ERROR] on_time matches the time-of-day word (small hours, dawn, morning, "
-                      f"noon, afternoon, evening, dusk, night, midnight), not '{match}'. For a "
-                      f"deadline at a date and time, use a clock: gm-clock.sh add \"<name>\" 1 "
-                      f"--due \"YYYY-MM-DD HH:MM\" --consequence \"<what happens>\"", file=sys.stderr)
+        triggers = [dict(t) for t in (triggers or [])]
+        if trigger_type:
+            triggers.append({'type': trigger_type, 'match': match})
+        for t in triggers:
+            if t.get('type') not in self.TRIGGER_TYPES:
+                print(f"[ERROR] Unknown trigger type '{t.get('type')}'. Use one of: "
+                      f"{', '.join(self.TRIGGER_TYPES)}", file=sys.stderr)
                 return ""
+            if not t.get('match'):
+                print(f"[ERROR] Trigger {t['type']} needs a --match value.", file=sys.stderr)
+                return ""
+            if t['type'] == 'on_time':
+                ok, _ = self.validators.validate_time_of_day(t['match'])
+                if not ok:
+                    print(f"[ERROR] on_time matches the time-of-day word (small hours, dawn, morning, "
+                          f"noon, afternoon, evening, dusk, night, midnight), not '{t['match']}'. For a "
+                          f"deadline at a date and time, use a clock: gm-clock.sh add \"<name>\" 1 "
+                          f"--due \"YYYY-MM-DD HH:MM\" --consequence \"<what happens>\"", file=sys.stderr)
+                    return ""
 
         data = self.json_ops.load_json(self.consequences_file)
 
@@ -69,10 +81,8 @@ class ConsequenceManager(EntityManager):
             'trigger': trigger,
             'created': self.json_ops.get_timestamp()
         }
-        if trigger_type:
-            consequence['trigger_type'] = trigger_type
-        if match is not None:
-            consequence['match'] = match
+        if triggers:
+            consequence['triggers'] = triggers
         if expiry is not None:
             consequence['expiry'] = expiry
 
@@ -160,24 +170,49 @@ class ConsequenceManager(EntityManager):
         pattern = r'\b' + re.escape(str(expiry).lower()) + r'\b'
         return re.search(pattern, self._world_text(world_state)) is not None
 
-    def _evaluate_trigger(self, consequence: Dict[str, Any], world_state: Dict[str, Any]):
-        """Return (score, reason). 0 = ignore; >= 0.3 near-miss; >= 0.5 match. Structured = 1.0."""
-        ttype = consequence.get('trigger_type')
-        match = str(consequence.get('match', '')).lower()
+    @staticmethod
+    def structured_triggers(consequence: Dict[str, Any]) -> List[Dict[str, str]]:
+        """The consequence's structured triggers as a list of {"type", "match"}.
 
-        if ttype and match:
-            if ttype == 'on_location' and match in str(world_state.get('location', '')).lower():
-                return 1.0, f"at location matching '{consequence['match']}'"
-            if ttype == 'on_npc':
-                npcs = ' '.join(str(x) for x in world_state.get('present_npcs', []) or []).lower()
-                if match in npcs:
-                    return 1.0, f"NPC matching '{consequence['match']}' present"
-            if ttype == 'on_time' and match in str(world_state.get('time', '')).lower():
-                return 1.0, f"time matching '{consequence['match']}'"
-            if ttype == 'on_event':
-                events = ' '.join(str(x) for x in world_state.get('events', []) or []).lower()
-                if match in events:
-                    return 1.0, f"event matching '{consequence['match']}'"
+        New entries store a `triggers` list; entries from before that store a
+        single `trigger_type` + `match`, read here as a one-item list.
+        """
+        if isinstance(consequence.get('triggers'), list):
+            return [t for t in consequence['triggers']
+                    if isinstance(t, dict) and t.get('type') and t.get('match')]
+        if consequence.get('trigger_type') and consequence.get('match'):
+            return [{'type': consequence['trigger_type'], 'match': consequence['match']}]
+        return []
+
+    @staticmethod
+    def _evaluate_one(ttype: str, raw_match: str, world_state: Dict[str, Any]) -> str:
+        """The reason a single structured trigger matches now, or '' if it doesn't."""
+        match = str(raw_match).lower()
+        if ttype == 'on_location' and match in str(world_state.get('location', '')).lower():
+            return f"at location matching '{raw_match}'"
+        if ttype == 'on_npc':
+            npcs = ' '.join(str(x) for x in world_state.get('present_npcs', []) or []).lower()
+            if match in npcs:
+                return f"NPC matching '{raw_match}' present"
+        if ttype == 'on_time' and match in str(world_state.get('time', '')).lower():
+            return f"time matching '{raw_match}'"
+        if ttype == 'on_event':
+            events = ' '.join(str(x) for x in world_state.get('events', []) or []).lower()
+            if match in events:
+                return f"event matching '{raw_match}'"
+        return ''
+
+    def _evaluate_trigger(self, consequence: Dict[str, Any], world_state: Dict[str, Any]):
+        """Return (score, reason). 0 = ignore; >= 0.3 near-miss; >= 0.5 match. Structured = 1.0.
+
+        With structured triggers, any one that matches fires the consequence.
+        """
+        structured = self.structured_triggers(consequence)
+        if structured:
+            for t in structured:
+                reason = self._evaluate_one(t['type'], t['match'], world_state)
+                if reason:
+                    return 1.0, reason
             return 0.0, ''
 
         # Legacy free-text: score word overlap between the trigger phrase and world.
@@ -400,10 +435,12 @@ def main():
     add_parser = subparsers.add_parser('add', help='Add new consequence')
     add_parser.add_argument('description', help='Consequence description')
     add_parser.add_argument('trigger', help='Trigger condition (free-text)')
-    add_parser.add_argument('--trigger-type', dest='trigger_type',
+    add_parser.add_argument('--trigger-type', dest='trigger_type', action='append',
                             choices=list(ConsequenceManager.TRIGGER_TYPES),
-                            help='Structured trigger type (enables auto-firing)')
-    add_parser.add_argument('--match', help='Structured trigger match value')
+                            help='Structured trigger type (enables auto-firing). Repeat with '
+                                 '--match for several triggers; any one fires it.')
+    add_parser.add_argument('--match', action='append',
+                            help='Structured trigger match value, one per --trigger-type, in order')
     add_parser.add_argument('--expiry', help='Optional expiry (date or condition)')
 
     # Check pending
@@ -433,13 +470,21 @@ def main():
 
     manager = ConsequenceManager()
 
+    triggers = []
+    if args.action == 'add':
+        types, matches = args.trigger_type or [], args.match or []
+        if len(types) != len(matches):
+            sys.exit(emit_error(f"{len(types)} --trigger-type but {len(matches)} --match: "
+                                f"give exactly one --match per --trigger-type, in the same order",
+                                json_mode=json_mode))
+        triggers = [{'type': t, 'match': m} for t, m in zip(types, matches)]
+
     if json_mode and args.action == 'add':
         import contextlib
         import io
         with contextlib.redirect_stdout(io.StringIO()):  # keep stdout JSON-only
             cid = manager.add_consequence(args.description, args.trigger,
-                                          trigger_type=args.trigger_type,
-                                          match=args.match, expiry=args.expiry)
+                                          triggers=triggers, expiry=args.expiry)
         if cid:
             emit({"id": cid}, json_mode=True)
         else:
@@ -454,8 +499,7 @@ def main():
 
     if args.action == 'add':
         if not manager.add_consequence(args.description, args.trigger,
-                                       trigger_type=args.trigger_type,
-                                       match=args.match, expiry=args.expiry):
+                                       triggers=triggers, expiry=args.expiry):
             sys.exit(1)
 
     elif args.action == 'check':

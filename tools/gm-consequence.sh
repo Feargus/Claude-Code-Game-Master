@@ -31,6 +31,7 @@ case "$ACTION" in
             echo "Usage: gm-consequence.sh add <description> <trigger> [--trigger-type T --match M --expiry E]"
             echo "Triggers: immediate, next visit, 2 days, next session, etc."
             echo "Structured: --trigger-type on_location|on_npc|on_time|on_event --match <value> [--expiry <date|cond>]"
+            echo "Several triggers: repeat --trigger-type/--match pairs, in order; any one fires it."
             exit 1
         fi
         DESC="$1"; TRIG="$2"; shift 2
