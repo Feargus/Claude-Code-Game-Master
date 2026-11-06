@@ -303,6 +303,13 @@ A dictionary with category keys, each containing an array of fact **objects**.
   `campaign-overview.json`. Missing on facts from before it existed.
 - `timestamp`: the real-world time it was recorded.
 
+**Ids for what a fact is about or held by** (`lib/world_ids.py`, for the coming `about` and
+`holders` fields): `player`, `npc:<key>`, `location:<key>`, and the rungs `street` and
+`public`. The stored id is the exact key (`npc:Auntie Ro`); input may differ in case,
+punctuation, titles or use an alias, and the player character's name resolves to `player`.
+Unknown ids are refused with close matches. Faction and item ids come with those systems.
+`python lib/world_ids.py list` prints every id; `check <id>…` tests some.
+
 Bare strings are tolerated on read (`lib/campaign_memory.py:60` falls back to `str(it)`)
 but managers write the object form.
 

@@ -212,14 +212,15 @@ class ConsequenceManager(EntityManager):
 
     def _death_target(self, name: str) -> str:
         """The canonical on_death match for `name`: 'player', an NPC key, or '' if unknown."""
-        from entity_aliases import resolve_entity_name
-        if str(name).strip().lower() == 'player':
+        from world_ids import WorldIds
+        ids = WorldIds(self.json_ops)
+        raw = str(name).strip()
+        if raw.lower().startswith('npc:'):
+            raw = raw[4:]
+        if ids.resolve(raw)[0] == 'player':  # 'player' or the character's name
             return 'player'
-        character = self.json_ops.load_json("character.json") or {}
-        if character.get('name') and str(name).strip().lower() == str(character['name']).lower():
-            return 'player'
-        npcs = self.json_ops.load_json("npcs.json") or {}
-        return resolve_entity_name(name, npcs) or ''
+        cid, _ = ids.resolve(f"npc:{raw}")
+        return cid[4:] if cid else ''
 
     EFFECT_TYPES = ('start_clock',)
 
