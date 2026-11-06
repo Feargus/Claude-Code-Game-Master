@@ -233,13 +233,24 @@ Confirm the session is saved: who rests where, and that progress is recorded. No
 
 **Invoked via:** `/gm world`. Only when the player asks; never on your own, and never as part of a plain `/gm end`.
 
-The world moves while the character is away or resting: the end of a session, a long rest, a week in hiding. Propose a few SMALL developments grounded in the plots, clocks, consequences and NPC goals, and persist them:
+The world moves while the character is away or resting: the end of a session, a long rest, a week in hiding. Propose a few SMALL developments grounded in the plots, clocks, consequences and NPC goals. Each development is something that **has happened** off-screen, so it is always a fact. If it also sets something in motion, add a consequence with a real trigger (who or where it waits for), and/or a clock for a time limit:
 
 ```bash
-bash tools/gm-session.sh world-tick '<json list>'
+bash tools/gm-session.sh world-tick '[
+  {"fact": "Meridian has posted foreclosure notices across Level 40."},
+  {"fact": "Dekker has hired a tracker who hunts the grey sleeve.",
+   "consequence": {"text": "The tracker finds Fearghas",
+                   "triggers": [{"type": "on_location", "match": "Old Iron'"'"'s Yard"}]},
+   "clock": {"name": "The tracker closes in", "segments": 3, "due_in": "3d",
+             "consequence": "The tracker finds Fearghas"}}
+]'
 ```
 
-It applies all of them (warns if more than 3); `gm-session.sh world-tick-rollback` undoes the last one. Tell the player only what the character could know, or nothing, and let the rest surface in play. `/gm world` does not end the session; with `cliffhanger` as well, end the session on a cliffhanger afterwards.
+- `fact` (required): what happened, one line. Optional `"category"` (default `plot_local`, shown under KEY FACTS).
+- `consequence` (optional): `text` plus `triggers`, the same types as `gm-consequence.sh add` (`on_location`, `on_npc`, `on_time`, `on_death`, `on_event`). A consequence without triggers is refused.
+- `clock` (optional): `name`, `segments`, and `due_in` (`3d`) or `due` (`"YYYY-MM-DD HH:MM"`) for a time clock, or `"on": "event"` for one you advance by hand; `consequence` fires when it fills.
+
+It applies all of them (warns if more than 3). If any part is invalid, nothing from the tick is kept: fix it and send the whole list again. Afterwards it lists the consequences waiting on an event: if a development fulfils one, fire it (`gm-consequence.sh fire <id> --by <fact id>`). `gm-session.sh world-tick-rollback` undoes the last tick: its facts, consequences and clocks. Tell the player only what the character could know, or nothing, and let the rest surface in play. `/gm world` does not end the session; with `cliffhanger` as well, end the session on a cliffhanger afterwards.
 
 ---
 

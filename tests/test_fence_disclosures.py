@@ -46,19 +46,18 @@ def test_tick_four_matches_fires_two_discloses_two(tmp_path):
 
 def test_world_tick_applies_five_and_warns_on_overflow(dcc_world, capsys):
     devs = [
-        {"text": "A rival crew claims Floor 3 territory"},
-        {"text": "Mordecai sends word of a new threat"},
-        {"text": "Viewer interest spikes around the party"},
-        {"text": "An old ally resurfaces"},
-        {"text": "A fifth development that exceeds the cap"},
+        {"fact": "A rival crew claims Floor 3 territory"},
+        {"fact": "Mordecai sends word of a new threat"},
+        {"fact": "Viewer interest spikes around the party"},
+        {"fact": "An old ally resurfaces"},
+        {"fact": "A fifth development that exceeds the cap"},
     ]
     wt = WorldTick(dcc_world)
     applied = wt.apply(devs, cap=3)
     assert len(applied) == 5
-    texts = " ".join(c["consequence"] for c in json.loads(
-        (Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "consequences.json"
-         ).read_text(encoding="utf-8")).get("active", []))
-    assert "fifth development" in texts
+    facts = json.loads((Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "facts.json"
+                        ).read_text(encoding="utf-8"))
+    assert any("fifth development" in f["fact"] for f in facts["plot_local"])
     err = capsys.readouterr().err
     assert "fifth development" in err
     assert "cap 3" in err

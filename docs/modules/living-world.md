@@ -29,7 +29,7 @@ developments. **They are wired to very different degrees.** Verified 2026-08-13:
 |---|---|---|
 | Consequences | **Yes** | `gm-session.sh move` and `gm-time.sh advance` both call `gm-consequence.sh tick` after they write |
 | Threat clocks | **Time-clocks: yes** (since 2026-08-13) | `gm-time.sh advance <duration>` (or `set`) moves the campaign's `game_time`, and every `advance_on: "time"` clock is recomputed from it: it stores `starts_at` and `due_at`, and its filled share is the share of that span that has passed. A clock with no due time gets one day per segment. Event clocks stay manual: `gm-clock.sh advance "<name>"`. Filling one fires its consequence (below) |
-| World tick | **No** — GM-invoked by design | the developments are a model call; `gm-session.sh world-tick '<json>'` persists every proposal, warns (naming the overflow) when the count exceeds the advisory cap of 3, and stays logged / rollback-able. Before 2026-08-13 `WorldTick` had no caller at all |
+| World tick | **No** — GM-invoked by design (`/gm world`) | the developments are a model call; `gm-session.sh world-tick '<json>'` records each as a fact, plus an optional consequence (with real triggers) and/or clock (since 2026-11-06; before, each was a consequence with no usable trigger), is all-or-nothing, warns (naming the overflow) when the count exceeds the advisory cap of 3, and stays logged / rollback-able. Before 2026-08-13 `WorldTick` had no caller at all |
 
 So three weeks and ten minutes are not the same pressure: the GM passes how much time
 actually elapsed, a clock is full exactly when its due time arrives, and a full clock announces
@@ -102,10 +102,10 @@ Every firing appends to `provenance` in `consequences.json` (`gm-consequence.sh 
 but the snapshot is overwritten by the next tick, so **rollback is exactly one beat deep**.
 
 `WorldTick` keeps a separate, deeper log (`world-tick-log.json`) and rolls back by removing
-the consequence IDs it added. `apply` writes every proposal; the cap of 3 is a warning
-that names what overflowed, not a silent drop. Both rollbacks are ordered write-then-verify:
-if the log write fails, `WorldTick.apply` deletes the consequences it just created rather
-than leaving un-rollbackable state (`lib/world_tick.py:62-69`).
+the facts, consequences and clocks it added. `apply` writes every proposal; the cap of 3 is a
+warning that names what overflowed, not a silent drop. A malformed or refused part undoes
+the whole tick, and if the log write fails, `WorldTick.apply` undoes what it just wrote
+rather than leaving un-rollbackable state.
 
 ## Presence is shared; old campaigns still hide untagged NPCs
 

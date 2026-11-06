@@ -72,12 +72,13 @@ class NoteManager:
         if not facts_path.exists():
             self.json_ops.save_json("facts.json", {})
 
-    def add_fact(self, category: str, fact: str) -> str:
+    def add_fact(self, category: str, fact: str, list_waiting: bool = True) -> str:
         """Add a fact to the specified category. Returns its id, or "" on failure.
 
         Each fact carries an id, the in-game time it was recorded (`game_time`,
         copied from campaign-overview.json; left out if the campaign has none)
-        and the real-world `timestamp`.
+        and the real-world `timestamp`. Afterwards it lists the consequences
+        waiting on an event, unless `list_waiting` is False (the caller lists them).
         """
         facts = self.json_ops.load_json("facts.json")
         assign_missing_ids(facts)
@@ -98,8 +99,24 @@ class NoteManager:
             return ""
 
         print(f"[SUCCESS] Recorded fact {fact_id} in {category}: {fact}")
-        self._list_waiting(fact_id)
+        if list_waiting:
+            self._list_waiting(fact_id)
         return fact_id
+
+    def remove_facts(self, fact_ids) -> int:
+        """Delete the facts with these ids (undoing a world tick). Returns how many."""
+        ids = set(fact_ids)
+        facts = self.json_ops.load_json("facts.json")
+        removed = 0
+        for category, items in facts.items():
+            if not isinstance(items, list):
+                continue
+            kept = [f for f in items if not (isinstance(f, dict) and f.get('id') in ids)]
+            removed += len(items) - len(kept)
+            facts[category] = kept
+        if removed:
+            self.json_ops.save_json("facts.json", facts)
+        return removed
 
     def _list_waiting(self, fact_id: str) -> None:
         """Show the consequences waiting on an event, so the GM can judge whether

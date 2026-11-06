@@ -527,7 +527,8 @@ def print_waiting(fact_id: str, waiting: List[Dict[str, Any]]) -> None:
     print(f"Waiting on an event — does {fact_id} fulfil one? (your judgment; usually none)")
     for c in waiting:
         print(f"  [{c['id']}] awaits \"{c['awaits']}\" → {c['consequence']}")
-    print(f"  If one does: bash tools/gm-consequence.sh fire <id> --by {fact_id}")
+    by = fact_id if ',' not in fact_id else "<the fact's id>"
+    print(f"  If one does: bash tools/gm-consequence.sh fire <id> --by {by}")
 
 
 def _print_tick_report(result: Dict[str, List[Dict[str, Any]]]) -> None:

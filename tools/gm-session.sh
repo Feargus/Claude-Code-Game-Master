@@ -14,7 +14,8 @@ show_usage() {
     echo "                           - Move party; --takes 20m lets that much time pass first"
     echo "  context                  - Full session context (character, party, consequences, rules)"
     echo "  choices [on|off|toggle]  - Toggle the [A]-[E] action menu (no arg: show state)"
-    echo "  world-tick '<json>'      - Persist off-screen developments (warns if >3, rollback-able)"
+    echo "  world-tick '<json>'      - Record off-screen developments: a fact each, optionally a"
+    echo "                             consequence and/or clock (warns if >3, rollback-able)"
     echo "  world-tick-rollback      - Undo the most recent world tick"
     echo "  world-tick-log           - Show world-tick history"
     echo ""
@@ -128,9 +129,7 @@ case "$ACTION" in
         echo "  bash tools/gm-recall.sh arc '{\"summary\": \"what changed this session\","
         echo "    \"who_matters\": [\"...\"], \"open_debts\": [\"...\"]}'"
         echo ""
-        echo "World tick: optionally advance a few SMALL off-screen developments"
-        echo "  (grounded in plots/RAG) with: gm-session.sh world-tick '<json list>'"
-        echo "  Applies all; warns if more than 3. Rollback with world-tick-rollback."
+        echo "Off-screen developments: only when the player asks (/gm world), never on your own."
         ;;
 
     world-tick)
