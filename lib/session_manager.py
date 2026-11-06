@@ -27,11 +27,10 @@ class SessionManager(EntityManager):
     # Per-campaign play-style defaults. `action_menu` controls whether the GM ends
     # each beat with exactly three numbered choices (on) or an open prompt (off). Stored
     # under overview.preferences; surfaced in get_full_context so the GM honors it.
-    # `player_rolls` hands dice to the player (GM pauses and prompts instead of
-    # rolling); `beat_length` picks the pacing line. Same storage + surfacing.
+    # `beat_length` picks the pacing line. Same storage + surfacing.
     # `rag_inspiration` makes the GM pull source passages every beat or so for
     # grounded narration detail rather than improvising from memory.
-    DEFAULT_PREFERENCES = {"action_menu": True, "player_rolls": False,
+    DEFAULT_PREFERENCES = {"action_menu": True,
                            "beat_length": "adaptive", "rag_inspiration": True}
 
     SAVE_VERSION = 1
@@ -654,23 +653,6 @@ class SessionManager(EntityManager):
         else:
             lines.append("Pacing: no tight preference is set. Match prose to the beat, one "
                          "clear beat at a time; don't fast-forward past a choice.")
-
-        if self.get_preferences().get("player_rolls", False):
-            lines.append("Dice: PLAYER CHOOSES THE ROLL. When a check is needed, STOP at the "
-                         "decision point and present it as a menu:\n"
-                         "  1. Roll a <Stat> check with <+X stat / +Y other> bonuses. "
-                         "Target of <Z> or higher.\n"
-                         "  Or something else... (a different action — which may itself "
-                         "demand its own roll, and that is fine).\n"
-                         "Spell out the stat, every bonus, and the target DC. The player's "
-                         "choice is to COMMIT to the roll (or pick something else) — do NOT "
-                         "ask them to report a number. Once they commit: (1) narrate the "
-                         "START of the attempt (a sentence or two, no outcome yet), (2) run "
-                         "the dice tool `uv run python lib/dice.py \"1d20+<total bonus>\"` and "
-                         "show the result line CLEARLY, (3) narrate what happens as a result — "
-                         "true to the roll (nat 20 fantastic, nat 1 horrible, meet/beat the "
-                         "target = success, below = failure with a real cost). GM still rolls "
-                         "hidden/NPC dice the same way.")
 
         # Informing, not adjudicating — caps and judgment live in skills / gm-craft.
         lines.append("Failure: failure should cost something; decide the stake before the roll.")
@@ -1554,11 +1536,6 @@ def main():
                                 choices=['on', 'off', 'toggle', 'show'],
                                 help='on | off | toggle | show (default: show)')
 
-    dice_parser = subparsers.add_parser('dice', help='Toggle whether the player rolls their own dice')
-    dice_parser.add_argument('value', nargs='?', default='show',
-                             choices=['on', 'off', 'toggle', 'show'],
-                             help='on | off | toggle | show (default: show)')
-
     from cli_output import wants_json, strip_json_flag, emit
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
@@ -1638,20 +1615,6 @@ def main():
         else:
             print(f"Action menu turned {state}. "
                   f"{'Beats will end with exactly three numbered choices.' if current else 'Beats will end with an open prompt.'}")
-
-    elif args.action == 'dice':
-        val = getattr(args, 'value', 'show')
-        current = manager.get_preferences().get('player_rolls', False)
-        if val != 'show':
-            new = (not current) if val == 'toggle' else (val == 'on')
-            manager.set_preference('player_rolls', new)
-            current = new
-        state = 'on' if current else 'off'
-        if val == 'show':
-            print(f"Player rolls is {state}.")
-        else:
-            print(f"Player rolls turned {state}. "
-                  f"{'You roll your own dice; the GM only rolls hidden/NPC dice.' if current else 'The GM rolls for you again.'}")
 
 
 if __name__ == "__main__":
