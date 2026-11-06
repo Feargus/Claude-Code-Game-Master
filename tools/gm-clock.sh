@@ -10,6 +10,9 @@
 #                                             full when due (default: one day per segment)
 #   gm-clock.sh advance "Name" [--ticks 2]    Advance an event clock by hand
 #                                             (a time clock fills only as time passes)
+#   gm-clock.sh due "Name" --earlier 1d | --later 6h | --due-in 12h | --due "YYYY-MM-DD HH:MM"
+#                                             Move a time clock's due time; it is
+#                                             recomputed at once (may fill and fire)
 #   gm-clock.sh beats                         Filled clocks = dramatic beats due
 #   gm-clock.sh remove "Name"                 Remove a clock
 #

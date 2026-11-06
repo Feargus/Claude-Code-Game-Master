@@ -151,6 +151,46 @@ class ThreatClockManager(EntityManager):
         self.json_ops.save_json(self.clocks_file, data)
         return dict(c, fired=self._fire_on_clock(name, before, c))
 
+    def move_due(self, name: str, due_at: datetime = None, due_in_minutes: int = None,
+                 shift_minutes: int = None) -> Dict[str, Any]:
+        """Move a time clock's due time; give exactly one of the three.
+
+        `shift_minutes` moves the current due time (negative = earlier),
+        `due_in_minutes` counts from the game time, `due_at` is the moment itself.
+        The start stays, so the clock is recomputed at once: brought forward, it may
+        fill segments now (and fire them); pushed back, it keeps what it has filled
+        and waits for time to catch up, since clocks never empty. Returns the clock
+        with the on_clock consequences it fired under `fired` (not saved).
+        """
+        from time_manager import STORED_FORMAT
+        if sum(x is not None for x in (due_at, due_in_minutes, shift_minutes)) != 1:
+            raise ValueError("Give exactly one of --earlier, --later, --due-in or --due.")
+        data = self._load()
+        c = data.get(name)
+        if c is None:
+            raise ValueError(f"No clock '{name}'.")
+        if c.get("advance_on", "time") != "time":
+            raise ValueError(f"'{name}' is an event clock: it has no due time. "
+                             f"Advance it by hand instead.")
+        if int(c.get("current", 0)) >= int(c.get("max", 1)):
+            raise ValueError(f"'{name}' is already full.")
+        now = self._game_time()
+        if now is None and due_at is None:
+            raise ValueError("The campaign has no game time yet. Set it first, or use --due.")
+        if now is not None:
+            self._schedule(c, now)
+        if shift_minutes is not None:
+            due_at = datetime.strptime(c["due_at"], STORED_FORMAT) + timedelta(minutes=shift_minutes)
+        elif due_in_minutes is not None:
+            due_at = now + timedelta(minutes=due_in_minutes)
+        if "starts_at" in c and due_at <= datetime.strptime(c["starts_at"], STORED_FORMAT):
+            raise ValueError(f"'{name}' started {c['starts_at'].replace('T', ' ')}; "
+                             f"it can't be due before that.")
+        c["due_at"] = due_at.strftime(STORED_FORMAT)
+        self.json_ops.save_json(self.clocks_file, data)
+        moved = self.update_time_clocks(now) if now is not None else {}
+        return moved.get(name) or dict(self._load()[name], fired=[])
+
     def update_time_clocks(self, now: datetime) -> Dict[str, Any]:
         """Recompute every time clock from the game time.
 
@@ -252,6 +292,11 @@ def main():
     p.add_argument("--due-in", dest="due_in", help="time clock: due after this long, e.g. 3d, 12h")
     p.add_argument("--due", help='time clock: due at "YYYY-MM-DD HH:MM"')
     p = sub.add_parser("advance"); p.add_argument("name"); p.add_argument("--ticks", type=int, default=1)
+    p = sub.add_parser("due"); p.add_argument("name")
+    p.add_argument("--earlier", help="due this much sooner, e.g. 1d, 6h")
+    p.add_argument("--later", help="due this much later")
+    p.add_argument("--due-in", dest="due_in", help="due this long from now")
+    p.add_argument("--due", help='due at "YYYY-MM-DD HH:MM"')
     p = sub.add_parser("remove"); p.add_argument("name")
     sub.add_parser("list")
     sub.add_parser("beats")  # filled clocks = beats due
@@ -281,6 +326,19 @@ def main():
         if out is None:
             print(f"Error: no clock '{args.name}'", file=sys.stderr)
             sys.exit(1)
+    elif args.action == "due":
+        from time_manager import TimeError, parse_duration, parse_time
+        try:
+            shift = (-parse_duration(args.earlier) if args.earlier else
+                     parse_duration(args.later) if args.later else None)
+            if args.earlier and args.later:
+                raise ValueError("Give exactly one of --earlier, --later, --due-in or --due.")
+            out = m.move_due(args.name, due_at=parse_time(args.due) if args.due else None,
+                             due_in_minutes=parse_duration(args.due_in) if args.due_in else None,
+                             shift_minutes=shift)
+        except (TimeError, ValueError) as error:
+            print(f"Error: {error}", file=sys.stderr)
+            sys.exit(1)
     elif args.action == "remove":
         out = {"removed": m.remove_clock(args.name)}
     elif args.action == "beats":
@@ -294,7 +352,9 @@ def main():
         print(json.dumps(out, indent=2))
         if args.action == "list":
             print(m.render(out))
-        if args.action == "advance" and out:
+        if args.action == "due":
+            print(m.render({args.name: out}))
+        if args.action in ("advance", "due") and out:
             from consequence_manager import print_fired
             print_fired(out.get("fired", []))
 
