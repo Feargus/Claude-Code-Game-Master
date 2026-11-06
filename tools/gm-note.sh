@@ -5,6 +5,8 @@ source "$(dirname "$0")/common.sh"
 
 usage() {
     echo "Usage: gm-note.sh <category> <fact> [--about <id>]... [--not-about <id>]..."
+    echo "                  [--also <id>]... | [--holders <id>]... | [--secret]"
+    echo "       gm-note.sh tell <fact id> <holder>...      someone learns it"
     echo "       gm-note.sh about <fact id> [--add <id>]... [--remove <id>]..."
     echo "       gm-note.sh categories"
     echo ""
@@ -13,6 +15,10 @@ usage() {
     echo ""
     echo "about: who or what the fact concerns: player, npc:<name>, location:<name>."
     echo "Names found in the text are added by themselves; --not-about drops a wrong one."
+    echo "holders: who knows it. Default: the player and the NPCs present."
+    echo "--also adds to it; --holders replaces it (player, npc:<name>, street, public);"
+    echo "--secret: nobody."
+    echo "Presence comes from location tags: name an NPC who is there but not tagged with --also."
     echo ""
     echo "Example: gm-note.sh session_events \"Wren paid off Dekker\" --about location:Lanternside"
 }
@@ -28,6 +34,10 @@ case "$1" in
     categories)
         echo "Fact Categories:"
         $PYTHON_CMD "$LIB_DIR/note_manager.py" categories
+        ;;
+    tell)
+        shift
+        $PYTHON_CMD "$LIB_DIR/note_manager.py" tell "$@"
         ;;
     about)
         shift

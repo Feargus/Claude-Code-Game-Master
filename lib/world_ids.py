@@ -146,11 +146,29 @@ class WorldIds:
                 ids.append(cid)
         return ids
 
-    def resolve_all(self, raws) -> Tuple[List[str], List[str]]:
-        """(ids, errors) for several; duplicates collapse, order is kept."""
+    def resolve_holder(self, raw: str) -> Tuple[str, str]:
+        """Like resolve, for who can know a fact: a place can't."""
+        cid, error = self.resolve(raw)
+        if cid.startswith("location:"):
+            return "", (f"'{raw}' is a place, and a place can't know a fact. Use street, "
+                        f"public, or the NPCs there.")
+        return cid, error
+
+    def present(self) -> List[str]:
+        """Default holders in a scene: the player plus the NPCs present (party
+        members, and NPCs tagged with the current location; never the dead)."""
+        from entity_manager import npcs_present
+        overview = self.json_ops.load_json("campaign-overview.json") or {}
+        pos = overview.get("player_position") or {}
+        here = pos.get("current_location", "") if isinstance(pos, dict) else ""
+        return ["player"] + [f"npc:{name}" for name in npcs_present(self._load()["npc"], here)]
+
+    def resolve_all(self, raws, holders: bool = False) -> Tuple[List[str], List[str]]:
+        """(ids, errors) for several; duplicates collapse, order is kept.
+        `holders` refuses places (see resolve_holder)."""
         ids, errors = [], []
         for raw in raws or []:
-            cid, error = self.resolve(raw)
+            cid, error = self.resolve_holder(raw) if holders else self.resolve(raw)
             if error:
                 errors.append(error)
             elif cid not in ids:

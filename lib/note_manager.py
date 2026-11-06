@@ -87,18 +87,41 @@ class NoteManager:
         found = [i for i in ids.mentioned(fact) if i not in given and i not in dropped]
         return [i for i in given if i not in dropped] + found, found, errors
 
+    def _holders(self, holders=None, secret: bool = False, also=None):
+        """(holder ids, errors) for a new fact. None = the default: the player and
+        the NPCs present; `also` adds to the default. `secret` = nobody (a GM-only
+        secret)."""
+        from world_ids import WorldIds
+        if sum([holders is not None, secret, bool(also)]) > 1:
+            return [], ["Give one of --holders (instead of the default), --also (on top "
+                        "of it) or --secret (nobody)."]
+        if secret:
+            return [], []
+        ids = WorldIds(self.json_ops)
+        if holders is not None:
+            return ids.resolve_all(holders, holders=True)
+        extra, errors = ids.resolve_all(also, holders=True)
+        default = ids.present()
+        return default + [h for h in extra if h not in default], errors
+
     def add_fact(self, category: str, fact: str, list_waiting: bool = True,
-                 about=None, not_about=None) -> str:
+                 about=None, not_about=None, holders=None, secret: bool = False,
+                 also=None) -> str:
         """Add a fact to the specified category. Returns its id, or "" on failure.
 
         Each fact carries an id, the in-game time it was recorded (`game_time`,
         copied from campaign-overview.json; left out if the campaign has none)
         and the real-world `timestamp`. `about` lists who or what it concerns:
         the ids given plus the names found in the text, minus `not_about`; an
-        unknown id refuses the fact. Afterwards it lists the consequences
-        waiting on an event, unless `list_waiting` is False (the caller lists them).
+        unknown id refuses the fact. `holders` lists who knows it: by default
+        the player and the NPCs present (`also` adds to that); a list given
+        replaces it; `secret`
+        (or an empty list) means nobody, a GM-only secret. Afterwards it lists
+        the consequences waiting on an event, unless `list_waiting` is False.
         """
         about_ids, found, errors = self._about(fact, about, not_about)
+        holder_ids, more = self._holders(holders, secret, also)
+        errors += more
         if errors:
             for error in errors:
                 print(f"[ERROR] {error}", file=sys.stderr)
@@ -114,6 +137,7 @@ class NoteManager:
         entry = {'id': fact_id, 'fact': fact}
         if about_ids:
             entry['about'] = about_ids
+        entry['holders'] = holder_ids
         game_time = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
         if game_time:
             entry['game_time'] = game_time
@@ -130,6 +154,7 @@ class NoteManager:
             note = (f" ({which} found in the text; drop a wrong one with "
                     f"gm-note.sh about {fact_id} --remove <id>)") if found else ""
             print(f"  about: {', '.join(about_ids)}{note}")
+        print(f"  known to: {', '.join(holder_ids) if holder_ids else 'nobody (a secret)'}")
         if list_waiting:
             self._list_waiting(fact_id)
         return fact_id
@@ -144,10 +169,7 @@ class NoteManager:
         if errors + more:
             raise ValueError("; ".join(errors + more))
         facts = self.json_ops.load_json("facts.json")
-        entry = next((f for items in facts.values() if isinstance(items, list)
-                      for f in items if isinstance(f, dict) and f.get('id') == fact_id), None)
-        if entry is None:
-            raise ValueError(f"No fact '{fact_id}'.")
+        entry = self._entry(facts, fact_id)
         about = [i for i in entry.get('about', []) if i not in removing]
         about += [i for i in adding if i not in about]
         if about:
@@ -156,6 +178,29 @@ class NoteManager:
             entry.pop('about', None)
         self.json_ops.save_json("facts.json", facts)
         return about
+
+    def _entry(self, facts: dict, fact_id: str) -> dict:
+        entry = next((f for items in facts.values() if isinstance(items, list)
+                      for f in items if isinstance(f, dict) and f.get('id') == fact_id), None)
+        if entry is None:
+            raise ValueError(f"No fact '{fact_id}'.")
+        return entry
+
+    def tell(self, fact_id: str, holders) -> list:
+        """Someone learns a recorded fact: add holders. Returns those who are new
+        (already knowing isn't learning). Raises ValueError for an unknown fact or id."""
+        from world_ids import WorldIds
+        adding, errors = WorldIds(self.json_ops).resolve_all(holders, holders=True)
+        if errors:
+            raise ValueError("; ".join(errors))
+        facts = self.json_ops.load_json("facts.json")
+        entry = self._entry(facts, fact_id)
+        known = entry.setdefault('holders', [])
+        new = [h for h in adding if h not in known]
+        if new:
+            known.extend(new)
+            self.json_ops.save_json("facts.json", facts)
+        return new
 
     def remove_facts(self, fact_ids) -> int:
         """Delete the facts with these ids (undoing a world tick). Returns how many."""
@@ -206,6 +251,15 @@ def main():
                    help="who or what it concerns (repeatable): player, npc:<name>, location:<name>")
     p.add_argument("--not-about", dest="not_about", action="append", default=[],
                    help="a name found in the text that the fact is not about")
+    p_add = p
+    p_add.add_argument("--holders", action="append",
+                       help="who knows it (repeatable), instead of the default: the player "
+                            "and the NPCs present. player, npc:<name>, street, public")
+    p_add.add_argument("--also", action="append",
+                       help="who else knows it, on top of the default (repeatable)")
+    p_add.add_argument("--secret", action="store_true", help="nobody knows it (GM only)")
+    p = sub.add_parser("tell", help="someone learns a recorded fact")
+    p.add_argument("fact_id"); p.add_argument("holders", nargs="+")
     p = sub.add_parser("about", help="change a recorded fact's about")
     p.add_argument("fact_id")
     p.add_argument("--add", action="append", default=[])
@@ -221,8 +275,14 @@ def main():
         manager = NoteManager()
         if args.action == 'add':
             if not manager.add_fact(args.category, args.fact,
-                                    about=args.about, not_about=args.not_about):
+                                    about=args.about, not_about=args.not_about,
+                                    holders=args.holders, secret=args.secret,
+                                    also=args.also):
                 sys.exit(1)
+        elif args.action == 'tell':
+            new = manager.tell(args.fact_id, args.holders)
+            print(f"{args.fact_id}: {', '.join(new)} now know(s) it" if new else
+                  f"{args.fact_id}: they knew it already")
         elif args.action == 'about':
             about = manager.set_about(args.fact_id, args.add, args.remove)
             print(f"{args.fact_id} about: {', '.join(about) or '(nothing)'}")

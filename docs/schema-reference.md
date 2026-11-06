@@ -292,7 +292,7 @@ A dictionary with category keys, each containing an array of fact **objects**.
   ],
   "session_events": [
     {"id": "f2", "fact": "The party met the king on day 1", "about": ["npc:King Harald"],
-     "timestamp": "..."}
+     "holders": ["player", "npc:King Harald"], "timestamp": "..."}
   ]
 }
 ```
@@ -308,6 +308,12 @@ A dictionary with category keys, each containing an array of fact **objects**.
   `aliases`, first letter a capital; `--not-about` drops one); an unknown id refuses the
   fact. `gm-note.sh about <fact id> --add/--remove <id>` changes it later. Facts written
   before 2026-11-06 have none yet.
+- `holders`: ids of who knows the fact: `player`, `npc:<key>`, `street`, `public` (a place
+  can't be one). `gm-note.sh` defaults to the player plus the NPCs present (party members,
+  NPCs tagged with the current location, never the dead); `--also` adds to that, `--holders` replaces it,
+  `--secret` stores `[]`. Off-screen facts from the world tick default to `[]`. `[]` means
+  nobody knows: a GM-only secret. A missing field (facts from before 2026-11-06) means not
+  recorded. `gm-note.sh tell <fact id> <holder>...` adds holders.
 
 **Ids for what a fact is about or held by** (`lib/world_ids.py`, for `about` and the coming
 `holders`): `player`, `npc:<key>`, `location:<key>`, and the rungs `street` and
