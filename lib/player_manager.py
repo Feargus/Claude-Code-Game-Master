@@ -499,6 +499,12 @@ class PlayerManager(EntityManager):
             print(f"HP: 0/{hp.get('max', 0)}")
         print("STATUS: DEAD")
 
+        from note_manager import NoteManager
+        from npc_manager import DEATH_FACT_CATEGORY
+        fact_id = NoteManager(self.base_dir).add_fact(
+            DEATH_FACT_CATEGORY,
+            f"{char_name} (the player character) died" + (f": {cause}" if cause else "."))
+
         from consequence_manager import ConsequenceManager
         fired = ConsequenceManager(self.base_dir).fire_event(
             'on_death', 'player', f"{char_name} (the player character) died"
@@ -510,6 +516,7 @@ class PlayerManager(EntityManager):
             'status': 'dead',
             'died_at': char['died_at'],
             'cause': cause,
+            'fact': fact_id,
             'fired': fired,
         }
 

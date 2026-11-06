@@ -35,7 +35,7 @@ The PC CAN die. This is not a guaranteed power-fantasy. Fail-forward does NOT me
 
 ## Death Protocol (PC dies)
 PERSIST FIRST, then narrate, then offer the hand-off.
-1. Persist the death: `bash tools/gm-player.sh kill "<name>" --cause "<how>"` (sets status dead, stamps died_at), and log it as a fact (`gm-note.sh`). Record any consequence the death triggers (`gm-consequence.sh add ...`).
+1. Persist the death: `bash tools/gm-player.sh kill "<name>" --cause "<how>"` (sets status dead, stamps died_at, records the death as a fact, fires `on_death player` consequences). Record any further consequence the death triggers (`gm-consequence.sh add ...`).
 2. Narrate the death with weight — earn the moment, match prose to the beat. No menu yet.
 3. Offer the hand-off (the show goes on, not GAME OVER). The three routes — take over a party member already in the scene, roll a new character, or step in as a canon figure from the source — framed however the moment calls for. (If solo with no party and no fitting canon figure, offer the last two only.)
 4. On choice, switch the active PC (see SWAP), bridge the fiction (how/why control passes), update location/scene, then resume play.
@@ -118,7 +118,7 @@ later facts), ask the player out of character before narrating or noting it.
 | Character look (PC/NPC) | `gm-player.sh set-appearance` / `gm-npc.sh set-appearance` (the 11-field `visual_appearance` — author at creation, update when the look changes) |
 | Condition (PC) | `gm-condition.sh` |
 | PC death | `gm-player.sh kill` (status dead + log) — then run Death Protocol |
-| NPC death | `gm-npc.sh kill "<name>" --cause "<how>"` (status dead, no longer present anywhere, fires its `on_death` consequences); log it as a fact (`gm-note.sh`) |
+| NPC death | `gm-npc.sh kill "<name>" --cause "<how>"` (status dead, no longer present anywhere, records the death as a fact, fires its `on_death` consequences) |
 | Play pack / one name from the book | `gm-playpack.sh set` / `stage` / `from-book "<name>"` |
 | Location moved | `gm-session.sh move "<loc>" --takes <travel time>` |
 | Consequence (structured) | `gm-consequence.sh add "..." "<trigger>" --trigger-type on_location\|on_npc\|on_time\|on_death\|on_event --match ...` (`on_time` matches the time-of-day word, e.g. `night`) |

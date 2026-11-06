@@ -65,6 +65,11 @@ def _party_sheet_for_npc(npc: dict):
     return sheet, source
 
 
+# Category of the fact `kill` records. Provisional: categories are due for rework
+# (design-notes.md, "World state").
+DEATH_FACT_CATEGORY = "session_events"
+
+
 class NPCManager(EntityManager):
     """Manage NPC operations. Inherits from EntityManager for common functionality."""
 
@@ -117,7 +122,8 @@ class NPCManager(EntityManager):
         return False
 
     def kill_npc(self, name: str, cause: Optional[str] = None) -> Dict[str, Any]:
-        """Mark an NPC dead and fire the on_death consequences waiting for it.
+        """Mark an NPC dead, record the death as a fact, and fire the on_death
+        consequences waiting for it.
 
         Sets `status: dead`, `cause`, `died_at` (real time) and `died_game_time`
         (in-game time, when the campaign has one). A dead NPC is no longer present
@@ -141,10 +147,15 @@ class NPCManager(EntityManager):
         if not self._update_entity(self.npcs_file, key, updates):
             return {'success': False, 'error': 'failed to save'}
 
+        from note_manager import NoteManager
+        fact_id = NoteManager(self.base_dir).add_fact(
+            DEATH_FACT_CATEGORY, f"{key} died" + (f": {cause}" if cause else "."))
+
         from consequence_manager import ConsequenceManager
         fired = ConsequenceManager(self.base_dir).fire_event(
             'on_death', key, f"{key} died" + (f" ({cause})" if cause else ""))
-        return {'success': True, 'name': key, 'status': 'dead', 'cause': cause, 'fired': fired}
+        return {'success': True, 'name': key, 'status': 'dead', 'cause': cause,
+                'fact': fact_id, 'fired': fired}
 
     def update_npc(self, name: str, event: str) -> bool:
         """

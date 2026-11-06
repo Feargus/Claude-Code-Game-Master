@@ -120,3 +120,23 @@ def test_player_death_fires_on_death_player(dcc_world):
     result = pm.kill_character(name, cause="fell")
     assert result["success"]
     assert [c["id"] for c in result["fired"]] == [cid]
+
+
+def _fact(world, fid):
+    return next(f for items in _load(world, "facts.json").values() for f in items
+                if isinstance(f, dict) and f.get("id") == fid)
+
+
+def test_npc_kill_records_the_death_as_a_fact(dcc_world):
+    npc = _an_npc(dcc_world)
+    result = NPCManager(dcc_world).kill_npc(npc, cause="shot in the alley")
+    fact = _fact(dcc_world, result["fact"])
+    assert fact["fact"] == f"{npc} died: shot in the alley"
+    assert fact in _load(dcc_world, "facts.json")["session_events"]
+
+
+def test_player_kill_records_the_death_as_a_fact(dcc_world):
+    from lib.player_manager import PlayerManager
+    name = _load(dcc_world, "character.json")["name"]
+    result = PlayerManager(dcc_world).kill_character(name)
+    assert _fact(dcc_world, result["fact"])["fact"] == f"{name} (the player character) died."
