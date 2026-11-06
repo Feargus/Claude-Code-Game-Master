@@ -72,14 +72,38 @@ class NoteManager:
         if not facts_path.exists():
             self.json_ops.save_json("facts.json", {})
 
-    def add_fact(self, category: str, fact: str, list_waiting: bool = True) -> str:
+    def _about(self, fact: str, about=None, not_about=None):
+        """(about ids, ids found in the text, errors) for a new fact.
+
+        The ids given are checked; names found in the text are added, except those
+        in `not_about`. That is the cross-check: the GM needn't remember who a
+        fact names (design-notes.md, "A fact's fields").
+        """
+        from world_ids import WorldIds
+        ids = WorldIds(self.json_ops)
+        given, errors = ids.resolve_all(about)
+        dropped, more = ids.resolve_all(not_about)
+        errors += more
+        found = [i for i in ids.mentioned(fact) if i not in given and i not in dropped]
+        return [i for i in given if i not in dropped] + found, found, errors
+
+    def add_fact(self, category: str, fact: str, list_waiting: bool = True,
+                 about=None, not_about=None) -> str:
         """Add a fact to the specified category. Returns its id, or "" on failure.
 
         Each fact carries an id, the in-game time it was recorded (`game_time`,
         copied from campaign-overview.json; left out if the campaign has none)
-        and the real-world `timestamp`. Afterwards it lists the consequences
+        and the real-world `timestamp`. `about` lists who or what it concerns:
+        the ids given plus the names found in the text, minus `not_about`; an
+        unknown id refuses the fact. Afterwards it lists the consequences
         waiting on an event, unless `list_waiting` is False (the caller lists them).
         """
+        about_ids, found, errors = self._about(fact, about, not_about)
+        if errors:
+            for error in errors:
+                print(f"[ERROR] {error}", file=sys.stderr)
+            print("[ERROR] Fact not recorded.", file=sys.stderr)
+            return ""
         facts = self.json_ops.load_json("facts.json")
         assign_missing_ids(facts)
 
@@ -88,6 +112,8 @@ class NoteManager:
 
         fact_id = next_fact_id(facts)
         entry = {'id': fact_id, 'fact': fact}
+        if about_ids:
+            entry['about'] = about_ids
         game_time = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
         if game_time:
             entry['game_time'] = game_time
@@ -99,9 +125,37 @@ class NoteManager:
             return ""
 
         print(f"[SUCCESS] Recorded fact {fact_id} in {category}: {fact}")
+        if about_ids:
+            which = "all" if found == about_ids else ", ".join(found)
+            note = (f" ({which} found in the text; drop a wrong one with "
+                    f"gm-note.sh about {fact_id} --remove <id>)") if found else ""
+            print(f"  about: {', '.join(about_ids)}{note}")
         if list_waiting:
             self._list_waiting(fact_id)
         return fact_id
+
+    def set_about(self, fact_id: str, add=None, remove=None) -> list:
+        """Add ids to, or remove them from, a recorded fact's `about`.
+        Returns the new list; raises ValueError for an unknown fact or id."""
+        from world_ids import WorldIds
+        ids = WorldIds(self.json_ops)
+        adding, errors = ids.resolve_all(add)
+        removing, more = ids.resolve_all(remove)
+        if errors + more:
+            raise ValueError("; ".join(errors + more))
+        facts = self.json_ops.load_json("facts.json")
+        entry = next((f for items in facts.values() if isinstance(items, list)
+                      for f in items if isinstance(f, dict) and f.get('id') == fact_id), None)
+        if entry is None:
+            raise ValueError(f"No fact '{fact_id}'.")
+        about = [i for i in entry.get('about', []) if i not in removing]
+        about += [i for i in adding if i not in about]
+        if about:
+            entry['about'] = about
+        else:
+            entry.pop('about', None)
+        self.json_ops.save_json("facts.json", facts)
+        return about
 
     def remove_facts(self, fact_ids) -> int:
         """Delete the facts with these ids (undoing a world tick). Returns how many."""
@@ -143,42 +197,42 @@ class NoteManager:
 
 def main():
     """CLI interface for note management."""
-    if len(sys.argv) < 2:
-        print("Usage: python lib/note_manager.py add <category> <fact>")
-        print("       python lib/note_manager.py get [category]")
-        print("       python lib/note_manager.py categories")
+    import argparse
+    parser = argparse.ArgumentParser(description="Facts")
+    sub = parser.add_subparsers(dest="action")
+    p = sub.add_parser("add", help="record a fact")
+    p.add_argument("category"); p.add_argument("fact")
+    p.add_argument("--about", action="append", default=[],
+                   help="who or what it concerns (repeatable): player, npc:<name>, location:<name>")
+    p.add_argument("--not-about", dest="not_about", action="append", default=[],
+                   help="a name found in the text that the fact is not about")
+    p = sub.add_parser("about", help="change a recorded fact's about")
+    p.add_argument("fact_id")
+    p.add_argument("--add", action="append", default=[])
+    p.add_argument("--remove", action="append", default=[])
+    p = sub.add_parser("get"); p.add_argument("category", nargs="?")
+    sub.add_parser("categories")
+    args = parser.parse_args()
+    if not args.action:
+        parser.print_help()
         sys.exit(1)
-
-    action = sys.argv[1]
 
     try:
         manager = NoteManager()
-
-        if action == 'add':
-            if len(sys.argv) < 4:
-                print("Usage: python lib/note_manager.py add <category> <fact>")
+        if args.action == 'add':
+            if not manager.add_fact(args.category, args.fact,
+                                    about=args.about, not_about=args.not_about):
                 sys.exit(1)
-            category = sys.argv[2]
-            fact = sys.argv[3]
-            if not manager.add_fact(category, fact):
-                sys.exit(1)
-
-        elif action == 'get':
-            category = sys.argv[2] if len(sys.argv) > 2 else None
-            facts = manager.get_facts(category)
-            print(json.dumps(facts, indent=2))
-
-        elif action == 'categories':
-            categories = manager.list_categories()
-            for cat in categories:
+        elif args.action == 'about':
+            about = manager.set_about(args.fact_id, args.add, args.remove)
+            print(f"{args.fact_id} about: {', '.join(about) or '(nothing)'}")
+        elif args.action == 'get':
+            print(json.dumps(manager.get_facts(args.category), indent=2))
+        elif args.action == 'categories':
+            for cat in manager.list_categories():
                 print(f"  - {cat}")
-
-        else:
-            print(f"Unknown action: {action}")
-            sys.exit(1)
-
-    except RuntimeError as e:
-        print(f"[ERROR] {e}")
+    except (RuntimeError, ValueError) as e:
+        print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)
 
 

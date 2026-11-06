@@ -104,6 +104,48 @@ class WorldIds:
             return "", f"'{text}' fits several: {', '.join(hits)}. Give the kind."
         return "", f"Nothing called '{text}'{self._suggest(text)}"
 
+    def _names(self):
+        """(id, name) for every name the text can mention: keys, aliases, the player's name."""
+        out = []
+        player = self.player_name()
+        if player:
+            out.append(("player", player))
+        for kind in KINDS:
+            for key, data in self._load()[kind].items():
+                out.append((f"{kind}:{key}", key))
+                if isinstance(data, dict):
+                    out += [(f"{kind}:{key}", a) for a in data.get("aliases") or [] if a]
+        return out
+
+    def mentioned(self, text: str) -> List[str]:
+        """Ids whose name appears in `text`, in the order found.
+
+        A name counts only as a whole: case and punctuation may differ, but the
+        first letter must be a capital, so "Tally" counts and "keep a tally"
+        doesn't. Leading titles and parentheticals are ignored ("the Stalled
+        Car" finds "The Stalled Car (Mags Teller)"). A name inside a longer one
+        that is also found ("Lantern" in "the Lantern noodle stall") is skipped.
+        """
+        import re
+        found = []  # (start, end, id)
+        for cid, name in self._names():
+            words = (normalize_entity_name(name) or name).split()
+            if not words:
+                continue
+            pattern = r"(?<!\w)" + r"[\W_]+".join(re.escape(w) for w in words) + r"(?!\w)"
+            for m in re.finditer(pattern, text, flags=re.IGNORECASE):
+                if m.group(0)[0].isupper():
+                    found.append((m.start(), m.end(), cid))
+        found.sort(key=lambda f: (f[0], -(f[1] - f[0])))
+        ids, covered = [], []
+        for start, end, cid in found:
+            if any(s <= start and end <= e for s, e in covered):
+                continue
+            covered.append((start, end))
+            if cid not in ids:
+                ids.append(cid)
+        return ids
+
     def resolve_all(self, raws) -> Tuple[List[str], List[str]]:
         """(ids, errors) for several; duplicates collapse, order is kept."""
         ids, errors = [], []

@@ -291,7 +291,8 @@ A dictionary with category keys, each containing an array of fact **objects**.
      "game_time": "2187-10-23T04:30", "timestamp": "2026-01-28T21:50:30Z"}
   ],
   "session_events": [
-    {"id": "f2", "fact": "The party met the king on day 1", "timestamp": "..."}
+    {"id": "f2", "fact": "The party met the king on day 1", "about": ["npc:King Harald"],
+     "timestamp": "..."}
   ]
 }
 ```
@@ -302,9 +303,14 @@ A dictionary with category keys, each containing an array of fact **objects**.
 - `game_time`: the in-game time when the fact was recorded, copied from
   `campaign-overview.json`. Missing on facts from before it existed.
 - `timestamp`: the real-world time it was recorded.
+- `about` (optional): ids of who or what the fact concerns (see below). `gm-note.sh` adds
+  the ids given with `--about` and every name it finds in the text (whole names or NPC
+  `aliases`, first letter a capital; `--not-about` drops one); an unknown id refuses the
+  fact. `gm-note.sh about <fact id> --add/--remove <id>` changes it later. Facts written
+  before 2026-11-06 have none yet.
 
-**Ids for what a fact is about or held by** (`lib/world_ids.py`, for the coming `about` and
-`holders` fields): `player`, `npc:<key>`, `location:<key>`, and the rungs `street` and
+**Ids for what a fact is about or held by** (`lib/world_ids.py`, for `about` and the coming
+`holders`): `player`, `npc:<key>`, `location:<key>`, and the rungs `street` and
 `public`. The stored id is the exact key (`npc:Auntie Ro`); input may differ in case,
 punctuation, titles or use an alias, and the player character's name resolves to `player`.
 Unknown ids are refused with close matches. Faction and item ids come with those systems.

@@ -12,6 +12,7 @@ the last one can be rolled back.
 A development (JSON object):
   {"fact": "Dekker has hired a tracker who hunts the grey sleeve.",   required
    "category": "plot_local",                                          optional
+   "about": ["npc:Dekker"],     optional; names in the fact are added anyway
    "consequence": {"text": "The tracker finds Fearghas",              optional
                    "triggers": [{"type": "on_location", "match": "Old Iron's Yard"}]},
    "clock": {"name": "The tracker closes in", "segments": 3,          optional
@@ -112,13 +113,22 @@ class WorldTick:
             self._check(d, i)
 
         notes = NoteManager(self.world_state_dir or "world-state")
+        for i, d in enumerate(developments):
+            about = d.get("about") or []
+            if isinstance(about, str):
+                about = [about]
+            _, _, errors = notes._about("", about)
+            if errors:
+                raise WorldTickError(f"development {i + 1}: about: {'; '.join(errors)}")
         written = {"facts": [], "consequences": [], "clocks": []}
         applied = []
         try:
             for i, d in enumerate(developments):
                 text = str(d.get("fact") or d.get("text")).strip()
+                about = d.get("about") or []
                 fid = notes.add_fact(d.get("category") or DEFAULT_CATEGORY, text,
-                                     list_waiting=False)
+                                     list_waiting=False,
+                                     about=[about] if isinstance(about, str) else about)
                 if not fid:
                     raise WorldTickError(f"development {i + 1}: the fact could not be saved")
                 written["facts"].append(fid)
