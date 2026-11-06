@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -574,7 +574,6 @@ dependencies = [
     { name = "pypdf2" },
     { name = "python-docx" },
     { name = "python-dotenv" },
-    { name = "requests" },
 ]
 
 [package.optional-dependencies]
@@ -613,7 +612,6 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "python-docx", specifier = ">=1.2.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "requests", specifier = ">=2.31.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "sentence-transformers", marker = "extra == 'rag'", specifier = ">=2.2.0" },
 ]
