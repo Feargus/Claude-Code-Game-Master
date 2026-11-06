@@ -80,3 +80,12 @@ def test_on_clock_never_fires_on_the_scene_check(dcc_world):
     c = {"id": "x", "consequence": "c", "trigger": "t",
          "triggers": [{"type": "on_clock", "match": "Tracker:2"}]}
     assert cm._evaluate_trigger(c, {"location": "Tracker:2"})[0] == 0.0
+
+
+def test_a_clock_a_consequence_will_start_can_be_matched(dcc_world):
+    cm = ConsequenceManager(dcc_world)
+    cm.add_consequence("Word gets out", "x", effects=[
+        {"type": "start_clock", "name": "Vendetta", "segments": 3, "on": "event"}])
+    assert cm.add_consequence("x", "y", trigger_type="on_clock", match="Vendetta:4") == ""
+    cid = cm.add_consequence("Dead rat on the door", "y", trigger_type="on_clock", match="vendetta:1")
+    assert _stored(dcc_world, cid)["triggers"] == [{"type": "on_clock", "match": "Vendetta:1"}]

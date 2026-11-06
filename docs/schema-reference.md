@@ -342,6 +342,11 @@ Tracks events that will trigger in the future.
         {"type": "on_location | on_npc | on_time | on_death | on_clock | on_event",
          "match": "string compared against world state (location name / npc / time keyword / event keyword)"}
       ],
+      "effects": [   (OPTIONAL, carried out by the script each time it fires)
+        {"type": "start_clock", "name": "clock name", "segments": 3, "on": "time | event",
+         "due_in": "3d (counted from the firing)  | or due: YYYY-MM-DD HH:MM",
+         "consequence": "what happens when the clock fills (optional)"}
+      ],
       "expiry": "string date or condition after which it ages out   (OPTIONAL)"
     }
   ],
@@ -373,7 +378,13 @@ the awaited event in words, and every fact recorded with `gm-note.sh` lists the
 consequences waiting on one. `on_clock` is an event trigger whose `match` is
 `"<clock name>:<segment>"` (a bare clock name is stored as its last segment, i.e. full); the
 clock must exist. It fires inside `gm-clock.sh advance` and the time update that moves the
-clock, once for each segment the clock reaches.
+clock, once for each segment the clock reaches. It may also name a clock that a waiting
+consequence's `start_clock` effect will create.
+
+A `start_clock` effect runs however the consequence fires (scene check, event, or by hand),
+after `consequences.json` is saved; a clock of that name that already exists is left as it
+is. The fired consequence comes back with `effects_done` (what happened, in words; not
+saved). `gm-consequence.sh rollback` does not remove a clock an effect started.
 Both `kill` commands also record the death as a fact
 (category `session_events`). A dead NPC carries `status: "dead"`, `cause`, `died_at` and
 `died_game_time`.

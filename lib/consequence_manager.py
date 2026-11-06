@@ -43,7 +43,8 @@ class ConsequenceManager(EntityManager):
 
     def add_consequence(self, description: str, trigger: str,
                         trigger_type: str = None, match: str = None,
-                        expiry: str = None, triggers: List[Dict[str, str]] = None) -> str:
+                        expiry: str = None, triggers: List[Dict[str, str]] = None,
+                        effects: List[Dict[str, Any]] = None) -> str:
         """
         Add a new consequence.
 
@@ -56,6 +57,11 @@ class ConsequenceManager(EntityManager):
           trigger_type, match: shorthand for a single trigger (added to `triggers`)
           expiry:       optional date or condition after which the consequence ages out
         Structured fields are additive; legacy consequences omit them.
+
+        `effects` are carried out by the script each time it fires (see EFFECT_TYPES):
+          {"type": "start_clock", "name", "segments", "on" (time|event, default time),
+           "due_in" ("3d") or "due" ("YYYY-MM-DD HH:MM"), "consequence" (optional)}
+        A due_in counts from when the consequence fires.
 
         Returns the consequence ID, or "" if refused.
         """
@@ -95,6 +101,13 @@ class ConsequenceManager(EntityManager):
                           f"--due \"YYYY-MM-DD HH:MM\" --consequence \"<what happens>\"", file=sys.stderr)
                     return ""
 
+        effects = [dict(e) for e in (effects or [])]
+        for e in effects:
+            error = self._check_effect(e)
+            if error:
+                print(f"[ERROR] {error}", file=sys.stderr)
+                return ""
+
         data = self.json_ops.load_json(self.consequences_file)
 
         consequence_id = str(uuid.uuid4())[:8]
@@ -106,6 +119,8 @@ class ConsequenceManager(EntityManager):
         }
         if triggers:
             consequence['triggers'] = triggers
+        if effects:
+            consequence['effects'] = effects
         if expiry is not None:
             consequence['expiry'] = expiry
 
@@ -114,7 +129,9 @@ class ConsequenceManager(EntityManager):
         data['active'].append(consequence)
 
         if self.json_ops.save_json(self.consequences_file, data):
-            print(f"[SUCCESS] Added consequence [{consequence_id}]: {description} (triggers: {trigger})")
+            starts = ''.join(f"; when it fires, starts clock {e['name']}" for e in effects)
+            print(f"[SUCCESS] Added consequence [{consequence_id}]: {description} "
+                  f"(triggers: {trigger}{starts})")
             return consequence_id
         return ""
 
@@ -204,11 +221,78 @@ class ConsequenceManager(EntityManager):
         npcs = self.json_ops.load_json("npcs.json") or {}
         return resolve_entity_name(name, npcs) or ''
 
+    EFFECT_TYPES = ('start_clock',)
+
+    @staticmethod
+    def _check_effect(effect: Dict[str, Any]) -> str:
+        """Why `effect` can't be carried out, or '' if it can. Fills in defaults."""
+        from time_manager import TimeError, parse_duration, parse_time
+        if effect.get('type') not in ConsequenceManager.EFFECT_TYPES:
+            return (f"Unknown effect '{effect.get('type')}'. Use one of: "
+                    f"{', '.join(ConsequenceManager.EFFECT_TYPES)}")
+        if not str(effect.get('name', '')).strip():
+            return "start_clock needs the clock's name."
+        try:
+            effect['segments'] = int(effect.get('segments', 1))
+        except (TypeError, ValueError):
+            return f"start_clock: segments must be a whole number, not {effect.get('segments')!r}."
+        if effect['segments'] < 1:
+            return "start_clock: a clock needs at least 1 segment."
+        effect.setdefault('on', 'time')
+        if effect['on'] not in ('time', 'event'):
+            return f"start_clock: 'on' is time or event, not {effect['on']!r}."
+        if effect.get('due') and effect.get('due_in'):
+            return "start_clock: give due or due_in, not both."
+        if (effect.get('due') or effect.get('due_in')) and effect['on'] != 'time':
+            return "start_clock: only a time clock has a due time."
+        try:
+            if effect.get('due_in'):
+                parse_duration(effect['due_in'])
+            if effect.get('due'):
+                parse_time(effect['due'])
+        except TimeError as error:
+            return f"start_clock: {error}"
+        return ''
+
+    def _carry_out(self, hits: List[Dict[str, Any]]) -> None:
+        """Carry out the effects of consequences that just fired.
+
+        Called after consequences.json is saved. Each hit gets `effects_done`: what
+        happened, in words. A clock that already exists is left as it is, so a
+        consequence that fires again doesn't restart its clock.
+        """
+        from threat_clocks import ThreatClockManager
+        from time_manager import parse_duration, parse_time
+        for hit in hits:
+            done = []
+            for e in hit.get('effects') or []:
+                if e.get('type') != 'start_clock':
+                    continue
+                tcm = ThreatClockManager(self.base_dir)
+                name = e['name']
+                if any(k.lower() == name.lower() for k in tcm.get_clocks()):
+                    done.append(f"clock {name} is already running; left as it is")
+                    continue
+                try:
+                    clock = tcm.add_clock(
+                        name, e.get('segments', 1), advance_on=e.get('on', 'time'),
+                        consequence=e.get('consequence'),
+                        due_at=parse_time(e['due']) if e.get('due') else None,
+                        due_in_minutes=parse_duration(e['due_in']) if e.get('due_in') else None)
+                except ValueError as error:
+                    done.append(f"could not start clock {name}: {error}")
+                    continue
+                done.append(f"started clock {name} (0/{clock['max']}, on {clock['advance_on']}"
+                            f"{tcm.due_text(clock)})")
+            if done:
+                hit['effects_done'] = done
+
     def _clock_target(self, raw: str):
         """The canonical on_clock match for `raw`: ("<clock name>:<segment>", "").
 
         `raw` is a clock's name, which means "when it is full", or "<name>:<segment>"
-        for a grim portent partway. The clock must exist and the segment be on it.
+        for a grim portent partway. The clock must exist, or be one a waiting
+        consequence starts when it fires, and the segment must be on it.
         Returns ("", error) if not.
         """
         raw = str(raw).strip()
@@ -216,13 +300,20 @@ class ConsequenceManager(EntityManager):
         head, sep, tail = raw.rpartition(':')
         if sep and tail.strip().isdigit():
             name, segment = head.strip(), int(tail)
-        clocks = self.json_ops.load_json("threat-clocks.json") or {}
-        key = next((k for k in clocks if k.lower() == name.lower()), None)
+        # Existing clocks, then clocks a waiting consequence will start when it fires.
+        sizes = {k: int(c.get('max', 1))
+                 for k, c in (self.json_ops.load_json("threat-clocks.json") or {}).items()}
+        for c in (self.json_ops.load_json(self.consequences_file) or {}).get('active', []):
+            for e in c.get('effects') or []:
+                if e.get('type') == 'start_clock':
+                    sizes.setdefault(e['name'], int(e.get('segments', 1)))
+        key = next((k for k in sizes if k.lower() == name.lower()), None)
         if key is None:
-            known = ', '.join(clocks) or 'none yet'
+            known = ', '.join(sizes) or 'none yet'
             return "", (f"on_clock matches a clock's name, or \"<name>:<segment>\"; no clock "
-                        f"'{name}' exists (clocks: {known}). Create it first (gm-clock.sh add).")
-        mx = int(clocks[key].get('max', 1))
+                        f"'{name}' exists or is waiting to start (clocks: {known}). "
+                        f"Create it first (gm-clock.sh add).")
+        mx = sizes[key]
         if segment is None:
             segment = mx
         if not 1 <= segment <= mx:
@@ -344,6 +435,7 @@ class ConsequenceManager(EntityManager):
                     'fired_at': now,
                 })
             self.json_ops.save_json(self.consequences_file, data)
+        self._carry_out(fired)
         return {
             'fired': fired,
             'disclosed': disclosed,
@@ -391,6 +483,7 @@ class ConsequenceManager(EntityManager):
         ctx_key = f"event|{ttype}|{value_l}"
         fired = [self._stamp_fired(data, c, reason, ctx_key) for c in hits]
         self.json_ops.save_json(self.consequences_file, data)
+        self._carry_out(fired)
         return fired
 
     def waiting_on_event(self) -> List[Dict[str, Any]]:
@@ -462,6 +555,7 @@ class ConsequenceManager(EntityManager):
         if by_fact:
             data['provenance'][-1]['fact'] = by_fact
         self.json_ops.save_json(self.consequences_file, data)
+        self._carry_out([hit])
         return hit
 
     def get_provenance(self) -> List[Dict[str, Any]]:
@@ -549,6 +643,8 @@ def print_fired(fired: List[Dict[str, Any]]) -> None:
     for c in fired:
         print(f"  [{c['id']}] {c['consequence']}")
         print(f"      ↳ fired because: {c['match_reason']} (resolve it once it has played out)")
+        for line in c.get('effects_done', []):
+            print(f"      ↳ {line}")
 
 
 def print_waiting(fact_id: str, waiting: List[Dict[str, Any]]) -> None:
@@ -578,6 +674,8 @@ def _print_tick_report(result: Dict[str, List[Dict[str, Any]]]) -> None:
     for c in fired:
         print(f"  [{c['id']}] {c['consequence']}")
         print(f"      ↳ fired because: {c['match_reason']} (veto if the timing's wrong)")
+        for line in c.get('effects_done', []):
+            print(f"      ↳ {line}")
     if disclosed:
         print("  matched-not-fired:")
         for c in disclosed:
@@ -609,6 +707,15 @@ def main():
     add_parser.add_argument('--match', action='append',
                             help='Structured trigger match value, one per --trigger-type, in order')
     add_parser.add_argument('--expiry', help='Optional expiry (date or condition)')
+    add_parser.add_argument('--starts-clock', dest='starts_clock', metavar='NAME',
+                            help='When it fires, start this clock (unless it already exists)')
+    add_parser.add_argument('--clock-segments', dest='clock_segments', type=int, default=1)
+    add_parser.add_argument('--clock-on', dest='clock_on', default='time', choices=['time', 'event'])
+    add_parser.add_argument('--clock-due-in', dest='clock_due_in',
+                            help='Time clock: due this long after the consequence fires, e.g. 3d')
+    add_parser.add_argument('--clock-due', dest='clock_due', help='Time clock: due at "YYYY-MM-DD HH:MM"')
+    add_parser.add_argument('--clock-consequence', dest='clock_consequence',
+                            help='What happens when the started clock fills')
 
     # Check pending
     subparsers.add_parser('check', help='Check pending consequences')
@@ -643,7 +750,7 @@ def main():
 
     manager = ConsequenceManager()
 
-    triggers = []
+    triggers, effects = [], []
     if args.action == 'add':
         types, matches = args.trigger_type or [], args.match or []
         if len(types) != len(matches):
@@ -651,13 +758,27 @@ def main():
                                 f"give exactly one --match per --trigger-type, in the same order",
                                 json_mode=json_mode))
         triggers = [{'type': t, 'match': m} for t, m in zip(types, matches)]
+        clock_flags = [args.clock_due_in, args.clock_due, args.clock_consequence]
+        if any(clock_flags) and not args.starts_clock:
+            sys.exit(emit_error("--clock-... options describe the clock that --starts-clock starts; "
+                                "give --starts-clock \"<name>\" too", json_mode=json_mode))
+        effects = []
+        if args.starts_clock:
+            effect = {'type': 'start_clock', 'name': args.starts_clock,
+                      'segments': args.clock_segments, 'on': args.clock_on}
+            for key, value in (('due_in', args.clock_due_in), ('due', args.clock_due),
+                               ('consequence', args.clock_consequence)):
+                if value:
+                    effect[key] = value
+            effects.append(effect)
 
     if json_mode and args.action == 'add':
         import contextlib
         import io
         with contextlib.redirect_stdout(io.StringIO()):  # keep stdout JSON-only
             cid = manager.add_consequence(args.description, args.trigger,
-                                          triggers=triggers, expiry=args.expiry)
+                                          triggers=triggers, expiry=args.expiry,
+                                          effects=effects)
         if cid:
             emit({"id": cid}, json_mode=True)
         else:
@@ -672,7 +793,8 @@ def main():
 
     if args.action == 'add':
         if not manager.add_consequence(args.description, args.trigger,
-                                       triggers=triggers, expiry=args.expiry):
+                                       triggers=triggers, expiry=args.expiry,
+                                       effects=effects):
             sys.exit(1)
 
     elif args.action == 'check':
