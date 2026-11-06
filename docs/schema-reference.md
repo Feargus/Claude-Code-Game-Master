@@ -287,14 +287,21 @@ A dictionary with category keys, each containing an array of fact **objects**.
 ```json
 {
   "world_building": [
-    {"fact": "The kingdom has been at peace for 100 years",
-     "timestamp": "2026-01-28T21:50:30Z"}
+    {"id": "f1", "fact": "The kingdom has been at peace for 100 years",
+     "game_time": "2187-10-23T04:30", "timestamp": "2026-01-28T21:50:30Z"}
   ],
   "session_events": [
-    {"fact": "The party met the king on day 1", "timestamp": "..."}
+    {"id": "f2", "fact": "The party met the king on day 1", "timestamp": "..."}
   ]
 }
 ```
+
+- `id`: `f1`, `f2`, … unique across all categories, so other records can point to a fact.
+  `gm-note.sh` numbers any fact without one (older facts, or facts the import scripts
+  write directly), oldest first, the next time it records a fact.
+- `game_time`: the in-game time when the fact was recorded, copied from
+  `campaign-overview.json`. Missing on facts from before it existed.
+- `timestamp`: the real-world time it was recorded.
 
 Bare strings are tolerated on read (`lib/campaign_memory.py:60` falls back to `str(it)`)
 but managers write the object form.

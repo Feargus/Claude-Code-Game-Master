@@ -13,6 +13,47 @@ from campaign_manager import CampaignManager
 from json_ops import JsonOperations
 
 
+def assign_missing_ids(facts: dict) -> dict:
+    """Give every fact an id ("f1", "f2", ...), so other records can point to it.
+
+    Facts without one (written before ids existed, or by the import scripts,
+    which write facts.json directly) are numbered in the order they were
+    recorded, after the highest existing id. A bare string becomes
+    {"fact": <string>}. Changes `facts` in place and returns it.
+    """
+    entries = []
+    highest = 0
+    for category, items in facts.items():
+        if not isinstance(items, list):
+            continue
+        for i, item in enumerate(items):
+            if not isinstance(item, dict):
+                item = {'fact': str(item)}
+                items[i] = item
+            fid = str(item.get('id', ''))
+            if fid.startswith('f') and fid[1:].isdigit():
+                highest = max(highest, int(fid[1:]))
+            elif 'id' not in item:
+                entries.append(item)
+    entries.sort(key=lambda item: str(item.get('timestamp', '')))
+    for item in entries:
+        highest += 1
+        item['id'] = f"f{highest}"
+    return facts
+
+
+def next_fact_id(facts: dict) -> str:
+    """The id the next fact gets. Expects every fact to have one already."""
+    highest = 0
+    for items in facts.values():
+        if isinstance(items, list):
+            for item in items:
+                fid = str(item.get('id', '')) if isinstance(item, dict) else ''
+                if fid.startswith('f') and fid[1:].isdigit():
+                    highest = max(highest, int(fid[1:]))
+    return f"f{highest + 1}"
+
+
 class NoteManager:
     """Manage campaign facts and notes."""
 
@@ -30,25 +71,33 @@ class NoteManager:
         if not facts_path.exists():
             self.json_ops.save_json("facts.json", {})
 
-    def add_fact(self, category: str, fact: str) -> bool:
-        """Add a fact to the specified category."""
+    def add_fact(self, category: str, fact: str) -> str:
+        """Add a fact to the specified category. Returns its id, or "" on failure.
+
+        Each fact carries an id, the in-game time it was recorded (`game_time`,
+        copied from campaign-overview.json; left out if the campaign has none)
+        and the real-world `timestamp`.
+        """
         facts = self.json_ops.load_json("facts.json")
+        assign_missing_ids(facts)
 
         if category not in facts:
             facts[category] = []
 
-        timestamp = datetime.now(timezone.utc).isoformat()
-        facts[category].append({
-            'fact': fact,
-            'timestamp': timestamp
-        })
+        fact_id = next_fact_id(facts)
+        entry = {'id': fact_id, 'fact': fact}
+        game_time = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
+        if game_time:
+            entry['game_time'] = game_time
+        entry['timestamp'] = datetime.now(timezone.utc).isoformat()
+        facts[category].append(entry)
 
         if not self.json_ops.save_json("facts.json", facts):
             print(f"[ERROR] Failed to save fact")
-            return False
+            return ""
 
-        print(f"[SUCCESS] Recorded fact in {category}: {fact}")
-        return True
+        print(f"[SUCCESS] Recorded fact {fact_id} in {category}: {fact}")
+        return fact_id
 
     def get_facts(self, category: str = None) -> dict:
         """Get facts, optionally filtered by category."""
