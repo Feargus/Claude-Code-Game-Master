@@ -367,7 +367,11 @@ Tracks events that will trigger in the future.
 `on_death` is an **event trigger**: its `match` is an NPC's key in `npcs.json` (resolved
 when the consequence is added) or `player`, and it fires only inside `gm-npc.sh kill` /
 `gm-player.sh kill`, never on the scene check. `gm-consequence.sh fire <id>` fires any
-consequence by hand. Both `kill` commands also record the death as a fact
+consequence by hand; `--by <fact id>` records the fact that fulfilled it (`fact` in its
+provenance entry). `on_event` is an event trigger too, matched by the GM: its `match` is
+the awaited event in words, and every fact recorded with `gm-note.sh` lists the
+consequences waiting on one (`on_event`, and old ones with only a free-text trigger).
+Both `kill` commands also record the death as a fact
 (category `session_events`). A dead NPC carries `status: "dead"`, `cause`, `died_at` and
 `died_game_time`.
 

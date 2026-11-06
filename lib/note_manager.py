@@ -58,6 +58,7 @@ class NoteManager:
     """Manage campaign facts and notes."""
 
     def __init__(self, world_state_dir: str = "world-state"):
+        self.world_state_dir = world_state_dir
         self.campaign_mgr = CampaignManager(world_state_dir)
         self.campaign_dir = self.campaign_mgr.get_active_campaign_dir()
 
@@ -97,7 +98,18 @@ class NoteManager:
             return ""
 
         print(f"[SUCCESS] Recorded fact {fact_id} in {category}: {fact}")
+        self._list_waiting(fact_id)
         return fact_id
+
+    def _list_waiting(self, fact_id: str) -> None:
+        """Show the consequences waiting on an event, so the GM can judge whether
+        the new fact fulfils one (design-notes.md, "World state")."""
+        from consequence_manager import ConsequenceManager, print_waiting
+        try:
+            waiting = ConsequenceManager(self.world_state_dir).waiting_on_event()
+        except RuntimeError:
+            return
+        print_waiting(fact_id, waiting)
 
     def get_facts(self, category: str = None) -> dict:
         """Get facts, optionally filtered by category."""

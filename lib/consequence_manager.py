@@ -34,7 +34,9 @@ class ConsequenceManager(EntityManager):
     TRIGGER_TYPES = ('on_location', 'on_npc', 'on_time', 'on_event', 'on_death')
     # Event triggers fire once, inside the command that makes the change
     # (fire_event), never on the scene check that moves and time steps run.
-    EVENT_TRIGGER_TYPES = ('on_death',)
+    # on_event is the GM's: each recorded fact lists the consequences waiting
+    # on one (waiting_on_event), and the GM fires a fitting one by hand.
+    EVENT_TRIGGER_TYPES = ('on_death', 'on_event')
     # Fuzzy bands: >= FIRE_SCORE fires / discloses; NEAR_MISS_SCORE..FIRE_SCORE is advisory.
     FIRE_SCORE = 0.5
     NEAR_MISS_SCORE = 0.3
@@ -218,10 +220,6 @@ class ConsequenceManager(EntityManager):
                 return f"NPC matching '{raw_match}' present"
         if ttype == 'on_time' and match in str(world_state.get('time', '')).lower():
             return f"time matching '{raw_match}'"
-        if ttype == 'on_event':
-            events = ' '.join(str(x) for x in world_state.get('events', []) or []).lower()
-            if match in events:
-                return f"event matching '{raw_match}'"
         return ''
 
     def _evaluate_trigger(self, consequence: Dict[str, Any], world_state: Dict[str, Any]):
@@ -381,6 +379,32 @@ class ConsequenceManager(EntityManager):
         self.json_ops.save_json(self.consequences_file, data)
         return fired
 
+    def waiting_on_event(self) -> List[Dict[str, Any]]:
+        """Active consequences the GM must match to events by judgment.
+
+        Those with an on_event trigger, plus old ones with only a free-text
+        trigger. Each comes back with `awaits`: the event it waits for, in words.
+        """
+        data = self.json_ops.load_json(self.consequences_file)
+        out = []
+        for c in data.get('active', []):
+            structured = self.structured_triggers(c)
+            events = [t['match'] for t in structured if t['type'] == 'on_event']
+            if events or not structured:
+                hit = dict(c)
+                hit['awaits'] = ' / '.join(events) if events else str(c.get('trigger', ''))
+                out.append(hit)
+        return out
+
+    def _find_fact(self, fact_id: str) -> Dict[str, Any]:
+        """The fact with this id, or {}."""
+        facts = self.json_ops.load_json("facts.json") or {}
+        for items in facts.values():
+            for f in items if isinstance(items, list) else []:
+                if isinstance(f, dict) and f.get('id') == fact_id:
+                    return f
+        return {}
+
     def _find_active(self, data: Dict[str, Any], consequence_id: str):
         """The active consequence whose id is or starts with `consequence_id`.
 
@@ -399,19 +423,31 @@ class ConsequenceManager(EntityManager):
                           f"{', '.join(c['id'] for c in matches)}")
         return matches[0], ''
 
-    def fire(self, consequence_id: str, reason: str = None) -> Dict[str, Any]:
+    def fire(self, consequence_id: str, reason: str = None,
+             by_fact: str = None) -> Dict[str, Any]:
         """The GM fires a consequence by hand (its condition happened in the story).
 
-        Firing is not resolving: it stays active until `resolve`. Returns the fired
-        consequence, or {} if not found.
+        `by_fact` names the recorded fact that fulfilled it; the provenance log
+        keeps the link. Firing is not resolving: it stays active until `resolve`.
+        Returns the fired consequence, or {} if refused.
         """
         data = self.json_ops.load_json(self.consequences_file)
         c, error = self._find_active(data, consequence_id)
         if not c:
             print(f"[ERROR] {error}", file=sys.stderr)
             return {}
+        fact = {}
+        if by_fact:
+            fact = self._find_fact(by_fact)
+            if not fact:
+                print(f"[ERROR] No fact '{by_fact}'", file=sys.stderr)
+                return {}
+        if not reason:
+            reason = f"fact {by_fact}: {fact['fact']}" if fact else "fired by the GM"
         self._snapshot(data)
-        hit = self._stamp_fired(data, c, reason or "fired by the GM", f"manual|{c['id']}")
+        hit = self._stamp_fired(data, c, reason, f"manual|{c['id']}")
+        if by_fact:
+            data['provenance'][-1]['fact'] = by_fact
         self.json_ops.save_json(self.consequences_file, data)
         return hit
 
@@ -502,6 +538,16 @@ def print_fired(fired: List[Dict[str, Any]]) -> None:
         print(f"      ↳ fired because: {c['match_reason']} (resolve it once it has played out)")
 
 
+def print_waiting(fact_id: str, waiting: List[Dict[str, Any]]) -> None:
+    """After a fact is recorded: the consequences the GM must check it against."""
+    if not waiting:
+        return
+    print(f"Waiting on an event — does {fact_id} fulfil one? (your judgment; usually none)")
+    for c in waiting:
+        print(f"  [{c['id']}] awaits \"{c['awaits']}\" → {c['consequence']}")
+    print(f"  If one does: bash tools/gm-consequence.sh fire <id> --by {fact_id}")
+
+
 def _print_tick_report(result: Dict[str, List[Dict[str, Any]]]) -> None:
     """Human CLI for tick(): fire slice plus disclosed remainder."""
     fired = result.get('fired') or []
@@ -570,6 +616,7 @@ def main():
     fire_parser = subparsers.add_parser('fire', help='Fire a consequence by hand (its condition happened)')
     fire_parser.add_argument('id', help='Consequence ID (a unique prefix is enough)')
     fire_parser.add_argument('--reason', help='What happened that fired it')
+    fire_parser.add_argument('--by', dest='by_fact', help='Id of the recorded fact that fulfilled it (f17)')
 
     # Resolve
     resolve_parser = subparsers.add_parser('resolve', help='Resolve a consequence')
@@ -647,7 +694,7 @@ def main():
             sys.exit(1)
 
     elif args.action == 'fire':
-        hit = manager.fire(args.id, args.reason)
+        hit = manager.fire(args.id, args.reason, args.by_fact)
         if not hit:
             sys.exit(1)
         if json_mode:
