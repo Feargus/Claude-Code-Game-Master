@@ -31,12 +31,12 @@ class ConsequenceManager(EntityManager):
             self.json_ops.save_json(self.consequences_file, data)
 
     # Structured trigger types the reactivity engine can evaluate automatically.
-    TRIGGER_TYPES = ('on_location', 'on_npc', 'on_time', 'on_event', 'on_death')
+    TRIGGER_TYPES = ('on_location', 'on_npc', 'on_time', 'on_event', 'on_death', 'on_clock')
     # Event triggers fire once, inside the command that makes the change
     # (fire_event), never on the scene check that moves and time steps run.
     # on_event is the GM's: each recorded fact lists the consequences waiting
     # on one (waiting_on_event), and the GM fires a fitting one by hand.
-    EVENT_TRIGGER_TYPES = ('on_death', 'on_event')
+    EVENT_TRIGGER_TYPES = ('on_death', 'on_event', 'on_clock')
     # A trigger either matches (1.0) or not (0.0). There is no word matching:
     # free-text conditions are on_event triggers, judged by the GM.
     FIRE_SCORE = 0.5
@@ -80,6 +80,12 @@ class ConsequenceManager(EntityManager):
                           file=sys.stderr)
                     return ""
                 t['match'] = who
+            if t['type'] == 'on_clock':
+                canonical, error = self._clock_target(t['match'])
+                if error:
+                    print(f"[ERROR] {error}", file=sys.stderr)
+                    return ""
+                t['match'] = canonical
             if t['type'] == 'on_time':
                 ok, _ = self.validators.validate_time_of_day(t['match'])
                 if not ok:
@@ -198,6 +204,31 @@ class ConsequenceManager(EntityManager):
         npcs = self.json_ops.load_json("npcs.json") or {}
         return resolve_entity_name(name, npcs) or ''
 
+    def _clock_target(self, raw: str):
+        """The canonical on_clock match for `raw`: ("<clock name>:<segment>", "").
+
+        `raw` is a clock's name, which means "when it is full", or "<name>:<segment>"
+        for a grim portent partway. The clock must exist and the segment be on it.
+        Returns ("", error) if not.
+        """
+        raw = str(raw).strip()
+        name, segment = raw, None
+        head, sep, tail = raw.rpartition(':')
+        if sep and tail.strip().isdigit():
+            name, segment = head.strip(), int(tail)
+        clocks = self.json_ops.load_json("threat-clocks.json") or {}
+        key = next((k for k in clocks if k.lower() == name.lower()), None)
+        if key is None:
+            known = ', '.join(clocks) or 'none yet'
+            return "", (f"on_clock matches a clock's name, or \"<name>:<segment>\"; no clock "
+                        f"'{name}' exists (clocks: {known}). Create it first (gm-clock.sh add).")
+        mx = int(clocks[key].get('max', 1))
+        if segment is None:
+            segment = mx
+        if not 1 <= segment <= mx:
+            return "", f"Clock '{key}' has segments 1 to {mx}, not {segment}."
+        return f"{key}:{segment}", ""
+
     @staticmethod
     def structured_triggers(consequence: Dict[str, Any]) -> List[Dict[str, str]]:
         """The consequence's structured triggers as a list of {"type", "match"}.
@@ -232,7 +263,7 @@ class ConsequenceManager(EntityManager):
     def _evaluate_trigger(self, consequence: Dict[str, Any], world_state: Dict[str, Any]):
         """Return (score, reason): (1.0, why) if any state trigger matches now, else (0.0, '').
 
-        Event triggers (on_death, on_event) never match here; they fire where
+        Event triggers (on_death, on_event, on_clock) never match here; they fire where
         the event is recorded.
         """
         for t in self.structured_triggers(consequence):

@@ -142,11 +142,13 @@ class TimeManager:
 
 
 def print_clocks(moved: Dict[str, Dict]) -> None:
+    from consequence_manager import print_fired
     for name, clock in moved.items():
         print(f"Clock {name}: {clock['current']}/{clock['max']}")
         if clock["current"] >= clock["max"]:
             print(f"⚠ {name} is FULL — a dramatic beat is due"
                   + (f": {clock['consequence']}" if clock.get("consequence") else ""))
+    print_fired([c for clock in moved.values() for c in clock.get("fired", [])])
 
 
 def main(argv) -> int:

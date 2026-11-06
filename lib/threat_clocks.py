@@ -107,16 +107,34 @@ class ThreatClockManager(EntityManager):
         clock["consequence_fired"] = cid
         return cid
 
+    def _fire_on_clock(self, name: str, before: int, clock: Dict[str, Any]) -> list:
+        """Fire the on_clock consequences for every segment the clock just reached.
+
+        Called after the clocks file is saved, since a fired consequence may start
+        a clock of its own. Returns the fired consequences.
+        """
+        from consequence_manager import ConsequenceManager
+        cm = ConsequenceManager(self._wsd)
+        mx = int(clock.get("max", 1))
+        fired = []
+        for segment in range(before + 1, int(clock.get("current", 0)) + 1):
+            fired += cm.fire_event("on_clock", f"{name}:{segment}",
+                                   f"clock {name} reached {segment}/{mx}")
+        return fired
+
     def advance(self, name: str, ticks: int = 1) -> Optional[Dict[str, Any]]:
+        """Advance a clock by hand. The returned clock lists the on_clock
+        consequences this fired under `fired` (not saved)."""
         data = self._load()
         c = data.get(name)
         if not c:
             return None
-        was_full = int(c.get("current", 0)) >= int(c.get("max", 1))
-        c["current"] = min(c["max"], int(c.get("current", 0)) + int(ticks))
+        before = int(c.get("current", 0))
+        was_full = before >= int(c.get("max", 1))
+        c["current"] = min(c["max"], before + int(ticks))
         self._fire_if_filled(name, c, was_full)
         self.json_ops.save_json(self.clocks_file, data)
-        return c
+        return dict(c, fired=self._fire_on_clock(name, before, c))
 
     def update_time_clocks(self, now: datetime) -> Dict[str, Any]:
         """Recompute every time clock from the game time.
@@ -126,7 +144,8 @@ class ThreatClockManager(EntityManager):
         full once the due time is reached. Clocks only ever fill up: setting the
         time back never empties one. `gm-time.sh` calls this after every change.
         Event clocks (advance_on != 'time') are untouched — the GM advances those
-        by hand. Returns {name: clock} for the clocks that moved.
+        by hand. Returns {name: clock} for the clocks that moved; each lists the
+        on_clock consequences it fired under `fired` (not saved).
         """
         from time_manager import STORED_FORMAT
         data = self._load()
@@ -153,11 +172,12 @@ class ThreatClockManager(EntityManager):
                 continue
             c["current"] = filled
             self._fire_if_filled(name, c, was_full=False)  # full clocks skipped above
-            moved[name] = c
+            moved[name] = (cur, c)
             changed = True
         if changed:
             self.json_ops.save_json(self.clocks_file, data)
-        return moved
+        return {name: dict(c, fired=self._fire_on_clock(name, before, c))
+                for name, (before, c) in moved.items()}
 
     def remove_clock(self, name: str) -> bool:
         data = self._load()
@@ -273,6 +293,9 @@ def main():
         print(json.dumps(out, indent=2))
         if args.action == "list":
             print(m.render(out))
+        if args.action == "advance" and out:
+            from consequence_manager import print_fired
+            print_fired(out.get("fired", []))
 
 
 if __name__ == "__main__":

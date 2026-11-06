@@ -339,7 +339,7 @@ Tracks events that will trigger in the future.
       "created": "ISO timestamp",
 
       "triggers": [   (OPTIONAL, structured; any one fires it)
-        {"type": "on_location | on_npc | on_time | on_death | on_event",
+        {"type": "on_location | on_npc | on_time | on_death | on_clock | on_event",
          "match": "string compared against world state (location name / npc / time keyword / event keyword)"}
       ],
       "expiry": "string date or condition after which it ages out   (OPTIONAL)"
@@ -370,7 +370,10 @@ when the consequence is added) or `player`, and it fires only inside `gm-npc.sh 
 consequence by hand; `--by <fact id>` records the fact that fulfilled it (`fact` in its
 provenance entry). `on_event` is an event trigger too, matched by the GM: its `match` is
 the awaited event in words, and every fact recorded with `gm-note.sh` lists the
-consequences waiting on one.
+consequences waiting on one. `on_clock` is an event trigger whose `match` is
+`"<clock name>:<segment>"` (a bare clock name is stored as its last segment, i.e. full); the
+clock must exist. It fires inside `gm-clock.sh advance` and the time update that moves the
+clock, once for each segment the clock reaches.
 Both `kill` commands also record the death as a fact
 (category `session_events`). A dead NPC carries `status: "dead"`, `cause`, `died_at` and
 `died_game_time`.

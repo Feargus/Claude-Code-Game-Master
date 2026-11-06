@@ -75,11 +75,13 @@ than dropped. `check_pending(..., world_state)` uses the same disclose-not-hide 
 
 ## How triggers match, and one check that misfires
 
-Structured triggers (`--trigger-type on_location|on_npc|on_time|on_event` with `--match`,
-repeatable for several triggers, any one of which fires the consequence)
-score 1.0 on a substring hit against the corresponding world-state field. `on_death` and
-`on_event` are the exceptions, event triggers never checked on the scene: `on_death` fires
-once, inside `gm-npc.sh kill` / `gm-player.sh kill`; `on_event` is matched by the GM, since
+Structured triggers (`--trigger-type on_location|on_npc|on_time|on_death|on_clock|on_event`
+with `--match`, repeatable for several triggers, any one of which fires the consequence)
+score 1.0 on a substring hit against the corresponding world-state field. `on_death`,
+`on_clock` and `on_event` are the exceptions, event triggers never checked on the scene:
+`on_death` fires once, inside `gm-npc.sh kill` / `gm-player.sh kill`; `on_clock` fires once
+per segment, inside `gm-clock.sh advance` or the time update that moves the clock;
+`on_event` is matched by the GM, since
 every fact recorded with `gm-note.sh` lists the consequences waiting on an event, and the
 GM fires a fitting one with `gm-consequence.sh fire <id> --by <fact id>`. There is no word
 matching: a consequence added with only a free-text trigger gets it as its `on_event`

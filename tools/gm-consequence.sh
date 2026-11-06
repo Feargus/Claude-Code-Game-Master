@@ -18,6 +18,8 @@ if [ "$#" -lt 1 ]; then
     echo ""
     echo "Examples:"
     echo "  gm-consequence.sh add \"Guards searching for party\" \"2 days\""
+    echo "  gm-consequence.sh add \"The tracker arrives\" \"tracker clock full\" --trigger-type on_clock --match \"Tracker\""
+    echo "  gm-consequence.sh add \"Footprints at the door\" \"halfway\" --trigger-type on_clock --match \"Tracker:2\""
     echo "  gm-consequence.sh check"
     echo "  gm-consequence.sh resolve abc123"
     exit 1
