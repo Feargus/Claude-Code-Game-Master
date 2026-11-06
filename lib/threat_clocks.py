@@ -5,11 +5,10 @@ Threat clocks — felt, mounting pressure (DCC's floor-collapse countdown).
 Named segmented clocks that advance on time or events, surfaced in the session
 context so stakes are visible and trustworthy. A time clock runs on the in-game
 wall clock: it stores when it started and when it is due, and every time change
-recomputes how many segments are filled. An event clock is advanced by hand. A filled clock is the trigger for a
-dramatic beat / book-native milestone. Tone-respecting: a kit/campaign that wants
-no doom clock simply declares none. Dramatic choices made at inflection points are
-recorded as consequences (via consequence_manager), tying the fork into the
-reactive world.
+recomputes how many segments are filled. An event clock is advanced by hand.
+A filled clock fires its consequence; consequences with an on_clock trigger
+fire at the segment they name. Tone-respecting: a kit/campaign that wants no
+doom clock simply declares none.
 """
 
 import sys
@@ -56,6 +55,10 @@ class ThreatClockManager(EntityManager):
         """Add a clock. A time clock is due at `due_at`, or `due_in_minutes` from
         now, or by default one day per segment from now."""
         from time_manager import STORED_FORMAT
+        if int(segments) < 1:
+            raise ValueError(f"A clock needs at least 1 segment, not {segments}.")
+        if advance_on not in ("time", "event"):
+            raise ValueError(f"A clock advances on time or event, not {advance_on!r}.")
         data = self._load()
         entry = {"current": 0, "max": int(segments), "advance_on": advance_on}
         if consequence:
@@ -83,8 +86,8 @@ class ThreatClockManager(EntityManager):
 
         A clock carried its `consequence` text only as a printed FULL flag, so a
         countdown running out was a line the GM might notice rather than a beat
-        that arrived. Firing writes a PENDING consequence — it does not resolve
-        it or force the GM's hand, same as every other consequence.
+        that arrived. This writes a consequence on the clock's last segment, which
+        fires at once; it stays pending until the GM resolves it, like any other.
 
         Firing is the *transition* into full, which is what keeps it to once per
         countdown without a flag to keep in sync: a clock that was already full
@@ -101,9 +104,12 @@ class ThreatClockManager(EntityManager):
         from consequence_manager import ConsequenceManager
         # add_consequence announces itself on stdout; this one fires from inside
         # advance and time updates, whose --json output must stay parseable.
+        # Its trigger is the clock's last segment, so _fire_on_clock fires it right
+        # after the save, with everything else the fill set off.
         with contextlib.redirect_stdout(sys.stderr):
             cid = ConsequenceManager(self._wsd).add_consequence(
-                f"[Clock — {name}] {text}", trigger=f"the {name} clock ran out")
+                f"[Clock — {name}] {text}", trigger=f"the {name} clock ran out",
+                trigger_type="on_clock", match=f"{name}:{clock.get('max', 1)}")
         clock["consequence_fired"] = cid
         return cid
 
@@ -123,12 +129,21 @@ class ThreatClockManager(EntityManager):
         return fired
 
     def advance(self, name: str, ticks: int = 1) -> Optional[Dict[str, Any]]:
-        """Advance a clock by hand. The returned clock lists the on_clock
-        consequences this fired under `fired` (not saved)."""
+        """Advance an event clock by hand. The returned clock lists the on_clock
+        consequences this fired under `fired` (not saved).
+
+        A time clock is refused: game time fills it, and a push by hand would
+        only stall it until time caught up, full at the same moment as before.
+        """
         data = self._load()
         c = data.get(name)
         if not c:
             return None
+        if c.get("advance_on", "time") == "time":
+            raise ValueError(f"'{name}' is a time clock: it fills as game time passes "
+                             f"(gm-time.sh), not by hand.")
+        if int(ticks) < 1:
+            raise ValueError(f"--ticks must be at least 1, not {ticks}.")
         before = int(c.get("current", 0))
         was_full = before >= int(c.get("max", 1))
         c["current"] = min(c["max"], before + int(ticks))
@@ -201,19 +216,6 @@ class ThreatClockManager(EntityManager):
         """Filled clocks = dramatic beats that are due (an inflection point)."""
         return self.full_clocks()
 
-    def record_choice(self, prompt: str, chosen_fork: str, trigger: str = "player choice",
-                      trigger_type: str = None, match: str = None) -> str:
-        """Record a dramatic-choice fork as a consequence — the fork→reactive-world wire.
-
-        The GM presents `prompt` with stakes-bearing forks at an inflection point;
-        the player's chosen fork is written into the consequence engine so it pays
-        off later (optionally with a structured trigger). Returns the consequence id.
-        """
-        from consequence_manager import ConsequenceManager
-        cm = ConsequenceManager(self._wsd)
-        text = f"[Choice — {prompt}] {chosen_fork}"
-        return cm.add_consequence(text, trigger, trigger_type=trigger_type, match=match)
-
     @staticmethod
     def due_text(clock: Dict[str, Any]) -> str:
         """', due <time and date>' for a time clock that has a due time, else ''."""
@@ -253,10 +255,6 @@ def main():
     p = sub.add_parser("remove"); p.add_argument("name")
     sub.add_parser("list")
     sub.add_parser("beats")  # filled clocks = beats due
-    p = sub.add_parser("choose"); p.add_argument("prompt"); p.add_argument("chosen")
-    p.add_argument("--trigger", default="player choice")
-    p.add_argument("--trigger-type", dest="trigger_type")
-    p.add_argument("--match")
 
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
@@ -275,15 +273,18 @@ def main():
             print(f"Error: {error}", file=sys.stderr)
             sys.exit(1)
     elif args.action == "advance":
-        out = m.advance(args.name, args.ticks)
+        try:
+            out = m.advance(args.name, args.ticks)
+        except ValueError as error:
+            print(f"Error: {error}", file=sys.stderr)
+            sys.exit(1)
+        if out is None:
+            print(f"Error: no clock '{args.name}'", file=sys.stderr)
+            sys.exit(1)
     elif args.action == "remove":
         out = {"removed": m.remove_clock(args.name)}
     elif args.action == "beats":
         out = m.pending_beats()
-    elif args.action == "choose":
-        out = {"consequence_id": m.record_choice(
-            args.prompt, args.chosen, trigger=args.trigger,
-            trigger_type=getattr(args, "trigger_type", None), match=args.match)}
     else:
         out = m.get_clocks()
 

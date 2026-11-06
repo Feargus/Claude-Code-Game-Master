@@ -26,7 +26,7 @@ def _fired(world, needle=DOOM):
 
 def test_filling_a_clock_fires_its_consequence(dcc_world):
     m = ThreatClockManager(dcc_world)
-    m.add_clock("Floor Collapse", 2, consequence=DOOM)
+    m.add_clock("Floor Collapse", 2, advance_on="event", consequence=DOOM)
     m.advance("Floor Collapse")
     assert _fired(dcc_world) == []  # not full yet
 
@@ -38,7 +38,7 @@ def test_filling_a_clock_fires_its_consequence(dcc_world):
 
 def test_a_full_clock_does_not_fire_twice(dcc_world):
     m = ThreatClockManager(dcc_world)
-    m.add_clock("Floor Collapse", 1, consequence=DOOM)
+    m.add_clock("Floor Collapse", 1, advance_on="event", consequence=DOOM)
     m.advance("Floor Collapse")
     m.advance("Floor Collapse")
     m.advance("Floor Collapse")
@@ -59,7 +59,7 @@ def test_time_passing_fires_the_clock_it_fills(dcc_world):
 def test_clock_without_a_consequence_fires_nothing(dcc_world):
     m = ThreatClockManager(dcc_world)
     before = len(_active(dcc_world))
-    m.add_clock("Quiet Countdown", 1)
+    m.add_clock("Quiet Countdown", 1, advance_on="event")
     m.advance("Quiet Countdown")
     assert len(_active(dcc_world)) == before
 
@@ -67,7 +67,7 @@ def test_clock_without_a_consequence_fires_nothing(dcc_world):
 def test_reset_below_full_lets_it_fire_again(dcc_world):
     """A recurring countdown must be able to run out more than once."""
     m = ThreatClockManager(dcc_world)
-    m.add_clock("Pulse", 1, consequence=DOOM)
+    m.add_clock("Pulse", 1, advance_on="event", consequence=DOOM)
     m.advance("Pulse")
     assert len(_fired(dcc_world)) == 1
 
@@ -90,9 +90,22 @@ def test_cli_add_accepts_a_consequence(dcc_world):
 def test_firing_keeps_stdout_parseable(dcc_world, capsys):
     """The fire happens inside advance/a time update, whose --json output is parsed."""
     m = ThreatClockManager(dcc_world)
-    m.add_clock("Doom", 1, consequence=DOOM)
+    m.add_clock("Doom", 1, advance_on="event", consequence=DOOM)
     capsys.readouterr()
     m.advance("Doom")
     out = capsys.readouterr()
     assert out.out.strip() == "", f"fire leaked onto stdout: {out.out!r}"
     assert "[Clock — Doom]" in out.err
+
+
+def test_the_clocks_consequence_fires_at_once_and_does_not_wait(dcc_world):
+    """It used to be saved with a free-text trigger, i.e. waiting on an event that
+    had already happened; every fact recorded afterwards asked about it."""
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Doom", 2, advance_on="event", consequence=DOOM)
+    m.advance("Doom")
+    fired = m.advance("Doom")["fired"]
+    assert len(fired) == 1 and DOOM in fired[0]["consequence"]
+    assert fired[0]["match_reason"] == "clock Doom reached 2/2"
+    cm = ConsequenceManager(dcc_world)
+    assert not any(DOOM in c["consequence"] for c in cm.waiting_on_event())

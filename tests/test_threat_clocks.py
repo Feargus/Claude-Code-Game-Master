@@ -17,33 +17,17 @@ def _active(dcc_world):
     return json.loads(p.read_text(encoding="utf-8")).get("active", [])
 
 
-def _active(dcc_world):
-    p = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "consequences.json"
-    return json.loads(p.read_text(encoding="utf-8")).get("active", [])
-
-
 def test_filled_clock_is_a_pending_beat(dcc_world):
     m = ThreatClockManager(dcc_world)
-    m.add_clock("Doom", 2)
+    m.add_clock("Doom", 2, advance_on="event")
     assert m.pending_beats() == {}
     m.advance("Doom", 2)
     assert "Doom" in m.pending_beats()
 
 
-def test_record_choice_writes_a_consequence(dcc_world):
-    m = ThreatClockManager(dcc_world)
-    cid = m.record_choice("Carry the WMD or run?", "Carry it yourself — irreversible",
-                          trigger_type="on_location", match="Floor 4")
-    assert cid
-    texts = " ".join(c["consequence"] for c in _active(dcc_world))
-    assert "Carry it yourself" in texts
-    fork = next(c for c in _active(dcc_world) if "Carry it yourself" in c["consequence"])
-    assert fork.get("triggers") == [{"type": "on_location", "match": "Floor 4"}]
-
-
 def test_add_advance_and_fill(dcc_world):
     m = ThreatClockManager(dcc_world)
-    m.add_clock("Floor Collapse", segments=4, advance_on="time")
+    m.add_clock("Floor Collapse", segments=4, advance_on="event")
     assert not m.is_full("Floor Collapse")
     m.advance("Floor Collapse", 3)
     assert not m.is_full("Floor Collapse")
@@ -71,7 +55,7 @@ def test_no_clocks_is_valid_tone_respecting(dcc_world):
 
 
 def test_clocks_surface_in_session_context(dcc_world):
-    ThreatClockManager(dcc_world).add_clock("Floor Collapse", segments=4)
+    ThreatClockManager(dcc_world).add_clock("Floor Collapse", segments=4, advance_on="event")
     ThreatClockManager(dcc_world).advance("Floor Collapse", 2)
     ctx = SessionManager(dcc_world).get_full_context()
     assert "THREAT CLOCKS" in ctx
@@ -161,3 +145,22 @@ def test_context_shows_when_a_time_clock_is_due(dcc_world):
     ThreatClockManager(dcc_world).add_clock("Siege", segments=4)
     ctx = SessionManager(dcc_world).get_full_context()
     assert "Siege: [○○○○] 0/4, due 10:00, Tuesday, 30 October 2187" in ctx
+
+
+def test_a_clock_needs_a_segment_and_a_known_mode(dcc_world):
+    m = ThreatClockManager(dcc_world)
+    for bad in ({"segments": 0}, {"segments": -2}, {"segments": 3, "advance_on": "events"}):
+        with pytest.raises(ValueError):
+            m.add_clock("Bad", **bad)
+    assert "Bad" not in m.get_clocks()
+
+
+def test_a_time_clock_is_not_advanced_by_hand(dcc_world):
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Eviction", 4)
+    with pytest.raises(ValueError, match="time clock"):
+        m.advance("Eviction")
+    assert m.get_clocks()["Eviction"]["current"] == 0
+    m.add_clock("Hunt", 4, advance_on="event")
+    with pytest.raises(ValueError):
+        m.advance("Hunt", 0)

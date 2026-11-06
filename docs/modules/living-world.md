@@ -28,7 +28,7 @@ developments. **They are wired to very different degrees.** Verified 2026-08-13:
 | System | Automatic trigger | How it actually runs |
 |---|---|---|
 | Consequences | **Yes** | `gm-session.sh move` and `gm-time.sh advance` both call `gm-consequence.sh tick` after they write |
-| Threat clocks | **Time-clocks: yes** (since 2026-08-13) | `gm-time.sh advance <duration>` (or `set`) moves the campaign's `game_time`, and every `advance_on: "time"` clock is recomputed from it: it stores `starts_at` and `due_at`, and its filled share is the share of that span that has passed. A clock with no due time gets one day per segment. Event clocks stay manual: `gm-clock.sh advance "<name>"`. Filling one fires its consequence (below) |
+| Threat clocks | **Time-clocks: yes** (since 2026-08-13) | `gm-time.sh advance <duration>` (or `set`) moves the campaign's `game_time`, and every `advance_on: "time"` clock is recomputed from it: it stores `starts_at` and `due_at`, and its filled share is the share of that span that has passed. A clock with no due time gets one day per segment. Event clocks stay manual: `gm-clock.sh advance "<name>" [--ticks N]`; a time clock is refused there, since a push by hand would only stall it until time caught up. Filling one fires its consequence (below) |
 | World tick | **No** — GM-invoked by design (`/gm world`) | the developments are a model call; `gm-session.sh world-tick '<json>'` records each as a fact, plus an optional consequence (with real triggers) and/or clock (since 2026-11-06; before, each was a consequence with no usable trigger), is all-or-nothing, warns (naming the overflow) when the count exceeds the advisory cap of 3, and stays logged / rollback-able. Before 2026-08-13 `WorldTick` had no caller at all |
 
 So three weeks and ten minutes are not the same pressure: the GM passes how much time
@@ -40,7 +40,9 @@ ever move by hand.
 ## A clock that fills fires (since 2026-08-14)
 
 `_fire_if_filled` writes the clock's stored `consequence` into the consequence engine as
-`[Clock — <name>] <text>`, the same bridge `record_choice` uses. Before this the text was
+`[Clock — <name>] <text>`, with an `on_clock` trigger on the clock's last segment, so it
+fires at once with any other `on_clock` consequences the fill reaches (until 2026-11-06 it
+got a free-text trigger and sat waiting on an event that had already happened). Before this the text was
 only echoed in a print, so a countdown running out was a line the GM might notice rather
 than a beat that arrived. The clock's `consequence` field is authored when the clock is
 created (`gm-clock.sh`), from the pressure the beat is meant to apply.
@@ -116,14 +118,6 @@ session brief and the place brief. In a pre-unification campaign an NPC tagged o
 via the legacy `location_tags` is invisible to `on_npc` triggers until
 `gm-npc.sh unify-tags` runs — see
 [the tag-split gotcha](../gotchas/npc-location-tag-split.md).
-
-## Choices are consequences
-
-`ThreatClockManager.record_choice` (`gm-clock.sh choose "<prompt>" "<fork>"`) writes a
-dramatic fork into the consequence engine as `[Choice — <prompt>] <fork>`. That is the
-whole wire between "the player picked something at an inflection point" and "it pays off
-later". Nothing else records choices — though a choice filed as a `player_choices` fact
-now also reaches KEY FACTS, see [scene context](scene-context.md).
 
 ## Async plot planning — the plot desk (since 2026-08-16)
 
