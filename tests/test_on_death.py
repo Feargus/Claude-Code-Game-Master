@@ -1,0 +1,122 @@
+"""on_death: an event trigger checked inside the command that makes the change.
+
+gm-npc.sh kill (and gm-player.sh kill) mark the death and fire every active
+consequence waiting on it, exactly once. gm-consequence.sh fire does the same
+by hand, for conditions no script can see.
+"""
+
+import json
+from pathlib import Path
+
+from lib.consequence_manager import ConsequenceManager
+from lib.entity_manager import npcs_present
+from lib.npc_manager import NPCManager
+
+CAMPAIGN = "dungeon-crawler-carl"
+
+
+def _cdir(world):
+    return Path(world) / "campaigns" / CAMPAIGN
+
+
+def _load(world, name):
+    return json.loads((_cdir(world) / name).read_text(encoding="utf-8"))
+
+
+def _an_npc(world):
+    return next(iter(_load(world, "npcs.json")))
+
+
+def _active(world):
+    return _load(world, "consequences.json")["active"]
+
+
+def test_on_death_needs_a_known_npc_or_player(dcc_world):
+    cm = ConsequenceManager(dcc_world)
+    npc = _an_npc(dcc_world)
+    assert cm.add_consequence("x", "y", trigger_type="on_death", match="Nobody Atall") == ""
+    cid = cm.add_consequence("x", "y", trigger_type="on_death", match=npc.lower())
+    stored = next(c for c in _active(dcc_world) if c["id"] == cid)
+    assert stored["triggers"] == [{"type": "on_death", "match": npc}]  # canonical name
+    cid = cm.add_consequence("x", "y", trigger_type="on_death", match="player")
+    assert cid
+
+
+def test_killing_an_npc_fires_its_consequence_once(dcc_world):
+    npc = _an_npc(dcc_world)
+    cm = ConsequenceManager(dcc_world)
+    cid = cm.add_consequence("His secret goes public", "when he dies",
+                             trigger_type="on_death", match=npc)
+    other = cm.add_consequence("Unrelated", "never", trigger_type="on_death", match="player")
+
+    result = NPCManager(dcc_world).kill_npc(npc, cause="shot in the alley")
+    assert result["success"]
+    assert [c["id"] for c in result["fired"]] == [cid]
+    assert npc in result["fired"][0]["match_reason"]
+
+    data = _load(dcc_world, "npcs.json")[npc]
+    assert data["status"] == "dead" and data["cause"] == "shot in the alley"
+    # Firing is not resolving: both still active, the fired one logged.
+    assert {c["id"] for c in _active(dcc_world)} >= {cid, other}
+    prov = _load(dcc_world, "consequences.json")["provenance"]
+    assert prov[-1]["id"] == cid
+
+    again = NPCManager(dcc_world).kill_npc(npc)
+    assert not again["success"]  # already dead: on_death cannot fire twice
+
+
+def test_the_dead_are_not_present(dcc_world):
+    npc = _an_npc(dcc_world)
+    npcs = _load(dcc_world, "npcs.json")
+    npcs[npc]["tags"] = {"locations": ["Alley"]}
+    npcs[npc].pop("is_party_member", None)
+    assert npc in npcs_present(npcs, "Alley")
+    npcs[npc]["status"] = "dead"
+    assert npc not in npcs_present(npcs, "Alley")
+
+
+def test_on_death_is_not_fired_by_the_scene_check(dcc_world):
+    """Event triggers never match on moves or time steps."""
+    npc = _an_npc(dcc_world)
+    cm = ConsequenceManager(dcc_world)
+    cid = cm.add_consequence("x", "y", trigger_type="on_death", match=npc)
+    c = next(c for c in _active(dcc_world) if c["id"] == cid)
+    assert cm._evaluate_trigger(c, {"location": npc, "present_npcs": [npc]})[0] == 0.0
+
+
+def _short(world, cid):
+    """The shortest prefix (at least 4 characters) no other active id shares."""
+    others = [c["id"] for c in _active(world) if c["id"] != cid]
+    n = 4
+    while any(o.startswith(cid[:n]) for o in others):
+        n += 1
+    return cid[:n]
+
+
+def test_fire_by_hand_with_a_short_id(dcc_world):
+    cm = ConsequenceManager(dcc_world)
+    cid = cm.add_consequence("The Fork bargains", "someone is alone with the chip")
+    hit = cm.fire(_short(dcc_world, cid), reason="Old Iron kept the chip alone overnight")
+    assert hit["id"] == cid
+    assert hit["match_reason"] == "Old Iron kept the chip alone overnight"
+    assert cid in {c["id"] for c in _active(dcc_world)}  # still active
+    assert cm.fire("zzzz") == {}
+
+
+def test_resolve_accepts_a_short_id(dcc_world):
+    cm = ConsequenceManager(dcc_world)
+    cid = cm.add_consequence("x", "y")
+    assert cm.resolve(_short(dcc_world, cid))
+    assert cid not in {c["id"] for c in _active(dcc_world)}
+
+
+def test_player_death_fires_on_death_player(dcc_world):
+    from lib.player_manager import PlayerManager
+    cm = ConsequenceManager(dcc_world)
+    cid = cm.add_consequence("The crew splits the loot", "when he dies",
+                             trigger_type="on_death", match="player")
+    pm = PlayerManager(dcc_world)
+    name = _load(dcc_world, "character.json")["name"]
+    result = pm.kill_character(name, cause="fell")
+    assert result["success"]
+    assert [c["id"] for c in result["fired"]] == [cid]

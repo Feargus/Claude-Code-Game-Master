@@ -31,7 +31,10 @@ class ConsequenceManager(EntityManager):
             self.json_ops.save_json(self.consequences_file, data)
 
     # Structured trigger types the reactivity engine can evaluate automatically.
-    TRIGGER_TYPES = ('on_location', 'on_npc', 'on_time', 'on_event')
+    TRIGGER_TYPES = ('on_location', 'on_npc', 'on_time', 'on_event', 'on_death')
+    # Event triggers fire once, inside the command that makes the change
+    # (fire_event), never on the scene check that moves and time steps run.
+    EVENT_TRIGGER_TYPES = ('on_death',)
     # Fuzzy bands: >= FIRE_SCORE fires / discloses; NEAR_MISS_SCORE..FIRE_SCORE is advisory.
     FIRE_SCORE = 0.5
     NEAR_MISS_SCORE = 0.3
@@ -63,6 +66,14 @@ class ConsequenceManager(EntityManager):
             if not t.get('match'):
                 print(f"[ERROR] Trigger {t['type']} needs a --match value.", file=sys.stderr)
                 return ""
+            if t['type'] == 'on_death':
+                who = self._death_target(t['match'])
+                if not who:
+                    print(f"[ERROR] on_death matches an NPC's name or 'player'; no NPC "
+                          f"'{t['match']}' exists. Create the NPC first (gm-npc.sh create).",
+                          file=sys.stderr)
+                    return ""
+                t['match'] = who
             if t['type'] == 'on_time':
                 ok, _ = self.validators.validate_time_of_day(t['match'])
                 if not ok:
@@ -169,6 +180,17 @@ class ConsequenceManager(EntityManager):
         import re
         pattern = r'\b' + re.escape(str(expiry).lower()) + r'\b'
         return re.search(pattern, self._world_text(world_state)) is not None
+
+    def _death_target(self, name: str) -> str:
+        """The canonical on_death match for `name`: 'player', an NPC key, or '' if unknown."""
+        from entity_aliases import resolve_entity_name
+        if str(name).strip().lower() == 'player':
+            return 'player'
+        character = self.json_ops.load_json("character.json") or {}
+        if character.get('name') and str(name).strip().lower() == str(character['name']).lower():
+            return 'player'
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        return resolve_entity_name(name, npcs) or ''
 
     @staticmethod
     def structured_triggers(consequence: Dict[str, Any]) -> List[Dict[str, str]]:
@@ -316,6 +338,83 @@ class ConsequenceManager(EntityManager):
             'near_misses': [hit for _, hit in near_misses],
         }
 
+    def _stamp_fired(self, data: Dict[str, Any], consequence: Dict[str, Any],
+                     reason: str, ctx_key: str) -> Dict[str, Any]:
+        """Mark `consequence` (a live object in data['active']) as fired and log why.
+
+        Shared by event triggers and manual firing. The caller snapshots and saves.
+        """
+        consequence['last_fired_key'] = ctx_key
+        prov = data.setdefault('provenance', [])
+        prov.append({
+            'id': consequence['id'],
+            'consequence': consequence['consequence'],
+            'reason': reason,
+            'ctx_key': ctx_key,
+            'fired_at': self.json_ops.get_timestamp(),
+        })
+        hit = dict(consequence)
+        hit['match_reason'] = reason
+        return hit
+
+    @staticmethod
+    def _snapshot(data: Dict[str, Any]) -> None:
+        """Keep the pre-fire state for a one-beat rollback."""
+        data['_snapshot'] = {'active': [dict(c) for c in data.get('active', [])],
+                             'resolved': [dict(c) for c in data.get('resolved', [])]}
+
+    def fire_event(self, ttype: str, value: str, reason: str) -> List[Dict[str, Any]]:
+        """An event happened (e.g. on_death, 'Wren'): fire every active consequence
+        with a trigger of that type whose match equals `value`. Called by the command
+        that makes the change. Returns the fired consequences.
+        """
+        data = self.json_ops.load_json(self.consequences_file)
+        value_l = str(value).lower()
+        hits = [c for c in data.get('active', [])
+                if any(t['type'] == ttype and str(t['match']).lower() == value_l
+                       for t in self.structured_triggers(c))]
+        if not hits:
+            return []
+        self._snapshot(data)
+        ctx_key = f"event|{ttype}|{value_l}"
+        fired = [self._stamp_fired(data, c, reason, ctx_key) for c in hits]
+        self.json_ops.save_json(self.consequences_file, data)
+        return fired
+
+    def _find_active(self, data: Dict[str, Any], consequence_id: str):
+        """The active consequence whose id is or starts with `consequence_id`.
+
+        Returns (consequence, error). The session brief shows 4-character ids, so a
+        unique prefix is enough.
+        """
+        cid = str(consequence_id).strip()
+        matches = [c for c in data.get('active', []) if str(c.get('id', '')).startswith(cid)]
+        if not cid or not matches:
+            return None, f"No active consequence '{consequence_id}'"
+        exact = [c for c in matches if c.get('id') == cid]
+        if exact:
+            return exact[0], ''
+        if len(matches) > 1:
+            return None, (f"'{consequence_id}' fits several consequences: "
+                          f"{', '.join(c['id'] for c in matches)}")
+        return matches[0], ''
+
+    def fire(self, consequence_id: str, reason: str = None) -> Dict[str, Any]:
+        """The GM fires a consequence by hand (its condition happened in the story).
+
+        Firing is not resolving: it stays active until `resolve`. Returns the fired
+        consequence, or {} if not found.
+        """
+        data = self.json_ops.load_json(self.consequences_file)
+        c, error = self._find_active(data, consequence_id)
+        if not c:
+            print(f"[ERROR] {error}", file=sys.stderr)
+            return {}
+        self._snapshot(data)
+        hit = self._stamp_fired(data, c, reason or "fired by the GM", f"manual|{c['id']}")
+        self.json_ops.save_json(self.consequences_file, data)
+        return hit
+
     def get_provenance(self) -> List[Dict[str, Any]]:
         """Return the 'why did this fire' log (newest last)."""
         data = self.json_ops.load_json(self.consequences_file)
@@ -357,12 +456,16 @@ class ConsequenceManager(EntityManager):
         Resolve a consequence by ID
         """
         data = self.json_ops.load_json(self.consequences_file)
+        target, error = self._find_active(data, consequence_id)
+        if not target:
+            print(f"[ERROR] {error}")
+            return False
 
         resolved = None
         remaining = []
 
         for c in data.get('active', []):
-            if c['id'] == consequence_id:
+            if c is target:
                 resolved = c
                 resolved['resolved'] = self.json_ops.get_timestamp()
                 if 'resolved' not in data:
@@ -387,6 +490,16 @@ class ConsequenceManager(EntityManager):
         """
         data = self.json_ops.load_json(self.consequences_file)
         return data.get('resolved', [])
+
+
+def print_fired(fired: List[Dict[str, Any]]) -> None:
+    """Human output for consequences fired by an event or by hand."""
+    if not fired:
+        return
+    print(f"[REACTIVITY] fired these {len(fired)}")
+    for c in fired:
+        print(f"  [{c['id']}] {c['consequence']}")
+        print(f"      ↳ fired because: {c['match_reason']} (resolve it once it has played out)")
 
 
 def _print_tick_report(result: Dict[str, List[Dict[str, Any]]]) -> None:
@@ -452,6 +565,11 @@ def main():
     # Provenance + rollback
     subparsers.add_parser('log', help='Show the reactive firing provenance log')
     subparsers.add_parser('rollback', help='Undo the most recent reactive beat')
+
+    # Fire by hand
+    fire_parser = subparsers.add_parser('fire', help='Fire a consequence by hand (its condition happened)')
+    fire_parser.add_argument('id', help='Consequence ID (a unique prefix is enough)')
+    fire_parser.add_argument('--reason', help='What happened that fired it')
 
     # Resolve
     resolve_parser = subparsers.add_parser('resolve', help='Resolve a consequence')
@@ -527,6 +645,15 @@ def main():
     elif args.action == 'rollback':
         if not manager.rollback_last():
             sys.exit(1)
+
+    elif args.action == 'fire':
+        hit = manager.fire(args.id, args.reason)
+        if not hit:
+            sys.exit(1)
+        if json_mode:
+            emit({"fired": [hit]}, json_mode=True)
+        else:
+            print_fired([hit])
 
     elif args.action == 'resolve':
         if not manager.resolve(args.id):

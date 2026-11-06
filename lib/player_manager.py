@@ -499,12 +499,18 @@ class PlayerManager(EntityManager):
             print(f"HP: 0/{hp.get('max', 0)}")
         print("STATUS: DEAD")
 
+        from consequence_manager import ConsequenceManager
+        fired = ConsequenceManager(self.base_dir).fire_event(
+            'on_death', 'player', f"{char_name} (the player character) died"
+            + (f" ({cause})" if cause else ""))
+
         return {
             'success': True,
             'name': char_name,
             'status': 'dead',
             'died_at': char['died_at'],
             'cause': cause,
+            'fired': fired,
         }
 
     def become(self, npc_name: str) -> Dict[str, Any]:
@@ -1102,6 +1108,8 @@ def main():
         result = manager.kill_character(args.name, getattr(args, 'cause', None))
         if not result.get('success'):
             sys.exit(1)
+        from consequence_manager import print_fired
+        print_fired(result.get('fired'))
 
     elif args.action == 'become':
         result = manager.become(args.name)

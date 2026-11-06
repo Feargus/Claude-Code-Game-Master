@@ -116,6 +116,36 @@ class NPCManager(EntityManager):
             return True
         return False
 
+    def kill_npc(self, name: str, cause: Optional[str] = None) -> Dict[str, Any]:
+        """Mark an NPC dead and fire the on_death consequences waiting for it.
+
+        Sets `status: dead`, `cause`, `died_at` (real time) and `died_game_time`
+        (in-game time, when the campaign has one). A dead NPC is no longer present
+        anywhere. Refuses an NPC who is already dead, so on_death fires only once.
+        """
+        key = self._find_entity_name(self.npcs_file, name)
+        if not key:
+            print(f"[ERROR] NPC {name} not found")
+            return {'success': False, 'error': f"NPC {name} not found"}
+        npc = self._get_entity(self.npcs_file, key)
+        if npc.get('status') == 'dead':
+            print(f"[ERROR] {key} is already dead")
+            return {'success': False, 'error': f"{key} is already dead"}
+
+        updates = {'status': 'dead', 'died_at': self.get_timestamp()}
+        game_time = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
+        if game_time:
+            updates['died_game_time'] = game_time
+        if cause:
+            updates['cause'] = cause
+        if not self._update_entity(self.npcs_file, key, updates):
+            return {'success': False, 'error': 'failed to save'}
+
+        from consequence_manager import ConsequenceManager
+        fired = ConsequenceManager(self.base_dir).fire_event(
+            'on_death', key, f"{key} died" + (f" ({cause})" if cause else ""))
+        return {'success': True, 'name': key, 'status': 'dead', 'cause': cause, 'fired': fired}
+
     def update_npc(self, name: str, event: str) -> bool:
         """
         Add an event to NPC's history
@@ -957,6 +987,10 @@ def main():
     setinner_parser.add_argument('--secret')
     setinner_parser.add_argument('--mood')
     setinner_parser.add_argument('--voice')
+    kill_parser = subparsers.add_parser('kill', help='Mark an NPC dead; fires its on_death consequences')
+    kill_parser.add_argument('name', help='NPC name')
+    kill_parser.add_argument('--cause', help='How they died')
+
     mood_parser = subparsers.add_parser('mood', help='Shift NPC current mood')
     mood_parser.add_argument('name', help='NPC name')
     mood_parser.add_argument('mood', help='New mood')
@@ -1135,6 +1169,23 @@ def main():
         if not manager.set_inner_life(args.name, goal=args.goal, secret=args.secret,
                                       current_mood=args.mood, voice=args.voice):
             sys.exit(1)
+
+    elif args.action == 'kill':
+        if json_mode:
+            import contextlib
+            import io
+            with contextlib.redirect_stdout(io.StringIO()):
+                result = manager.kill_npc(args.name, args.cause)
+            if not result.get('success'):
+                sys.exit(emit_error(result.get('error', 'kill failed'), json_mode=True))
+            emit(result, json_mode=True)
+        else:
+            result = manager.kill_npc(args.name, args.cause)
+            if not result.get('success'):
+                sys.exit(1)
+            print(f"DEATH {result['name']} has died." + (f" Cause: {args.cause}" if args.cause else ""))
+            from consequence_manager import print_fired
+            print_fired(result.get('fired'))
 
     elif args.action == 'mood':
         if not manager.shift_mood(args.name, args.mood):

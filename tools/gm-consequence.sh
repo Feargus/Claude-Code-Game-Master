@@ -10,7 +10,9 @@ if [ "$#" -lt 1 ]; then
     echo "  add <description> <trigger>    - Add new consequence"
     echo "  tick                           - Fire consequences matching the current scene (auto on move/time)"
     echo "  check                          - Check pending consequences"
-    echo "  resolve <id>                   - Resolve a consequence"
+    echo "  fire <id> [--reason \"...\"]      - Fire a consequence by hand (its condition happened)"
+    echo "  resolve <id>                   - Resolve a consequence (once it has played out)"
+    echo "  (an id may be shortened to a unique prefix, e.g. the 4 characters the brief shows)"
     echo "  list-resolved                  - List resolved consequences"
     echo ""
     echo "Examples:"
@@ -54,6 +56,14 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/consequence_manager.py" rollback
         ;;
 
+    fire)
+        if [ "$#" -lt 1 ]; then
+            echo "Usage: gm-consequence.sh fire <id> [--reason \"what happened\"]"
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/consequence_manager.py" fire "$@"
+        ;;
+
     resolve)
         if [ "$#" -lt 1 ]; then
             echo "Usage: gm-consequence.sh resolve <id>"
@@ -68,7 +78,7 @@ case "$ACTION" in
 
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: add, check, resolve, list-resolved"
+        echo "Valid actions: add, check, tick, log, rollback, fire, resolve, list-resolved"
         exit 1
         ;;
 esac

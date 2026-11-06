@@ -339,7 +339,7 @@ Tracks events that will trigger in the future.
       "created": "ISO timestamp",
 
       "triggers": [   (OPTIONAL, structured; any one fires it)
-        {"type": "on_location | on_npc | on_time | on_event",
+        {"type": "on_location | on_npc | on_time | on_death | on_event",
          "match": "string compared against world state (location name / npc / time keyword / event keyword)"}
       ],
       "expiry": "string date or condition after which it ages out   (OPTIONAL)"
@@ -363,6 +363,12 @@ Tracks events that will trigger in the future.
   "_snapshot": {"active": [], "resolved": []}
 }
 ```
+
+`on_death` is an **event trigger**: its `match` is an NPC's key in `npcs.json` (resolved
+when the consequence is added) or `player`, and it fires only inside `gm-npc.sh kill` /
+`gm-player.sh kill`, never on the scene check. `gm-consequence.sh fire <id>` fires any
+consequence by hand. A dead NPC carries `status: "dead"`, `cause`, `died_at` and
+`died_game_time`.
 
 A fired consequence also carries `last_fired_key` (the scene key that fired it) and stays
 in `active` — firing is not resolving. `_snapshot` is the **one-beat** rollback buffer,

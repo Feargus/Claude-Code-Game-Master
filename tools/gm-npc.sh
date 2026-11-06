@@ -18,6 +18,7 @@ if [ "$#" -lt 1 ]; then
     echo "  create <name> <description> <attitude>  Create new NPC"
     echo "  update <name> <event>                   Add event to NPC history"
     echo "  status <name>                           Show NPC details"
+    echo "  kill <name> [--cause \"<how>\"]           Mark NPC dead (fires its on_death consequences)"
     echo "  voice <name>                            Show NPC canonical voice lines"
     echo "  enhance <name> <description>            Update NPC description"
     echo "  list [--attitude X] [--location Y]      List all NPCs"
@@ -259,6 +260,10 @@ case "$ACTION" in
 
     mood)
         $PYTHON_CMD "$LIB_DIR/npc_manager.py" mood "$NAME" "$@"
+        ;;
+
+    kill)
+        $PYTHON_CMD "$LIB_DIR/npc_manager.py" kill "$NAME" "$@"
         ;;
 
     appearance)

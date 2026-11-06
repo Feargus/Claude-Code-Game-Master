@@ -21,7 +21,8 @@ def npcs_present(npcs, location):
     """Who is in this scene.
 
     Present = `is_party_member` OR case-insensitive exact equality of
-    `location` against a `tags.locations` entry. Substring matching is
+    `location` against a `tags.locations` entry. The dead (`status: dead`) are
+    never present. Substring matching is
     search (CLI `--tag-location`), not presence — "The Inn" must not
     match "The Inner Sanctum".
     """
@@ -31,6 +32,8 @@ def npcs_present(npcs, location):
     out = {}
     for name, data in npcs.items():
         if not isinstance(data, dict):
+            continue
+        if data.get("status") == "dead":
             continue
         if data.get("is_party_member"):
             out[name] = data
@@ -62,6 +65,7 @@ class EntityManager:
             RuntimeError: If no active campaign is set.
         """
         base_dir = world_state_dir or "world-state"
+        self.base_dir = base_dir  # so one manager can open another on the same world
         self.campaign_mgr = CampaignManager(base_dir)
 
         # Get the active campaign directory
