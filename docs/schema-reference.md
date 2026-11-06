@@ -370,7 +370,7 @@ when the consequence is added) or `player`, and it fires only inside `gm-npc.sh 
 consequence by hand; `--by <fact id>` records the fact that fulfilled it (`fact` in its
 provenance entry). `on_event` is an event trigger too, matched by the GM: its `match` is
 the awaited event in words, and every fact recorded with `gm-note.sh` lists the
-consequences waiting on one (`on_event`, and old ones with only a free-text trigger).
+consequences waiting on one.
 Both `kill` commands also record the death as a fact
 (category `session_events`). A dead NPC carries `status: "dead"`, `cause`, `died_at` and
 `died_game_time`.
@@ -381,9 +381,9 @@ overwritten by the next tick. See [the living world](modules/living-world.md).
 
 **Structured triggers** (`triggers`/`expiry`) are additive and
 optional. Entries written before 2026-11-06 store a single trigger as top-level
-`trigger_type` + `match` instead of a `triggers` list; they are read as a one-item list. When present, the reactivity engine fires the consequence automatically
-when world state matches (and expires it past `expiry`); when absent, the
-consequence is a legacy free-text entry matched fuzzily. A campaign may mix both.
+`trigger_type` + `match` instead of a `triggers` list; they are read as a one-item list.
+Entries with only the free-text `trigger` are read as an `on_event` trigger with that
+text, and `add` stores a bare free-text trigger that way. There is no word matching.
 
 ---
 

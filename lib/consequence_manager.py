@@ -37,9 +37,9 @@ class ConsequenceManager(EntityManager):
     # on_event is the GM's: each recorded fact lists the consequences waiting
     # on one (waiting_on_event), and the GM fires a fitting one by hand.
     EVENT_TRIGGER_TYPES = ('on_death', 'on_event')
-    # Fuzzy bands: >= FIRE_SCORE fires / discloses; NEAR_MISS_SCORE..FIRE_SCORE is advisory.
+    # A trigger either matches (1.0) or not (0.0). There is no word matching:
+    # free-text conditions are on_event triggers, judged by the GM.
     FIRE_SCORE = 0.5
-    NEAR_MISS_SCORE = 0.3
 
     def add_consequence(self, description: str, trigger: str,
                         trigger_type: str = None, match: str = None,
@@ -47,8 +47,10 @@ class ConsequenceManager(EntityManager):
         """
         Add a new consequence.
 
-        Free-text `trigger` is always kept (human-readable + fuzzy fallback).
-        Optionally attach STRUCTURED triggers the engine can fire on; any one fires it:
+        Free-text `trigger` is always kept (human-readable). Without structured
+        triggers it becomes the consequence's on_event trigger: the event it waits
+        for, judged by the GM when facts are recorded. STRUCTURED triggers, any one
+        of which fires it:
           triggers:     list of {"type": one of TRIGGER_TYPES, "match": value compared
                         against world state (location/npc/time/event keyword)}
           trigger_type, match: shorthand for a single trigger (added to `triggers`)
@@ -60,6 +62,8 @@ class ConsequenceManager(EntityManager):
         triggers = [dict(t) for t in (triggers or [])]
         if trigger_type:
             triggers.append({'type': trigger_type, 'match': match})
+        if not triggers and str(trigger or '').strip():
+            triggers = [{'type': 'on_event', 'match': str(trigger).strip()}]
         for t in triggers:
             if t.get('type') not in self.TRIGGER_TYPES:
                 print(f"[ERROR] Unknown trigger type '{t.get('type')}'. Use one of: "
@@ -198,14 +202,17 @@ class ConsequenceManager(EntityManager):
     def structured_triggers(consequence: Dict[str, Any]) -> List[Dict[str, str]]:
         """The consequence's structured triggers as a list of {"type", "match"}.
 
-        New entries store a `triggers` list; entries from before that store a
-        single `trigger_type` + `match`, read here as a one-item list.
+        New entries store a `triggers` list. Older entries are read the same way:
+        a single `trigger_type` + `match` as a one-item list, and a bare free-text
+        `trigger` as an on_event trigger.
         """
         if isinstance(consequence.get('triggers'), list):
             return [t for t in consequence['triggers']
                     if isinstance(t, dict) and t.get('type') and t.get('match')]
         if consequence.get('trigger_type') and consequence.get('match'):
             return [{'type': consequence['trigger_type'], 'match': consequence['match']}]
+        if str(consequence.get('trigger', '')).strip():
+            return [{'type': 'on_event', 'match': str(consequence['trigger']).strip()}]
         return []
 
     @staticmethod
@@ -223,32 +230,15 @@ class ConsequenceManager(EntityManager):
         return ''
 
     def _evaluate_trigger(self, consequence: Dict[str, Any], world_state: Dict[str, Any]):
-        """Return (score, reason). 0 = ignore; >= 0.3 near-miss; >= 0.5 match. Structured = 1.0.
+        """Return (score, reason): (1.0, why) if any state trigger matches now, else (0.0, '').
 
-        With structured triggers, any one that matches fires the consequence.
+        Event triggers (on_death, on_event) never match here; they fire where
+        the event is recorded.
         """
-        structured = self.structured_triggers(consequence)
-        if structured:
-            for t in structured:
-                reason = self._evaluate_one(t['type'], t['match'], world_state)
-                if reason:
-                    return 1.0, reason
-            return 0.0, ''
-
-        # Legacy free-text: score word overlap between the trigger phrase and world.
-        world_text = self._world_text(world_state)
-        stop = {'the', 'a', 'an', 'or', 'and', 'if', 'when', 'party', 'to', 'in', 'on',
-                'at', 'of', 'for', 'more', 'than', 'again', 'next', 'with', 'makes'}
-        words = {w.strip('.,;:\'"') for w in str(consequence.get('trigger', '')).lower().split()}
-        words = {w for w in words if w and w not in stop and len(w) > 2}
-        if not words:
-            return 0.0, ''
-        hits = [w for w in words if w in world_text]
-        score = len(hits) / len(words)
-        if score >= self.FIRE_SCORE:
-            return score, f"fuzzy match on: {', '.join(sorted(hits))}"
-        if score >= self.NEAR_MISS_SCORE:
-            return score, f"near-miss on: {', '.join(sorted(hits))}"
+        for t in self.structured_triggers(consequence):
+            reason = self._evaluate_one(t['type'], t['match'], world_state)
+            if reason:
+                return 1.0, reason
         return 0.0, ''
 
     def tick(self, world_state: Dict[str, Any], limit: int = 2) -> Dict[str, List[Dict[str, Any]]]:
@@ -256,8 +246,7 @@ class ConsequenceManager(EntityManager):
 
         Same scene (location|time|date) will not re-stamp a consequence that already
         fired on this ctx_key — it is disclosed as already-fired, not suppressed.
-        Remaining matches (score >= FIRE_SCORE) are disclosed, not dropped.
-        Near-misses (NEAR_MISS_SCORE <= score < FIRE_SCORE) are advisory only.
+        Remaining matches are disclosed, not dropped.
         Expired consequences are archived. Newly fired items get last_fired_key +
         provenance; the GM may still veto narratively — they stay active either way.
         """
@@ -273,7 +262,7 @@ class ConsequenceManager(EntityManager):
         ]).lower()
 
         survivors, expired = [], []
-        matches, near_misses = [], []
+        matches = []
         for c in active:
             if self._is_expired(c, world_state):
                 aged = dict(c)
@@ -284,13 +273,8 @@ class ConsequenceManager(EntityManager):
             score, reason = self._evaluate_trigger(c, world_state)
             if score >= self.FIRE_SCORE:
                 matches.append((score, c, reason))
-            elif score >= self.NEAR_MISS_SCORE:
-                hit = dict(c)
-                hit['match_reason'] = reason
-                near_misses.append((score, hit))
 
         matches.sort(key=lambda t: t[0], reverse=True)
-        near_misses.sort(key=lambda t: t[0], reverse=True)
 
         already_fired, new_matches = [], []
         for score, c, reason in matches:
@@ -333,7 +317,6 @@ class ConsequenceManager(EntityManager):
             'fired': fired,
             'disclosed': disclosed,
             'already_fired': already_fired,
-            'near_misses': [hit for _, hit in near_misses],
         }
 
     def _stamp_fired(self, data: Dict[str, Any], consequence: Dict[str, Any],
@@ -382,17 +365,16 @@ class ConsequenceManager(EntityManager):
     def waiting_on_event(self) -> List[Dict[str, Any]]:
         """Active consequences the GM must match to events by judgment.
 
-        Those with an on_event trigger, plus old ones with only a free-text
-        trigger. Each comes back with `awaits`: the event it waits for, in words.
+        Those with an on_event trigger (old entries with only a free-text trigger
+        count as one). Each comes back with `awaits`: the event it waits for, in words.
         """
         data = self.json_ops.load_json(self.consequences_file)
         out = []
         for c in data.get('active', []):
-            structured = self.structured_triggers(c)
-            events = [t['match'] for t in structured if t['type'] == 'on_event']
-            if events or not structured:
+            events = [t['match'] for t in self.structured_triggers(c) if t['type'] == 'on_event']
+            if events:
                 hit = dict(c)
-                hit['awaits'] = ' / '.join(events) if events else str(c.get('trigger', ''))
+                hit['awaits'] = ' / '.join(events)
                 out.append(hit)
         return out
 
@@ -553,8 +535,7 @@ def _print_tick_report(result: Dict[str, List[Dict[str, Any]]]) -> None:
     fired = result.get('fired') or []
     disclosed = result.get('disclosed') or []
     already = result.get('already_fired') or []
-    near = result.get('near_misses') or []
-    if not (fired or disclosed or already or near):
+    if not (fired or disclosed or already):
         print("[REACTIVITY] (nothing triggered here)")
         return
     extra = ""
@@ -575,11 +556,6 @@ def _print_tick_report(result: Dict[str, List[Dict[str, Any]]]) -> None:
         for c in already:
             print(f"  [{c['id']}] {c['consequence']}")
             print(f"      ↳ {c.get('match_reason', '')} (already fired here)")
-    if near:
-        print("  near-misses (advisory):")
-        for c in near:
-            print(f"  [{c['id']}] {c['consequence']}")
-            print(f"      ↳ {c.get('match_reason', '')}")
 
 
 def main():

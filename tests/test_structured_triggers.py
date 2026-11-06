@@ -29,12 +29,22 @@ def test_add_with_structured_trigger(dcc_world):
     assert new["consequence"] == "Guards search the market"
 
 
-def test_legacy_add_omits_structured_fields(dcc_world):
+def test_free_text_alone_becomes_an_on_event_trigger(dcc_world):
+    """No word matching: a bare free-text trigger is the event the GM watches for."""
     cm = ConsequenceManager(dcc_world)
     cid = cm.add_consequence("plain consequence", "someday")
     data = json.loads(_consq_path(dcc_world).read_text(encoding="utf-8"))
     new = next(c for c in data["active"] if c["id"] == cid)
-    assert "triggers" not in new and "trigger_type" not in new and "expiry" not in new
+    assert new["triggers"] == [{"type": "on_event", "match": "someday"}]
+    assert "trigger_type" not in new and "expiry" not in new
+
+
+def test_old_free_text_entries_never_fire_on_shared_words(dcc_world):
+    cm = ConsequenceManager(dcc_world)
+    old = {"id": "o1", "consequence": "c", "trigger": "when the party returns to the market"}
+    assert cm.structured_triggers(old) == [
+        {"type": "on_event", "match": "when the party returns to the market"}]
+    assert cm._evaluate_trigger(old, {"location": "the market", "time": "returns"})[0] == 0.0
 
 
 def test_fixture_exercises_all_trigger_types_and_a_legacy(dcc_world):

@@ -66,15 +66,14 @@ Walking away and coming back **re-arms it**, because the key changed.
 
 The fire slice is still `limit=2` (highest-confidence first) so a beat does not stutter
 with five payoffs at once — remaining matches are disclosed as matched-not-fired rather
-than dropped. Fuzzy near-misses (≥ 0.3, below the 0.5 fire threshold) are advisory and
-do not fire. `check_pending(..., world_state)` uses the same disclose-not-hide rule.
+than dropped. `check_pending(..., world_state)` uses the same disclose-not-hide rule.
 
 - The GM can veto a firing narratively and nothing needs undoing; the consequence is
   still there.
 - A consequence only leaves `active` via explicit `resolve <id>` or by expiring. A
   campaign that never resolves accumulates a permanently pending list.
 
-## Two ways a trigger matches, and one that misfires
+## How triggers match, and one check that misfires
 
 Structured triggers (`--trigger-type on_location|on_npc|on_time|on_event` with `--match`,
 repeatable for several triggers, any one of which fires the consequence)
@@ -82,10 +81,11 @@ score 1.0 on a substring hit against the corresponding world-state field. `on_de
 `on_event` are the exceptions, event triggers never checked on the scene: `on_death` fires
 once, inside `gm-npc.sh kill` / `gm-player.sh kill`; `on_event` is matched by the GM, since
 every fact recorded with `gm-note.sh` lists the consequences waiting on an event, and the
-GM fires a fitting one with `gm-consequence.sh fire <id> --by <fact id>`. Legacy free-text
-triggers fall back to word-overlap scoring against the whole scene, and need **≥ 50% of
-non-stopword trigger words** present to fire at all. Prefer structured triggers; the fuzzy
-path is a compatibility fallback, not a feature.
+GM fires a fitting one with `gm-consequence.sh fire <id> --by <fact id>`. There is no word
+matching: a consequence added with only a free-text trigger gets it as its `on_event`
+trigger, and older entries with only free text are read that way (removed 2026-11-06:
+upstream's fallback scored word overlap against the scene, firing on mere mentions and
+missing paraphrases).
 
 **The expiry check is a whole-word match against the entire scene text** (`_is_expired`) —
 location, time, date, present NPC names, and events concatenated. It was a bare substring

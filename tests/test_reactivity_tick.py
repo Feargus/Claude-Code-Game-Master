@@ -50,4 +50,4 @@ def test_tick_from_session_runs_against_campaign_state(dcc_world):
     result = ConsequenceManager(dcc_world).tick_from_session()
     assert isinstance(result, dict)
     assert "fired" in result and "disclosed" in result
-    assert "already_fired" in result and "near_misses" in result
+    assert "already_fired" in result and "near_misses" not in result
