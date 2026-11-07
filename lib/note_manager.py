@@ -59,6 +59,7 @@ class NoteManager:
 
     def __init__(self, world_state_dir: str = "world-state"):
         self.world_state_dir = world_state_dir
+        self.last_fired = []  # on_learn consequences fired by the last add_fact / tell
         self.campaign_mgr = CampaignManager(world_state_dir)
         self.campaign_dir = self.campaign_mgr.get_active_campaign_dir()
 
@@ -157,6 +158,8 @@ class NoteManager:
         print(f"  known to: {', '.join(holder_ids) if holder_ids else 'nobody (a secret)'}")
         if holders is None and not secret:
             self._named_but_absent(fact_id, about_ids, holder_ids)
+        from consequence_manager import print_fired
+        print_fired(self._learned(fact_id, entry, holder_ids))
         if list_waiting:
             self._list_waiting(fact_id)
         return fact_id
@@ -194,6 +197,26 @@ class NoteManager:
                   f"bash tools/gm-scene.sh enter {names}, then "
                   f"gm-note.sh tell {fact_id} {' '.join('npc:' + n for n in absent)}")
 
+    def _learned(self, fact_id: str, entry: dict, new_holders) -> list:
+        """Fire the on_learn consequences for holders who just learned a fact.
+        Returns the fired consequences (also kept in `last_fired`)."""
+        from consequence_manager import ConsequenceManager
+        self.last_fired = []
+        if not new_holders:
+            return []
+        about = entry.get('about') or []
+        values = []
+        for who in list(new_holders) + ['anyone']:
+            values.append(f"{who} learns {fact_id}")
+            values += [f"{who} learns about:{a}" for a in about]
+        try:
+            cm = ConsequenceManager(self.world_state_dir)
+        except RuntimeError:
+            return []
+        self.last_fired = cm.fire_event(
+            'on_learn', values, f"{', '.join(new_holders)} learned {fact_id}: {entry['fact']}")
+        return self.last_fired
+
     def _entry(self, facts: dict, fact_id: str) -> dict:
         entry = next((f for items in facts.values() if isinstance(items, list)
                       for f in items if isinstance(f, dict) and f.get('id') == fact_id), None)
@@ -212,9 +235,11 @@ class NoteManager:
         entry = self._entry(facts, fact_id)
         known = entry.setdefault('holders', [])
         new = [h for h in adding if h not in known]
+        self.last_fired = []
         if new:
             known.extend(new)
             self.json_ops.save_json("facts.json", facts)
+            self._learned(fact_id, entry, new)
         return new
 
     def remove_facts(self, fact_ids) -> int:
@@ -298,6 +323,8 @@ def main():
             new = manager.tell(args.fact_id, args.holders)
             print(f"{args.fact_id}: {', '.join(new)} now know(s) it" if new else
                   f"{args.fact_id}: they knew it already")
+            from consequence_manager import print_fired
+            print_fired(manager.last_fired)
         elif args.action == 'about':
             about = manager.set_about(args.fact_id, args.add, args.remove)
             print(f"{args.fact_id} about: {', '.join(about) or '(nothing)'}")

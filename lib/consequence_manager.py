@@ -31,12 +31,13 @@ class ConsequenceManager(EntityManager):
             self.json_ops.save_json(self.consequences_file, data)
 
     # Structured trigger types the reactivity engine can evaluate automatically.
-    TRIGGER_TYPES = ('on_location', 'on_npc', 'on_time', 'on_event', 'on_death', 'on_clock')
+    TRIGGER_TYPES = ('on_location', 'on_npc', 'on_time', 'on_event', 'on_death', 'on_clock',
+                     'on_learn')
     # Event triggers fire once, inside the command that makes the change
     # (fire_event), never on the scene check that moves and time steps run.
     # on_event is the GM's: each recorded fact lists the consequences waiting
     # on one (waiting_on_event), and the GM fires a fitting one by hand.
-    EVENT_TRIGGER_TYPES = ('on_death', 'on_event', 'on_clock')
+    EVENT_TRIGGER_TYPES = ('on_death', 'on_event', 'on_clock', 'on_learn')
     # A trigger either matches (1.0) or not (0.0). There is no word matching:
     # free-text conditions are on_event triggers, judged by the GM.
     FIRE_SCORE = 0.5
@@ -86,6 +87,12 @@ class ConsequenceManager(EntityManager):
                           file=sys.stderr)
                     return ""
                 t['match'] = who
+            if t['type'] == 'on_learn':
+                canonical, error = self._learn_target(t['match'])
+                if error:
+                    print(f"[ERROR] {error}", file=sys.stderr)
+                    return ""
+                t['match'] = canonical
             if t['type'] == 'on_clock':
                 canonical, error = self._clock_target(t['match'])
                 if error:
@@ -288,6 +295,39 @@ class ConsequenceManager(EntityManager):
             if done:
                 hit['effects_done'] = done
 
+    def _learn_target(self, raw: str):
+        """The canonical on_learn match: ("<who> learns <fact id>" or
+        "<who> learns about:<id>", "") or ("", why not).
+
+        <who> is a holder id (player, npc:<name>, street, public) or `anyone`.
+        The fact must exist; an about id must resolve (any kind, places too).
+        """
+        import re
+        from world_ids import WorldIds
+        usage = ('on_learn matches "<who> learns <fact id>" or "<who> learns about <id>", '
+                 'e.g. "npc:Wren learns f42", "street learns about player", '
+                 '"anyone learns f17"')
+        parts = re.split(r"\s+learns\s+", str(raw).strip(), maxsplit=1, flags=re.IGNORECASE)
+        if len(parts) != 2 or not parts[0].strip() or not parts[1].strip():
+            return "", usage
+        who_raw, what = parts[0].strip(), parts[1].strip()
+        ids = WorldIds(self.json_ops)
+        if who_raw.lower() == 'anyone':
+            who = 'anyone'
+        else:
+            who, error = ids.resolve_holder(who_raw)
+            if error:
+                return "", f"on_learn: {error}"
+        about = re.match(r"about[\s:]+(.+)$", what, flags=re.IGNORECASE)
+        if about:
+            cid, error = ids.resolve(about.group(1))
+            if error:
+                return "", f"on_learn: {error}"
+            return f"{who} learns about:{cid}", ""
+        if not self._find_fact(what):
+            return "", f"on_learn: no fact '{what}'. {usage}"
+        return f"{who} learns {what}", ""
+
     def _clock_target(self, raw: str):
         """The canonical on_clock match for `raw`: ("<clock name>:<segment>", "").
 
@@ -468,21 +508,26 @@ class ConsequenceManager(EntityManager):
         data['_snapshot'] = {'active': [dict(c) for c in data.get('active', [])],
                              'resolved': [dict(c) for c in data.get('resolved', [])]}
 
-    def fire_event(self, ttype: str, value: str, reason: str) -> List[Dict[str, Any]]:
+    def fire_event(self, ttype: str, value, reason: str) -> List[Dict[str, Any]]:
         """An event happened (e.g. on_death, 'Wren'): fire every active consequence
-        with a trigger of that type whose match equals `value`. Called by the command
-        that makes the change. Returns the fired consequences.
+        with a trigger of that type whose match equals `value` (case-insensitive).
+        `value` may be a list of descriptions of the same event (on_learn: "npc:Wren
+        learns f42", "anyone learns f42", ...); a consequence fires once even if
+        several fit. Called by the command that makes the change. Returns the fired
+        consequences.
         """
         data = self.json_ops.load_json(self.consequences_file)
-        value_l = str(value).lower()
-        hits = [c for c in data.get('active', [])
-                if any(t['type'] == ttype and str(t['match']).lower() == value_l
-                       for t in self.structured_triggers(c))]
+        values = [str(v).lower() for v in (value if isinstance(value, (list, tuple)) else [value])]
+        hits = []
+        for c in data.get('active', []):
+            matched = next((m for t in self.structured_triggers(c) if t['type'] == ttype
+                            for m in [str(t['match']).lower()] if m in values), None)
+            if matched:
+                hits.append((c, matched))
         if not hits:
             return []
         self._snapshot(data)
-        ctx_key = f"event|{ttype}|{value_l}"
-        fired = [self._stamp_fired(data, c, reason, ctx_key) for c in hits]
+        fired = [self._stamp_fired(data, c, reason, f"event|{ttype}|{m}") for c, m in hits]
         self.json_ops.save_json(self.consequences_file, data)
         self._carry_out(fired)
         return fired

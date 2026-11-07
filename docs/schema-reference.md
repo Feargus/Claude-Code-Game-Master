@@ -360,7 +360,7 @@ Tracks events that will trigger in the future.
       "created": "ISO timestamp",
 
       "triggers": [   (OPTIONAL, structured; any one fires it)
-        {"type": "on_location | on_npc | on_time | on_death | on_clock | on_event",
+        {"type": "on_location | on_npc | on_time | on_death | on_clock | on_learn | on_event",
          "match": "string compared against world state (location name / npc / time keyword / event keyword)"}
       ],
       "effects": [   (OPTIONAL, carried out by the script each time it fires)
@@ -401,6 +401,14 @@ consequences waiting on one. `on_clock` is an event trigger whose `match` is
 clock must exist. It fires inside `gm-clock.sh advance` and the time update that moves the
 clock, once for each segment the clock reaches. It may also name a clock that a waiting
 consequence's `start_clock` effect will create.
+
+`on_learn` is an event trigger whose `match` is `"<who> learns <fact id>"` or
+`"<who> learns about:<id>"` (stored canonical; input may say `about <id>` and use loose
+names). `<who>` is a holder id (`player`, `npc:<key>`, `street`, `public`) or `anyone`. It
+fires inside every command that adds a holder to a fact: `gm-note.sh` recording a fact (its
+first holders learn it), `gm-note.sh tell`, and world-tick developments with holders. A
+consequence fires once per learning however many of its triggers fit; it can fire again on
+a later learning until it is resolved.
 
 A `start_clock` effect runs however the consequence fires (scene check, event, or by hand),
 after `consequences.json` is saved; a clock of that name that already exists is left as it

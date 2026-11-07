@@ -83,6 +83,7 @@ score 1.0 on a substring hit against the corresponding world-state field. `on_de
 `on_clock` and `on_event` are the exceptions, event triggers never checked on the scene:
 `on_death` fires once, inside `gm-npc.sh kill` / `gm-player.sh kill`; `on_clock` fires once
 per segment, inside `gm-clock.sh advance` or the time update that moves the clock;
+`on_learn` fires when a fact gets a holder (`gm-note.sh` and `gm-note.sh tell`);
 `on_event` is matched by the GM, since
 every fact recorded with `gm-note.sh` lists the consequences waiting on an event, and the
 GM fires a fitting one with `gm-consequence.sh fire <id> --by <fact id>`. There is no word

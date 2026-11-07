@@ -22,6 +22,7 @@ if [ "$#" -lt 1 ]; then
     echo "  gm-consequence.sh add \"Footprints at the door\" \"halfway\" --trigger-type on_clock --match \"Tracker:2\""
     echo "  gm-consequence.sh add \"Word gets out\" \"the job goes loud\" --starts-clock \"Vendetta\" --clock-segments 3 --clock-on event"
     echo "      (when it fires, starts the clock; also --clock-due-in 3d, --clock-due, --clock-consequence)"
+    echo "  gm-consequence.sh add \"The Palimpsest hunt him\" \"they hear of him\" --trigger-type on_learn --match \"npc:Sister Lacuna learns about player\""
     echo "  gm-consequence.sh check"
     echo "  gm-consequence.sh resolve abc123"
     exit 1
