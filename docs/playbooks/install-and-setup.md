@@ -32,7 +32,7 @@ That check failing is what routes a session to `/setup` before it greets you.
 
 | Extra | Contains | Missing it means |
 |---|---|---|
-| *(core)* | `pdfplumber`, `pypdf2`, `python-docx`, `python-dotenv`, `requests`, `anthropic` | nothing works |
+| *(core)* | `pdfplumber`, `pypdf2`, `python-docx`, `python-dotenv`, `anthropic` | nothing works |
 | `rag` | `sentence-transformers`, `chromadb` | **`/import` cannot vectorize**, and every source-passage lookup silently returns empty |
 | `voice` | `elevenlabs` | nothing — see below |
 | `dev` | `pytest`, `black`, `ruff`, `mypy`, `pre-commit` | can't run the suite |

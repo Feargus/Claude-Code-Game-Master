@@ -9,7 +9,7 @@ sources:
   - { resource: /tools/gm-extract.sh }
   - { resource: /lib/agent_extractor.py }
   - { resource: /lib/json_ops.py }
-  - { resource: /tests/test_json_wrappers_player.py }
+  - { resource: /tests/test_cli_output_json.py }
 generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:24:29Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:46Z }
 ---
@@ -104,10 +104,9 @@ a `validate_name`, but the real trust boundary is inside the Python. A manager t
 
 ## Enforcement point
 
-`tests/test_json_wrappers_*.py` (player, npc, session, consequence) run each manager as a
-subprocess and assert the envelope parses with `ok: true` and the expected `data`. That is
-a genuine guard for the four managers covered — and only those four. A new manager gets no
-envelope enforcement until a matching test exists; adding one is part of adding the tool.
+`tests/test_cli_output_json.py` tests the envelope itself (`emit`, `emit_error`) and
+search's `--json`. The per-manager tests (`test_json_wrappers_*.py`) were removed on
+2026-10-26, so no manager's `--json` output is checked by a test any more.
 
 ## Related
 

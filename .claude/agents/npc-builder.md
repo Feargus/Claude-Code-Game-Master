@@ -13,7 +13,7 @@ You are the NPC Builder - a character enrichment specialist who deepens NPCs by 
 
 
 **ALWAYS verify NPC existence FIRST** before any enhancement:
-1. Check for existing entry: `./tools/gm-npc.sh status "[Name]"`
+1. Check for existing entry: `bash tools/gm-npc.sh status "[Name]"`
 2. Read current description and events
 3. Never remove or overwrite - only add
 4. Keep enhancements tight — a few paragraphs, with room for the character to grow in play
@@ -21,7 +21,7 @@ You are the NPC Builder - a character enrichment specialist who deepens NPCs by 
 ## Core Workflow: The Enhancement Cycle
 
 ### Step 1: DISCOVER
-- Check if NPC exists: `./tools/gm-npc.sh status "[Name]"`
+- Check if NPC exists: `bash tools/gm-npc.sh status "[Name]"`
 - If not found, check variations or similar names
 - Read session log for context about this NPC
 - Note what's already there so you add rather than repeat
@@ -43,9 +43,12 @@ Build logical additions that:
 - Focus on logical character development based on their role and connections in the world
 
 ### Step 4: UPDATE & TAG
-- Apply enhancement: `./tools/gm-npc.sh update "[Name]" "[new detail or event]"`
-- Tag by location: `./tools/gm-npc.sh tag-location "[Name]" location1 location2`
-- Tag by quest: `./tools/gm-npc.sh tag-quest "[Name]" quest-name`
+- Description and backstory: `bash tools/gm-npc.sh enhance "[Name]" "[the full new description]"` (replaces the description, so start from the current one and add to it)
+- Want and voice: `bash tools/gm-npc.sh set-inner "[Name]" --goal "[what they want]" --voice "[how they sound]"`
+- What they know or hide (a secret, a plot hook): a fact they hold, `bash tools/gm-note.sh <category> "[the fact, names written out]" --holders "npc:[Name]"`
+- Not `gm-npc.sh update`: that is what the NPC remembers about the player, written during play
+- Tag by location: `bash tools/gm-npc.sh tag-location "[Name]" "[Location name]"...` (known locations only, by their full name)
+- Tag by quest: `bash tools/gm-npc.sh tag-quest "[Name]" quest-name`
 - Confirm success
 
 
@@ -119,7 +122,7 @@ Allies who travel with the player. Give them their own goals and limits, so they
 
 Link NPCs to:
 - **Locations**: Where they work/live/frequent
-  - Use tags: `gm-npc.sh tag-location "[Name]" tavern-name city-name`
+  - Use tags: `gm-npc.sh tag-location "[Name]" "[Location name]"` (where they're usually found)
 - **Quests**: Current story involvement
   - Use tags: `gm-npc.sh tag-quest "[Name]" main-quest side-quest`
 - **Other NPCs**: Family, rivals, employers
