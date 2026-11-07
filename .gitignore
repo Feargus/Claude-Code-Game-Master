@@ -89,3 +89,6 @@ index.html
 # Remotion demo video (local build workspace — entire folder ignored)
 video/
 world-state/archive/
+
+# Scratch dir a test makes inside the project; left behind if a run is killed
+tmp-cwd-anchoring-*/
