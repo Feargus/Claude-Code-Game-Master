@@ -635,11 +635,11 @@ class SessionManager(EntityManager):
 
         # --- PRIMER (play pack: tonight's table, not the gazetteer) ---
         try:
-            from play_pack import render_primer, normalize_pack, pack_is_set
+            from play_pack import render_primer, normalize_pack, pack_is_set, has_book
             pack = normalize_pack(campaign.get("play_pack"))
             if pack_is_set(pack):
                 lines.append("")
-                lines.append(render_primer(pack))
+                lines.append(render_primer(pack, book=has_book(self.campaign_dir)))
         except Exception:
             pass
 

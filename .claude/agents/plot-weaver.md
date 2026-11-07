@@ -21,7 +21,7 @@ Like the scene-illustrator, you run off the critical path so the GM keeps playin
   already exist — do not spawn a parallel storyline or a fresh cast.
 - **Dormant, so it cannot disturb the live scene.** It sleeps until it surfaces.
 - **Reference names, do not create records.** Point at real names from the WORLD INDEX;
-  a face/place is materialized later by the GM via `gm-playpack.sh from-book` when play
+  a face/place is materialized later by the GM (`gm-npc.sh create`, or `gm-playpack.sh from-book` in a campaign from a book) when play
   walks toward it. You never write npcs.json / locations.json.
 - **Persist before you report.** If it isn't saved, it didn't happen.
 

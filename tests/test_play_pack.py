@@ -25,6 +25,7 @@ def _campaign(tmp_path):
     }))
     (cdir / "npcs.json").write_text("{}")
     (cdir / "locations.json").write_text("{}")
+    (cdir / "book-text.txt").write_text("A book.")      # from-book needs one
     return cdir
 
 
@@ -140,3 +141,11 @@ def test_from_book_writes_one_location(tmp_path):
     assert r["ok"] is True
     locs = json.loads((cdir / "locations.json").read_text())
     assert list(locs) == ["The Tower of the Elephant"]
+
+
+def test_from_book_refuses_without_a_book(tmp_path):
+    cdir = _campaign(tmp_path)
+    (cdir / "book-text.txt").unlink()
+    r = from_book(cdir, "Valeria", kind="npc", description="A hard grin.")
+    assert not r["ok"] and "gm-npc.sh create" in r["error"]
+    assert json.loads((cdir / "npcs.json").read_text()) == {}

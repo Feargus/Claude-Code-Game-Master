@@ -69,7 +69,7 @@ def pack_is_set(pack: Dict[str, Any]) -> bool:
     )
 
 
-def render_primer(pack: Dict[str, Any]) -> str:
+def render_primer(pack: Dict[str, Any], book: bool = True) -> str:
     pack = normalize_pack(pack)
     if not pack_is_set(pack):
         return ""
@@ -88,10 +88,16 @@ def render_primer(pack: Dict[str, Any]) -> str:
         lines.append(f"Offstage (do not build): {', '.join(pack['offstage'])}")
     if pack["primer"]:
         lines.append(pack["primer"])
-    lines.append(
-        "The book is the binder. New face or place: "
-        "`bash tools/gm-playpack.sh from-book \"<name>\"` then RAG."
-    )
+    if book:
+        lines.append(
+            "The book is the binder. New face or place: "
+            "`bash tools/gm-playpack.sh from-book \"<name>\"` then RAG."
+        )
+    else:
+        lines.append(
+            "New face: `bash tools/gm-npc.sh create` (with a usual place); "
+            "new place: `bash tools/gm-location.sh add`."
+        )
     return "\n".join(lines)
 
 
@@ -321,11 +327,19 @@ def from_book(
     attitude: str = "neutral",
     world_state_dir: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Write exactly one journal entity. Description from caller or a RAG blurb."""
+    """Write exactly one journal entity. Description from caller or a RAG blurb.
+
+    Only for a campaign made from a book: in one without, the entity has nothing
+    to come from, and an NPC would skip the usual-place rule of gm-npc.sh create."""
     cdir = Path(campaign_dir)
     name = (name or "").strip()
     if not name:
         return {"ok": False, "error": "name required"}
+    if not has_book(cdir):
+        return {"ok": False, "error": (
+            "this campaign has no source book; create the NPC with "
+            "gm-npc.sh create \"<name>\" \"<who>\" \"<attitude>\" --location \"<place>\" "
+            "or the place with gm-location.sh add")}
 
     kind = (kind or "auto").lower()
     if kind == "auto":
@@ -365,6 +379,14 @@ def from_book(
     }
     _save_json(cdir, "npcs.json", npcs)
     return {"ok": True, "kind": "npc", "name": name}
+
+
+BOOK_TEXT_FILES = ("source/current-document.txt", "current-document.txt", "book-text.txt")
+
+
+def has_book(campaign_dir) -> bool:
+    """True when the campaign keeps a source book's text (an imported campaign)."""
+    return any((Path(campaign_dir) / f).exists() for f in BOOK_TEXT_FILES)
 
 
 def _looks_like_place(name: str) -> bool:
@@ -420,17 +442,18 @@ def main():
     elif args.action == "show":
         pack = load_pack(cdir)
         print(json.dumps(pack, indent=2, ensure_ascii=False))
-        block = render_primer(pack)
+        block = render_primer(pack, book=has_book(cdir))
         if block:
             print()
             print(block)
     elif args.action == "stage":
         print(json.dumps(apply_stage(cdir, args.world_state), indent=2, ensure_ascii=False))
     else:
-        print(json.dumps(
-            from_book(cdir, args.name, args.kind, args.description, args.attitude, args.world_state),
-            indent=2, ensure_ascii=False,
-        ))
+        result = from_book(cdir, args.name, args.kind, args.description, args.attitude,
+                           args.world_state)
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        if not result.get("ok"):
+            sys.exit(1)
 
 
 if __name__ == "__main__":

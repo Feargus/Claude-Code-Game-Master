@@ -148,7 +148,7 @@ bash tools/gm-playpack.sh stage
 4. Optional thin binder: a short `authored-canon.md` of *this street only*, then
    `gm-extract.sh prepare` so RAG has something to pull. Do not author the continent.
 
-When a new name walks on: `gm-playpack.sh from-book "<name>"` then RAG.
+When a new name walks on: with a binder, `gm-playpack.sh from-book "<name>"` then RAG; without one, `gm-npc.sh create "<name>" "<who>" "<attitude>" --location "<place>"` or `gm-location.sh add`.
 
 ---
 

@@ -27,6 +27,7 @@ def _campaign(tmp_path):
     }))
     (cdir / "npcs.json").write_text("{}")
     (cdir / "locations.json").write_text("{}")
+    (cdir / "book-text.txt").write_text("A book.")      # from-book needs one
     return cdir
 
 
