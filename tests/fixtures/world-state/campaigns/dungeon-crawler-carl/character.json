@@ -10,12 +10,15 @@
   },
   "ac": 15,
   "stats": {
-    "str": 27,
-    "dex": 13,
-    "con": 28,
-    "int": 1,
-    "wis": 12,
-    "cha": 9
+    "STR": 20,
+    "AGI": 12,
+    "DFT": 10,
+    "VIG": 20,
+    "LOG": 4,
+    "ITU": 10,
+    "NRV": 12,
+    "PRS": 8,
+    "EMP": 8
   },
   "saves": {
     "str": 10,

@@ -15,7 +15,7 @@ from lib.player_manager import PlayerManager
 MILESTONE_RULESET = {
     "name": "The Long Road",
     "kit": "custom",
-    "stat_schema": {"attributes": ["grit", "wits"], "vitals": ["hp", "resolve"]},
+    "stat_schema": {"vitals": ["hp", "resolve"]},
     "progression": {"model": "milestone"},
     "active_agents": [],
 }
@@ -24,7 +24,7 @@ MILESTONE_RULESET = {
 TWELVE_LEVEL_RULESET = {
     "name": "Twelve Rungs",
     "kit": "custom",
-    "stat_schema": {"attributes": ["grit"], "vitals": ["hp"]},
+    "stat_schema": {"vitals": ["hp"]},
     "progression": {"model": "xp-levels",
                     "thresholds": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100]},
     "active_agents": [],
@@ -170,7 +170,7 @@ def test_ruleset_less_campaign_refuses_an_undeclared_vital(tmp_path):
 @pytest.mark.parametrize("ruleset", [
     None,                                                      # no ruleset at all
     {"name": "Half-Authored", "kit": "custom"},                # no stat_schema
-    {"stat_schema": {"attributes": ["grit"], "vitals": []}},   # empty vitals list
+    {"stat_schema": {"vitals": []}},   # empty vitals list
 ])
 def test_hp_is_refused_even_as_the_default_vital(tmp_path, ruleset):
     """The kit's default vital is still 'hp', but wounds replaced it (gm-body.sh)."""

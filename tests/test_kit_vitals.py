@@ -21,10 +21,7 @@ NEW_CHARACTER = ROOT / "lib" / "new_character.py"
 HYBORIAN_RULESET = {
     "name": "The Hyborian Age",
     "kit": "hyborian",
-    "stat_schema": {
-        "attributes": ["STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP"],
-        "vitals": ["vigor", "corruption"],
-    },
+    "stat_schema": {"vitals": ["vigor", "corruption"]},
     "progression": {"model": "milestone"},
     "active_agents": [],
 }

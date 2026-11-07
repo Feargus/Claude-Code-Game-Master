@@ -97,14 +97,14 @@ def test_draft_bible_without_source_text_fails_loudly(tmp_path):
 def test_ruleset_is_drafted_from_the_bible(campaign):
     book_bible.draft_bible(campaign, name="The Iron Tangle")
     ruleset = book_bible.write_ruleset(
-        campaign, progression_model="resource-axis", attributes=["str", "dex", "int"],
+        campaign, progression_model="resource-axis",
         resource="viewers")
 
     assert json.loads((campaign / "ruleset.json").read_text(encoding="utf-8")) == ruleset
     assert "kit" not in ruleset
     assert ruleset["name"] == "The Iron Tangle"
     assert ruleset["active_agents"] == ["npc-builder"]
-    assert ruleset["stat_schema"]["attributes"] == ["str", "dex", "int"]
+    assert ruleset["stat_schema"] == {"vitals": ["hp"]}
     assert ruleset["progression"] == {"model": "resource-axis", "resource": "viewers"}
 
 
@@ -162,12 +162,12 @@ def test_cli_drives_the_whole_chain(campaign):
     assert run("draft-bible", str(campaign), "--name", "The Iron Tangle",
                "--voice-json", json.dumps({"style": "clipped", "sample_passages": [VERBATIM]}),
                "--fields-json", json.dumps({"signature_systems": ["loot boxes"]})).returncode == 0
-    assert run("draft-ruleset", str(campaign), "--attributes", "str,dex").returncode == 0
+    assert run("draft-ruleset", str(campaign)).returncode == 0
     assert run("campaign-rules", str(campaign)).returncode == 0
 
     ruleset = json.loads((campaign / "ruleset.json").read_text(encoding="utf-8"))
     overview = json.loads((campaign / "campaign-overview.json").read_text(encoding="utf-8"))
-    assert ruleset["stat_schema"]["attributes"] == ["str", "dex"]
+    assert ruleset["stat_schema"] == {"vitals": ["hp"]}
     assert overview["campaign_rules"]["signature_systems"] == ["loot boxes"]
 
     # Second draft-ruleset is refused rather than silently overwriting.

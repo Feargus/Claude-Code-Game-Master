@@ -20,10 +20,9 @@ more.
 
 ## One validator: `schemas.validate_character`
 
-Kit-aware: given a `WorldKit`, stats outside
-the kit's declared `stat_schema.attributes` are reported. Only `name` and `level` are
-required (level 0 counts) — `race`/`class` are optional flavor. An empty declared stat
-schema disables the kit check.
+Stats other than the nine attributes (`skill_contest.ATTRIBUTES`, the same in every
+campaign) are reported. Only `name` and `level` are required (level 0 counts) —
+`race`/`class` are optional flavor.
 
 ## XP delegates to the kit, then falls back
 

@@ -635,7 +635,7 @@ how a world plays without baking in D&D 5e.
 ```json
 {
   "name": "Dungeon Crawler Carl",
-  "stat_schema": { "attributes": ["str","con","dex","int"], "vitals": ["hp"] },
+  "stat_schema": { "vitals": ["hp"] },
   "progression": { "model": "milestone | xp-levels | resource-axis", "...": "model config (thresholds/tiers/resource)" },
   "systems": [ {"primitive": "named_track|price_roll|reaction_roll|guarded_payoff", "name": "Menace", "config": {}} ],
   "active_agents": ["npc-builder"],
@@ -647,7 +647,7 @@ how a world plays without baking in D&D 5e.
   (`WorldKit.systems()`); each rides scene context as an executable ROLL-these
   block. Written by `book_bible.write_systems` (`gm-extract.sh write-systems`).
 
-- `stat_schema.attributes` is open and kit-defined (no fixed six abilities).
+- The attributes are not set here: every campaign uses the nine in `lib/skill_contest.py`. `stat_schema.vitals` names the counters.
 - `progression.model` selects one of the core's three models; its config
   (`thresholds` for xp-levels, `resource`+`tiers` for resource-axis) is supplied here.
 - World-flavor systems (loot boxes, viewers) stay in campaign-overview `campaign_rules`.

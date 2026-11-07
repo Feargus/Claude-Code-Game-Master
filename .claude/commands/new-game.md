@@ -100,7 +100,7 @@ and the play pack (Phase C). The bible stays `confirmed: false` until they accep
 
 Write only what tonight needs:
 
-1. Draft the kit: `gm-extract.sh draft-ruleset --attributes "STR,AGI,DFT,VIG,LOG,ITU,NRV,PRS,EMP" --progression-model xp-levels`. Attributes and rolls are always the ones in `gm-skills`; the world adds its signature systems.
+1. Draft the kit: `gm-extract.sh draft-ruleset --progression-model xp-levels`. Attributes and rolls are always the ones in `gm-skills`; the world adds its signature systems.
 2. Write a short `rules.md` if the world has signature systems.
 2b. **Make the signature systems executable — dice, not vibes.** Instantiate 1–3
    `game_core` primitives (**named_track** meter with threshold beats / **price_roll**

@@ -13,7 +13,7 @@ play-time rules surface (rendered in scene context). campaign-overview's
 ruleset.json shape:
 {
   "name": "Dungeon Crawler Carl",
-  "stat_schema": { "attributes": ["str","con","dex","int"], "vitals": ["hp"] },
+  "stat_schema": { "vitals": ["hp"] },   # attributes are fixed: the nine in skill_contest
   "progression": { "model": "resource-axis", "resource": "viewers",
                    "tiers": [1000000, 1000000000] },
   "active_agents": ["npc-builder"],
@@ -36,7 +36,7 @@ from game_core import make_progression
 
 DEFAULT_RULESET = {
     "name": "Generic Adventure",
-    "stat_schema": {"attributes": [], "vitals": ["hp"]},
+    "stat_schema": {"vitals": ["hp"]},
     "progression": {"model": "milestone"},
     "active_agents": [],
     "rules_doc": None,

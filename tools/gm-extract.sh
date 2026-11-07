@@ -99,7 +99,7 @@ Commands:
                             voice + skeleton keys). Idempotent; refuses a
                             confirmed bible. Run BEFORE draft-ruleset.
   draft-ruleset [campaign] [--progression-model M] [--progression-json J]
-                            [--attributes a,b] [--force]
+                            [--force]
                             Draft the World Kit (ruleset.json) from the bible
   campaign-rules [campaign] Write the bible's signature systems into
                             campaign-overview.json as campaign_rules

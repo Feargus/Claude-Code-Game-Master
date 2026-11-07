@@ -74,7 +74,6 @@ def bible_to_campaign_rules(bible: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def draft_ruleset_from_bible(bible: Dict[str, Any], progression_model: str = "milestone",
-                             attributes: List[str] = None,
                              **progression_config) -> Dict[str, Any]:
     """Auto-draft a World Kit ruleset.json from a world-bible.
 
@@ -86,7 +85,7 @@ def draft_ruleset_from_bible(bible: Dict[str, Any], progression_model: str = "mi
     agents = ["npc-builder"]
     return {
         "name": bible.get("name", "Imported World"),
-        "stat_schema": {"attributes": list(attributes or []), "vitals": ["hp"]},
+        "stat_schema": {"vitals": ["hp"]},
         "progression": progression,
         "active_agents": agents,
         "rules_doc": "rules.md",
@@ -204,14 +203,14 @@ def draft_bible(campaign_dir, name: str = None, voice: Dict[str, Any] = None,
 
 
 def write_ruleset(campaign_dir, progression_model: str = "milestone",
-                  attributes: List[str] = None, force: bool = False,
+                  force: bool = False,
                   **progression_config) -> Dict[str, Any]:
     """Draft the World Kit from the bible and write it to ruleset.json."""
     path = Path(campaign_dir) / "ruleset.json"
     if path.exists() and not force:
         raise FileExistsError(f"{path} already exists — pass --force to redraft it")
     ruleset = draft_ruleset_from_bible(load_bible(campaign_dir), progression_model=progression_model,
-                                       attributes=attributes, **progression_config)
+                                       **progression_config)
     path.write_text(json.dumps(ruleset, indent=2, ensure_ascii=False), encoding="utf-8")
     return ruleset
 
@@ -298,7 +297,6 @@ def main():
     p_kit.add_argument("campaign_dir")
     p_kit.add_argument("--progression-model", default="milestone",
                        choices=["milestone", "xp-levels", "resource-axis"])
-    p_kit.add_argument("--attributes", help="comma-separated stat schema attributes")
     p_kit.add_argument("--progression-json", help="extra progression config (e.g. resource/tiers)")
     p_kit.add_argument("--force", action="store_true", help="overwrite an existing ruleset.json")
 
@@ -337,13 +335,10 @@ def main():
             ruleset = write_ruleset(
                 args.campaign_dir,
                 progression_model=args.progression_model,
-                attributes=[a.strip() for a in args.attributes.split(",") if a.strip()]
-                if args.attributes else None,
                 force=args.force,
                 **(json.loads(args.progression_json) if args.progression_json else {}),
             )
             print(f"ruleset.json drafted: {ruleset['name']} "
-                  f"| attrs: {ruleset['stat_schema']['attributes']} "
                   f"| agents: {ruleset['active_agents']}")
         elif args.action == "write-index":
             idx = write_index(args.campaign_dir, json.loads(args.index_json))

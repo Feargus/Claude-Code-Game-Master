@@ -265,23 +265,18 @@ def validate_campaign_overview(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return len(errors) == 0, errors
 
 
-def validate_character(data: Dict[str, Any], kit=None) -> Tuple[bool, List[str]]:
-    """Validate player character data against schema. THE character validator.
+def validate_character(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    """Validate a character sheet.
 
-    With a World Kit supplied, also checks that the character's stats are within
-    the kit's declared stat schema (an empty declared schema disables the check).
-
+    The attributes are fixed for every campaign: the nine in skill_contest.
     Returns (is_valid, list of error messages).
     """
+    from skill_contest import ATTRIBUTES
     errors = []
 
-    # Kit check: stats must be within the active kit's declared attributes.
-    if kit is not None:
-        allowed = set((kit.stat_schema() or {}).get('attributes', []))
-        if allowed:
-            extra = set((data.get('stats', {}) or {}).keys()) - allowed
-            if extra:
-                errors.append(f"Character: attributes not in active kit schema: {sorted(extra)}")
+    unknown = sorted(k for k in (data.get('stats') or {}) if k.upper() not in ATTRIBUTES)
+    if unknown:
+        errors.append(f"Character: unknown attributes {unknown} (use {', '.join(ATTRIBUTES)})")
 
     # Required fields — only what every kit shares. race/class are optional flavor.
     # Level 0 is a real level (new characters start there), so only absence counts.

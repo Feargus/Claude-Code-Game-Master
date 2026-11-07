@@ -1,14 +1,6 @@
 {
   "name": "Dungeon Crawler Carl",
   "stat_schema": {
-    "attributes": [
-      "str",
-      "con",
-      "dex",
-      "int",
-      "wis",
-      "cha"
-    ],
     "vitals": [
       "hp"
     ]

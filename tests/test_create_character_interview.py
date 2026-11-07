@@ -6,7 +6,6 @@ import re
 from pathlib import Path
 
 from lib.schemas import validate_character
-from lib.world_kit import WorldKit
 
 from tests.test_kit_vitals import HYBORIAN_RULESET, _make_world, _save, _sheet
 
@@ -78,5 +77,5 @@ def test_a_sheet_without_race_or_class_saves_and_validates(tmp_path):
     world = _make_world(tmp_path, "conan-live", {k: v for k, v in HYBORIAN_RULESET.items() if k != "kit"})
     r = _save(world, {"name": "Nameless", "attributes": {"STR": 14, "AGI": 11, "VIG": 13}})
     assert r.returncode == 0, r.stdout + r.stderr
-    ok, errs = validate_character(_sheet(world), WorldKit(str(world)))
+    ok, errs = validate_character(_sheet(world))
     assert ok, errs

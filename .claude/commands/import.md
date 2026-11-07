@@ -127,7 +127,6 @@ Attributes are always the nine from `gm-skills`; rolls are always skill contests
 ```bash
 CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 [ -f "$CAMPAIGN_DIR/ruleset.json" ] || bash tools/gm-extract.sh draft-ruleset \
-  --attributes "STR,AGI,DFT,VIG,LOG,ITU,NRV,PRS,EMP" \
   --progression-model "xp-levels"
 ```
 
