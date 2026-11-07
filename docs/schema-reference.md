@@ -366,7 +366,8 @@ Tracks events that will trigger in the future.
       "effects": [   (OPTIONAL, carried out by the script each time it fires)
         {"type": "start_clock", "name": "clock name", "segments": 3, "on": "time | event",
          "due_in": "3d (counted from the firing)  | or due: YYYY-MM-DD HH:MM",
-         "consequence": "what happens when the clock fills (optional)"}
+         "consequence": "what happens when the clock fills (optional)"},
+        {"type": "tell", "fact": "f42", "holders": ["npc:Wren", "street"]}
       ],
       "expiry": "string date or condition after which it ages out   (OPTIONAL)"
     }
@@ -414,6 +415,11 @@ A `start_clock` effect runs however the consequence fires (scene check, event, o
 after `consequences.json` is saved; a clock of that name that already exists is left as it
 is. The fired consequence comes back with `effects_done` (what happened, in words; not
 saved). `gm-consequence.sh rollback` does not remove a clock an effect started.
+
+A `tell` effect (`--tells <fact id> --to <holder>`, checked when added) adds holders to
+the fact through `gm-note.sh tell`'s own path, so their `on_learn` consequences fire too
+and are listed in `effects_done`. Someone who already knows learns nothing, which is what
+ends a chain. Rollback doesn't remove the holders.
 Both `kill` commands also record the death as a fact
 (category `session_events`). A dead NPC carries `status: "dead"`, `cause`, `died_at` and
 `died_game_time`.

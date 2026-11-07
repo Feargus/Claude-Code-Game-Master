@@ -136,7 +136,9 @@ class ConsequenceManager(EntityManager):
         data['active'].append(consequence)
 
         if self.json_ops.save_json(self.consequences_file, data):
-            starts = ''.join(f"; when it fires, starts clock {e['name']}" for e in effects)
+            starts = ''.join(f"; when it fires, starts clock {e['name']}" if e['type'] == 'start_clock'
+                             else f"; when it fires, {', '.join(e['holders'])} learn(s) {e['fact']}"
+                             for e in effects)
             print(f"[SUCCESS] Added consequence [{consequence_id}]: {description} "
                   f"(triggers: {trigger}{starts})")
             return consequence_id
@@ -229,15 +231,37 @@ class ConsequenceManager(EntityManager):
         cid, _ = ids.resolve(f"npc:{raw}")
         return cid[4:] if cid else ''
 
-    EFFECT_TYPES = ('start_clock',)
+    EFFECT_TYPES = ('start_clock', 'tell')
+
+    def _check_effect(self, effect: Dict[str, Any]) -> str:
+        """Why `effect` can't be carried out, or '' if it can. Fills in defaults
+        and makes names canonical."""
+        if effect.get('type') not in self.EFFECT_TYPES:
+            return (f"Unknown effect '{effect.get('type')}'. Use one of: "
+                    f"{', '.join(self.EFFECT_TYPES)}")
+        if effect['type'] == 'tell':
+            return self._check_tell(effect)
+        return self._check_start_clock(effect)
+
+    def _check_tell(self, effect: Dict[str, Any]) -> str:
+        """tell: {"fact": <id>, "holders": [...]}: who learns which fact."""
+        from world_ids import WorldIds
+        fact = str(effect.get('fact', '')).strip()
+        if not fact or not self._find_fact(fact):
+            return f"tell: no fact '{fact}'."
+        raw = effect.get('holders') or []
+        holders, errors = WorldIds(self.json_ops).resolve_all(
+            [raw] if isinstance(raw, str) else raw, holders=True)
+        if errors:
+            return "tell: " + "; ".join(errors)
+        if not holders:
+            return "tell: who learns it? Give --to <holder>."
+        effect['fact'], effect['holders'] = fact, holders
+        return ''
 
     @staticmethod
-    def _check_effect(effect: Dict[str, Any]) -> str:
-        """Why `effect` can't be carried out, or '' if it can. Fills in defaults."""
+    def _check_start_clock(effect: Dict[str, Any]) -> str:
         from time_manager import TimeError, parse_duration, parse_time
-        if effect.get('type') not in ConsequenceManager.EFFECT_TYPES:
-            return (f"Unknown effect '{effect.get('type')}'. Use one of: "
-                    f"{', '.join(ConsequenceManager.EFFECT_TYPES)}")
         if not str(effect.get('name', '')).strip():
             return "start_clock needs the clock's name."
         try:
@@ -267,33 +291,53 @@ class ConsequenceManager(EntityManager):
 
         Called after consequences.json is saved. Each hit gets `effects_done`: what
         happened, in words. A clock that already exists is left as it is, so a
-        consequence that fires again doesn't restart its clock.
+        consequence that fires again doesn't restart its clock. A `tell` adds the
+        holders through gm-note.sh's own path, so their on_learn consequences
+        fire too (and are named in `effects_done`); someone who knew already
+        learns nothing, which is what ends a chain.
         """
-        from threat_clocks import ThreatClockManager
-        from time_manager import parse_duration, parse_time
         for hit in hits:
             done = []
             for e in hit.get('effects') or []:
-                if e.get('type') != 'start_clock':
-                    continue
-                tcm = ThreatClockManager(self.base_dir)
-                name = e['name']
-                if any(k.lower() == name.lower() for k in tcm.get_clocks()):
-                    done.append(f"clock {name} is already running; left as it is")
-                    continue
-                try:
-                    clock = tcm.add_clock(
-                        name, e.get('segments', 1), advance_on=e.get('on', 'time'),
-                        consequence=e.get('consequence'),
-                        due_at=parse_time(e['due']) if e.get('due') else None,
-                        due_in_minutes=parse_duration(e['due_in']) if e.get('due_in') else None)
-                except ValueError as error:
-                    done.append(f"could not start clock {name}: {error}")
-                    continue
-                done.append(f"started clock {name} (0/{clock['max']}, on {clock['advance_on']}"
-                            f"{tcm.due_text(clock)})")
+                if e.get('type') == 'start_clock':
+                    done.append(self._start_clock(e))
+                elif e.get('type') == 'tell':
+                    done.extend(self._tell(e))
             if done:
                 hit['effects_done'] = done
+
+    def _tell(self, e: Dict[str, Any]) -> List[str]:
+        from note_manager import NoteManager
+        try:
+            notes = NoteManager(self.base_dir) if self.base_dir else NoteManager()
+            new = notes.tell(e['fact'], e.get('holders') or [])
+        except (RuntimeError, ValueError) as error:
+            return [f"could not tell {e.get('fact')}: {error}"]
+        if not new:
+            return [f"{', '.join(e.get('holders') or [])} knew {e['fact']} already"]
+        lines = [f"{', '.join(new)} now know(s) {e['fact']}"]
+        for c in notes.last_fired:
+            lines.append(f"that fired [{c['id']}] {c['consequence']}")
+            lines += [f"  {line}" for line in c.get('effects_done', [])]
+        return lines
+
+    def _start_clock(self, e: Dict[str, Any]) -> str:
+        from threat_clocks import ThreatClockManager
+        from time_manager import parse_duration, parse_time
+        tcm = ThreatClockManager(self.base_dir)
+        name = e['name']
+        if any(k.lower() == name.lower() for k in tcm.get_clocks()):
+            return f"clock {name} is already running; left as it is"
+        try:
+            clock = tcm.add_clock(
+                name, e.get('segments', 1), advance_on=e.get('on', 'time'),
+                consequence=e.get('consequence'),
+                due_at=parse_time(e['due']) if e.get('due') else None,
+                due_in_minutes=parse_duration(e['due_in']) if e.get('due_in') else None)
+        except ValueError as error:
+            return f"could not start clock {name}: {error}"
+        return (f"started clock {name} (0/{clock['max']}, on {clock['advance_on']}"
+                f"{tcm.due_text(clock)})")
 
     def _learn_target(self, raw: str):
         """The canonical on_learn match: ("<who> learns <fact id>" or
@@ -753,6 +797,10 @@ def main():
     add_parser.add_argument('--match', action='append',
                             help='Structured trigger match value, one per --trigger-type, in order')
     add_parser.add_argument('--expiry', help='Optional expiry (date or condition)')
+    add_parser.add_argument('--tells', metavar='FACT_ID',
+                            help='When it fires, these holders (--to) learn this fact')
+    add_parser.add_argument('--to', action='append', default=[], metavar='HOLDER',
+                            help='Who learns the --tells fact (repeatable)')
     add_parser.add_argument('--starts-clock', dest='starts_clock', metavar='NAME',
                             help='When it fires, start this clock (unless it already exists)')
     add_parser.add_argument('--clock-segments', dest='clock_segments', type=int, default=1)
@@ -809,6 +857,11 @@ def main():
             sys.exit(emit_error("--clock-... options describe the clock that --starts-clock starts; "
                                 "give --starts-clock \"<name>\" too", json_mode=json_mode))
         effects = []
+        if bool(args.tells) != bool(args.to):
+            sys.exit(emit_error("--tells <fact id> and --to <holder> go together",
+                                json_mode=json_mode))
+        if args.tells:
+            effects.append({'type': 'tell', 'fact': args.tells, 'holders': args.to})
         if args.starts_clock:
             effect = {'type': 'start_clock', 'name': args.starts_clock,
                       'segments': args.clock_segments, 'on': args.clock_on}
