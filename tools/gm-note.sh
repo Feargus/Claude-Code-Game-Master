@@ -6,8 +6,11 @@ source "$(dirname "$0")/common.sh"
 usage() {
     echo "Usage: gm-note.sh <category> <fact> [--about <id>]... [--not-about <id>]..."
     echo "                  [--also <id>]... | [--holders <id>]... | [--secret]"
+    echo "                  [--truth wrong|partial] [--version-of <fact id>]"
     echo "       gm-note.sh tell <fact id> <holder>...      someone learns it"
     echo "       gm-note.sh about <fact id> [--add <id>]... [--remove <id>]..."
+    echo "       gm-note.sh truth <fact id> wrong|partial|true [--version-of <id>]"
+    echo "       gm-note.sh get [<category>]                  print the recorded facts"
     echo "       gm-note.sh categories"
     echo ""
     echo "Categories: session_events, plot_local, plot_regional, plot_world,"
@@ -17,8 +20,8 @@ usage() {
     echo "Names found in the text are added by themselves; --not-about drops a wrong one."
     echo "holders: who knows it. Default: the player and the NPCs present."
     echo "--also adds to it; --holders replaces it (player, npc:<name>, street, public);"
-    echo "--secret: nobody."
-    echo "Presence comes from location tags: name an NPC who is there but not tagged with --also."
+    echo "--secret: nobody. Present = the party and the scene list (gm-scene.sh)."
+    echo "A wrong or partial version: --truth wrong|partial [--version-of <fact id>]."
     echo ""
     echo "Example: gm-note.sh session_events \"Wren paid off Dekker\" --about location:Lanternside"
 }
@@ -31,17 +34,8 @@ fi
 require_active_campaign
 
 case "$1" in
-    categories)
-        echo "Fact Categories:"
-        $PYTHON_CMD "$LIB_DIR/note_manager.py" categories
-        ;;
-    tell)
-        shift
-        $PYTHON_CMD "$LIB_DIR/note_manager.py" tell "$@"
-        ;;
-    about)
-        shift
-        $PYTHON_CMD "$LIB_DIR/note_manager.py" about "$@"
+    tell|about|truth|get|categories)
+        $PYTHON_CMD "$LIB_DIR/note_manager.py" "$@"
         ;;
     *)
         if [ "$#" -lt 2 ]; then
