@@ -117,3 +117,29 @@ def test_cli_refusal_and_show(dcc_world):
     assert r.returncode == 1 and "did you mean: npc:Mordecai" in r.stderr
     r = run()
     assert r.returncode == 0 and "Present: Carl" in r.stdout
+
+
+# ---------- a new NPC needs a usual place ----------
+
+def test_create_needs_a_usual_place(dcc_world, capsys):
+    from lib.npc_manager import NPCManager
+    nm = NPCManager(dcc_world)
+    assert not nm.create_npc("Vex", "a fixer", "neutral")
+    out = capsys.readouterr().out
+    assert "Where is Vex usually found?" in out and '--location "Warehouse Street Level"' in out
+    assert not nm.create_npc("Vex", "a fixer", "neutral", locations=["Bone Gardn"])
+    assert "did you mean: location:Bone Garden" in capsys.readouterr().out
+    assert not nm.create_npc("Vex", "a fixer", "neutral", locations=["Bone Garden"], nowhere=True)
+    assert "Vex" not in json.loads((_cdir(dcc_world) / "npcs.json").read_text(encoding="utf-8"))
+
+
+def test_create_with_places_or_nowhere(dcc_world, capsys):
+    from lib.npc_manager import NPCManager
+    nm = NPCManager(dcc_world)
+    assert nm.create_npc("Vex", "a fixer", "neutral", locations=["bone garden", "Floor 1 Stairs"])
+    assert "gm-scene.sh enter \"Vex\"" in capsys.readouterr().out
+    assert nm.create_npc("The Voice", "lives on a chip", "neutral", nowhere=True)
+    npcs = json.loads((_cdir(dcc_world) / "npcs.json").read_text(encoding="utf-8"))
+    assert npcs["Vex"]["tags"]["locations"] == ["Bone Garden", "Floor 1 Stairs"]
+    assert npcs["The Voice"]["tags"]["locations"] == [] and npcs["The Voice"]["no_usual_place"]
+    assert "Vex" not in SceneManager(dcc_world).present()   # created is not entered

@@ -77,11 +77,43 @@ class NPCManager(EntityManager):
         super().__init__(world_state_dir)
         self.npcs_file = "npcs.json"
 
-    def create_npc(self, name: str, description: str, attitude: str) -> bool:
+    def _usual_places(self, locations) -> tuple:
+        """(location keys, errors) for where a new NPC is usually found."""
+        from world_ids import WorldIds
+        ids = WorldIds(self.json_ops)
+        keys, errors = [], []
+        for raw in locations or []:
+            raw = str(raw).strip()
+            cid, error = ids.resolve(raw if raw.lower().startswith("location:") else f"location:{raw}")
+            if error:
+                errors.append(f"{error} (a new place: gm-location.sh add \"<name>\" \"<where>\" first)")
+            elif cid[9:] not in keys:
+                keys.append(cid[9:])
+        return keys, errors
+
+    def create_npc(self, name: str, description: str, attitude: str,
+                   locations=None, nowhere: bool = False) -> bool:
         """
-        Create a new NPC
-        Returns True on success, False on failure
+        Create a new NPC. Returns True on success, False on failure.
+
+        `locations`: where the NPC is usually found (location tags; known places
+        only). Required, unless `nowhere`: an NPC with no usual place (a voice on a
+        chip, a drifter), stored as `no_usual_place`. Without a usual place the
+        brief can never suggest them for a scene.
         """
+        places, errors = self._usual_places(locations)
+        if nowhere and places:
+            errors.append("Give --location or --nowhere, not both.")
+        if not nowhere and not places and not errors:
+            here = ((self.json_ops.load_json("campaign-overview.json") or {})
+                    .get("player_position") or {}).get("current_location", "")
+            hint = f' (here: --location "{here}")' if here else ""
+            errors.append(f"Where is {name} usually found? Give --location <place>, "
+                          f"repeatable{hint}, or --nowhere for someone with no usual place.")
+        if errors:
+            for error in errors:
+                print(f"[ERROR] {error}")
+            return False
         # Validate inputs
         valid, error = self.validators.validate_name(name)
         if not valid:
@@ -110,14 +142,18 @@ class NPCManager(EntityManager):
             'events': [],
             'visual_appearance': va_mod.empty_template(),
             'tags': {
-                'locations': [],
+                'locations': places,
                 'quests': []
             }
         }
+        if nowhere:
+            npc_data['no_usual_place'] = True
 
         # Save to file
         if self._add_entity(self.npcs_file, name, npc_data):
-            print(f"[SUCCESS] Created NPC: {name} - {description} ({attitude})")
+            where = ', '.join(places) if places else 'no usual place'
+            print(f"[SUCCESS] Created NPC: {name} - {description} ({attitude}); usually found: {where}")
+            print(f"  Not in the scene yet: bash tools/gm-scene.sh enter \"{name}\" if they're here.")
             return True
         return False
 
@@ -948,6 +984,10 @@ def main():
     create_parser.add_argument('name', help='NPC name')
     create_parser.add_argument('description', help='NPC description')
     create_parser.add_argument('attitude', help='NPC attitude')
+    create_parser.add_argument('--location', action='append', dest='locations',
+                               help='where the NPC is usually found (repeatable)')
+    create_parser.add_argument('--nowhere', action='store_true',
+                               help='the NPC has no usual place')
 
     # Update NPC
     update_parser = subparsers.add_parser('update', help='Add event to NPC')
@@ -1110,7 +1150,8 @@ def main():
         return
 
     if args.action == 'create':
-        if not manager.create_npc(args.name, args.description, args.attitude):
+        if not manager.create_npc(args.name, args.description, args.attitude,
+                                  locations=args.locations, nowhere=args.nowhere):
             sys.exit(1)
 
     elif args.action == 'update':

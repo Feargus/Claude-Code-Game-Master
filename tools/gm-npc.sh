@@ -7,7 +7,7 @@ source "$(dirname "$0")/common.sh"
 
 # Usage: gm-npc.sh <action> <name> [additional args]
 # Examples:
-#   gm-npc.sh create "Grimnar" "dwarf blacksmith" "friendly"
+#   gm-npc.sh create "Grimnar" "dwarf blacksmith" "friendly" --location "The Forge"
 #   gm-npc.sh update "Grimnar" "insulted by player"
 #   gm-npc.sh status "Grimnar"
 
@@ -15,7 +15,8 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: gm-npc.sh <action> [name] [args]"
     echo ""
     echo "=== NPC Management ==="
-    echo "  create <name> <description> <attitude>  Create new NPC"
+    echo "  create <name> <description> <attitude> --location <place>... | --nowhere"
+    echo "                                          Create new NPC (where they're usually found)"
     echo "  update <name> <event>                   Add event to NPC history"
     echo "  status <name>                           Show NPC details"
     echo "  kill <name> [--cause \"<how>\"]           Mark NPC dead (fires its on_death consequences)"
@@ -45,7 +46,7 @@ if [ "$#" -lt 1 ]; then
     echo "  feature <name> add/remove <feature>     Manage features (Second Wind, etc)"
     echo ""
     echo "Examples:"
-    echo "  gm-npc.sh create \"Carl\" \"A dungeon crawler\" \"friendly\""
+    echo "  gm-npc.sh create \"Carl\" \"A dungeon crawler\" \"friendly\" --location \"Safe Zone\""
     echo "  gm-npc.sh promote \"Carl\"                 # Make Carl a party member"
     echo "  gm-npc.sh set \"Carl\" ac 14               # Set Carl's AC"
     echo "  gm-npc.sh equip \"Carl\" \"Chitin Armor\"    # Give Carl armor"
@@ -82,11 +83,11 @@ shift  # Remove name from arguments
 # Delegate to Python module based on action
 case "$ACTION" in
     create)
-        if [ "$#" -ne 2 ]; then
-            echo "Usage: gm-npc.sh create <name> <description> <attitude>"
+        if [ "$#" -lt 2 ]; then
+            echo "Usage: gm-npc.sh create <name> <description> <attitude> --location <place>... | --nowhere"
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" create "$NAME" "$1" "$2"
+        $PYTHON_CMD "$LIB_DIR/npc_manager.py" create "$NAME" "$@"
         ;;
 
     update)

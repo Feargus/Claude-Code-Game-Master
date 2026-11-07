@@ -101,7 +101,7 @@ Create minimal world state:
 bash tools/gm-campaign.sh create "one-shot" --campaign-name "One-Shot Adventure"
 bash tools/gm-campaign.sh switch "one-shot"
 bash tools/gm-location.sh add "<opening place>" "<one line about it>"
-bash tools/gm-npc.sh create "<first NPC>" "<who they are>" "<attitude>"
+bash tools/gm-npc.sh create "<first NPC>" "<who they are>" "<attitude>" --location "<opening place>"
 ```
 
 ### Begin Adventure

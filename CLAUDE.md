@@ -113,6 +113,7 @@ later facts), ask the player out of character before narrating or noting it.
 | Wounds, armor, cyberware (PC) | `gm-body.sh` (`hit`, `heal`, `repair`, `show`; rules in `gm-combat`) |
 | Spectacle XP (clever/effective/unique/punishing non-kill beat) | `gm-player.sh award [name] --tier minor\|major\|legendary --reason "..."` (kit-aware, level-scaled; co-awards followers in DCC) |
 | Party NPC stats | `gm-npc.sh` |
+| New NPC | `gm-npc.sh create "<name>" "<who>" "<attitude>" --location "<where they're usually found>"` (repeatable; must exist; `--nowhere` for someone with no usual place). Creating doesn't put them in the scene: `gm-scene.sh enter` if they're here |
 | NPC mood/goal/secret | `gm-npc.sh set-inner` / `mood` |
 | **What an NPC now remembers about the player** (a slight, a kindness, a debt, a lie they caught) | `gm-npc.sh update "<name>" "<event>"` — surfaces back under them in scene context next time they're present |
 | Character look (PC/NPC) | `gm-player.sh set-appearance` / `gm-npc.sh set-appearance` (the 11-field `visual_appearance` — author at creation, update when the look changes) |
