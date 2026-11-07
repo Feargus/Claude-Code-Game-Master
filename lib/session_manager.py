@@ -967,7 +967,7 @@ class SessionManager(EntityManager):
         if usual:
             lines.append("")
             lines.append(f"Usually found here, not in the scene: {', '.join(usual)} "
-                         f"(if one is here: bash tools/gm-scene.sh enter \"<name>\")")
+                         f"(if one is actually here: bash tools/gm-scene.sh enter \"<name>\")")
 
         # --- Pending Consequences ---
         lines.append("")

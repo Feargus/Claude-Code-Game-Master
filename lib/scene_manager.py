@@ -124,7 +124,7 @@ class SceneManager:
         usual = self.usually_here()
         if usual:
             lines.append(f"Usually found here, not in the scene: {', '.join(usual)} "
-                         f"(gm-scene.sh enter <name> if they're here)")
+                         f"(if one is actually here: gm-scene.sh enter <name>)")
         return "\n".join(lines)
 
 
