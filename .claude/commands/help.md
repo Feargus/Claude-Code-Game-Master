@@ -18,8 +18,10 @@ Display all available commands and tools.
   /gm end          End the session, recording only what is
   /gm cliffhanger  End the session on a cliffhanger
   /gm world        Let the world move off-screen (no ending)
+  /gm choices      Action menu on/off (on | off | toggle)
   /gm character    Show character sheet & inventory
   /gm overview     View campaign state summary
+  /gm status       Quick world summary
 
   CAMPAIGN SETUP
   --------------------------------------------------------
@@ -37,19 +39,37 @@ Display all available commands and tools.
 
 ================================================================
 
-  CLI TOOLS (bash tools/gm-*.sh)
+  CLI TOOLS (bash tools/gm-*.sh; most print their usage when run bare)
   --------------------------------------------------------
-  gm-session.sh     Session management, save/restore
-  gm-player.sh      Player character stats
-  gm-npc.sh         Create and update NPCs
+  Session and world
+  gm-session.sh     Start/end sessions, the brief (context), moves
+  gm-campaign.sh    Create and switch campaigns
+  gm-time.sh        In-game time
+  gm-scene.sh       Who is in the scene
   gm-location.sh    Add and connect locations
-  gm-consequence.sh Track future events
-  gm-search.sh      Search world state
-  gm-note.sh        Record world facts
-  gm-enhance.sh     Enrich entities with RAG
   gm-overview.sh    Quick world summary
-  gm-campaign.sh    Switch between campaigns
-  gm-image.sh       Generate a scene image (gpt-image-2) + clickable link
+  Character
+  gm-player.sh      XP, credits, inventory, counters, level-ups
+  gm-body.sh        Wounds, armor and cyberware
+  gm-condition.sh   Conditions
+  Rolls and fights
+  gm-skill-contest.sh  Roll a skill contest
+  gm-combat.sh      Enemies' wounds in a fight
+  People and story
+  gm-npc.sh         Create and update NPCs
+  gm-note.sh        Facts: what happened, who knows it
+  gm-consequence.sh What happens later, and what triggers it
+  gm-clock.sh       Threat clocks
+  gm-plot.sh        Plot threads
+  gm-recall.sh      Long-term memory
+  Source material and search
+  gm-search.sh      Search world state and the source book
+  gm-context.sh     Scene context with source passages
+  gm-lore.sh        A grounded brief from the source book
+  gm-playpack.sh    The play pack; one name from the book
+  gm-enhance.sh     Enrich entities from the source book
+  gm-extract.sh     Extract a book into a campaign
+  gm-image.sh       Scene images (needs OPENAI_API_KEY)
 
 ================================================================
 
@@ -77,7 +97,7 @@ Display all available commands and tools.
 
 ## DETAILED HELP
 
-If user asks for specific command help (e.g., `/help dm`), read and summarize that command file:
+If user asks for specific command help (e.g., `/help gm`), read and summarize that command file:
 
 ```bash
 cat .claude/commands/[command].md | head -50
