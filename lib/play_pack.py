@@ -299,6 +299,17 @@ def apply_stage(campaign_dir, world_state_dir: Optional[str] = None) -> Dict[str
 
     _save_json(cdir, "locations.json", locations)
     _save_json(cdir, "npcs.json", npcs)
+
+    # The opening scene: the pack's present NPCs are in it (gm-scene.sh).
+    present = []
+    for name in pack["present"]:
+        key = resolve_or_merge_key(name, npcs) or name
+        if key in npcs and key not in present:
+            present.append(key)
+    overview = _load_json(cdir, "campaign-overview.json")
+    overview["scene"] = {"location": pack["room"], "present": present}
+    _save_json(cdir, "campaign-overview.json", overview)
+    created["present"] = present
     return {"ok": True, **created, "pack": pack}
 
 

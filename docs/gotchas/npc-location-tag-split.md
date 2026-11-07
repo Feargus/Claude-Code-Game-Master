@@ -12,6 +12,10 @@ generated: { by: cursor-grok-4.6, at: 2026-08-14T19:59:23Z }
 
 # An NPC's location lived in two fields (unified 2026-08-13)
 
+> Since 2026-11-07 location tags no longer decide who is present (that is the scene
+> list, `gm-scene.sh`); they say where an NPC is usually found. The history below still
+> explains the field.
+
 From the first imports until 2026-08-13, "where is this NPC" had two spellings:
 extraction wrote a flat `location_tags`, the runtime read `tags.locations`, and the
 conversion happened only at NPC creation — so import passes that canonicalized one field

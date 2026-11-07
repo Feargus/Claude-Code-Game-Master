@@ -111,13 +111,12 @@ warning that names what overflowed, not a silent drop. A malformed or refused pa
 the whole tick, and if the log write fails, `WorldTick.apply` undoes what it just wrote
 rather than leaving un-rollbackable state.
 
-## Presence is shared; old campaigns still hide untagged NPCs
+## Presence is shared: the scene list
 
-`tick_from_session` calls `npcs_present` — the same party-or-exact-tag test as the
-session brief and the place brief. In a pre-unification campaign an NPC tagged only
-via the legacy `location_tags` is invisible to `on_npc` triggers until
-`gm-npc.sh unify-tags` runs — see
-[the tag-split gotcha](../gotchas/npc-location-tag-split.md).
+`tick_from_session` calls `npcs_present`, the same party-or-scene-list test as the
+session brief and the place brief, so `on_npc` fires only for NPCs the GM put in the
+scene (`gm-scene.sh enter`, which also runs the tick at once). See
+[scene context](scene-context.md).
 
 ## Async plot planning — the plot desk (since 2026-08-16)
 

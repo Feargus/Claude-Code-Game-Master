@@ -156,12 +156,13 @@ class WorldIds:
 
     def present(self) -> List[str]:
         """Default holders in a scene: the player plus the NPCs present (party
-        members, and NPCs tagged with the current location; never the dead)."""
+        members and the scene list; never the dead)."""
         from entity_manager import npcs_present
         overview = self.json_ops.load_json("campaign-overview.json") or {}
         pos = overview.get("player_position") or {}
         here = pos.get("current_location", "") if isinstance(pos, dict) else ""
-        return ["player"] + [f"npc:{name}" for name in npcs_present(self._load()["npc"], here)]
+        present = npcs_present(self._load()["npc"], here, overview.get("scene"))
+        return ["player"] + [f"npc:{name}" for name in present]
 
     def resolve_all(self, raws, holders: bool = False) -> Tuple[List[str], List[str]]:
         """(ids, errors) for several; duplicates collapse, order is kept.

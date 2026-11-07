@@ -71,7 +71,7 @@ Eight of those blocks carry design decisions that are not obvious from reading t
   `"has a secret"` and never the secret text, so a secret can sit in `npcs.json` without
   leaking into narration the moment its owner walks on stage.
 - **Presence does not require a voice, and present NPCs carry their memory.** Who is here
-  is `npcs_present` (party always, plus exact location tag — see below). `_present_npcs`
+  is `npcs_present` (party always, plus the scene list — see below). `_present_npcs`
   only slices voice lines onto that set, and still returns an NPC with no extracted
   dialogue — it used to `continue` past them, which made every stubbed and original-world
   NPC invisible while standing in the room. Each present NPC's recent `events` render
@@ -132,8 +132,16 @@ or neither for both. `gm-enhance.sh query` is **not** a search — it takes an e
 Reaching for it with a free-text phrase returns nothing and looks like an empty world.
 
 Who is here is one helper, `npcs_present` (`lib/entity_manager.py`): party members
-always, everyone else by case-insensitive **exact** equality of the current location
-against a `tags.locations` entry. Both context doors and consequence tick call it.
+always, plus the NPCs on the **scene list** (`campaign-overview.json` → `scene`), which
+`gm-scene.sh enter` / `leave` keep and every move resets to the party (since 2026-11-07).
+A list stored for another location counts as empty. Location tags no longer decide
+presence: they say where an NPC is usually found (`npcs_usually_at`, exact,
+case-insensitive), shown in the brief as "Usually found here, not in the scene". Before,
+presence was the tags, so an NPC was "here" whenever the player stood where they were
+tagged, and never anywhere else; in rust-chrome that meant nobody was ever present except
+in "Lanternside" itself.
+Both context doors, consequence tick, a fact's default holders and the ready-threads
+nudge call it.
 Substring was the place-brief bug — "The Inn" must not count as "The Inner Sanctum",
 and an untagged party member must still stand in the room. CLI `gm-search.sh
 --tag-location` / `--tag-quest` may still substring-search for discovery; that is not

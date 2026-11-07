@@ -38,11 +38,12 @@ class SceneContext:
     def build(self, location: str = None, entities: Optional[List[str]] = None) -> Dict[str, Any]:
         location = location or self.current_location()
         npcs = self.searcher.json_ops.load_json("npcs.json") or {}
+        scene = (self.searcher.json_ops.load_json("campaign-overview.json") or {}).get("scene")
         result: Dict[str, Any] = {
             "location": location,
             "world": {
                 "location": self.searcher.get_location(location),
-                "npcs_present": npcs_present(npcs, location),
+                "npcs_present": npcs_present(npcs, location, scene),
             },
             "entities": {},
             "passages": [],

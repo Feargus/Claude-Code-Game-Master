@@ -100,10 +100,9 @@ right call when diagnosing an import, never the right call inside one.
 
 ## Background entities do not leak into scenes
 
-For **NPCs, presence is decided by tags, not by tiering**. `npcs_present`
-(`lib/entity_manager.py`) is the one who-is-here test: party member, or
-case-insensitive exact equality of the current location against a `tags.locations`
-entry. Session context, the place brief, and consequence tick all call it — they
+For **NPCs, presence is decided by the scene list, not by tiering**. `npcs_present`
+(`lib/entity_manager.py`) is the one who-is-here test: party member, or on the scene
+list kept by `gm-scene.sh` (location tags only say where an NPC is usually found). Session context, the place brief, and consequence tick all call it — they
 used to disagree (substring search dropped untagged party members from the place
 brief). A `background` flag neither widens nor narrows. A background NPC surfaces
 exactly when the book put them in the room the party is standing in, which is the

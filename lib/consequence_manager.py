@@ -585,7 +585,7 @@ class ConsequenceManager(EntityManager):
         pos = overview.get("player_position", {})
         location = pos.get("current_location", "") if isinstance(pos, dict) else ""
         npcs = self.json_ops.load_json("npcs.json") or {}
-        present = list(npcs_present(npcs, location).keys())
+        present = list(npcs_present(npcs, location, overview.get("scene")).keys())
         world_state = {
             "location": location,
             "time": overview.get("time_of_day", ""),

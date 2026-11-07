@@ -1,7 +1,7 @@
 """holders: who knows a fact.
 
 In a scene the default is the player plus the NPCs present (party members and
-NPCs tagged with the current location; never the dead). --holders replaces
+the scene list; never the dead). --holders replaces
 the default, --secret means nobody (a GM-only secret), and `gm-note.sh tell`
 adds holders later. Off-screen facts from /gm world default to nobody. A place
 can't be a holder.
@@ -44,11 +44,10 @@ def test_default_is_the_player_and_who_is_present(dcc_world, capsys):
     assert "known to: player, npc:Carl" in capsys.readouterr().out
 
 
-def test_npcs_at_the_location_count_and_the_dead_do_not(dcc_world):
-    def change(npcs):
-        npcs["Mordecai"]["tags"]["locations"].append("Warehouse Street Level")
-        npcs["Mongo"]["status"] = "dead"
-    _edit_npcs(dcc_world, change)
+def test_npcs_in_the_scene_count_and_the_dead_do_not(dcc_world):
+    from tests.scene_helpers import put_in_scene
+    put_in_scene(_cdir(dcc_world), "Mordecai")
+    _edit_npcs(dcc_world, lambda npcs: npcs["Mongo"].update(status="dead"))
     fid = NoteManager(dcc_world).add_fact("session_events", "x")
     holders = _fact(dcc_world, fid)["holders"]
     assert "npc:Mordecai" in holders and "npc:Mongo" not in holders

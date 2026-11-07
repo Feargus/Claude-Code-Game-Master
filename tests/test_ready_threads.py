@@ -6,6 +6,8 @@ is present (or its clock matures) — otherwise a seeded thread sleeps forgotten
 """
 
 import json
+
+from tests.scene_helpers import put_in_scene
 from pathlib import Path
 
 from lib.session_manager import SessionManager
@@ -31,6 +33,9 @@ def _place_npc(npp, name, location):
     npcs[name] = {"description": "a test face", "attitude": "neutral",
                   "tags": {"locations": [location], "quests": []}}
     npp.write_text(json.dumps(npcs))
+    overview = json.loads((npp.parent / "campaign-overview.json").read_text())
+    if location == overview.get("player_position", {}).get("current_location"):
+        put_in_scene(npp.parent, name)
 
 
 def test_dormant_thread_surfaces_when_linked_npc_present(dcc_world):

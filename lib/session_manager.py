@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from entity_manager import EntityManager, npcs_present
+from entity_manager import EntityManager, npcs_present, npcs_usually_at
 from schemas import PLOT_TYPE_SORT
 from world_kit import WorldKit
 from threat_clocks import ThreatClockManager
@@ -360,6 +360,9 @@ class SessionManager(EntityManager):
         campaign['player_position']['previous_location'] = old_location
         campaign['player_position']['current_location'] = location
         campaign['player_position']['arrival_time'] = self.get_timestamp()
+        # A new scene starts with only the party (gm-scene.sh enter adds others).
+        if str(location).lower() != str(old_location).lower():
+            campaign['scene'] = {'location': location, 'present': []}
 
         self.json_ops.save_json(self.campaign_file, campaign)
 
@@ -958,6 +961,14 @@ class SessionManager(EntityManager):
                         if rem:
                             lines.append(f"  {rem}")
 
+        # Where NPCs usually are is a hint, not presence (gm-scene.sh).
+        present_names = {n for n, _ in present_npcs}
+        usual = [n for n in npcs_usually_at(npcs, location) if n not in present_names]
+        if usual:
+            lines.append("")
+            lines.append(f"Usually found here, not in the scene: {', '.join(usual)} "
+                         f"(if one is here: bash tools/gm-scene.sh enter \"<name>\")")
+
         # --- Pending Consequences ---
         lines.append("")
         lines.append("--- PENDING CONSEQUENCES ---")
@@ -1139,7 +1150,7 @@ class SessionManager(EntityManager):
 
         try:
             present = set(npcs_present(
-                self.json_ops.load_json("npcs.json") or {}, location).keys())
+                self.json_ops.load_json("npcs.json") or {}, location, self._scene()).keys())
         except Exception:
             present = set()
 
@@ -1362,10 +1373,14 @@ class SessionManager(EntityManager):
                 matched.append(txt)
         return matched
 
+    def _scene(self):
+        """campaign-overview.json's scene list (see gm-scene.sh), or None."""
+        return (self.json_ops.load_json(self.campaign_file) or {}).get("scene")
+
     def _present_npcs(self, npcs, location, full=False):
         """NPCs present in the scene, with any canonical voice lines they have.
 
-        Presence is `npcs_present` (party OR exact location tag). This method
+        Presence is `npcs_present` (party OR the scene list). This method
         slices voice lines; it does not decide who is here. Returns
         [(name, [lines])]; up to 4 lines each unless full, and an empty list when
         the NPC has no extracted dialogue — presence does NOT require a voice, or
@@ -1374,7 +1389,7 @@ class SessionManager(EntityManager):
         canonical-voice extraction).
         """
         out = []
-        for name, d in npcs_present(npcs, location).items():
+        for name, d in npcs_present(npcs, location, self._scene()).items():
             ctx = d.get('context', [])
             vlines = ctx if isinstance(ctx, list) else ([ctx] if ctx else [])
             vlines = [str(x) for x in vlines if x]

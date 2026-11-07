@@ -146,6 +146,8 @@ class NPCManager(EntityManager):
             updates['cause'] = cause
         if not self._update_entity(self.npcs_file, key, updates):
             return {'success': False, 'error': 'failed to save'}
+        from scene_manager import SceneManager
+        SceneManager(self.base_dir).leave([key], strict=False)
 
         from note_manager import NoteManager
         fact_id = NoteManager(self.base_dir).add_fact(

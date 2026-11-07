@@ -113,6 +113,8 @@ def test_stage_writes_room_people_exits_only(tmp_path):
     assert set(locs) == {"The Bedchamber", "the corridor"}
     assert set(npcs) == {"Ascalante"}
     assert npcs["Ascalante"]["tags"]["locations"] == ["The Bedchamber"]
+    scene = json.loads((cdir / "campaign-overview.json").read_text())["scene"]
+    assert scene == {"location": "The Bedchamber", "present": ["Ascalante"]}
     assert any(
         c.get("to") == "the corridor" and c.get("path") == "visible from here"
         for c in locs["The Bedchamber"]["connections"]

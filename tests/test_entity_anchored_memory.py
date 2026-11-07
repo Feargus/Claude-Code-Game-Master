@@ -6,7 +6,7 @@ facts under the present NPC at READ time (no write-side coupling), de-duped
 against PREVIOUSLY ON / world-remembers and the NPC's own events.
 
 These tests mutate only the hermetic `dcc_world` copy (never the checked-in
-fixture): they add a present NPC (tagged to the current location) plus facts,
+fixture): they add a present NPC (in the current scene) plus facts,
 then assert on SessionManager(dcc_world).get_full_context().
 """
 
@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 
 from lib.session_manager import SessionManager
+from tests.scene_helpers import put_in_scene
 
 
 def _load(world, name):
@@ -41,6 +42,8 @@ def _add_npc(world, name, location, events=None, aliases=None):
     if aliases is not None:
         npcs[name]["aliases"] = aliases
     _save(world, "npcs.json", npcs)
+    if location == _current_location(world):
+        put_in_scene(Path(world) / "campaigns" / "dungeon-crawler-carl", name)
 
 
 def _add_facts(world, category, texts):

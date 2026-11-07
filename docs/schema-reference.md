@@ -81,6 +81,8 @@ Most of these are created lazily — a campaign that has never been illustrated 
     "previous_location": "string or null",
     "arrival_time": "ISO timestamp"
   },
+  "scene": {"location": "the location this list belongs to",
+            "present": ["NPC keys in the scene besides the party (gm-scene.sh)"]},
   "current_character": "string (character name)",
   "session_count": 0,
 

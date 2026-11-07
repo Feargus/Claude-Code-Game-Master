@@ -1,7 +1,8 @@
 """Tests for presence-resolver-unification.
 
-One who-is-here helper (party OR exact location tag); one entity resolver.
-Scene presence must not go through substring search_npcs_by_tag.
+One who-is-here helper (party OR the scene list); one entity resolver.
+Scene presence must not go through substring search_npcs_by_tag, nor through
+location tags, which only say where an NPC is usually found.
 """
 
 import ast
@@ -13,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from lib.consequence_manager import ConsequenceManager
-from lib.entity_manager import npcs_present
+from lib.entity_manager import npcs_present, npcs_usually_at
 from lib.scene_context import SceneContext
 from lib.search import WorldSearcher
 from lib.session_manager import SessionManager
@@ -26,7 +27,8 @@ INNER = "The Inner Sanctum"
 
 @pytest.fixture
 def presence_world(isolated_world_state):
-    """Tiny campaign: tagged NPC, untagged party member, substring trap."""
+    """Tiny campaign: NPC in the scene, untagged party member, substring trap,
+    and an NPC tagged here but not in the scene."""
     camp = isolated_world_state / "campaigns" / "presence-camp"
     camp.mkdir(parents=True)
     (isolated_world_state / "active-campaign.txt").write_text("presence-camp\n")
@@ -46,6 +48,10 @@ def presence_world(isolated_world_state):
             "description": "Lives where a prefix would lie.",
             "tags": {"locations": [INNER]},
         },
+        "Odo": {
+            "description": "Drinks here most nights, but not tonight.",
+            "tags": {"locations": [LOC]},
+        },
     }))
     (camp / "locations.json").write_text(json.dumps({
         LOC: {"description": "A taproom.", "aliases": ["The Public House"]},
@@ -54,6 +60,7 @@ def presence_world(isolated_world_state):
     (camp / "campaign-overview.json").write_text(json.dumps({
         "name": "Presence Camp",
         "player_position": {"current_location": LOC},
+        "scene": {"location": LOC, "present": ["Mara"]},
         "time_of_day": "dusk",
     }))
     (camp / "consequences.json").write_text(json.dumps({"active": [], "resolved": []}))
@@ -101,6 +108,7 @@ def test_doors_agree_tagged_party_alias_and_substring_trap(presence_world):
     assert session == scene == tick
     assert {"Mara", "Pip"} <= session          # tagged NPC + untagged party
     assert "Voss" not in session               # "The Inn" is not "The Inner Sanctum"
+    assert "Odo" not in session                # tagged here, but not in the scene
     assert WorldSearcher(presence_world).get_npc("The Barkeep") is not None
     assert WorldSearcher(presence_world).get_location("The Public House") is not None
 
@@ -114,6 +122,7 @@ def test_tag_search_stays_substring_discovery(presence_world):
         (Path(presence_world) / "campaigns" / "presence-camp" / "npcs.json").read_text()
     )
     assert "Voss" not in npcs_present(npcs, LOC)
+    assert set(npcs_usually_at(npcs, LOC)) == {"Mara", "Odo"}   # exact, no party
 
 
 def test_alias_status_wrapper_and_context_presence(presence_world):
@@ -134,3 +143,4 @@ def test_alias_status_wrapper_and_context_presence(presence_world):
     assert "Mara" in present
     assert "Pip" in present
     assert "Voss" not in present
+    assert "Odo" not in present

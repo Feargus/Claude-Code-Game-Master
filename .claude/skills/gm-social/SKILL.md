@@ -6,6 +6,7 @@ description: Social / NPC interaction workflow — load NPC context, attitude ch
 # Social / NPC Interaction
 
 ## 1. Load NPC context
+If the NPC isn't in the scene yet (the brief's NPC block), put them there first: `bash tools/gm-scene.sh enter "[name]"`. Presence decides what they get to know and which consequences wait for them.
 `bash tools/gm-context.sh "[npc]"` + `bash tools/gm-npc.sh status "[name]"`. Surface the NPC's `goal`, `current_mood`, secret-EXISTENCE (never the text), `bonds`, and `voice` (`gm-npc.sh voice`). Check prior interactions + active quests.
 
 ## 1b. Flesh a stub on first real contact

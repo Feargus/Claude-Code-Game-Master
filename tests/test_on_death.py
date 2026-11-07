@@ -68,11 +68,18 @@ def test_killing_an_npc_fires_its_consequence_once(dcc_world):
 def test_the_dead_are_not_present(dcc_world):
     npc = _an_npc(dcc_world)
     npcs = _load(dcc_world, "npcs.json")
-    npcs[npc]["tags"] = {"locations": ["Alley"]}
     npcs[npc].pop("is_party_member", None)
-    assert npc in npcs_present(npcs, "Alley")
+    scene = {"location": "Alley", "present": [npc]}
+    assert npc in npcs_present(npcs, "Alley", scene)
     npcs[npc]["status"] = "dead"
-    assert npc not in npcs_present(npcs, "Alley")
+    assert npc not in npcs_present(npcs, "Alley", scene)
+
+
+def test_a_killed_npc_leaves_the_scene(dcc_world):
+    from tests.scene_helpers import put_in_scene
+    put_in_scene(_cdir(dcc_world), "Mordecai")
+    NPCManager(dcc_world).kill_npc("Mordecai")
+    assert "Mordecai" not in _load(dcc_world, "campaign-overview.json")["scene"]["present"]
 
 
 def test_on_death_is_not_fired_by_the_scene_check(dcc_world):

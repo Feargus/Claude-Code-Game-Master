@@ -12,6 +12,7 @@ from pathlib import Path
 
 from lib.npc_manager import NPCManager
 from lib.session_manager import SessionManager
+from tests.scene_helpers import put_in_scene
 
 CAMPAIGN = "dungeon-crawler-carl"
 
@@ -28,7 +29,7 @@ def _current_location(world):
 
 
 def _add_npc(world, name, *, events=None, context=None, mood=None):
-    """Write an NPC tagged to the current location straight into npcs.json."""
+    """Write an NPC into npcs.json and into the current scene."""
     path = _npcs_path(world)
     npcs = json.loads(path.read_text(encoding="utf-8"))
     npcs[name] = {
@@ -40,6 +41,7 @@ def _add_npc(world, name, *, events=None, context=None, mood=None):
     if mood:
         npcs[name]["current_mood"] = mood
     path.write_text(json.dumps(npcs, indent=2), encoding="utf-8")
+    put_in_scene(path.parent, name)
 
 
 def test_voiceless_npc_is_still_present(dcc_world):
