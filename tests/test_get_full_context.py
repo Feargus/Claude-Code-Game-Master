@@ -100,3 +100,14 @@ def test_context_includes_campaign_rules_block(dcc_world):
     assert any(
         rule in ctx for rule in ("loot_box_system", "audience_system", "interview_system")
     ), "expected DCC campaign_rules to appear in the context"
+
+
+def test_pending_consequences_show_their_typed_triggers(dcc_world):
+    from lib.consequence_manager import ConsequenceManager
+    ConsequenceManager(dcc_world).add_consequence(
+        "The bouncer remembers", "when Carl is back at the club",
+        triggers=[{"type": "on_location", "match": "Bone Garden"},
+                  {"type": "on_npc", "match": "Mordecai"}])
+    ctx = _context(dcc_world)
+    assert ("-> triggers: when Carl is back at the club "
+            "[on_location Bone Garden · on_npc Mordecai]") in ctx

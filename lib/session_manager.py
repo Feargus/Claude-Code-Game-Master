@@ -997,7 +997,11 @@ class SessionManager(EntityManager):
                     trigger = cdata.get('trigger', 'Unknown')
                     cid = str(cdata.get('id', '?'))
                     short_id = cid[:4] if len(cid) >= 4 else cid
-                    pending.append(f"[{short_id}] {event} -> triggers: {trigger}")
+                    typed = " · ".join(f"{t.get('type')} {t.get('match')}"
+                                       for t in cdata.get('triggers') or []
+                                       if isinstance(t, dict) and t.get('type'))
+                    line = f"[{short_id}] {event} -> triggers: {trigger}"
+                    pending.append(line + (f" [{typed}]" if typed else ""))
         elif isinstance(consequences, list):
             for cdata in consequences:
                 if isinstance(cdata, dict):
