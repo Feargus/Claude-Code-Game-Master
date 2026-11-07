@@ -15,6 +15,7 @@ from json_ops import JsonOperations
 from campaign_manager import CampaignManager
 from cli_output import emit, emit_error
 from entity_aliases import resolve_entity_name
+from note_manager import fact_text
 
 
 class WorldSearcher:
@@ -273,7 +274,7 @@ class WorldSearcher:
             found_anything = True
             for category, facts in results['facts'].items():
                 for fact in facts:
-                    print(f"  [{category}] {fact.get('fact', '')}")
+                    print(f"  [{category}] {fact_text(fact)}")
 
         if results.get('npcs'):
             print("\nNPCs:")

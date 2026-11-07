@@ -316,6 +316,15 @@ A dictionary with category keys, each containing an array of fact **objects**.
   `--secret` stores `[]`. Off-screen facts from the world tick default to `[]`. `[]` means
   nobody knows: a GM-only secret. A missing field (facts from before 2026-11-06) means not
   recorded. `gm-note.sh tell <fact id> <holder>...` adds holders.
+- `truth` (optional): missing means true; `"partial"` is true but leaves things out;
+  `"wrong"` is plain wrong. `version_of` (optional): the id of the fullest true version
+  (needs a `truth`). A version of a version is stored as pointing at its root, so the
+  truth is one step away; a wrong fact with no truth behind it can't be pointed at.
+  `fact_text()` (`lib/note_manager.py`) marks such text `[WRONG; the truth is fN]` /
+  `[PARTIAL; fuller: fN]` in KEY FACTS, the NPC lists, long-term memory and search; the
+  brief lists what the player holds wrongly or partly next to the truth.
+  `gm-note.sh … --truth --version-of` sets them at recording, `gm-note.sh truth <id>
+  wrong|partial|true [--version-of <id> | --no-version]` later.
 
 **Ids for what a fact is about or held by** (`lib/world_ids.py`, for `about` and the coming
 `holders`): `player`, `npc:<key>`, `location:<key>`, and the rungs `street` and

@@ -246,7 +246,7 @@ bash tools/gm-session.sh world-tick '[
 ]'
 ```
 
-- `fact` (required): what happened, one line. Optional `"category"` (default `plot_local`, shown under KEY FACTS) and `"about"`: a list of ids (`npc:<name>`, `location:<name>`, `player`) the text doesn't name; names in the text are added by themselves. Optional `"holders"`: who knows it (`npc:<name>`, `street`, `public`, `player`); default nobody, since it happened off-screen.
+- `fact` (required): what happened, one line. Optional `"category"` (default `plot_local`, shown under KEY FACTS) and `"about"`: a list of ids (`npc:<name>`, `location:<name>`, `player`) the text doesn't name; names in the text are added by themselves. Optional `"holders"`: who knows it (`npc:<name>`, `street`, `public`, `player`); default nobody, since it happened off-screen. Optional `"truth": "wrong"` or `"partial"` with `"version_of": "<fact id>"`: a cover story, a planted lie.
 - `consequence` (optional): `text` plus `triggers`, the same types as `gm-consequence.sh add` (`on_location`, `on_npc`, `on_time`, `on_death`, `on_clock`, `on_learn`, `on_event`). A consequence without triggers is refused.
 - `clock` (optional): `name`, `segments`, and `due_in` (`3d`) or `due` (`"YYYY-MM-DD HH:MM"`) for a time clock, or `"on": "event"` for one you advance by hand; `consequence` fires when it fills.
 

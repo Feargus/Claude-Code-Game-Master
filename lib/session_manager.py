@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager, npcs_present, npcs_usually_at
+from note_manager import fact_text
 from schemas import PLOT_TYPE_SORT
 from world_kit import WorldKit
 from threat_clocks import ThreatClockManager
@@ -830,6 +831,15 @@ class SessionManager(EntityManager):
                 if rem:
                     lines.append(rem)
 
+        wrong = self._wrong_beliefs()
+        if wrong:
+            name = ((self.json_ops.load_json("character.json") or {}).get("name")
+                    if self.character_file.exists() else None) or "The player character"
+            lines.append("")
+            lines.append(f"--- WHAT {name.upper()} GETS WRONG (narrate from the belief; "
+                         f"the truth is for you) ---")
+            lines += [f"- {w}" for w in wrong]
+
         # --- Threat Clocks (felt, mounting pressure; only when any are declared) ---
         clocks = self.json_ops.load_json("threat-clocks.json") or {}
         if clocks:
@@ -1237,9 +1247,28 @@ class SessionManager(EntityManager):
                 continue
             chosen = items if per_category is None else items[-per_category:]
             for it in chosen:
-                txt = it.get('fact', it.get('text', it.get('event', ''))) if isinstance(it, dict) else str(it)
+                txt = fact_text(it)
                 if txt:
                     out.append(txt)
+        return out
+
+    def _wrong_beliefs(self):
+        """Lines for what the player character holds that is wrong or partial,
+        each with the truth beside it, so the GM narrates from the belief."""
+        facts = self.json_ops.load_json("facts.json") or {}
+        entries = [f for items in facts.values() if isinstance(items, list)
+                   for f in items if isinstance(f, dict)]
+        by_id = {f.get('id'): f for f in entries}
+        out = []
+        for f in entries:
+            if 'player' not in (f.get('holders') or []) or f.get('truth') not in ('wrong', 'partial'):
+                continue
+            kind = "believes" if f['truth'] == 'wrong' else "knows only part"
+            line = f"{f.get('id')} ({kind}): {f.get('fact', '')}"
+            true = by_id.get(f.get('version_of'))
+            if true:
+                line += f"  → truth, {true.get('id')}: {true.get('fact', '')}"
+            out.append(line)
         return out
 
     def _world_remembers(self, location, full=False, already_shown=()):
@@ -1335,17 +1364,17 @@ class SessionManager(EntityManager):
                           for f in items if isinstance(f, dict) and f.get('fact')),
                          key=lambda f: str(f.get('timestamp', '')))
         for f in entries:
-            text = str(f['fact'])
-            if norm(text) in shown:
+            text = fact_text(f)
+            if norm(f['fact']) in shown or norm(text) in shown:
                 continue
             old = 'holders' not in f
             about = f.get('about')
             if about is None and old:
-                about = ids.mentioned(text)
+                about = ids.mentioned(str(f["fact"]))
             for name in names:
                 nid = f"npc:{name}"
                 events = (npcs.get(name) or {}).get('events') or []
-                if any(norm(e.get('event', '') if isinstance(e, dict) else e) == norm(text)
+                if any(norm(e.get('event', '') if isinstance(e, dict) else e) == norm(f['fact'])
                        for e in events):
                     continue
                 if not old and nid in f['holders']:

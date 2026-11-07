@@ -42,6 +42,23 @@ def assign_missing_ids(facts: dict) -> dict:
     return facts
 
 
+TRUTH_VALUES = ("partial", "wrong")  # a missing `truth` means true
+
+
+def fact_text(entry) -> str:
+    """A fact's text as the GM should read it: a wrong or partial version is
+    marked, with the id of the truth, wherever the text is shown or searched."""
+    if not isinstance(entry, dict):
+        return str(entry)
+    text = str(entry.get('fact', entry.get('text', entry.get('event', ''))))
+    truth, of = entry.get('truth'), entry.get('version_of')
+    if truth == 'wrong':
+        return f"[WRONG; the truth is {of}] {text}" if of else f"[WRONG] {text}"
+    if truth == 'partial':
+        return f"[PARTIAL; fuller: {of}] {text}" if of else f"[PARTIAL] {text}"
+    return text
+
+
 def next_fact_id(facts: dict) -> str:
     """The id the next fact gets. Expects every fact to have one already."""
     highest = 0
@@ -107,7 +124,7 @@ class NoteManager:
 
     def add_fact(self, category: str, fact: str, list_waiting: bool = True,
                  about=None, not_about=None, holders=None, secret: bool = False,
-                 also=None) -> str:
+                 also=None, truth=None, version_of=None) -> str:
         """Add a fact to the specified category. Returns its id, or "" on failure.
 
         Each fact carries an id, the in-game time it was recorded (`game_time`,
@@ -122,6 +139,9 @@ class NoteManager:
         """
         about_ids, found, errors = self._about(fact, about, not_about)
         holder_ids, more = self._holders(holders, secret, also)
+        errors += more
+        truth, version_of, version_notes, more = self._check_version(
+            self.json_ops.load_json("facts.json") or {}, truth, version_of)
         errors += more
         if errors:
             for error in errors:
@@ -139,6 +159,10 @@ class NoteManager:
         if about_ids:
             entry['about'] = about_ids
         entry['holders'] = holder_ids
+        if truth:
+            entry['truth'] = truth
+        if version_of:
+            entry['version_of'] = version_of
         game_time = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
         if game_time:
             entry['game_time'] = game_time
@@ -156,6 +180,10 @@ class NoteManager:
                     f"gm-note.sh about {fact_id} --remove <id>)") if found else ""
             print(f"  about: {', '.join(about_ids)}{note}")
         print(f"  known to: {', '.join(holder_ids) if holder_ids else 'nobody (a secret)'}")
+        for note in version_notes:
+            print(f"  {note}")
+        if truth:
+            print(f"  {fact_text(entry).split(']')[0]}]")
         if holders is None and not secret:
             self._named_but_absent(fact_id, about_ids, holder_ids)
         from consequence_manager import print_fired
@@ -216,6 +244,60 @@ class NoteManager:
         self.last_fired = cm.fire_event(
             'on_learn', values, f"{', '.join(new_holders)} learned {fact_id}: {entry['fact']}")
         return self.last_fired
+
+    def _check_version(self, facts: dict, truth=None, version_of=None, fact_id=None):
+        """(truth, version_of, notes, errors) for a fact, checked.
+
+        `truth`: None (true), partial or wrong. `version_of`: the fullest true
+        version. A version of a version points at its root instead, so the truth
+        is always one step away. It can't point at itself, or at a wrong fact
+        with no truth behind it. A version needs a truth (partial or wrong).
+        """
+        errors, notes = [], []
+        if truth in ('true', ''):
+            truth = None
+        if truth is not None and truth not in TRUTH_VALUES:
+            errors.append(f"truth is partial or wrong (or true), not {truth!r}.")
+        if version_of and truth is None and not errors:
+            errors.append("A version of another fact is partial or wrong; give --truth too "
+                          "(a true, full version would be the same fact twice).")
+        if version_of:
+            try:
+                target = self._entry(facts, version_of)
+            except ValueError as error:
+                return truth, None, notes, [str(error)]
+            root = target.get('version_of')
+            if root:
+                notes.append(f"{version_of} is itself a version of {root}; pointing at {root}.")
+                version_of, target = root, self._entry(facts, root)
+            if version_of == fact_id:
+                errors.append("A fact can't be a version of itself.")
+            elif target.get('truth') == 'wrong':
+                errors.append(f"{version_of} is marked wrong; version_of points at the truth.")
+        return truth, version_of, notes, errors
+
+    def set_truth(self, fact_id: str, truth=None, version_of=None, keep_version=True) -> dict:
+        """Mark a recorded fact true (None), partial or wrong, and/or link it to
+        the fullest true version. Returns the entry; raises ValueError."""
+        facts = self.json_ops.load_json("facts.json")
+        entry = self._entry(facts, fact_id)
+        if keep_version and version_of is None:
+            version_of = entry.get('version_of')
+        truth, version_of, notes, errors = self._check_version(facts, truth, version_of, fact_id)
+        if any(f.get('version_of') == fact_id for items in facts.values() if isinstance(items, list)
+               for f in items if isinstance(f, dict)) and (truth == 'wrong' or version_of):
+            errors.append(f"Other facts are versions of {fact_id}; it is their truth.")
+        if errors:
+            raise ValueError(" ".join(errors))
+        for key, value in (('truth', truth), ('version_of', version_of)):
+            if value:
+                entry[key] = value
+            else:
+                entry.pop(key, None)
+        self.json_ops.save_json("facts.json", facts)
+        for note in notes:
+            print(f"  {note}")
+        return entry
 
     def _entry(self, facts: dict, fact_id: str) -> dict:
         entry = next((f for items in facts.values() if isinstance(items, list)
@@ -298,6 +380,15 @@ def main():
     p_add.add_argument("--also", action="append",
                        help="who else knows it, on top of the default (repeatable)")
     p_add.add_argument("--secret", action="store_true", help="nobody knows it (GM only)")
+    p_add.add_argument("--truth", choices=list(TRUTH_VALUES),
+                       help="partial (true, but leaves things out) or wrong; default true")
+    p_add.add_argument("--version-of", dest="version_of",
+                       help="the id of the fullest true version of this fact")
+    p = sub.add_parser("truth", help="mark a recorded fact true, partial or wrong")
+    p.add_argument("fact_id"); p.add_argument("truth", choices=["true"] + list(TRUTH_VALUES))
+    p.add_argument("--version-of", dest="version_of")
+    p.add_argument("--no-version", dest="no_version", action="store_true",
+                   help="drop the link to the true version")
     p = sub.add_parser("tell", help="someone learns a recorded fact")
     p.add_argument("fact_id"); p.add_argument("holders", nargs="+")
     p = sub.add_parser("about", help="change a recorded fact's about")
@@ -317,8 +408,13 @@ def main():
             if not manager.add_fact(args.category, args.fact,
                                     about=args.about, not_about=args.not_about,
                                     holders=args.holders, secret=args.secret,
-                                    also=args.also):
+                                    also=args.also, truth=args.truth,
+                                    version_of=args.version_of):
                 sys.exit(1)
+        elif args.action == 'truth':
+            entry = manager.set_truth(args.fact_id, args.truth, args.version_of,
+                                      keep_version=not args.no_version)
+            print(f"{args.fact_id}: {fact_text(entry)}")
         elif args.action == 'tell':
             new = manager.tell(args.fact_id, args.holders)
             print(f"{args.fact_id}: {', '.join(new)} now know(s) it" if new else

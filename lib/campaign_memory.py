@@ -19,6 +19,7 @@ from typing import Any, Dict, List
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
+from note_manager import fact_text
 
 _CANON_CATEGORIES = {"plot_world", "world_building"}
 
@@ -57,7 +58,8 @@ class CampaignMemory(EntityManager):
                     continue
                 prov = "book-canon" if cat in _CANON_CATEGORIES else "our-story"
                 for it in items:
-                    t = it.get("fact") if isinstance(it, dict) else str(it)
+                    t = fact_text(it) if isinstance(it, dict) and it.get("fact") else (
+                        "" if isinstance(it, dict) else str(it))
                     if t:
                         entries.append({"text": t, "provenance": prov,
                                         "source": f"facts:{cat}", "tier": "archive"})
