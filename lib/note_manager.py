@@ -46,11 +46,14 @@ TRUTH_VALUES = ("partial", "wrong")  # a missing `truth` means true
 
 
 def fact_text(entry) -> str:
-    """A fact's text as the GM should read it: a wrong or partial version is
-    marked, with the id of the truth, wherever the text is shown or searched."""
+    """A fact's text as the GM should read it, wherever it is shown or searched:
+    a secret (holders recorded and empty: nobody knows it) is marked [SECRET], a
+    wrong or partial version is marked with the id of the truth."""
     if not isinstance(entry, dict):
         return str(entry)
     text = str(entry.get('fact', entry.get('text', entry.get('event', ''))))
+    if entry.get('holders') == []:
+        text = f"[SECRET] {text}"
     truth, of = entry.get('truth'), entry.get('version_of')
     if truth == 'wrong':
         return f"[WRONG; the truth is {of}] {text}" if of else f"[WRONG] {text}"

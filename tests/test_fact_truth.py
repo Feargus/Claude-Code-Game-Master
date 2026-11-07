@@ -146,3 +146,13 @@ def test_cli(dcc_world):
     assert r.returncode == 0 and f"{wrong}: [PARTIAL; fuller: {true}]" in r.stdout
     r = run("truth", true, "wrong")
     assert r.returncode == 1 and "their truth" in r.stderr
+
+
+def test_a_secret_is_marked_wherever_its_text_shows(dcc_world):
+    assert fact_text({"fact": "x", "holders": []}) == "[SECRET] x"
+    assert fact_text({"fact": "x"}) == "x"                        # old fact: not recorded
+    assert fact_text({"fact": "x", "holders": ["player"]}) == "x"
+    nm = NoteManager(dcc_world)
+    nm.add_fact("plot_local", "The vault code is 0451.", secret=True)
+    ctx = SessionManager(dcc_world).get_full_context()
+    assert "- [SECRET] The vault code is 0451." in ctx            # KEY FACTS
