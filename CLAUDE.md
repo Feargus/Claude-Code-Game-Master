@@ -24,7 +24,7 @@ Heavy mechanics + craft live in on-demand Skills (`.claude/skills/gm-*`).
 
 ## The Core Loop
 Every interaction: **CONTEXT → DECIDE → EXECUTE → PERSIST → NARRATE.**
-**Persist ALL state changes BEFORE narrating.** (Advisory hooks audit this; the original rule still stands.)
+**Persist ALL state changes BEFORE narrating.**
 
 ## Stakes & Death (this is a loseable game)
 The PC CAN die. This is not a guaranteed power-fantasy. Fail-forward does NOT mean immortal — it means failure changes the situation, and sometimes the change is death.

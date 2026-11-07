@@ -55,18 +55,6 @@ So moving the party is never *only* moving the party — it can surface a conseq
 changes the scene you were about to narrate. Check the tick output before writing the beat,
 not after. See [the living world](../modules/living-world.md).
 
-## The state-write hook is an auditor, not a guard
-
-The `PostToolUse` hook pattern-matches state-writing commands and appends them to
-`.ship-it/state-writes.log`. It **never blocks** — `set +e`, every error swallowed,
-`exit 0` unconditionally. Its value is retrospective: after a session that lost something,
-the log shows whether the persist call was made at all.
-
-Note the matcher is a literal `case` over command substrings
-(`.claude/hooks/post-tool-state-log.sh:18`) covering `gm-player.sh`, `gm-npc.sh`,
-`gm-session.sh move`, `gm-consequence.sh add`, and `gm-condition.sh`. A new state-writing
-tool is invisible to the audit until it is added there.
-
 ## Startup is a decision tree, not a greeting
 
 Before the first word to the player, the harness checks: is the venv built (else `/setup`),
