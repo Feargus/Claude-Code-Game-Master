@@ -78,15 +78,17 @@ Eight of those blocks carry design decisions that are not obvious from reading t
   under their entry (`_recent_events`, shared with the party block so history looks the
   same wherever a character appears; party members render theirs once, in the party block).
   This is the wire that lets an NPC act like they remember what the player did to them —
-  the write side is `gm-npc.sh update "<name>" "<event>"`. On top of that, `_npc_anchored_facts`
-  re-scans the whole global facts log each build and surfaces — as `remembers:` sub-lines under
-  a present, non-party NPC — any fact whose text NAMES them (a `gm-note.sh` fact that only lands
-  in `facts.json` would otherwise never reach them). Matching is on a word boundary against the
-  full NPC key and any explicit `aliases` entry only, so "Ana" does not fire on "Banana" and a
-  common leading token ("Old" in "Old Man Withers") never attaches ordinary lowercase prose;
-  hits already in PREVIOUSLY ON, THE WORLD REMEMBERS, or the NPC's own `events` are
-  dropped so nothing shows twice. It is read-time only — no write-side coupling, so per-NPC
-  memory is not lost to the global log without a duplicate copy in storage.
+  the write side is `gm-npc.sh update "<name>" "<event>"`. On top of that, `_npc_fact_lists`
+  reads the facts log each build and gives every present, non-party NPC two lists (since
+  2026-11-07): **`they know:`** facts with them among the `holders`, and **`about them, they
+  don't know:`** facts whose `about` names them but whose holders don't. A fact from before
+  holders existed can't say who knows it: it shows as `about them (old fact: who knows it isn't
+  recorded):` when its `about`, or failing that the same name check `gm-note.sh` uses (whole
+  names and `aliases`, first letter a capital), finds them. Up to 3 each, newest last, with a
+  remainder line; `--full` shows all. Hits already in PREVIOUSLY ON, THE WORLD REMEMBERS, or
+  the NPC's own `events` are dropped. Until then these were `remembers:` lines: any fact whose
+  text named the NPC, so being named counted as knowing, and the GM was invited to let an NPC
+  react to things they had never heard.
 - **THE WORLD REMEMBERS is the harness asking recall on the GM's behalf.** `CampaignMemory`
   was a complete long-term memory with no automated reader — recall only ever fired if the
   GM thought to ask, which needs the GM to already suspect there is something to remember.

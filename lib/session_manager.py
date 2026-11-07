@@ -917,7 +917,11 @@ class SessionManager(EntityManager):
         if present_npcs:
             lines.append("")
             lines.append("--- NPC VOICES (present NPCs — speak in their own words; "
-                         "they remember what is listed under them) ---")
+                         "they know only their Recent lines and what is under 'they know') ---")
+            fact_lists = self._npc_fact_lists(
+                npcs, [n for n, _ in present_npcs
+                       if not (npcs.get(n) or {}).get('is_party_member')],
+                already_shown=list(summaries) + list(remembered))
             for npc_name, vlines in present_npcs:
                 inner = npcs.get(npc_name, {}) if isinstance(npcs, dict) else {}
                 tags = []
@@ -945,21 +949,20 @@ class SessionManager(EntityManager):
                     recent = self._recent_events(inner, full=full)
                     if recent:
                         lines.append(f"  {recent}")
-                    # Global facts that NAME this NPC, re-attached at read time
-                    # (de-duped against PREVIOUSLY ON, world-remembers, and the
-                    # NPC's own events) so per-NPC memory is not lost to the log.
-                    anchored = self._npc_anchored_facts(
-                        npc_name, inner,
-                        already_shown=list(summaries) + list(remembered))
-                    shown_anchored = anchored if full else anchored[:3]
-                    for fact in shown_anchored:
-                        lines.append(f"  remembers: {self._truncate(fact, 180, full)}")
-                    if not full:
-                        rem = self._remainder(
-                            len(anchored) - len(shown_anchored),
-                            "remembered facts", "--full or gm-recall.sh")
-                        if rem:
-                            lines.append(f"  {rem}")
+                    # What they know (holders) and what is known about them (about).
+                    lists = fact_lists.get(npc_name, {})
+                    for key, label in (("know", "they know"), ("about", "about them")):
+                        items = lists.get(key, [])
+                        shown_items = items if full else items[-3:]
+                        for text, old in shown_items:
+                            tag = (" (old fact: who knows it isn't recorded)" if old
+                                   else ", they don't know" if key == "about" else "")
+                            lines.append(f"  {label}{tag}: {self._truncate(text, 180, full)}")
+                        if not full:
+                            rem = self._remainder(len(items) - len(shown_items),
+                                                  f"facts {label}", "--full")
+                            if rem:
+                                lines.append(f"  {rem}")
 
         # Where NPCs usually are is a hint, not presence (gm-scene.sh).
         present_names = {n for n, _ in present_npcs}
@@ -1306,72 +1309,50 @@ class SessionManager(EntityManager):
                 parts.append(f'"{self._truncate(text, 120, full)}"')
         return f"Recent: {' -> '.join(parts)}" if parts else None
 
-    def _npc_anchored_facts(self, npc_name, npc_data, already_shown=()):
-        """Facts from facts.json whose text NAMES this NPC — surfaced under them.
+    def _npc_fact_lists(self, npcs, names, already_shown=()):
+        """For each NPC name: {"know": [...], "about": [...]}, facts as (text, old).
 
-        A fact logged via gm-note.sh lands only in facts.json; if it names an
-        NPC ("the wench's eyes flicked to the back door — she knows more"), that
-        memory never reaches her. Read-time cross-reference fixes this without
-        any write-side coupling: every context build re-scans the global facts
-        log and re-attaches what belongs to whoever is standing here, so there
-        is no duplicate-storm in storage.
-
-        Match is on a WORD BOUNDARY against the full NPC key and any explicit
-        `aliases` entry only — so "Ana" matches "Ana" but not "Banana", and
-        "Old Man Withers" matches only the whole name/alias, never a stray
-        leading token like "old" in "the old rope". Short-name matching is what
-        `aliases` are for (entity-dedupe records them). Excludes anything already
-        in `already_shown` (the PREVIOUSLY ON / world-remembers de-dup set) and
-        anything already carried in the NPC's own `events` (so it is not shown
-        twice). Returns the full matched list (caller caps + discloses the
-        remainder); [] when the NPC is named in no fact, or on any failure.
+        "know": facts with the NPC among their `holders`. "about": facts about
+        the NPC (`about`) that they don't hold: secrets about them, talk behind
+        their back. A fact from before holders existed (no `holders` field) can't
+        say who knows it; it goes under "about" with old=True when its `about`,
+        or failing that the name check gm-note.sh uses, finds the NPC. Facts
+        already shown (PREVIOUSLY ON, the world remembers) or identical to one of
+        the NPC's own `events` are left out. Oldest first; [] on any failure.
         """
+        out = {n: {"know": [], "about": []} for n in names}
         facts = self.json_ops.load_json("facts.json") or {}
-        if not isinstance(facts, dict):
-            return []
-        all_facts = []
-        for items in facts.values():
-            if not isinstance(items, list):
+        if not isinstance(facts, dict) or not names:
+            return out
+        from world_ids import WorldIds
+        ids = WorldIds(self.json_ops)
+
+        def norm(text):
+            return " ".join(str(text).split())
+
+        shown = {norm(x) for x in already_shown if norm(x)}
+        entries = sorted((f for items in facts.values() if isinstance(items, list)
+                          for f in items if isinstance(f, dict) and f.get('fact')),
+                         key=lambda f: str(f.get('timestamp', '')))
+        for f in entries:
+            text = str(f['fact'])
+            if norm(text) in shown:
                 continue
-            for it in items:
-                txt = it.get('fact', it.get('text', it.get('event', ''))) if isinstance(it, dict) else str(it)
-                if txt:
-                    all_facts.append(str(txt))
-        if not all_facts:
-            return []
-
-        # Needles: the full key and any explicit aliases only. No auto-derived
-        # leading-token needle — a common first word ("Old", "Red", "Young")
-        # would match ordinary lowercase prose and attach unrelated facts.
-        needles = [npc_name]
-        aliases = npc_data.get('aliases') if isinstance(npc_data, dict) else None
-        if isinstance(aliases, list):
-            needles.extend(str(a) for a in aliases if a)
-        elif isinstance(aliases, str) and aliases:
-            needles.append(aliases)
-        patterns = [re.compile(r"\b" + re.escape(n) + r"\b", re.IGNORECASE)
-                    for n in needles if n]
-
-        def _norm(s):
-            return " ".join(str(s).split())
-
-        shown = {_norm(s) for s in already_shown if _norm(s)}
-        events = npc_data.get('events', []) if isinstance(npc_data, dict) else []
-        if isinstance(events, list):
-            for ev in events:
-                t = ev.get('event', '') if isinstance(ev, dict) else str(ev)
-                if t:
-                    shown.add(_norm(t))
-
-        matched, seen = [], set()
-        for txt in all_facts:
-            norm = _norm(txt)
-            if not norm or norm in shown or norm in seen:
-                continue
-            if any(p.search(txt) for p in patterns):
-                seen.add(norm)
-                matched.append(txt)
-        return matched
+            old = 'holders' not in f
+            about = f.get('about')
+            if about is None and old:
+                about = ids.mentioned(text)
+            for name in names:
+                nid = f"npc:{name}"
+                events = (npcs.get(name) or {}).get('events') or []
+                if any(norm(e.get('event', '') if isinstance(e, dict) else e) == norm(text)
+                       for e in events):
+                    continue
+                if not old and nid in f['holders']:
+                    out[name]["know"].append((text, False))
+                elif nid in (about or []):
+                    out[name]["about"].append((text, old))
+        return out
 
     def _scene(self):
         """campaign-overview.json's scene list (see gm-scene.sh), or None."""
