@@ -104,7 +104,7 @@ def test_world_tick_developments_with_holders_fire(dcc_world):
 def test_on_learn_never_fires_on_the_scene_check(dcc_world):
     c = {"id": "x", "consequence": "c", "trigger": "t",
          "triggers": [{"type": "on_learn", "match": "anyone learns f1"}]}
-    assert ConsequenceManager(dcc_world)._evaluate_trigger(c, {"location": "anyone learns f1"})[0] == 0.0
+    assert ConsequenceManager(dcc_world)._matches_now(c, {"location": "anyone learns f1"}) == ""
 
 
 def test_cli_tell_prints_what_fired(dcc_world):

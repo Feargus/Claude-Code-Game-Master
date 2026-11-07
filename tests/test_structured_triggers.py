@@ -1,6 +1,6 @@
 """Tests for structured-trigger-schema.
 
-Consequences gain optional structured triggers (trigger_type/match/expiry) that
+Consequences gain optional structured triggers (trigger_type/match) that
 the reactivity engine can fire and expire on, additively — legacy free-text
 consequences still load and round-trip unchanged.
 """
@@ -18,12 +18,11 @@ def _consq_path(dcc_world):
 def test_add_with_structured_trigger(dcc_world):
     cm = ConsequenceManager(dcc_world)
     cid = cm.add_consequence("Guards search the market", "next day",
-                             trigger_type="on_location", match="Market", expiry="day 5")
+                             trigger_type="on_location", match="Market")
     assert cid
     data = json.loads(_consq_path(dcc_world).read_text(encoding="utf-8"))
     new = next(c for c in data["active"] if c["id"] == cid)
     assert new["triggers"] == [{"type": "on_location", "match": "Market"}]
-    assert new["expiry"] == "day 5"
     # free-text trigger + description still preserved
     assert new["trigger"] == "next day"
     assert new["consequence"] == "Guards search the market"
@@ -36,7 +35,7 @@ def test_free_text_alone_becomes_an_on_event_trigger(dcc_world):
     data = json.loads(_consq_path(dcc_world).read_text(encoding="utf-8"))
     new = next(c for c in data["active"] if c["id"] == cid)
     assert new["triggers"] == [{"type": "on_event", "match": "someday"}]
-    assert "trigger_type" not in new and "expiry" not in new
+    assert "trigger_type" not in new
 
 
 def test_old_free_text_entries_never_fire_on_shared_words(dcc_world):
@@ -44,7 +43,7 @@ def test_old_free_text_entries_never_fire_on_shared_words(dcc_world):
     old = {"id": "o1", "consequence": "c", "trigger": "when the party returns to the market"}
     assert cm.structured_triggers(old) == [
         {"type": "on_event", "match": "when the party returns to the market"}]
-    assert cm._evaluate_trigger(old, {"location": "the market", "time": "returns"})[0] == 0.0
+    assert cm._matches_now(old, {"location": "the market", "time": "returns"}) == ""
 
 
 def test_fixture_exercises_all_trigger_types_and_a_legacy(dcc_world):
@@ -58,21 +57,6 @@ def test_fixture_exercises_all_trigger_types_and_a_legacy(dcc_world):
 def test_existing_consequences_round_trip(dcc_world):
     pending = ConsequenceManager(dcc_world).check_pending()
     assert all("consequence" in c and "trigger" in c for c in pending)
-
-
-def test_expiry_matches_whole_words_not_substrings(dcc_world):
-    # Regression: --expiry "dawn" must not self-archive at a place named Dawnhollow.
-    cm = ConsequenceManager(dcc_world)
-    cid = cm.add_consequence("ambush at first light", "when dawn comes",
-                             trigger_type="on_time", match="dawn", expiry="dawn")
-    hollow = {"location": "Dawnhollow", "time": "midnight", "present_npcs": [], "events": []}
-    assert not cm._is_expired({"expiry": "dawn"}, hollow)
-    still_active = [c["id"] for c in cm.check_pending(hollow, limit=10)] + \
-                   [c["id"] for c in cm.check_pending()]
-    assert cid in still_active
-
-    at_dawn = {"location": "camp", "time": "dawn", "present_npcs": [], "events": []}
-    assert cm._is_expired({"expiry": "dawn"}, at_dawn)
 
 
 def test_on_time_refuses_a_date_and_points_to_a_clock(dcc_world, capsys):

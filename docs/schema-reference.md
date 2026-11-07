@@ -378,8 +378,7 @@ Tracks events that will trigger in the future.
          "due_in": "3d (counted from the firing)  | or due: YYYY-MM-DD HH:MM",
          "consequence": "what happens when the clock fills (optional)"},
         {"type": "tell", "fact": "f42", "holders": ["npc:Wren", "street"]}
-      ],
-      "expiry": "string date or condition after which it ages out   (OPTIONAL)"
+      ]
     }
   ],
   "resolved": [
@@ -438,7 +437,7 @@ A fired consequence also carries `last_fired_key` (the scene key that fired it) 
 in `active` — firing is not resolving. `_snapshot` is the **one-beat** rollback buffer,
 overwritten by the next tick. See [the living world](modules/living-world.md).
 
-**Structured triggers** (`triggers`/`expiry`) are additive and
+**Structured triggers** (`triggers`) are additive and
 optional. Entries written before 2026-11-06 store a single trigger as top-level
 `trigger_type` + `match` instead of a `triggers` list; they are read as a one-item list.
 Entries with only the free-text `trigger` are read as an `on_event` trigger with that

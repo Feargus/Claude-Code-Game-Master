@@ -92,13 +92,8 @@ trigger, and older entries with only free text are read that way (removed 2026-1
 upstream's fallback scored word overlap against the scene, firing on mere mentions and
 missing paraphrases).
 
-**The expiry check is a whole-word match against the entire scene text** (`_is_expired`) —
-location, time, date, present NPC names, and events concatenated. It was a bare substring
-test until 2026-08-13, when `--expiry "dawn"` could self-archive at a place named
-*Dawnhollow*; word boundaries now prevent that (regression test in
-`tests/test_structured_triggers.py`). The scene-wide scope remains, though: an expiry word
-that legitimately appears in any field — an NPC named "Dawn" walking in — still ages the
-consequence out, so distinctive expiry strings are still the safer choice.
+There is no expiry (removed 2026-11-07): `--expiry` was a word match against the scene
+that a date never passed. A time limit is a clock.
 
 ## Provenance and the one-beat undo
 

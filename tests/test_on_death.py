@@ -88,7 +88,7 @@ def test_on_death_is_not_fired_by_the_scene_check(dcc_world):
     cm = ConsequenceManager(dcc_world)
     cid = cm.add_consequence("x", "y", trigger_type="on_death", match=npc)
     c = next(c for c in _active(dcc_world) if c["id"] == cid)
-    assert cm._evaluate_trigger(c, {"location": npc, "present_npcs": [npc]})[0] == 0.0
+    assert cm._matches_now(c, {"location": npc, "present_npcs": [npc]}) == ""
 
 
 def _short(world, cid):

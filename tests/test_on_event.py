@@ -57,7 +57,7 @@ def test_on_event_never_fires_on_the_scene_check(dcc_world):
     cm = ConsequenceManager(dcc_world)
     c = {"id": "x", "consequence": "c", "trigger": "t",
          "triggers": [{"type": "on_event", "match": "alarm"}]}
-    assert cm._evaluate_trigger(c, {"location": "alarm", "events": ["alarm"]})[0] == 0.0
+    assert cm._matches_now(c, {"location": "alarm", "events": ["alarm"]}) == ""
 
 
 def test_fire_by_fact_links_the_fact(dcc_world):

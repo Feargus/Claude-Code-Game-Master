@@ -57,14 +57,3 @@ def test_cap_discloses_overflow_instead_of_dropping(dcc_world):
     assert len(sliced) == len(all_hits)
     assert not sliced[0].get("matched_not_fired")
     assert any(c.get("matched_not_fired") for c in sliced[1:])
-
-
-def test_expired_consequence_is_archived_not_fired(dcc_world):
-    cm = ConsequenceManager(dcc_world)
-    cm.add_consequence("temp ward", "soon", trigger_type="on_location",
-                       match="Cave", expiry="Cave")
-    fired = cm.check_pending({"location": "Dark Cave", "time": "day", "present_npcs": []}, limit=10)
-    assert all(c["consequence"] != "temp ward" for c in fired), "expired must not fire"
-    data = json.loads(_consq_path(dcc_world).read_text(encoding="utf-8"))
-    assert any(c.get("consequence") == "temp ward" for c in data["resolved"]), "expired must be archived"
-    assert all(c.get("consequence") != "temp ward" for c in data["active"]), "expired removed from active"

@@ -39,10 +39,9 @@ def test_any_one_trigger_fires_it(dcc_world):
     at_yard = {"location": "Old Iron's Yard", "present_npcs": []}
     with_wren = {"location": "The Lantern", "present_npcs": ["Wren"]}
     neither = {"location": "The Lantern", "present_npcs": ["Auntie Ro"]}
-    assert cm._evaluate_trigger(c, at_yard)[0] == 1.0
-    score, reason = cm._evaluate_trigger(c, with_wren)
-    assert score == 1.0 and "Wren" in reason
-    assert cm._evaluate_trigger(c, neither)[0] == 0.0
+    assert cm._matches_now(c, at_yard)
+    assert "Wren" in cm._matches_now(c, with_wren)
+    assert cm._matches_now(c, neither) == ""
 
 
 def test_single_shorthand_and_list_combine(dcc_world):
@@ -57,7 +56,7 @@ def test_old_single_trigger_entries_still_fire(dcc_world):
     old = {"id": "old1", "consequence": "c", "trigger": "t",
            "trigger_type": "on_location", "match": "Yard"}
     assert cm.structured_triggers(old) == [{"type": "on_location", "match": "Yard"}]
-    assert cm._evaluate_trigger(old, {"location": "Old Iron's Yard"})[0] == 1.0
+    assert cm._matches_now(old, {"location": "Old Iron's Yard"})
 
 
 def test_refuses_a_bad_trigger_in_the_list(dcc_world):

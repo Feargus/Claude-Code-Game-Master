@@ -79,7 +79,7 @@ def test_on_clock_never_fires_on_the_scene_check(dcc_world):
     cm = ConsequenceManager(dcc_world)
     c = {"id": "x", "consequence": "c", "trigger": "t",
          "triggers": [{"type": "on_clock", "match": "Tracker:2"}]}
-    assert cm._evaluate_trigger(c, {"location": "Tracker:2"})[0] == 0.0
+    assert cm._matches_now(c, {"location": "Tracker:2"}) == ""
 
 
 def test_a_clock_a_consequence_will_start_can_be_matched(dcc_world):

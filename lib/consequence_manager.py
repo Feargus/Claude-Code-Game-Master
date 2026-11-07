@@ -38,13 +38,12 @@ class ConsequenceManager(EntityManager):
     # on_event is the GM's: each recorded fact lists the consequences waiting
     # on one (waiting_on_event), and the GM fires a fitting one by hand.
     EVENT_TRIGGER_TYPES = ('on_death', 'on_event', 'on_clock', 'on_learn')
-    # A trigger either matches (1.0) or not (0.0). There is no word matching:
-    # free-text conditions are on_event triggers, judged by the GM.
-    FIRE_SCORE = 0.5
+    # A trigger either matches or not. There is no word matching: free-text
+    # conditions are on_event triggers, judged by the GM.
 
     def add_consequence(self, description: str, trigger: str,
                         trigger_type: str = None, match: str = None,
-                        expiry: str = None, triggers: List[Dict[str, str]] = None,
+                        triggers: List[Dict[str, str]] = None,
                         effects: List[Dict[str, Any]] = None) -> str:
         """
         Add a new consequence.
@@ -56,7 +55,6 @@ class ConsequenceManager(EntityManager):
           triggers:     list of {"type": one of TRIGGER_TYPES, "match": value compared
                         against world state (location/npc/time/event keyword)}
           trigger_type, match: shorthand for a single trigger (added to `triggers`)
-          expiry:       optional date or condition after which the consequence ages out
         Structured fields are additive; legacy consequences omit them.
 
         `effects` are carried out by the script each time it fires (see EFFECT_TYPES):
@@ -128,8 +126,6 @@ class ConsequenceManager(EntityManager):
             consequence['triggers'] = triggers
         if effects:
             consequence['effects'] = effects
-        if expiry is not None:
-            consequence['expiry'] = expiry
 
         if 'active' not in data:
             data['active'] = []
@@ -150,12 +146,9 @@ class ConsequenceManager(EntityManager):
         Pending consequences.
 
         - No world_state  -> the raw active list (legacy accessor).
-        - With world_state -> every consequence that MATCHES now (score >= FIRE_SCORE),
-          each annotated with `match_reason`, sorted by confidence. The top `limit`
-          are the fire slice; the rest are disclosed (`matched_not_fired`) rather
-          than dropped. Structured triggers match exactly; legacy free-text
-          triggers are scored fuzzily. Expired consequences (past their `expiry`)
-          are auto-archived to resolved.
+        - With world_state -> every consequence a state trigger MATCHES now, each
+          annotated with `match_reason`. The first `limit` are the fire slice; the
+          rest are disclosed (`matched_not_fired`) rather than dropped.
 
         world_state keys (all optional): location (str), present_npcs (list[str]),
         time (str), events (list[str]), date (str).
@@ -170,54 +163,19 @@ class ConsequenceManager(EntityManager):
             return active
 
         matched = []
-        survivors = []
-        expired = []
         for c in active:
-            if self._is_expired(c, world_state):
-                aged = dict(c)
-                aged['expired'] = self.json_ops.get_timestamp()
-                expired.append(aged)
-                continue
-            survivors.append(c)
-            score, reason = self._evaluate_trigger(c, world_state)
-            if score >= self.FIRE_SCORE:
+            reason = self._matches_now(c, world_state)
+            if reason:
                 hit = dict(c)
                 hit['match_reason'] = reason
-                matched.append((score, hit))
+                matched.append(hit)
 
-        if expired:
-            data['active'] = survivors
-            data.setdefault('resolved', []).extend(expired)
-            self.json_ops.save_json(self.consequences_file, data)
-
-        matched.sort(key=lambda t: t[0], reverse=True)
         out = []
-        for i, (_, hit) in enumerate(matched):
+        for i, hit in enumerate(matched):
             if i >= limit:
                 hit['matched_not_fired'] = True
             out.append(hit)
         return out
-
-    @staticmethod
-    def _world_text(world_state: Dict[str, Any]) -> str:
-        parts = [
-            str(world_state.get('location', '')),
-            str(world_state.get('time', '')),
-            str(world_state.get('date', '')),
-            ' '.join(str(x) for x in world_state.get('present_npcs', []) or []),
-            ' '.join(str(x) for x in world_state.get('events', []) or []),
-        ]
-        return ' '.join(parts).lower()
-
-    def _is_expired(self, consequence: Dict[str, Any], world_state: Dict[str, Any]) -> bool:
-        expiry = consequence.get('expiry')
-        if not expiry:
-            return False
-        # Whole-word match, not substring: --expiry "dawn" must not self-archive
-        # the moment the party stands anywhere named "Dawnhollow".
-        import re
-        pattern = r'\b' + re.escape(str(expiry).lower()) + r'\b'
-        return re.search(pattern, self._world_text(world_state)) is not None
 
     def _death_target(self, name: str) -> str:
         """The canonical on_death match for `name`: 'player', an NPC key, or '' if unknown."""
@@ -436,8 +394,8 @@ class ConsequenceManager(EntityManager):
             return f"time matching '{raw_match}'"
         return ''
 
-    def _evaluate_trigger(self, consequence: Dict[str, Any], world_state: Dict[str, Any]):
-        """Return (score, reason): (1.0, why) if any state trigger matches now, else (0.0, '').
+    def _matches_now(self, consequence: Dict[str, Any], world_state: Dict[str, Any]) -> str:
+        """Why a state trigger of this consequence matches now, or '' if none does.
 
         Event triggers (on_death, on_event, on_clock) never match here; they fire where
         the event is recorded.
@@ -445,8 +403,8 @@ class ConsequenceManager(EntityManager):
         for t in self.structured_triggers(consequence):
             reason = self._evaluate_one(t['type'], t['match'], world_state)
             if reason:
-                return 1.0, reason
-        return 0.0, ''
+                return reason
+        return ''
 
     def tick(self, world_state: Dict[str, Any], limit: int = 2) -> Dict[str, List[Dict[str, Any]]]:
         """Evaluate all active consequences; fire the top `limit` that are new here.
@@ -454,7 +412,7 @@ class ConsequenceManager(EntityManager):
         Same scene (location|time|date) will not re-stamp a consequence that already
         fired on this ctx_key — it is disclosed as already-fired, not suppressed.
         Remaining matches are disclosed, not dropped.
-        Expired consequences are archived. Newly fired items get last_fired_key +
+        Newly fired items get last_fired_key +
         provenance; the GM may still veto narratively — they stay active either way.
         """
         data = self.json_ops.load_json(self.consequences_file)
@@ -468,23 +426,14 @@ class ConsequenceManager(EntityManager):
             str(world_state.get('date', '')),
         ]).lower()
 
-        survivors, expired = [], []
         matches = []
         for c in active:
-            if self._is_expired(c, world_state):
-                aged = dict(c)
-                aged['expired'] = self.json_ops.get_timestamp()
-                expired.append(aged)
-                continue
-            survivors.append(c)
-            score, reason = self._evaluate_trigger(c, world_state)
-            if score >= self.FIRE_SCORE:
-                matches.append((score, c, reason))
-
-        matches.sort(key=lambda t: t[0], reverse=True)
+            reason = self._matches_now(c, world_state)
+            if reason:
+                matches.append((c, reason))
 
         already_fired, new_matches = [], []
-        for score, c, reason in matches:
+        for c, reason in matches:
             hit = dict(c)
             hit['match_reason'] = reason
             if c.get('last_fired_key') == ctx_key:
@@ -496,17 +445,15 @@ class ConsequenceManager(EntityManager):
         fired, disclosed = [], []
         for i, (c, reason, hit) in enumerate(new_matches):
             if i < limit:
-                c['last_fired_key'] = ctx_key  # stamp the live object (in survivors)
+                c['last_fired_key'] = ctx_key  # stamp the live object (in active)
                 stamped = dict(c)
                 stamped['match_reason'] = reason
                 fired.append(stamped)
             else:
                 disclosed.append(hit)
 
-        if expired or fired:
-            data['active'] = survivors
-            if expired:
-                data.setdefault('resolved', []).extend(expired)
+        if fired:
+            data['active'] = active
             # Provenance ("why did this fire") + one-beat rollback snapshot.
             data['_snapshot'] = {'active': pre_active, 'resolved': pre_resolved}
             now = self.json_ops.get_timestamp()
@@ -796,7 +743,6 @@ def main():
                                  '--match for several triggers; any one fires it.')
     add_parser.add_argument('--match', action='append',
                             help='Structured trigger match value, one per --trigger-type, in order')
-    add_parser.add_argument('--expiry', help='Optional expiry (date or condition)')
     add_parser.add_argument('--tells', metavar='FACT_ID',
                             help='When it fires, these holders (--to) learn this fact')
     add_parser.add_argument('--to', action='append', default=[], metavar='HOLDER',
@@ -876,7 +822,7 @@ def main():
         import io
         with contextlib.redirect_stdout(io.StringIO()):  # keep stdout JSON-only
             cid = manager.add_consequence(args.description, args.trigger,
-                                          triggers=triggers, expiry=args.expiry,
+                                          triggers=triggers,
                                           effects=effects)
         if cid:
             emit({"id": cid}, json_mode=True)
@@ -892,7 +838,7 @@ def main():
 
     if args.action == 'add':
         if not manager.add_consequence(args.description, args.trigger,
-                                       triggers=triggers, expiry=args.expiry,
+                                       triggers=triggers,
                                        effects=effects):
             sys.exit(1)
 
