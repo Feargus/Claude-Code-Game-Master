@@ -396,17 +396,71 @@ class NPCManager(EntityManager):
             return True
         return False
 
+    def _npc_key(self, name: str) -> str:
+        """The NPC's key through the shared resolver, or '' (error printed)."""
+        from world_ids import WorldIds
+        raw = str(name).strip()
+        cid, error = WorldIds(self.json_ops).resolve(
+            raw if raw.lower().startswith("npc:") else f"npc:{raw}")
+        if error:
+            print(f"[ERROR] {error}")
+            return ""
+        return cid[4:]
+
+    def _location_tags(self, npcs: dict, key: str) -> list:
+        tags = npcs[key].get('tags')
+        if not isinstance(tags, dict):
+            tags = npcs[key]['tags'] = {'locations': [], 'quests': []}
+        return tags.setdefault('locations', [])
+
     def tag_location(self, name: str, *locations: str) -> bool:
-        """
-        Add location tags to NPC
-        """
-        return self._manage_tags(name, 'locations', locations, 'add')
+        """Add usual places (known locations only, close matches suggested).
+        Order is kept; a usual place clears `no_usual_place`."""
+        key = self._npc_key(name)
+        if not key:
+            return False
+        places, errors = self._usual_places(locations)
+        if errors or not places:
+            for error in errors or ["Give at least one place."]:
+                print(f"[ERROR] {error}")
+            return False
+        npcs = self._load_entities(self.npcs_file)
+        tags = self._location_tags(npcs, key)
+        added = [p for p in places if p.lower() not in {t.lower() for t in tags}]
+        tags.extend(added)
+        npcs[key].pop('no_usual_place', None)
+        if not self._save_entities(self.npcs_file, npcs):
+            return False
+        print(f"[SUCCESS] {key} usually found: {', '.join(tags)}"
+              + ("" if added else " (no change)"))
+        return True
 
     def untag_location(self, name: str, *locations: str) -> bool:
-        """
-        Remove location tags from NPC
-        """
-        return self._manage_tags(name, 'locations', locations, 'remove')
+        """Remove usual places. Matches the stored tags loosely (case, punctuation,
+        titles), so old tags that aren't known places can be removed too."""
+        from entity_aliases import normalize_entity_name
+        key = self._npc_key(name)
+        if not key:
+            return False
+        npcs = self._load_entities(self.npcs_file)
+        tags = self._location_tags(npcs, key)
+
+        def same(a, b):
+            return a.lower() == b.lower() or (
+                normalize_entity_name(a) and normalize_entity_name(a) == normalize_entity_name(b))
+
+        missing = [raw for raw in locations if not any(same(raw, t) for t in tags)]
+        if missing:
+            print(f"[ERROR] {key} has no usual place {', '.join(repr(m) for m in missing)}; "
+                  f"usually found: {', '.join(tags) or 'nowhere yet'}")
+            return False
+        npcs[key]['tags']['locations'] = [t for t in tags
+                                          if not any(same(raw, t) for raw in locations)]
+        if not self._save_entities(self.npcs_file, npcs):
+            return False
+        left = npcs[key]['tags']['locations']
+        print(f"[SUCCESS] {key} usually found: {', '.join(left) or 'nowhere (no usual place left)'}")
+        return True
 
     def tag_quest(self, name: str, *quests: str) -> bool:
         """
@@ -513,16 +567,16 @@ class NPCManager(EntityManager):
         if tag_type not in npcs[name]['tags']:
             npcs[name]['tags'][tag_type] = []
 
-        current_tags = set(npcs[name]['tags'][tag_type])
+        current_tags = list(npcs[name]['tags'][tag_type])
 
         if action == 'add':
-            current_tags.update(tags)
+            current_tags += [t for t in tags if t not in current_tags]
             action_word = 'Added'
         else:  # remove
-            current_tags.difference_update(tags)
+            current_tags = [t for t in current_tags if t not in tags]
             action_word = 'Removed'
 
-        npcs[name]['tags'][tag_type] = list(current_tags)
+        npcs[name]['tags'][tag_type] = current_tags
 
         if self._save_entities(self.npcs_file, npcs):
             print(f"[SUCCESS] {action_word} {tag_type} tags for {name}: {', '.join(tags)}")
