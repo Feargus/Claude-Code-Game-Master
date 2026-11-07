@@ -67,9 +67,8 @@ Eight of those blocks carry design decisions that are not obvious from reading t
   bible's `index` (`npcs`/`locations`/`items`/`monsters`), it lists `name — note` lines
   grouped by non-empty bucket. It is emitted only when at least one bucket has an entry;
   an absent or all-empty `index` prints no header at all.
-- **NPC secrets are surfaced by existence only.** `lib/session_manager.py:932` prints
-  `"has a secret"` and never the secret text, so a secret can sit in `npcs.json` without
-  leaking into narration the moment its owner walks on stage.
+- **What an NPC hides is a fact they hold.** It shows under them ("they know:") and is
+  marked `[HIDDEN FROM PLAYER]`, so the GM plays it without narrating it as known.
 - **Presence does not require a voice, and present NPCs carry their memory.** Who is here
   is `npcs_present` (party always, plus the scene list — see below). `_present_npcs`
   only slices voice lines onto that set, and still returns an NPC with no extracted

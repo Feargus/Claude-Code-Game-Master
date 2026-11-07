@@ -502,8 +502,9 @@ class NPCManager(EntityManager):
             return [context.strip()]
         return []
 
-    # NPC inner life (additive; defaults so legacy NPCs load unchanged).
-    INNER_LIFE_FIELDS = ('goal', 'secret', 'current_mood', 'voice', 'bonds')
+    # NPC inner life (additive; defaults so legacy NPCs load unchanged). What an
+    # NPC hides is a fact they hold (gm-note.sh ... --holders npc:<name>), not a field.
+    INNER_LIFE_FIELDS = ('goal', 'current_mood', 'voice', 'bonds')
 
     def get_inner_life(self, name: str) -> Optional[Dict[str, Any]]:
         """Return an NPC's inner life with safe defaults, or None if not found."""
@@ -512,14 +513,13 @@ class NPCManager(EntityManager):
             return None
         return {
             'goal': npc.get('goal', ''),
-            'secret': npc.get('secret', ''),
             'current_mood': npc.get('current_mood', 'neutral'),
             'voice': npc.get('voice', ''),
             'bonds': npc.get('bonds', {}),
         }
 
     def set_inner_life(self, name: str, **fields) -> bool:
-        """Set any of goal/secret/current_mood/voice/bonds (additive)."""
+        """Set any of goal/current_mood/voice/bonds (additive)."""
         updates = {k: v for k, v in fields.items()
                    if k in self.INNER_LIFE_FIELDS and v is not None}
         if not updates:
@@ -1085,13 +1085,12 @@ def main():
     voice_parser = subparsers.add_parser('voice', help='Get NPC canonical voice lines')
     voice_parser.add_argument('name', help='NPC name')
 
-    # Inner life (goal/secret/mood/voice/bonds)
+    # Inner life (goal/mood/voice/bonds)
     inner_parser = subparsers.add_parser('inner-life', help='Get NPC inner life')
     inner_parser.add_argument('name', help='NPC name')
     setinner_parser = subparsers.add_parser('set-inner', help='Set NPC inner life fields')
     setinner_parser.add_argument('name', help='NPC name')
     setinner_parser.add_argument('--goal')
-    setinner_parser.add_argument('--secret')
     setinner_parser.add_argument('--mood')
     setinner_parser.add_argument('--voice')
     kill_parser = subparsers.add_parser('kill', help='Mark an NPC dead; fires its on_death consequences')
@@ -1274,7 +1273,7 @@ def main():
         print(json.dumps(il, indent=2))
 
     elif args.action == 'set-inner':
-        if not manager.set_inner_life(args.name, goal=args.goal, secret=args.secret,
+        if not manager.set_inner_life(args.name, goal=args.goal,
                                       current_mood=args.mood, voice=args.voice):
             sys.exit(1)
 

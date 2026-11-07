@@ -32,14 +32,14 @@ with a rich `voice` description but an empty `context` speaks no lines at all.
 `get_voice` is explicitly read-only and never mutates `context` — enhancement writes it,
 play only reads it.
 
-## Inner life defaults, and only the secret's existence leaks
+## Inner life defaults
 
-`INNER_LIFE_FIELDS = ('goal', 'secret', 'current_mood', 'voice', 'bonds')`, all optional,
+`INNER_LIFE_FIELDS = ('goal', 'current_mood', 'voice', 'bonds')`, all optional,
 all defaulted on read (`current_mood` → `'neutral'`). `current_mood` persists across
 sessions — an NPC you angered stays angry.
 
-The `secret` field is surfaced to the model as **existence only**: the session brief prints
-`"has a secret"` and never the text. See [scene context](scene-context.md).
+There is no `secret` field any more (2026-11-07): what an NPC hides is a fact with the NPC
+as its only holder, shown under them in the brief and marked `[HIDDEN FROM PLAYER]`.
 
 ## Party members carry a second sheet, in a different shape
 

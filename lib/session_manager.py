@@ -939,8 +939,6 @@ class SessionManager(EntityManager):
                     tags.append(f"mood: {inner['current_mood']}")
                 if inner.get('goal'):
                     tags.append(f"wants: {inner['goal']}")
-                if inner.get('secret'):
-                    tags.append("has a secret")  # existence only — never the secret text
                 header = npc_name + (f" ({'; '.join(tags)})" if tags else "")
                 lines.append(f"{header}:")
                 for vl in vlines:

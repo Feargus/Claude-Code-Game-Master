@@ -47,13 +47,17 @@ TRUTH_VALUES = ("partial", "wrong")  # a missing `truth` means true
 
 def fact_text(entry) -> str:
     """A fact's text as the GM should read it, wherever it is shown or searched:
-    a secret (holders recorded and empty: nobody knows it) is marked [SECRET], a
-    wrong or partial version is marked with the id of the truth."""
+    a secret (holders recorded and empty: nobody knows it) is marked [SECRET], one
+    that others know but the player character doesn't is marked [HIDDEN FROM PLAYER],
+    a wrong or partial version is marked with the id of the truth."""
     if not isinstance(entry, dict):
         return str(entry)
     text = str(entry.get('fact', entry.get('text', entry.get('event', ''))))
-    if entry.get('holders') == []:
+    holders = entry.get('holders')
+    if holders == []:
         text = f"[SECRET] {text}"
+    elif isinstance(holders, list) and not {'player', 'public'} & set(holders):
+        text = f"[HIDDEN FROM PLAYER] {text}"     # who knows it: the NPC block
     truth, of = entry.get('truth'), entry.get('version_of')
     if truth == 'wrong':
         return f"[WRONG; the truth is {of}] {text}" if of else f"[WRONG] {text}"
@@ -186,7 +190,7 @@ class NoteManager:
         for note in version_notes:
             print(f"  {note}")
         if truth:
-            print(f"  {fact_text(entry).split(']')[0]}]")
+            print(f"  {fact_text({'truth': truth, 'version_of': entry.get('version_of')}).strip()}")
         if holders is None and not secret:
             self._named_but_absent(fact_id, about_ids, holder_ids)
         from consequence_manager import print_fired

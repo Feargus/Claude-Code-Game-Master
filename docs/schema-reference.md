@@ -150,7 +150,7 @@ A dictionary keyed by NPC name.
     "visual_appearance": {"sex": "", "age": "", "race": "", "species": "", "hair": "",
                           "face": "", "eyes": "", "clothing": "", "gear": "",
                           "demeanor": "", "size": ""},
-    "goal": "string", "secret": "string", "current_mood": "neutral",
+    "goal": "string", "current_mood": "neutral",
     "voice": "string — how they SOUND (not their lines; those are `context`)",
     "bonds": {},
     "stats": {"ac": null, "hp": 45, "cr": 3, "difficulty": "minion|standard|boss",
@@ -311,8 +311,8 @@ A dictionary with category keys, each containing an array of fact **objects**.
   fact. `gm-note.sh about <fact id> --add/--remove <id>` changes it later. Facts written
   before 2026-11-06 have none yet.
 - `holders`: ids of who knows the fact: `player`, `npc:<key>`, `street`, `public` (a place
-  can't be one). `gm-note.sh` defaults to the player plus the NPCs present (party members,
-  NPCs tagged with the current location, never the dead); `--also` adds to that, `--holders` replaces it,
+  can't be one). `gm-note.sh` defaults to the player plus the NPCs present (the party and
+  the scene list, `gm-scene.sh`; never the dead); `--also` adds to that, `--holders` replaces it,
   `--secret` stores `[]`. Off-screen facts from the world tick default to `[]`. `[]` means
   nobody knows: a GM-only secret. A missing field (facts from before 2026-11-06) means not
   recorded. `gm-note.sh tell <fact id> <holder>...` adds holders.
@@ -321,7 +321,8 @@ A dictionary with category keys, each containing an array of fact **objects**.
   (needs a `truth`). A version of a version is stored as pointing at its root, so the
   truth is one step away; a wrong fact with no truth behind it can't be pointed at.
   `fact_text()` (`lib/note_manager.py`) marks such text `[WRONG; the truth is fN]` /
-  `[PARTIAL; fuller: fN]`, and a fact nobody holds (`holders: []`) `[SECRET]`, in KEY FACTS, the NPC lists, long-term memory and search; the
+  `[PARTIAL; fuller: fN]`, a fact nobody holds (`holders: []`) `[SECRET]`, and one
+  that others hold but not the player (nor `public`) `[HIDDEN FROM PLAYER]`, in KEY FACTS, the NPC lists, long-term memory and search; the
   brief lists what the player holds wrongly or partly next to the truth.
   `gm-note.sh … --truth --version-of` sets them at recording, `gm-note.sh truth <id>
   wrong|partial|true [--version-of <id> | --no-version]` later.

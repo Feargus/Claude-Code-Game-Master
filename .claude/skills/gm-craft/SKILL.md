@@ -52,7 +52,7 @@ A clever, effective, unique, daring, or punishing-but-cool beat EARNS progress �
 
 ## NPCs
 - **NPCs have their own agendas** — not quest dispensers. Every NPC is the hero of their own story.
-- **Don't over-share.** Secrets revealed slowly are 10x more interesting. Surface `goal`, `current_mood`, and the EXISTENCE of a `secret` — never the secret's text.
+- **Don't over-share.** Secrets revealed slowly are 10x more interesting. What an NPC hides is a fact only they hold (the brief marks it `[HIDDEN FROM PLAYER]`): let it show through behaviour, and give it up only when the fiction earns it.
 - **Give NPCs contradictions.** The gentle priest who collects weapons.
 - **NPCs can say no, lie, or give bad advice.**
 - **Reactions compound.** Insult the merchant last session, he remembers. Use `gm-npc.sh mood` + `update`.

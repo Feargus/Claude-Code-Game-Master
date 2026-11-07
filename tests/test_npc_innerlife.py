@@ -1,4 +1,6 @@
-"""Tests for npc-innerlife-schema: additive goal/secret/current_mood/voice/bonds."""
+"""Tests for npc-innerlife-schema: additive goal/current_mood/voice/bonds.
+
+What an NPC hides is a fact they hold, not a field (the `secret` field is gone)."""
 
 import json
 from pathlib import Path
@@ -17,7 +19,7 @@ def test_set_and_get_inner_life(dcc_world):
                              secret="he was once a crawler", current_mood="wary")
     il = cm.get_inner_life("Mordecai")
     assert il["goal"] == "protect the guild"
-    assert il["secret"] == "he was once a crawler"
+    assert "secret" not in il                       # no longer a field
     assert il["current_mood"] == "wary"
 
 
@@ -38,14 +40,11 @@ def test_shift_mood_persists(dcc_world):
     assert NPCManager(dcc_world).get_inner_life("Carl")["current_mood"] == "furious"
 
 
-def test_context_surfaces_inner_life_but_not_secret_text(dcc_world):
-    NPCManager(dcc_world).set_inner_life(
-        "Carl", goal="reach Floor 4", secret="terrified of the dark", current_mood="determined")
+def test_context_surfaces_inner_life(dcc_world):
+    NPCManager(dcc_world).set_inner_life("Carl", goal="reach Floor 4", current_mood="determined")
     ctx = SessionManager(dcc_world).get_full_context()
     assert "wants: reach Floor 4" in ctx
     assert "mood: determined" in ctx
-    assert "has a secret" in ctx
-    assert "terrified of the dark" not in ctx  # secret existence only, never the text
 
 
 def test_inner_life_is_additive_legacy_npcs_still_load(dcc_world):
