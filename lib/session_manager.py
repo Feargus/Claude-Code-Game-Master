@@ -1069,10 +1069,16 @@ class SessionManager(EntityManager):
             lines.append("")
             lines.append("--- YOUR WORLD'S SIGNATURE SYSTEMS (executable — ROLL these, "
                          "do not just narrate them) ---")
-            lines.append("Resolve with lib/game_core primitives "
-                         "(named_track / price_roll / reaction_roll / guarded_payoff).")
+            counters = {v.lower(): v for v in kit.vitals() if v != "hp"}
             for s in sys_list:
-                lines.append(f"- {s['name']} ({s['primitive']}): {self._system_summary(s)}")
+                name = s.get('name', '')
+                if s.get('primitive') == 'named_track' and name.lower() in counters:
+                    how = f"counter: gm-player.sh vital {counters[name.lower()]} +1"
+                elif s.get('primitive') == 'named_track':
+                    how = "count it with an event clock: gm-clock.sh"
+                else:
+                    how = 'roll: uv run python lib/dice.py "1d20"'
+                lines.append(f"- {name} ({how}): {self._system_summary(s)}")
 
         context = "\n".join(lines)
 

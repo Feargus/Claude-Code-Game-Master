@@ -20,6 +20,11 @@
 
 source "$(dirname "$0")/common.sh"
 
+if [ "$#" -lt 1 ] || [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    sed -n '3,18p' "$0" | sed 's/^# \{0,1\}//'
+    exit 0
+fi
+
 require_active_campaign
 
 $PYTHON_CMD "$LIB_DIR/threat_clocks.py" "$@"

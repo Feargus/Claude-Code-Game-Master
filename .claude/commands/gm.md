@@ -102,6 +102,8 @@ bash tools/gm-campaign.sh create "one-shot" --campaign-name "One-Shot Adventure"
 bash tools/gm-campaign.sh switch "one-shot"
 bash tools/gm-location.sh add "<opening place>" "<one line about it>"
 bash tools/gm-npc.sh create "<first NPC>" "<who they are>" "<attitude>" --location "<opening place>"
+bash tools/gm-session.sh move "<opening place>"
+bash tools/gm-scene.sh enter "<first NPC>"
 ```
 
 ### Begin Adventure
@@ -139,7 +141,7 @@ choice into the play pack's `room`/`hook` and build the opening around **that** 
 
 ### Startup
 
-Complete Steps 1-2 before presenting the scene. Do not skip them.
+Complete Steps 1-3 before presenting the scene. Do not skip them.
 
 #### Step 1: Load Full Context (PRIMARY)
 ```bash
@@ -165,7 +167,15 @@ tail -30 world-state/campaigns/[campaign-name]/session-log.md
   bash tools/gm-session.sh move "[correct location]"
   ```
 
-#### Step 3: Party context
+#### Step 3: Who is in the scene
+```bash
+bash tools/gm-scene.sh
+```
+The scene list (who is actually here) decides who learns what is said, and which NPCs the
+brief shows. It starts empty after a move. If the cliffhanger has someone with the character,
+enter them: `bash tools/gm-scene.sh enter "<name>"...`.
+
+#### Step 4: Party context
 
 Pull full NPC detail when the summary isn't enough:
 ```bash

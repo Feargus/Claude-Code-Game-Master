@@ -46,9 +46,9 @@ def test_systems_block_surfaces_in_context(dcc_world):
     ])
     ctx = SessionManager(dcc_world).get_full_context()
     assert "SIGNATURE SYSTEMS (executable" in ctx, "the roll-these block must appear"
-    assert "Menace (named_track)" in ctx
+    assert "Menace (count it with an event clock: gm-clock.sh)" in ctx
     assert "they fear you" in ctx and "the city hunts you" in ctx
-    assert "named_track / price_roll / reaction_roll / guarded_payoff" in ctx
+    assert "game_core" not in ctx                    # no command the GM could run
 
 
 def test_no_systems_no_block(dcc_world):
