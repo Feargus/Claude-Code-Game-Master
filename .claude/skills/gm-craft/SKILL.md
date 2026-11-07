@@ -24,7 +24,7 @@ chair; pull a page when the beat needs it. Never make them wait through a census
 A clever, effective, unique, daring, or punishing-but-cool beat EARNS progress — same as a kill. When a player solves an encounter without combat (improvised trap, environmental kill, baiting enemies into each other, a daring escape, a crowd-pleasing stunt, or simply surviving telegraphed lethal odds), grant it on the spot:
 `bash tools/gm-player.sh award [name] --tier minor|major|legendary --reason "..."`
 - **minor** — a neat, effective move. **major** — a genuinely clever/unique solution or a real risk paid off. **legendary** — a defining, table-flipping moment.
-- Kit-aware and level-scaled (XP for level/xp kits, a milestone tick for milestone kits) and **co-awards the kit's follower/viewer currency** where one exists (DCC). One call per beat. Persist the award BEFORE narrating the payoff. In DCC especially: spectacle, not just kills, is the point — lean toward awarding.
+- Kit-aware and level-scaled (XP for level/xp kits, a milestone tick for milestone kits). One call per beat. Persist the award BEFORE narrating the payoff. Spectacle, not just kills, earns progress: lean toward awarding.
 
 ## Narrative Voice (write in the author's voice)
 - **Scene context carries a `--- NARRATIVE VOICE ---` block** (from the world-bible:

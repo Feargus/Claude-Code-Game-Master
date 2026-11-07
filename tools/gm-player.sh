@@ -49,7 +49,7 @@ case "$ACTION" in
         ;;
 
     "award")
-        # Discretionary spectacle XP (kit-aware, level-scaled; co-awards followers).
+        # Discretionary spectacle XP (kit-aware, level-scaled).
         # Name optional (defaults to active PC). Requires --tier; --reason optional.
         $PYTHON_CMD "$LIB_DIR/player_manager.py" award "$@"
         ;;
@@ -201,7 +201,7 @@ case "$ACTION" in
         echo "  create '<json>' [--canon N] [--replace] - Save a new character from the interview"
         echo "  set <name>                   - Set character as current active PC"
         echo "  xp <name> +<amount>          - Award XP to character"
-        echo "  award [name] --tier T        - Spectacle XP for a clever/effective/unique/punishing beat (T=minor|major|legendary; --reason \"...\"; co-awards followers)"
+        echo "  award [name] --tier T        - Spectacle XP for a clever/effective/unique/punishing beat (T=minor|major|legendary; --reason \"...\")"
         echo "  vital <vital> <+/-N|set N>   - Read/change a kit vital (vigor, corruption, ...)"
         echo "  kill <name> [--cause ...]    - Mark PC dead (then run Death Protocol)"
         echo "  become <party_member>        - Take over a party member as the active PC"

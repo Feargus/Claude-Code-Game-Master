@@ -112,7 +112,7 @@ later facts), ask the player out of character before narrating or noting it.
 | XP/credits/inventory (PC) | `gm-player.sh` |
 | A campaign counter (PC) | `gm-player.sh vital <name> +N\|-N\|set N` (the counters this campaign declares; the brief's SIGNATURE SYSTEMS names which they are, and their thresholds) |
 | Wounds, armor, cyberware (PC) | `gm-body.sh` (`hit`, `heal`, `repair`, `show`; rules in `gm-combat`) |
-| Spectacle XP (clever/effective/unique/punishing non-kill beat) | `gm-player.sh award [name] --tier minor\|major\|legendary --reason "..."` (kit-aware, level-scaled; co-awards followers in DCC) |
+| Spectacle XP (clever/effective/unique/punishing non-kill beat) | `gm-player.sh award [name] --tier minor\|major\|legendary --reason "..."` (level-scaled) |
 | Party NPC stats | `gm-npc.sh` |
 | New NPC | `gm-npc.sh create "<name>" "<who>" "<attitude>" --location "<where they're usually found>"` (repeatable; must exist; `--nowhere` for someone with no usual place). Creating doesn't put them in the scene: `gm-scene.sh enter` if they're here |
 | An NPC's usual place changes (moves in, gets a job, is evicted) | `gm-npc.sh tag-location "<npc>" "<place>"...` / `untag-location` (known places only). Where someone *usually* is, not who is in the scene now (that's `gm-scene.sh`) |
