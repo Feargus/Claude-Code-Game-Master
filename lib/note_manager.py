@@ -155,6 +155,8 @@ class NoteManager:
                     f"gm-note.sh about {fact_id} --remove <id>)") if found else ""
             print(f"  about: {', '.join(about_ids)}{note}")
         print(f"  known to: {', '.join(holder_ids) if holder_ids else 'nobody (a secret)'}")
+        if holders is None and not secret:
+            self._named_but_absent(fact_id, about_ids, holder_ids)
         if list_waiting:
             self._list_waiting(fact_id)
         return fact_id
@@ -178,6 +180,19 @@ class NoteManager:
             entry.pop('about', None)
         self.json_ops.save_json("facts.json", facts)
         return about
+
+    def _named_but_absent(self, fact_id: str, about_ids, holder_ids) -> None:
+        """The scene cross-check: living NPCs a scene fact names who aren't in the
+        scene. Either they're here and the GM forgot `gm-scene.sh enter`, or the
+        fact is only about them, which is fine."""
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        absent = [i[4:] for i in about_ids if i.startswith("npc:") and i not in holder_ids
+                  and (npcs.get(i[4:]) or {}).get("status") != "dead"]
+        if absent:
+            names = " ".join(f'"{n}"' for n in absent)
+            print(f"  Named but not in the scene: {', '.join(absent)}. If they're here: "
+                  f"bash tools/gm-scene.sh enter {names}, then "
+                  f"gm-note.sh tell {fact_id} {' '.join('npc:' + n for n in absent)}")
 
     def _entry(self, facts: dict, fact_id: str) -> dict:
         entry = next((f for items in facts.values() if isinstance(items, list)

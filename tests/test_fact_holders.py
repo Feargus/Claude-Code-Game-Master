@@ -129,3 +129,20 @@ def test_cli(dcc_world):
     assert "knew it already" in r.stdout
     r = run("add", "lore", "x", "--holders", "Carl", "--holders", "player")
     assert r.returncode == 0 and "known to: npc:Carl, player" in r.stdout
+
+
+def test_a_named_npc_outside_the_scene_is_pointed_out(dcc_world, capsys):
+    nm = NoteManager(dcc_world)
+    fid = nm.add_fact("session_events", "Mordecai and Carl argued about the map")
+    out = capsys.readouterr().out
+    assert "Named but not in the scene: Mordecai." in out       # Carl is in the party
+    assert 'gm-scene.sh enter "Mordecai"' in out and f"tell {fid} npc:Mordecai" in out
+    nm.add_fact("lore", "Mordecai once ran a bar", secret=True)
+    nm.add_fact("lore", "Mordecai once ran a bar", holders=["street"])
+    assert "Named but not in the scene" not in capsys.readouterr().out
+
+
+def test_the_dead_are_not_pointed_out(dcc_world, capsys):
+    _edit_npcs(dcc_world, lambda npcs: npcs["Mordecai"].update(status="dead"))
+    NoteManager(dcc_world).add_fact("lore", "Mordecai was buried")
+    assert "Named but not in the scene" not in capsys.readouterr().out
