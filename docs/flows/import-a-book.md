@@ -8,7 +8,6 @@ sources:
   - { resource: /lib/campaign_manager.py }
   - { resource: /lib/book_bible.py }
   - { resource: /lib/world_bible.py }
-  - { resource: /lib/opening_seed.py }
   - { resource: /lib/new_character.py }
   - { resource: /lib/session_manager.py }
   - { resource: /lib/opening.py }

@@ -12,7 +12,6 @@ and die sizes, zone names), writes the whole sheet, and wires the new character 
 - it records the character on the campaign overview;
 - for a canon character (an NPC from the campaign), it marks that NPC as the player
   so scene context stops voicing them;
-- for the campaign's first character, it re-seeds the opening to fit them.
 """
 
 import sys
@@ -196,17 +195,9 @@ class CharacterCreator(EntityManager):
         if not self.json_ops.save_json("character.json", character):
             return {"success": False, "error": "failed to save character.json"}
 
-        overview = self.json_ops.load_json("campaign-overview.json") or {}
-        unmatched = not overview.get("opening_matched_to_pc")
         self.json_ops.update_json("campaign-overview.json", {"current_character": character["name"]})
         if canon:
             self._mark_as_pc(character["name"])
-
-        # First PC: the opening is re-seeded to fit them. A PC-matched opening is
-        # left alone, so a death hand-off with --replace doesn't rewrite it.
-        if unmatched:
-            from opening_seed import reseed_opening
-            reseed_opening(str(self.campaign_dir), character)
 
         return {"success": True, "character": character, "warnings": warnings,
                 "archived": archived}

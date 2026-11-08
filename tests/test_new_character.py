@@ -11,7 +11,6 @@ import pytest
 
 from lib.campaign_manager import CampaignManager
 from lib.new_character import CharacterCreator
-from lib.opening_seed import seed_opening
 from lib.player_manager import PlayerManager
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -156,51 +155,17 @@ def test_canon_unknown_npc_is_refused(campaign):
     assert "Nobody" in _error(_create("--canon", "Nobody", data={"name": "Nobody"}))
 
 
-def test_first_character_reseeds_the_opening(isolated_world_state):
-    from tests.test_opening_seed import PIRATE_PLOT, _setup_two_arcs
-
+def test_creating_a_character_moves_nothing(isolated_world_state):
+    """The opening (gm-session.sh opening) comes after the character, so creating
+    one leaves the position as it is (it used to re-seed an import's opening)."""
     cm = CampaignManager()
     cdir = cm.create("Hyboria", "Hyboria")
     assert cm.set_active("Hyboria")
-    _setup_two_arcs(cdir)
-    seed_opening(str(cdir), timestamp="2026-01-01T00:00:00Z")
-
-    result = CharacterCreator().create(
-        {"name": "Conan", "background": "pirate-era sailor on the Black Coast"})
-    assert result["success"]
-
     ov = json.loads((cdir / "campaign-overview.json").read_text())
-    assert ov["current_character"] == "Conan" and ov.get("opening_matched_to_pc") is True
-    assert ov["player_position"]["current_location"] == "The Tigress"
-    assert (ov.get("opening_hook") or {}).get("plot") == PIRATE_PLOT
-
-    # A later set must not rewrite a PC-matched opening.
-    ov["player_position"]["current_location"] = "WRONG"
+    ov["player_position"] = {"current_location": "The Tigress"}
     (cdir / "campaign-overview.json").write_text(json.dumps(ov), encoding="utf-8")
+    assert CharacterCreator().create({"name": "Conan", "background": "a pirate"})["success"]
     assert PlayerManager().set_current_player("Conan")
     ov = json.loads((cdir / "campaign-overview.json").read_text())
-    assert ov["player_position"]["current_location"] == "WRONG"
-
-
-def test_replace_does_not_reseed_a_matched_opening(isolated_world_state):
-    from tests.test_opening_seed import _setup_two_arcs
-
-    cm = CampaignManager()
-    cdir = cm.create("Hyboria", "Hyboria")
-    assert cm.set_active("Hyboria")
-    _setup_two_arcs(cdir)
-    seed_opening(str(cdir), timestamp="2026-01-01T00:00:00Z")
-    assert CharacterCreator().create(
-        {"name": "Conan", "background": "pirate-era sailor on the Black Coast"})["success"]
-
-    ov = json.loads((cdir / "campaign-overview.json").read_text())
-    ov["player_position"]["current_location"] = "WRONG"
-    (cdir / "campaign-overview.json").write_text(json.dumps(ov), encoding="utf-8")
-    log_before = (cdir / "session-log.md").read_text()
-
-    assert CharacterCreator().create(
-        {"name": "Valeria", "background": "a thief of Aquilonia"}, replace=True)["success"]
-    ov = json.loads((cdir / "campaign-overview.json").read_text())
-    assert ov["current_character"] == "Valeria"
-    assert ov["player_position"]["current_location"] == "WRONG"
-    assert (cdir / "session-log.md").read_text() == log_before
+    assert ov["player_position"] == {"current_location": "The Tigress"}
+    assert "opening_hook" not in ov

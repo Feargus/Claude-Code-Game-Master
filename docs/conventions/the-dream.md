@@ -6,7 +6,6 @@ sources:
   - { resource: /.claude/commands/import.md }
   - { resource: /.claude/commands/gm.md }
   - { resource: /.claude/skills/gm-craft/SKILL.md }
-  - { resource: /lib/opening_seed.py }
   - { resource: /lib/new_character.py }
   - { resource: /lib/session_manager.py }
   - { resource: /lib/opening.py }

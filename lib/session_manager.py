@@ -637,16 +637,6 @@ class SessionManager(EntityManager):
             lines.append(f"vitals: {', '.join(vitals) if vitals else '(none)'}")
             lines.append(f"skills: {', '.join(skills) if skills else '(none)'}")
 
-        # --- PRIMER (play pack: tonight's table, not the gazetteer) ---
-        try:
-            from play_pack import render_primer, normalize_pack, pack_is_set, has_book
-            pack = normalize_pack(campaign.get("play_pack"))
-            if pack_is_set(pack):
-                lines.append("")
-                lines.append(render_primer(pack, book=has_book(self.campaign_dir)))
-        except Exception:
-            pass
-
         # --- Play style (honor every beat; player toggles anytime) ---
         if self.get_preferences().get("beat_length", "adaptive") == "tight":
             lines.append("Pacing: TIGHT — a beat is the player's action, its immediate "

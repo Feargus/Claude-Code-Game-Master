@@ -272,8 +272,6 @@ class Opening:
 
         overview = self.json_ops.load_json("campaign-overview.json") or {}
         overview["opened"] = overview.get("game_time") or self.json_ops.get_timestamp()
-        # A character made or swapped later must not rebuild the opening.
-        overview["opening_matched_to_pc"] = True
         self.json_ops.save_json("campaign-overview.json", overview)
 
         now = TimeManager(self.wsd).get_game_time()

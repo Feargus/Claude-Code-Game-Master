@@ -6,7 +6,7 @@ sources:
   - { resource: /lib/new_character.py }
   - { resource: /tools/gm-player.sh }
   - { resource: /lib/player_manager.py }
-  - { resource: /lib/opening_seed.py }
+  - { resource: /lib/opening.py }
   - { resource: /CLAUDE.md }
   - { resource: /.claude/commands/create-character.md }
 generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:45:56Z }
@@ -41,8 +41,7 @@ does:
   archives the outgoing sheet to `fallen/` before writing
 - it sets `current_character` on `campaign-overview.json`, which is what session start,
   status, and world stats read
-- for the campaign's first PC it re-seeds the opening (`reseed_opening`), which fires only
-  while `opening_matched_to_pc` is absent/false; a later `--replace` leaves it alone
+- it moves nothing: in a new campaign the opening comes after it (`gm-session.sh opening`)
 - `--canon` resolves the NPC alias-aware (`_find_entity_name`), uses the canonical key as
   the PC's name, and marks the NPC `is_player_character` (plus `is_party_member: false` /
   `became_pc: true`) so scene context stops voicing the PC as an NPC standing nearby
