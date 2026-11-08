@@ -5,7 +5,7 @@
 ## Flow
 
 * [A play turn](play-turn.md) - The play loop, the three things that fire unasked, and the rule that a missing face or place is read from the book and written into the journal — not scraped ahead.
-* [Authoring an original world](author-a-world.md) - /new-game builds one stage — kit, voice, a play pack, one street — then grows the world from the table.
+* [Authoring an original world](author-a-world.md) - /new-game builds one stage — kit, voice, one street — then grows the world from the table.
 * [Illustrating a scene](scene-illustration.md) - Beat to picture — the enablement gate, the background agent, and the two auto-injections that keep a campaign on-model.
 * [Importing a book](import-a-book.md) - Index the book, ask who they are, open one stage. The rest stays in the binder until play walks toward it.
 * [Onboarding and the death hand-off](onboarding-and-death.md) - The holodeck door — one question, then the room — and how the story continues after the PC dies rather than ending.

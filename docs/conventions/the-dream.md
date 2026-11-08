@@ -9,8 +9,7 @@ sources:
   - { resource: /lib/opening_seed.py }
   - { resource: /lib/new_character.py }
   - { resource: /lib/session_manager.py }
-  - { resource: /lib/play_pack.py }
-  - { resource: /tools/gm-playpack.sh }
+  - { resource: /lib/opening.py }
 generated: { by: cursor-grok-4.6, at: 2026-08-15T11:52:48Z }
 ---
 
@@ -40,11 +39,13 @@ loading screen. Talking to Bêlit on the *Tigress* is the game.
 2. Ask who they are — or who they came to stand next to.
 3. Open *that* page. One stage: this room, the exits you can see, the people in it,
    one hook that will not wait.
-4. Play. When a new face or place is needed, `gm-playpack.sh from-book "<name>"`,
-   then RAG, then narrate.
+4. Play. When a new face or place is needed, `gm-npc.sh create` or
+   `gm-location.sh add` (in a campaign from a book, search it first), then narrate.
 
-The pack lives on `campaign-overview.json.play_pack`. Context renders it as
-`--- PRIMER ---`. `gm-playpack.sh stage` writes the room into the journal.
+`gm-session.sh opening` writes that stage once, through the normal tools (places,
+NPCs, the scene list, a plot whose hook is its first beat, facts, clocks). Nothing
+is kept as a separate pack, so nothing goes stale (it replaced upstream's play pack
+and its PRIMER, 2026-11-08).
 
 Identity first. Extract last. Extract only the stage.
 

@@ -42,7 +42,7 @@ Display all available commands and tools.
   CLI TOOLS (bash tools/gm-*.sh; most print their usage when run bare)
   --------------------------------------------------------
   Session and world
-  gm-session.sh     Start/end sessions, the brief (context), moves
+  gm-session.sh     Start/end sessions, the brief (context), moves, the opening
   gm-campaign.sh    Create and switch campaigns
   gm-time.sh        In-game time
   gm-scene.sh       Who is in the scene
@@ -66,7 +66,6 @@ Display all available commands and tools.
   gm-search.sh      Search world state and the source book
   gm-context.sh     Scene context with source passages
   gm-lore.sh        A grounded brief from the source book
-  gm-playpack.sh    The play pack; one name from the book
   gm-enhance.sh     Enrich entities from the source book
   gm-extract.sh     Extract a book into a campaign
   gm-image.sh       Scene images (needs OPENAI_API_KEY)

@@ -132,8 +132,11 @@ archives the outgoing sheet to `fallen/` first.
 
 **After identity, before you open the scene, ask where/when they want to start.** Offer a
 fitting default (an iconic opening for this world/character) but make it plain they can name
-their own: a specific location, a particular scene, or a point in the timeline. Persist their
-choice into the play pack's `room`/`hook` and build the opening around **that** start.
+their own: a specific location, a particular scene, or a point in the timeline. Build the
+opening around **that** start and write it in one call: `bash tools/gm-session.sh opening '<json>'`
+(the place, its exits, the people there, the plot and its hook, the premise and secrets, the
+antagonist's clock, the start time; the fields and an example: `lib/opening.py` and
+`/new-game` Phase D). Then narrate the first scene from what it prints.
 
 ---
 

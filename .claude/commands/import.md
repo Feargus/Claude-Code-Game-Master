@@ -88,8 +88,8 @@ to begin:
 opening scene for this book/character) but make it plain they can name their own:
 a specific location, a particular moment or scene from the source, or a point in
 the character's timeline ("the night Bêlit dies," "before he was king," "the sack
-of such-and-such city"). Persist their answer into the play pack's `room`/`hook`
-and build Step 5's stage around **that** start, not the book's default first page.
+of such-and-such city"). Build Step 5's opening around **that** start, not the
+book's default first page.
 
 ---
 
@@ -199,43 +199,45 @@ bash tools/gm-search.sh --rag-only "<character or opening scene>" 8
 bash tools/gm-lore.sh "<place>" --important
 ```
 
-Then persist the pack and the stage, before narrating:
-
-```bash
-bash tools/gm-playpack.sh set --json '{
-  "whose_story": "<who they came to meet or be>",
-  "room": "<this room, not a kingdom>",
-  "present": ["<2-4 names in the room>"],
-  "exits": ["<what you can see from here>"],
-  "hook": "<the problem that will not wait>",
-  "offstage": ["<horizon names — do not build>"],
-  "primer": "<one short GM paragraph>"
-}'
-bash tools/gm-playpack.sh stage
-```
-
-**Give the story a spine — seed the antagonist's clock.** A stage without a
-countdown is inert. Seed **at least one** threat clock whose aim completes
-off-screen whether or not the player engages — the book's looming danger (Yara's
-sorcery, the caravan fleeing the city, the cult's ritual):
-
-```bash
-bash tools/gm-time.sh set "<YYYY-MM-DD HH:MM>"   # the story's start, if not set yet
-bash tools/gm-clock.sh add "<the antagonist's aim>" 4 --due-in <duration> \
-  --consequence "<what happens in the world when it fills>"
-```
-
-The due time comes from the plot: how long until the aim completes if nobody
-interferes (`3d`, `2w`). One clock, grounded in the book's plot — not a gazetteer
-of doom. It rides into every scene as a THREAT CLOCK and fills as game time passes.
-
-When play walks toward a new name: `bash tools/gm-playpack.sh from-book "<name>"` then RAG.
-
-Create the PC: ask who they are (someone from the book, or their own concept), then run
-the `/create-character` interview, the fast way by default. Save with
+Create the PC first: ask who they are (someone from the book, or their own concept),
+then run the `/create-character` interview, the fast way by default. Save with
 `bash tools/gm-player.sh create '<json>'`, adding `--canon "<NPC name>"` for someone from
-the book. The play pack's room + hook are the opening; `create` fits them to the first
-character.
+the book; that one NPC is created first (`gm-npc.sh create`, from what the book says),
+and stays out of the opening's people.
+
+Then write the opening, before narrating, in one call (the fields: `lib/opening.py`).
+It makes the place, exits and people through the normal tools, and keeps nothing if any
+part is refused. **Every campaign starts with at least one plot:** its `hook` is the
+problem that will not wait and becomes its first beat; its `npcs` and `locations` may
+name people and places on the horizon that get no record yet.
+
+**Give the story a spine — the antagonist's clock.** A stage without a countdown is
+inert. At least one development carries a threat clock whose aim completes off-screen
+whether or not the player engages — the book's looming danger (Yara's sorcery, the
+caravan fleeing the city, the cult's ritual). It is due when the aim would complete if
+nobody interferes (`3d`, `2w`): one clock, grounded in the book's plot, not a gazetteer
+of doom.
+
+```bash
+bash tools/gm-session.sh opening '{
+  "time": "<YYYY-MM-DD HH:MM>",
+  "place": {"name": "<this room, not a kingdom>", "position": "<where it is>"},
+  "exits": [{"name": "<what you can see from here>"}],
+  "npcs": [{"name": "<Name>", "who": "<who they are, in the book>", "attitude": "<attitude>",
+            "aliases": ["<short name the story uses>"]}],
+  "plot": {"name": "<the thread>", "type": "main", "description": "<what it is about>",
+           "hook": "<the problem that will not wait>",
+           "npcs": ["<who it involves>"], "locations": ["<horizon places>"]},
+  "developments": [
+    {"fact": "<what is true here that the book establishes>", "holders": ["<who knows it>"]},
+    {"fact": "<what the antagonist is doing>", "holders": [],
+     "clock": {"name": "<the antagonist'"'"'s aim>", "segments": 4, "due_in": "<3d>",
+               "consequence": "<what happens in the world when it fills>"}}]
+}'
+```
+
+When play walks toward a new name: `gm-search.sh "<name>" --rag-only` for what the book
+says, then `gm-npc.sh create` or `gm-location.sh add`.
 
 Enhance **only** the people in this room (so they speak in the book's words):
 
@@ -276,7 +278,7 @@ bash tools/gm-extract.sh write-index --index-json '{"npcs":[{"name":"Yara","note
 
 The index rides into scene context every session (the WORLD INDEX block). You
 still build **no** full records here — a face becomes real only when play walks
-toward it (`gm-playpack.sh from-book`, then RAG).
+toward it (search the book, then `gm-npc.sh create` or `gm-location.sh add`).
 
 ---
 

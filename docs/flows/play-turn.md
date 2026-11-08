@@ -8,8 +8,6 @@ sources:
   - { resource: /tools/gm-context.sh }
   - { resource: /tools/gm-enhance.sh }
   - { resource: /.claude/settings.json }
-  - { resource: /lib/play_pack.py }
-  - { resource: /tools/gm-playpack.sh }
 generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:24:29Z }
 verified: { by: cursor-grok-4.6, at: 2026-08-14T18:59:59Z }
 ---
@@ -35,7 +33,8 @@ the harness adds over "a model pretending to be a GM" lives in the first and fou
    player's stored preference.
 
 When the beat needs a face or place that is not in the journal yet,
-`bash tools/gm-playpack.sh from-book "<name>"`, then RAG, then narrate. Do not
+`gm-npc.sh create` or `gm-location.sh add` (in a campaign from a book, search it
+first), then narrate. Do not
 scrape ahead. The campaign file is a journal; `move` already creates a blank
 destination, and first visit already asks the book for a brief. See
 [the dream](../conventions/the-dream.md).

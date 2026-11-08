@@ -1,7 +1,7 @@
 # /new-game - Create Your World
 
-Author tonight's table, not a planet. Same dream as `/import`: kit, voice, a
-primer, one street. The campaign file is a **journal of where the table has
+Author tonight's table, not a planet. Same dream as `/import`: kit, voice, one
+street. The campaign file is a **journal of where the table has
 been**. The world grows AS YOU PLAY — seed a clock, a thread, or a plot when you
 see a long-game opportunity, materialize the next face or place when play walks
 toward it. Do not pre-build the universe: author tonight's one stage, then let the
@@ -92,11 +92,11 @@ uv run python lib/world_bible.py show
 
 Show the user the `name`, voice style, themes, factions, and signature systems.
 **Gate play on their approval** — let them edit or accept. Then write the kit
-and the play pack (Phase C). The bible stays `confirmed: false` until they accept.
+and sketch the opening (Phase C). The bible stays `confirmed: false` until they accept.
 
 ---
 
-## PHASE C — PLAY PACK (the default — build the one stage)
+## PHASE C — KIT AND THE OPENING SKETCH (build the one stage)
 
 Write only what tonight needs:
 
@@ -117,38 +117,27 @@ Write only what tonight needs:
    bash tools/gm-extract.sh write-index --index-json '{"npcs":[{"name":"<Name>","note":"one sentence"}],"locations":[...],"items":[...],"monsters":[...]}'
    ```
    Recognizable, not a gazetteer — the faces the player might actually meet.
-3. Set the play pack and stage:
-
-```bash
-bash tools/gm-playpack.sh set --json '{
-  "whose_story": "<who they are or came to meet>",
-  "room": "<one street / room / deck>",
-  "present": ["<2-4 people here>"],
-  "exits": ["<what you can see>"],
-  "hook": "<the problem that will not wait>",
-  "offstage": ["<horizon names>"],
-  "primer": "<GM paragraph: where the plot starts>"
-}'
-bash tools/gm-playpack.sh stage
-```
-
-3b. **Give the story a spine — seed the antagonist's clock.** A stage without a
-   countdown is inert. Seed **at least one** threat clock whose aim completes
-   off-screen (the looming danger your tone/themes imply), so the world moves on
-   the player whether or not they engage:
-   ```bash
-   bash tools/gm-time.sh set "<YYYY-MM-DD HH:MM>"   # the story's start, if not set yet
-   bash tools/gm-clock.sh add "<the antagonist's aim>" 4 --due-in <duration> \
-     --consequence "<what happens when it fills>"
-   ```
-   The due time comes from the fiction: how long until the aim completes if
-   nobody interferes (`3d`, `2w`). It fills evenly until then.
-   One clock, not a doom gazetteer — it rides into every scene as a THREAT CLOCK.
+3. **Sketch the opening; don't write it yet.** It is written in Phase D with
+   `gm-session.sh opening`, once the character exists and the player has said where
+   and when to start, so it fits them. Until then nothing of it is stored. Sketch:
+   - **the place** you stand in (a street, a room, a deck), with 2–5 **exits** you can see;
+   - **2–4 people** there: who they are, their attitude, the short names the story
+     will use (aliases), and where each is usually found;
+   - **the plot**: every campaign starts with at least one. Its **hook** is the
+     problem that won't wait, and becomes its first beat. Its `npcs` and `locations`
+     may name people and places on the horizon that get no record yet;
+   - **the premise and the secrets** as facts with who knows them (`holders`; none
+     for a secret nobody knows yet), e.g. "Auntie Ro hid the sleeve", held by Ro;
+   - **the story's spine: the antagonist's clock.** A stage without a countdown is
+     inert. At least one threat clock whose aim completes off-screen whether or not
+     the player engages, due when it would come to a head if nobody interferes
+     (`3d`, `2w`). One clock, not a doom gazetteer;
+   - **the start time** (`YYYY-MM-DD HH:MM`).
 
 4. Optional thin binder: a short `authored-canon.md` of *this street only*, then
    `gm-extract.sh prepare` so RAG has something to pull. Do not author the continent.
 
-When a new name walks on: with a binder, `gm-playpack.sh from-book "<name>"` then RAG; without one, `gm-npc.sh create "<name>" "<who>" "<attitude>" --location "<place>"` or `gm-location.sh add`.
+When a new name walks on in play: `gm-npc.sh create "<name>" "<who>" "<attitude>" --location "<place>"` or `gm-location.sh add` (with a binder, search it first: `gm-search.sh "<name>" --rag-only`).
 
 ---
 
@@ -172,8 +161,51 @@ chronicler record carries BOTH halves of the image identity — the **art style*
 (`--style`) and the **art narrator** (`--name` / `--persona`, the in-world entity
 who "makes" every picture). Lock both now; they never change in play.
 
-**Author a `visual_appearance` block for every NPC in the play pack** (and the PC
-at `/create-character`). It is the locked look every future image renders, with
+Then display a summary box and hand off:
+
+```
+Your world awaits its hero. Who are you in this world?
+```
+
+Then ask that **one question** — identity first — with two answers:
+
+- **someone from this world:** one of the people in your sketch, so name a few. Create
+  that one NPC first (`gm-npc.sh create`), so `--canon` can find them, and leave them
+  out of the opening's people.
+- **someone of their own:** a one-line concept.
+
+Then run the `/create-character` interview, the fast way by default: propose a complete
+character, let the player change what they like, and save with `gm-player.sh create`
+(`--canon "<NPC>"` for someone from this world).
+
+**After identity, before you open the scene, ask where/when they want to start.**
+Offer a fitting default but let them name their own opening — a specific location,
+scene, or point in the timeline — and fit the sketch to it.
+
+**Write the opening**, all of it in one call (the fields: `lib/opening.py`). It makes
+everything through the normal tools, and keeps nothing if any part is refused:
+
+```bash
+bash tools/gm-session.sh opening '{
+  "time": "<YYYY-MM-DD HH:MM>",
+  "place": {"name": "<the place>", "position": "<where it is>", "description": "<…>"},
+  "exits": [{"name": "<what you can see>", "aliases": ["<short name>"]}],
+  "npcs": [{"name": "<Name>", "who": "<who they are>", "attitude": "<attitude>",
+            "aliases": ["<short name>"]}],
+  "plot": {"name": "<the thread>", "type": "main", "description": "<what it is about>",
+           "hook": "<the problem that will not wait>",
+           "npcs": ["<who it involves, on stage or on the horizon>"],
+           "locations": ["<places on its horizon>"]},
+  "developments": [
+    {"fact": "<the premise, or a secret>", "holders": ["<who knows it>"]},
+    {"fact": "<what the antagonist is doing>", "holders": [],
+     "clock": {"name": "<the antagonist'"'"'s aim>", "segments": 4, "due_in": "<3d>",
+               "consequence": "<what happens in the world when it fills>"}}]
+}'
+```
+
+**Author a `visual_appearance` block for every NPC on the stage** (the PC gets one at
+`/create-character`). It is the locked look every future image renders, with
 EXACTLY these 11 keys: `sex, age, race, species, hair, face, eyes, clothing,
 gear, demeanor, size`. Ground each field in the bible; leave unknowns "". Author
 only the people on this stage — the rest get a block when they walk on:
@@ -183,31 +215,7 @@ bash tools/gm-npc.sh set-appearance "<NPC name>" \
   --face "..." --eyes "..." --clothing "..." --gear "..." --demeanor "..." --size "..."
 ```
 
-Update `campaign-overview.json` (`session_count: 0` and
-`player_position.current_location` = the play pack's `room`; the date and time
-come from `gm-time.sh set` in step 3b, never by hand) and append the world
-summary to `session-log.md` (starting location, the people on stage, the hook).
-Then display a summary box and hand off:
-
-```
-Your world awaits its hero. Who are you in this world?
-```
-
-Then ask that **one question** — identity first — with two answers:
-
-- **someone from this world:** an NPC from the play pack, so name a few of them.
-- **someone of their own:** a one-line concept.
-
-Then run the `/create-character` interview, the fast way by default: propose a complete
-character, let the player change what they like, and save with `gm-player.sh create`
-(`--canon "<NPC>"` for someone from this world).
-
-**After identity, before you open the scene, ask where/when they want to start.**
-Offer a fitting default but let them name their own opening — a specific location,
-scene, or point in the timeline — and build the play pack's `room`/`hook` around it.
-
-Then open the scene. The play pack's room and hook are the opening; `create` fits
-them to the first character and leaves them in place after that.
+Then open the scene from what `opening` printed: the place, who is here, the hook.
 
 ---
 
@@ -215,9 +223,10 @@ them to the first character and leaves them in place after that.
 - [ ] `world-seed.json` (premise, voice, art style)
 - [ ] `world-bible.json` approved and confirmed (voice + signature systems, not a planet)
 - [ ] `ruleset.json` drafted with the nine attributes and `xp-levels`, plus the world's signature systems
-- [ ] `play_pack` set + `gm-playpack.sh stage` (one room, present NPCs, exits, hook)
 - [ ] chronicler locked (`gm-image.sh chronicler`)
 - [ ] handed off to the one question and the `/create-character` interview (`gm-player.sh create`)
+- [ ] the opening written with `gm-session.sh opening` (one place, exits, the people there,
+      the plot and its hook, the premise and secrets, the antagonist's clock, the start time)
 
 ## Growing the world AT THE TABLE (the real "long-term planning")
 You do not pre-plan the campaign — you plan it as you run it. When you see a

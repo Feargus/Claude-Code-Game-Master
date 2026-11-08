@@ -11,8 +11,7 @@ sources:
   - { resource: /lib/opening_seed.py }
   - { resource: /lib/new_character.py }
   - { resource: /lib/session_manager.py }
-  - { resource: /lib/play_pack.py }
-  - { resource: /tools/gm-playpack.sh }
+  - { resource: /lib/opening.py }
 generated: { by: claude-opus-4-8[1m], at: 2026-08-15T16:10:00Z }
 ---
 
@@ -35,13 +34,12 @@ the campaign file is a journal; the book is the world.
 3. **World identity.** Bible → kit → campaign_rules → voice → chronicler. Tone
    and how the holodeck *sounds*. Horizon names, not a gazetteer. The player
    confirms the bible; `/import` never confirms on their behalf.
-4. **The stage.** One room, the exits you can see, the people in it, one hook.
-   Persist with `gm-playpack.sh set` + `stage`, then the `/create-character` interview
-   (`gm-player.sh create`). Enhance only the people in this room. The pack is the
-   opening; `create` keeps its room + hook
-   (`gm-playpack.sh set` marked it matched) — still not a fake session.
-5. **Play.** When someone new walks on, `gm-playpack.sh from-book "<name>"`, then
-   RAG, then narrate. `move` already creates a blank destination; first visit
+4. **The stage.** The `/create-character` interview (`gm-player.sh create`), then one
+   room, the exits you can see, the people in it, and a plot whose hook will not
+   wait, written with `gm-session.sh opening`. Enhance only the people in this room.
+   Still not a fake session.
+5. **Play.** When someone new walks on, search the book for them, then
+   `gm-npc.sh create`, then narrate. `move` already creates a blank destination; first visit
    already fires a lore brief.
 
 ## Why the switch is load-bearing

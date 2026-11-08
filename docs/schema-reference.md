@@ -12,7 +12,7 @@ sources:
   - { resource: /lib/world_kit.py }
   - { resource: /lib/world_bible.py }
   - { resource: /lib/session_manager.py }
-  - { resource: /lib/play_pack.py }
+  - { resource: /lib/opening.py }
 generated: { by: claude-opus-4-8[1m], at: 2026-08-15T16:22:00Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:27:33Z }
 ---
@@ -92,17 +92,9 @@ Most of these are created lazily — a campaign that has never been illustrated 
     "tone": "string"
   },
   "story_spine": {"arc": ["ordered plot names"], "through_line": "string"},
-  "preferences": {"action_menu": true, "rag_inspiration": true},
-  "play_pack": {
-    "whose_story": "string",
-    "room": "this room, not a kingdom",
-    "present": ["names in the room"],
-    "exits": ["what you can see from here"],
-    "hook": "the problem that will not wait",
-    "offstage": ["horizon names — do not build"],
-    "primer": "one short GM paragraph"
-  },
-  "opening_hook": {"location": "string", "hook": "string"}
+  "preferences": {"action_menu": true, "rag_inspiration": false},
+  "scene": {"location": "string", "present": ["NPC keys in the scene"]},
+  "opened": "YYYY-MM-DDTHH:MM (when gm-session.sh opening set up the first scene)"
 }
 ```
 
@@ -113,11 +105,10 @@ in `ruleset.json` instead is a silent no-op for narration. See
 their own keys here (the shipped DCC fixture carries `viewer_stats`, `pending_boxes`, and
 `pending_interview_topics`).
 
-**`play_pack` is tonight's table**, not a gazetteer. `lib/play_pack.py` writes it;
-`get_full_context` renders a `--- PRIMER ---` block when any field is set. `stage`
-persists the room, present NPCs, and exit stubs into the journal. `from-book` writes
-exactly one name when play walks toward it. Setting a pack must not fabricate a
-session (`### Session Ended`). See [the dream](conventions/the-dream.md).
+**The opening leaves no record of its own** except `opened`: `gm-session.sh opening`
+(`lib/opening.py`) writes the first scene into the ordinary files (places, NPCs, the
+scene list, a plot, facts, clocks). It replaced the stored `play_pack` and
+`opening_hook` (2026-11-08), which went stale. See [the dream](conventions/the-dream.md).
 
 ---
 

@@ -9,7 +9,6 @@ sources:
   - { resource: /lib/search.py }
   - { resource: /lib/entity_manager.py }
   - { resource: /tools/gm-context.sh }
-  - { resource: /lib/play_pack.py }
 generated: { by: claude-opus-4-8[1m], at: 2026-08-16T00:00:00Z }
 verified: { by: claude-fable-5, at: 2026-08-14T12:19:52Z }
 ---
@@ -32,7 +31,7 @@ no history, threads, clocks, voice, or rules. Narrating a scene generally wants 
 ## What the session brief carries, and why each block exists
 
 `get_full_context` (`lib/session_manager.py:592`) assembles, in order: header (campaign, session #, location, time) ·
-**KIT** · **PRIMER** (play pack, when set) · play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure (one informing sentence)** · scene-image gate + chronicler · **narrative voice** · **world index** ·
+**KIT** · play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure (one informing sentence)** · scene-image gate + chronicler · **narrative voice** · **world index** ·
 **previously on** + where-we-paused + open threads · **the world remembers** · story threads · **ready threads** (dormant seeded plots whose linked NPC/place is now present, or whose clock matured) · key facts · threat
 clocks · character · party members · **NPC voices** · pending consequences · **your
 world's rules** · **signature systems** (executable kit primitives — `WorldKit.systems()`,
@@ -45,12 +44,6 @@ Eight of those blocks carry design decisions that are not obvious from reading t
   via `WorldKit(world_state_dir)`. A missing `kit` field reads as `custom` — DCC's
   fixture is that case. If `WorldKit` cannot load (no active campaign, a throw), the
   block is skipped rather than crashing the brief.
-
-- **PRIMER is tonight's table.** When `campaign-overview.json.play_pack` has any
-  field set, `render_primer` appends `--- PRIMER ---` (whose story, this room,
-  who is here, the hook, what is offstage). An empty pack adds nothing. Setting
-  a pack does not fabricate a session. New names walk on via
-  `gm-playpack.sh from-book`.
 
 - **Play-style flags stay; failure is one informing sentence.** Pacing, dice, action
   menu and inspiration still read `preferences` and surface when set. Failure is

@@ -19,7 +19,7 @@ Heavy mechanics + craft live in on-demand Skills (`.claude/skills/gm-*`).
 1. `[ -d ".venv" ] && uv run python -c "import anthropic"` fails → run `/setup`.
 2. `bash tools/gm-campaign.sh list` empty → route to `/gm` (offers New Adventure: create / import / one-shot).
 3. Campaigns exist but none is active (no `world-state/active-campaign.txt`) → show `bash tools/gm-campaign.sh list` and have the player pick, then `bash tools/gm-campaign.sh switch <name>`. Do NOT run `/setup`; state tools refuse to run until one is active.
-4. Active campaign but no `character.json` → "Who are you in this world?" (someone from this world, or their own concept), then the `/create-character` interview.
+4. Active campaign but no `character.json` → "Who are you in this world?" (someone from this world, or their own concept), then the `/create-character` interview. In a new campaign, then the opening: `/gm` → ENTERING A WORLD.
 5. All good → greet, offer `/gm`.
 
 ## The Core Loop
@@ -123,7 +123,7 @@ later facts), ask the player out of character before narrating or noting it.
 | Condition (PC) | `gm-condition.sh` |
 | PC death | `gm-player.sh kill` (status dead + log) — then run Death Protocol |
 | NPC death | `gm-npc.sh kill "<name>" --cause "<how>"` (status dead, no longer present anywhere, records the death as a fact, fires its `on_death` consequences) |
-| Play pack / one name from the book | `gm-playpack.sh set` / `stage` / `from-book "<name>"` (only in a campaign made from a book; otherwise `gm-npc.sh create`) |
+| The opening (a new campaign's first scene, once, after the character exists) | `gm-session.sh opening '<json>'`: place, exits, people, the plot and its hook, facts, clocks, all or nothing (the fields: `lib/opening.py`) |
 | Location moved | `gm-session.sh move "<loc>" --takes <travel time>` (resets the scene to the party) |
 | Someone arrives / leaves the scene | `gm-scene.sh enter "<npc>"...` / `leave "<npc>"...` (`gm-scene.sh` alone shows who is here). Presence drives the NPC block, `on_npc` triggers and who knows a new fact; `enter` checks `on_npc` consequences at once |
 | Consequence (structured) | `gm-consequence.sh add "..." "<trigger>" --trigger-type on_location\|on_npc\|on_time\|on_death\|on_clock\|on_learn\|on_event --match ...` (`on_time` matches the time-of-day word, e.g. `night`; `on_clock` a clock's name, or `"<name>:<segment>"`) |
@@ -136,7 +136,7 @@ All tools take `--json` for structured returns. **Always prefix with `bash tools
 
 ## Search Guide (which tool)
 - **Naming a new thing? Scan the WORLD INDEX first.** Scene context carries a WORLD INDEX (named NPCs/locations/items/monsters that already exist) — check it for an established name before inventing a new one.
-- **Narrating a scene? Use the one front door:** `bash tools/gm-context.sh ["loc"] [--entity "Name"]` — world-state + grounded source passages, internally routed. A new face or place that is not in the journal yet: `bash tools/gm-playpack.sh from-book "<name>"` then RAG (a campaign without a book: `gm-npc.sh create` / `gm-location.sh add`). Do not census ahead.
+- **Narrating a scene? Use the one front door:** `bash tools/gm-context.sh ["loc"] [--entity "Name"]` — world-state + grounded source passages, internally routed. A new face or place that is not in the journal yet: `gm-npc.sh create` / `gm-location.sh add` (in a campaign from a book, search the book first: `gm-search.sh "<name>" --rag-only`). Do not census ahead.
 - Source material (free text): `gm-search.sh "q" --rag-only`. World state: `gm-search.sh "q" --world-only`. Both: `gm-search.sh "q"`. NPCs by tag: `gm-search.sh --tag-location "Place"`.
 - **WRONG**: `gm-enhance.sh query "free text"` (entity NAME lookup, not search). **RIGHT**: `gm-search.sh "free text" --rag-only`.
 

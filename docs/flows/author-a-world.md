@@ -1,14 +1,12 @@
 ---
 type: Flow
 title: Authoring an original world
-description: /new-game builds one stage — kit, voice, a play pack, one street — then grows the world from the table.
+description: /new-game builds one stage — kit, voice, one street — then grows the world from the table.
 sources:
   - { resource: /.claude/commands/new-game.md }
   - { resource: /lib/world_bible.py }
-  - { resource: /lib/play_pack.py }
-  - { resource: /tools/gm-playpack.sh }
+  - { resource: /lib/opening.py }
   - { resource: /tools/gm-extract.sh }
-  - { resource: /lib/opening_seed.py }
   - { resource: /lib/player_manager.py }
   - { resource: /lib/new_character.py }
 generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:45:56Z }
@@ -17,7 +15,7 @@ generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:45:56Z }
 # Authoring an original world
 
 `/new-game` is `/import` with the book replaced by generation. The door is the
-same play pack: kit, voice, a primer, one street. There is no fan-out — you author
+same: kit, voice, one street. There is no fan-out — you author
 tonight's one stage, then the world grows AS YOU PLAY. See
 [the dream](../conventions/the-dream.md).
 
@@ -34,24 +32,24 @@ distinct; those three do.
 |---|---|---|
 | **A — Seed** | genre-aware questionnaire → `world-seed.json` (premise, tone, genre bend, voice, art style, chronicler) | — |
 | **B — Skeleton** | slim bible (voice + signature systems + this street), **shown for approval** | play gates on approval |
-| **C — Play pack** | draft the kit, then `gm-playpack.sh set` + `stage` — one room, present NPCs, exits, hook, primer | — |
-| **D — Handoff** | lock the chronicler + art style, author appearances for the stage, set `session_count: 0` + location from the pack, then the one identity question → the `/create-character` interview (`gm-player.sh create`) | — |
+| **C — Kit and opening sketch** | draft the kit; sketch the opening (place, exits, people, the plot and its hook, premise, the antagonist's clock), stored nowhere yet | — |
+| **D — Handoff** | lock the chronicler + art style, the one identity question → the `/create-character` interview (`gm-player.sh create`), where and when to start, then `gm-session.sh opening` and appearances for the stage | — |
 
 ## The stage, not the planet
 
-Phase C writes only what tonight needs. The play pack (`lib/play_pack.py`,
-`tools/gm-playpack.sh`) is one location you can stand in, 2–4 people in the room,
-the exits you can see, and the hook that will not wait — never a continent. When
-play walks toward a name that isn't in the journal yet, `gm-playpack.sh from-book`
-materializes it on demand. Do not census ahead.
+Phase C writes only what tonight needs: one location you can stand in, 2–4 people
+in the room, the exits you can see, and the hook that will not wait — never a
+continent. When play walks toward a name that isn't in the journal yet,
+`gm-npc.sh create` or `gm-location.sh add` makes it then. Do not census ahead.
 
 ## Opening the scene
 
-There is no pre-PC spine to open on. The opening comes from the play pack:
-`gm-playpack.sh set` writes the room + hook and marks the opening matched, so
-`gm-player.sh create` leaves it in place (`opening_seed.reseed_opening` fires
-only for the legacy plot-spine path, read by both `player_manager.py` and
-`new_character.py`). The character comes from the `/create-character` interview.
+The opening is written after the character exists and the player has said where
+and when to start, so it fits them: `gm-session.sh opening` (`lib/opening.py`) makes
+the stage through the normal tools, all or nothing, and refuses once a session has
+ended. Every campaign starts with at least one plot; its hook is the plot's first
+beat, and the people and places it names without a record are its horizon, shown in
+STORY THREADS.
 
 ## Growing the world at the table
 
