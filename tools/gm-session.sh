@@ -14,6 +14,8 @@ show_usage() {
     echo "                           - Move party; --takes 20m lets that much time pass first"
     echo "  context                  - Full session context (character, party, consequences, rules)"
     echo "  choices [on|off|toggle]  - Toggle the [A]-[E] action menu (no arg: show state)"
+    echo "  opening '<json>'         - Set up a new campaign's first scene in one go: place, exits,"
+    echo "                             NPCs, the plot and its hook, facts, clocks (lib/opening.py)"
     echo "  world-tick '<json>'      - Record off-screen developments: a fact each, optionally a"
     echo "                             consequence and/or clock (warns if >3, rollback-able)"
     echo "  world-tick-rollback      - Undo the most recent world tick"
@@ -44,7 +46,7 @@ shift
 
 # Every action the case below handles, in one place: the guard and the
 # unknown-action message both read this, so they cannot drift apart.
-VALID_ACTIONS="start end status move context choices world-tick world-tick-rollback world-tick-log save restore list-saves delete-save history"
+VALID_ACTIONS="start end status move context choices opening world-tick world-tick-rollback world-tick-log save restore list-saves delete-save history"
 
 is_valid_action() {
     local valid
@@ -130,6 +132,11 @@ case "$ACTION" in
         echo "    \"who_matters\": [\"...\"], \"open_debts\": [\"...\"]}'"
         echo ""
         echo "Off-screen developments: only when the player asks (/gm world), never on your own."
+        ;;
+
+    opening)
+        # A new campaign's first scene, all or nothing, through the normal functions.
+        $PYTHON_CMD "$LIB_DIR/opening.py" "$@"
         ;;
 
     world-tick)

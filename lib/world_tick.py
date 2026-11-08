@@ -18,7 +18,10 @@ A development (JSON object):
    "consequence": {"text": "The tracker finds Fearghas",              optional
                    "triggers": [{"type": "on_location", "match": "Old Iron's Yard"}]},
    "clock": {"name": "The tracker closes in", "segments": 3,          optional
-             "due_in": "3d", "consequence": "The tracker finds Fearghas"}}
+             "due_in": "3d", "consequence": "The tracker finds Fearghas",
+             "linked_plot": "The Vey Inheritance"}}                  optional
+
+The opening (opening.py) records its developments through `record` too.
 """
 
 import sys
@@ -104,13 +107,42 @@ class WorldTick:
         any part is malformed or refused. `cap` is advisory: all apply, and
         anything past it is named in a warning (stderr + `last_overflow`).
         """
+        self.last_overflow = []
+        if not enabled or not developments:
+            return []
+        applied, written = self.record(developments)
+
+        if len(applied) > cap:
+            self.last_overflow = applied[cap:]
+            names = ", ".join(a["text"] for a in self.last_overflow)
+            print(f"[WORLD TICK] warning: cap {cap} exceeded; also applied: {names}",
+                  file=sys.stderr)
+
+        log = self.json_ops.load_json(self.log_file) or {"ticks": []}
+        log["ticks"].append({
+            "facts": written["facts"],
+            "added": written["consequences"],
+            "clocks": written["clocks"],
+            "at": self.json_ops.get_timestamp(),
+            "developments": [a["text"] for a in applied],
+        })
+        if not self.json_ops.save_json(self.log_file, log):
+            # Without the log entry the tick could not be rolled back: undo it now.
+            self._undo(written["facts"], written["consequences"], written["clocks"])
+            return []
+        return applied
+
+    def record(self, developments: List[Dict[str, Any]]):
+        """Validate and write developments, without the tick's cap and log.
+
+        Returns (applied, written): one entry per development as `apply`
+        describes, and {"facts", "consequences", "clocks"} written. Raises
+        WorldTickError and keeps nothing if any part is malformed or refused.
+        """
         from note_manager import NoteManager
         from threat_clocks import ThreatClockManager
         from time_manager import TimeError, parse_duration, parse_time
 
-        self.last_overflow = []
-        if not enabled or not developments:
-            return []
         for i, d in enumerate(developments):
             self._check(d, i)
 
@@ -166,6 +198,7 @@ class WorldTick:
                             name, int(clock["segments"]),
                             advance_on=clock.get("on", "time"),
                             consequence=clock.get("consequence"),
+                            linked_plot=clock.get("linked_plot"),
                             due_at=parse_time(clock["due"]) if clock.get("due") else None,
                             due_in_minutes=(parse_duration(clock["due_in"])
                                             if clock.get("due_in") else None))
@@ -177,26 +210,7 @@ class WorldTick:
         except WorldTickError:
             self._undo(written["facts"], written["consequences"], written["clocks"])
             raise
-
-        if len(applied) > cap:
-            self.last_overflow = applied[cap:]
-            names = ", ".join(a["text"] for a in self.last_overflow)
-            print(f"[WORLD TICK] warning: cap {cap} exceeded; also applied: {names}",
-                  file=sys.stderr)
-
-        log = self.json_ops.load_json(self.log_file) or {"ticks": []}
-        log["ticks"].append({
-            "facts": written["facts"],
-            "added": written["consequences"],
-            "clocks": written["clocks"],
-            "at": self.json_ops.get_timestamp(),
-            "developments": [a["text"] for a in applied],
-        })
-        if not self.json_ops.save_json(self.log_file, log):
-            # Without the log entry the tick could not be rolled back: undo it now.
-            self._undo(written["facts"], written["consequences"], written["clocks"])
-            return []
-        return applied
+        return applied, written
 
     def waiting(self, applied: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Consequences waiting on an event that the tick's facts might fulfil

@@ -1214,10 +1214,15 @@ class SessionManager(EntityManager):
         return out
 
     def _active_plot_threads(self, limit=6):
-        """Active plots, main-first, each with its latest event beat. limit=None = all."""
+        """Active plots, main-first, each with its latest event beat and its
+        horizon: the people and places it names that have no record yet (named,
+        not built until play walks there). limit=None = all."""
+        from entity_aliases import resolve_entity_name
         plots = self.json_ops.load_json("plots.json") or {}
         if not isinstance(plots, dict):
             return []
+        known = {"npcs": self.json_ops.load_json("npcs.json") or {},
+                 "locations": self.json_ops.load_json("locations.json") or {}}
         closed = {'completed', 'resolved', 'failed', 'done', 'abandoned', 'dropped'}
         order = PLOT_TYPE_SORT
         active = []
@@ -1238,11 +1243,14 @@ class SessionManager(EntityManager):
             if isinstance(events, list) and events:
                 ev = events[-1]
                 latest = ev.get('event', ev.get('description', '')) if isinstance(ev, dict) else str(ev)
-            active.append((order.get(ptype, len(order)), seq, ptype, name, latest))
+            horizon = [str(n) for field in ("npcs", "locations") for n in p.get(field) or []
+                       if resolve_entity_name(str(n), known[field]) is None]
+            active.append((order.get(ptype, len(order)), seq, ptype, name, latest, horizon))
         active.sort(key=lambda t: (t[0], t[1]))
         chosen = active if limit is None else active[:limit]
         return [f"[{ptype}] {name}" + (f" - latest: {latest}" if latest else "")
-                for _, _seq, ptype, name, latest in chosen]
+                + (f" · on the horizon (not built yet): {', '.join(horizon)}" if horizon else "")
+                for _, _seq, ptype, name, latest, horizon in chosen]
 
     # Categories that carry continuity the GM must not contradict. `player_choices`
     # and `npc_relations` were advertised by gm-note.sh and read by nothing, so the
