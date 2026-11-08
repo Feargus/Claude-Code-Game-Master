@@ -30,9 +30,12 @@ class SessionManager(EntityManager):
     # under overview.preferences; surfaced in get_full_context so the GM honors it.
     # `beat_length` picks the pacing line. Same storage + surfacing.
     # `rag_inspiration` makes the GM pull source passages every beat or so for
-    # grounded narration detail rather than improvising from memory.
+    # grounded narration detail rather than improvising from memory. Currently
+    # disabled by default (2026-11-08: the campaigns have no book text, so each
+    # search was wasted); re-enable with "rag_inspiration": true here or in a
+    # campaign's overview.preferences.
     DEFAULT_PREFERENCES = {"action_menu": True,
-                           "beat_length": "adaptive", "rag_inspiration": True}
+                           "beat_length": "adaptive", "rag_inspiration": False}
 
     SAVE_VERSION = 1
     AUTOSAVE_KEEP = 3
@@ -666,6 +669,9 @@ class SessionManager(EntityManager):
                          "`gm-search.sh \"<what's happening now>\" --rag-only` and mine the "
                          "returned passages for a concrete image, phrase, or sensory detail "
                          "from the source. Synthesize — never paste raw passages.")
+        else:
+            lines.append("Inspiration from the source book every beat is currently "
+                         "disabled: don't run gm-search.sh for it.")
         if self.get_preferences().get("action_menu", True):
             lines.append("Play style: action menu ON — end each beat with exactly THREE "
                          "numbered options, then a final line \"Or something else...\" to "
