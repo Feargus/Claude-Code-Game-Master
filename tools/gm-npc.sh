@@ -15,8 +15,10 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: gm-npc.sh <action> [name] [args]"
     echo ""
     echo "=== NPC Management ==="
-    echo "  create <name> <description> <attitude> --location <place>... | --nowhere"
-    echo "                                          Create new NPC (where they're usually found)"
+    echo "  create <name> <description> <attitude> --location <place>... | --nowhere [--alias <short name>]..."
+    echo "                                          Create new NPC (where they're usually found;"
+    echo "                                          aliases: shorter names the story will use)"
+    echo "  alias <name> <alias>... [--remove <alias>]  Add or remove an NPC's shorter names"
     echo "  update <name> <event>                   Add event to NPC history"
     echo "  status <name>                           Show NPC details"
     echo "  kill <name> [--cause \"<how>\"]           Mark NPC dead (fires its on_death consequences)"
@@ -89,7 +91,7 @@ shift  # Remove name from arguments
 case "$ACTION" in
     create)
         if [ "$#" -lt 2 ]; then
-            echo "Usage: gm-npc.sh create <name> <description> <attitude> --location <place>... | --nowhere"
+            echo "Usage: gm-npc.sh create <name> <description> <attitude> --location <place>... | --nowhere [--alias <short name>]..."
             exit 1
         fi
         $PYTHON_CMD "$LIB_DIR/npc_manager.py" create "$NAME" "$@"
@@ -141,6 +143,14 @@ case "$ACTION" in
             exit 1
         fi
         $PYTHON_CMD "$LIB_DIR/npc_manager.py" enhance "$NAME" "$1"
+        ;;
+
+    alias)
+        if [ "$#" -lt 1 ]; then
+            echo "Usage: gm-npc.sh alias <name> <alias>... [--remove <alias>]..."
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/npc_manager.py" alias "$NAME" "$@"
         ;;
 
     tag-location)

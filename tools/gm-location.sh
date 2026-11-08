@@ -7,7 +7,11 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: gm-location.sh <action> [args]"
     echo ""
     echo "Actions:"
-    echo "  add <name> <position>              - Add new location"
+    echo "  add <name> <position> [--alias <short name>]..."
+    echo "                                     - Add new location (aliases: shorter names"
+    echo "                                       the story will use, e.g. \"the Yard\")"
+    echo "  alias <name> <alias>... [--remove <alias>]"
+    echo "                                     - Add or remove a location's shorter names"
     echo "  connect <from> <to> <path>         - Connect two locations"
     echo "  describe <name> <description>      - Set location description"
     echo "  get <name>                         - Get location info"
@@ -29,10 +33,18 @@ shift
 case "$ACTION" in
     add)
         if [ "$#" -lt 2 ]; then
-            echo "Usage: gm-location.sh add <name> <position>"
+            echo "Usage: gm-location.sh add <name> <position> [--alias <short name>]..."
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/location_manager.py" add "$1" "$2"
+        $PYTHON_CMD "$LIB_DIR/location_manager.py" add "$@"
+        ;;
+
+    alias)
+        if [ "$#" -lt 1 ]; then
+            echo "Usage: gm-location.sh alias <name> <alias>... [--remove <alias>]..."
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/location_manager.py" alias "$@"
         ;;
 
     connect)
@@ -75,7 +87,7 @@ case "$ACTION" in
 
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: add, connect, describe, get, list, connections"
+        echo "Valid actions: add, alias, connect, describe, get, list, connections"
         exit 1
         ;;
 esac

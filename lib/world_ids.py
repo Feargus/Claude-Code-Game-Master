@@ -25,6 +25,8 @@ from entity_aliases import normalize_entity_name, resolve_entity_name
 RUNGS = ("street", "public")
 KINDS = ("npc", "location")
 LATER = {"faction": "factions", "item": "items with ids"}
+TABLE_FILES = {"npc": "npcs.json", "location": "locations.json"}
+RESERVED = ("player", "anyone") + RUNGS  # words ids and triggers use
 
 
 class WorldIds:
@@ -176,6 +178,26 @@ class WorldIds:
             return "", f"'{text}' is {cid}, not {wanted}."
         return cid, ""
 
+    def check_alias(self, alias: str, owner: str) -> str:
+        """Why `alias` can't be a short name of `owner` (npc:<key> or
+        location:<key>; it needn't exist yet), or '' if it can.
+
+        The name check finds aliases in a fact's text as it finds names, so an
+        alias must point at one thing only: not the name or alias of another NPC
+        or place, not the player's name, not a word ids use."""
+        text = str(alias or "").strip()
+        norm = normalize_entity_name(text)
+        if not norm:
+            return f"'{text}' is not a name."
+        if text.lower() in RESERVED or norm in RESERVED:
+            return f"'{text}' is a word ids use ({', '.join(RESERVED)})."
+        if norm == normalize_entity_name(owner.partition(":")[2]):
+            return f"'{text}' is {owner}'s own name; an alias is another name for it."
+        for cid, name in self._names():
+            if cid != owner and (normalize_entity_name(name) or name.lower()) == norm:
+                return f"'{text}' already names {cid}."
+        return ""
+
     def resolve_holder(self, raw: str) -> Tuple[str, str]:
         """Like resolve, for who can know a fact: a place can't."""
         cid, error = self.resolve(raw)
@@ -205,6 +227,45 @@ class WorldIds:
             elif cid not in ids:
                 ids.append(cid)
         return ids, errors
+
+
+def alias_hint(kind: str, name: str) -> str:
+    """The nudge after creating an NPC or a place without aliases, or '' when
+    the name is a single word (nothing shorter to call it)."""
+    if len(normalize_entity_name(name).split()) < 2:
+        return ""
+    tool = {"npc": "gm-npc.sh", "location": "gm-location.sh"}[kind]
+    return (f"  Facts find {name} only by the full name. If the story will use a shorter "
+            f"one: bash tools/{tool} alias \"{name}\" \"<short name>\"")
+
+
+def change_aliases(json_ops, kind: str, name: str, add=(), remove=()) -> Tuple[str, List[str]]:
+    """Add aliases to an NPC or a place (kind "npc" or "location"), or remove
+    them, and save. Returns (key, aliases); raises ValueError for an unknown
+    name, an alias it doesn't have, or a refused alias (see check_alias)."""
+    ids = WorldIds(json_ops)
+    cid, error = ids.resolve_as(name, (kind,))
+    if error:
+        raise ValueError(error)
+    key = cid.partition(":")[2]
+    table = json_ops.load_json(TABLE_FILES[kind]) or {}
+    entry = table[key]
+    have = {a.lower() for a in entry.get("aliases") or []}
+    gone = {r.strip().lower() for r in remove}
+    errors = [f"{key} has no alias '{r}'." for r in remove if r.strip().lower() not in have]
+    errors += [e for a in add if (e := ids.check_alias(a, cid))]
+    if errors:
+        raise ValueError(" ".join(errors))
+    aliases = [a for a in entry.get("aliases") or [] if a.lower() not in gone]
+    for a in add:
+        if a.strip().lower() not in {x.lower() for x in aliases}:
+            aliases.append(a.strip())
+    if aliases:
+        entry["aliases"] = aliases
+    else:
+        entry.pop("aliases", None)
+    json_ops.save_json(TABLE_FILES[kind], table)
+    return key, aliases
 
 
 def main():

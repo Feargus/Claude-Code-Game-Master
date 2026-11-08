@@ -92,7 +92,7 @@ class NPCManager(EntityManager):
         return keys, errors
 
     def create_npc(self, name: str, description: str, attitude: str,
-                   locations=None, nowhere: bool = False) -> bool:
+                   locations=None, nowhere: bool = False, aliases=None) -> bool:
         """
         Create a new NPC. Returns True on success, False on failure.
 
@@ -100,8 +100,16 @@ class NPCManager(EntityManager):
         only). Required, unless `nowhere`: an NPC with no usual place (a voice on a
         chip, a drifter), stored as `no_usual_place`. Without a usual place the
         brief can never suggest them for a scene.
+
+        `aliases`: shorter names the story will use ("Ishbel" for "Ishbel Rue"),
+        so the name check in facts finds them too; each is checked (see
+        world_ids.check_alias).
         """
+        from world_ids import WorldIds, alias_hint
         places, errors = self._usual_places(locations)
+        aliases = [a.strip() for a in aliases or []]
+        ids = WorldIds(self.json_ops)
+        errors += [e for a in aliases if (e := ids.check_alias(a, f"npc:{name}"))]
         if nowhere and places:
             errors.append("Give --location or --nowhere, not both.")
         if not nowhere and not places and not errors:
@@ -148,11 +156,17 @@ class NPCManager(EntityManager):
         }
         if nowhere:
             npc_data['no_usual_place'] = True
+        if aliases:
+            npc_data['aliases'] = list(dict.fromkeys(aliases))
 
         # Save to file
         if self._add_entity(self.npcs_file, name, npc_data):
             where = ', '.join(places) if places else 'no usual place'
             print(f"[SUCCESS] Created NPC: {name} - {description} ({attitude}); usually found: {where}")
+            if aliases:
+                print(f"  Also called: {', '.join(npc_data['aliases'])}")
+            elif alias_hint("npc", name):
+                print(alias_hint("npc", name))
             print(f"  Not in the scene yet: bash tools/gm-scene.sh enter \"{name}\" if they're here.")
             return True
         return False
@@ -301,6 +315,8 @@ class NPCManager(EntityManager):
 
         # Basic info
         lines.append(f"Description: {npc.get('description', 'No description')}")
+        if npc.get('aliases'):
+            lines.append(f"Also called: {', '.join(npc['aliases'])}")
         lines.append(f"Attitude: {npc.get('attitude', 'unknown')}")
 
         # Visual appearance (for consistent image generation)
@@ -1042,6 +1058,14 @@ def main():
                                help='where the NPC is usually found (repeatable)')
     create_parser.add_argument('--nowhere', action='store_true',
                                help='the NPC has no usual place')
+    create_parser.add_argument('--alias', action='append', dest='aliases',
+                               help='a shorter name the story will use (repeatable)')
+
+    # Aliases
+    alias_parser = subparsers.add_parser('alias', help="Add or remove an NPC's aliases")
+    alias_parser.add_argument('name', help='NPC name')
+    alias_parser.add_argument('aliases', nargs='*', help='aliases to add')
+    alias_parser.add_argument('--remove', action='append', default=[], help='an alias to remove')
 
     # Update NPC
     update_parser = subparsers.add_parser('update', help='Add event to NPC')
@@ -1204,8 +1228,19 @@ def main():
 
     if args.action == 'create':
         if not manager.create_npc(args.name, args.description, args.attitude,
-                                  locations=args.locations, nowhere=args.nowhere):
+                                  locations=args.locations, nowhere=args.nowhere,
+                                  aliases=args.aliases):
             sys.exit(1)
+
+    elif args.action == 'alias':
+        from world_ids import change_aliases
+        try:
+            key, aliases = change_aliases(manager.json_ops, "npc", args.name,
+                                          args.aliases, args.remove)
+        except ValueError as error:
+            print(f"[ERROR] {error}")
+            sys.exit(1)
+        print(f"{key}: also called {', '.join(aliases)}" if aliases else f"{key}: no aliases")
 
     elif args.action == 'update':
         if not manager.update_npc(args.name, args.event):

@@ -21,11 +21,20 @@ class LocationManager(EntityManager):
         super().__init__(world_state_dir)
         self.locations_file = "locations.json"
 
-    def add_location(self, name: str, position: str) -> bool:
+    def add_location(self, name: str, position: str, aliases=None) -> bool:
         """
-        Add a new location
+        Add a new location. `aliases`: shorter names the story will use ("the
+        Yard" for "Old Iron's Yard"), each checked (world_ids.check_alias).
         Returns True on success, False on failure
         """
+        from world_ids import WorldIds, alias_hint
+        aliases = [a.strip() for a in aliases or []]
+        ids = WorldIds(self.json_ops)
+        errors = [e for a in aliases if (e := ids.check_alias(a, f"location:{name}"))]
+        if errors:
+            for error in errors:
+                print(f"[ERROR] {error}")
+            return False
         # Validate name
         valid, error = self.validators.validate_name(name)
         if not valid:
@@ -44,10 +53,16 @@ class LocationManager(EntityManager):
             'description': '',
             'discovered': self.get_timestamp()
         }
+        if aliases:
+            location_data['aliases'] = list(dict.fromkeys(aliases))
 
         # Save to file
         if self._add_entity(self.locations_file, name, location_data):
             print(f"[SUCCESS] Added location: {name} ({position})")
+            if aliases:
+                print(f"  Also called: {', '.join(location_data['aliases'])}")
+            elif alias_hint("location", name):
+                print(alias_hint("location", name))
             return True
         return False
 
@@ -240,6 +255,14 @@ def main():
     add_parser = subparsers.add_parser('add', help='Add new location')
     add_parser.add_argument('name', help='Location name')
     add_parser.add_argument('position', help='Relative position')
+    add_parser.add_argument('--alias', action='append', dest='aliases',
+                            help='a shorter name the story will use (repeatable)')
+
+    # Aliases
+    alias_parser = subparsers.add_parser('alias', help="Add or remove a location's aliases")
+    alias_parser.add_argument('name', help='Location name')
+    alias_parser.add_argument('aliases', nargs='*', help='aliases to add')
+    alias_parser.add_argument('--remove', action='append', default=[], help='an alias to remove')
 
     # Connect locations
     connect_parser = subparsers.add_parser('connect', help='Connect two locations')
@@ -272,8 +295,18 @@ def main():
     manager = LocationManager()
 
     if args.action == 'add':
-        if not manager.add_location(args.name, args.position):
+        if not manager.add_location(args.name, args.position, aliases=args.aliases):
             sys.exit(1)
+
+    elif args.action == 'alias':
+        from world_ids import change_aliases
+        try:
+            key, aliases = change_aliases(manager.json_ops, "location", args.name,
+                                          args.aliases, args.remove)
+        except ValueError as error:
+            print(f"[ERROR] {error}")
+            sys.exit(1)
+        print(f"{key}: also called {', '.join(aliases)}" if aliases else f"{key}: no aliases")
 
     elif args.action == 'connect':
         if not manager.connect_locations(args.from_loc, args.to_loc, args.path):
