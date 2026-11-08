@@ -29,7 +29,7 @@ def test_waiting_lists_on_event_and_untyped_only(dcc_world):
     ev = cm.add_consequence("The Fork bargains", "free text",
                             trigger_type="on_event", match="someone is alone with the chip")
     old = cm.add_consequence("The Palimpsest learn of it", "when the body is found")
-    cm.add_consequence("Priests at the Yard", "x", trigger_type="on_location", match="Yard")
+    cm.add_consequence("Priests at the Junction", "x", trigger_type="on_location", match="Floor 2 Junction")
     waiting = {c["id"]: c["awaits"] for c in cm.waiting_on_event()}
     assert waiting == {ev: "someone is alone with the chip", old: "when the body is found"}
 

@@ -18,11 +18,11 @@ def _consq_path(dcc_world):
 def test_add_with_structured_trigger(dcc_world):
     cm = ConsequenceManager(dcc_world)
     cid = cm.add_consequence("Guards search the market", "next day",
-                             trigger_type="on_location", match="Market")
+                             trigger_type="on_location", match="Floor 2 Junction")
     assert cid
     data = json.loads(_consq_path(dcc_world).read_text(encoding="utf-8"))
     new = next(c for c in data["active"] if c["id"] == cid)
-    assert new["triggers"] == [{"type": "on_location", "match": "Market"}]
+    assert new["triggers"] == [{"type": "on_location", "match": "location:Floor 2 Junction"}]
     # free-text trigger + description still preserved
     assert new["trigger"] == "next day"
     assert new["consequence"] == "Guards search the market"

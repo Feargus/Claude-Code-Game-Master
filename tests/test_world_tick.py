@@ -35,7 +35,7 @@ DEVS = [
     {"fact": "Meridian has posted foreclosure notices across Level 40."},
     {"fact": "Dekker has hired a tracker who hunts the grey sleeve.",
      "consequence": {"text": "The tracker finds Fearghas",
-                     "triggers": [{"type": "on_location", "match": "Old Iron's Yard"}]},
+                     "triggers": [{"type": "on_location", "match": "Floor 2 Junction"}]},
      "clock": {"name": "The tracker closes in", "segments": 3, "on": "event",
                "consequence": "The tracker finds Fearghas"}},
     {"fact": "Auntie Ro kept her stall shut for a day.", "category": "npc_relations"},
@@ -55,7 +55,7 @@ def test_follow_ups_are_set_up(dcc_world):
     applied = WorldTick(dcc_world).apply(DEVS)
     tracker = applied[1]
     con = next(c for c in _active(dcc_world) if c["id"] == tracker["consequence"])
-    assert con["triggers"] == [{"type": "on_location", "match": "Old Iron's Yard"}]
+    assert con["triggers"] == [{"type": "on_location", "match": "location:Floor 2 Junction"}]
     assert tracker["clock"] == "The tracker closes in"
     assert "The tracker closes in" in _load(dcc_world, "threat-clocks.json")
     assert "consequence" not in applied[0] and "clock" not in applied[0]

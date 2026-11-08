@@ -25,10 +25,11 @@ add:
                         --trigger-type it becomes an on_event trigger: every fact
                         recorded lists it, and the GM fires it by judgment
   Triggers (repeat --trigger-type/--match pairs; any one fires it):
-    --trigger-type on_location --match "<place>"
-    --trigger-type on_npc      --match "<NPC>"           (in the scene)
+    --trigger-type on_location --match "<place>"         (a known place, exactly)
+    --trigger-type on_npc      --match "<NPC>"           (a known NPC, in the scene)
     --trigger-type on_time     --match night             (a time-of-day word, not a date)
     --trigger-type on_death    --match "<NPC>" | player
+  Places and NPCs are stored as ids (location:<name>, npc:<name>); add new ones first.
     --trigger-type on_clock    --match "<clock>" | "<clock>:<segment>"
     --trigger-type on_learn    --match "<who> learns <fact id>" | "<who> learns about <id>"
     --trigger-type on_event    --match "<the event, in words>"

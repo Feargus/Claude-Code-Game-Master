@@ -23,24 +23,26 @@ def _entry(world, cid):
     return next(c for c in data["active"] if c["id"] == cid)
 
 
-TWO = [{"type": "on_location", "match": "Yard"}, {"type": "on_npc", "match": "Wren"}]
+TWO = [{"type": "on_location", "match": "Floor 2 Junction"}, {"type": "on_npc", "match": "Mordecai"}]
+STORED = [{"type": "on_location", "match": "location:Floor 2 Junction"},
+          {"type": "on_npc", "match": "npc:Mordecai"}]
 
 
 def test_stores_a_list_of_triggers(dcc_world):
     cid = ConsequenceManager(dcc_world).add_consequence(
-        "Priests come asking", "at the Yard or when Wren is around", triggers=TWO)
-    assert _entry(dcc_world, cid)["triggers"] == TWO
+        "Priests come asking", "at the Junction or when Mordecai is around", triggers=TWO)
+    assert _entry(dcc_world, cid)["triggers"] == STORED
 
 
 def test_any_one_trigger_fires_it(dcc_world):
     cm = ConsequenceManager(dcc_world)
     cid = cm.add_consequence("Priests come asking", "free text", triggers=TWO)
     c = _entry(dcc_world, cid)
-    at_yard = {"location": "Old Iron's Yard", "present_npcs": []}
-    with_wren = {"location": "The Lantern", "present_npcs": ["Wren"]}
-    neither = {"location": "The Lantern", "present_npcs": ["Auntie Ro"]}
+    at_yard = {"location": "Floor 2 Junction", "present_npcs": []}
+    with_wren = {"location": "Floor 1 Stairs", "present_npcs": ["Mordecai"]}
+    neither = {"location": "Floor 1 Stairs", "present_npcs": ["Squeeks"]}
     assert cm._matches_now(c, at_yard)
-    assert "Wren" in cm._matches_now(c, with_wren)
+    assert "Mordecai" in cm._matches_now(c, with_wren)
     assert cm._matches_now(c, neither) == ""
 
 
@@ -48,15 +50,15 @@ def test_single_shorthand_and_list_combine(dcc_world):
     cid = ConsequenceManager(dcc_world).add_consequence(
         "x", "y", trigger_type="on_time", match="night", triggers=TWO[:1])
     assert _entry(dcc_world, cid)["triggers"] == [
-        {"type": "on_location", "match": "Yard"}, {"type": "on_time", "match": "night"}]
+        STORED[0], {"type": "on_time", "match": "night"}]
 
 
 def test_old_single_trigger_entries_still_fire(dcc_world):
     cm = ConsequenceManager(dcc_world)
     old = {"id": "old1", "consequence": "c", "trigger": "t",
-           "trigger_type": "on_location", "match": "Yard"}
-    assert cm.structured_triggers(old) == [{"type": "on_location", "match": "Yard"}]
-    assert cm._matches_now(old, {"location": "Old Iron's Yard"})
+           "trigger_type": "on_location", "match": "location:Floor 2 Junction"}
+    assert cm.structured_triggers(old) == [STORED[0]]
+    assert cm._matches_now(old, {"location": "Floor 2 Junction"})
 
 
 def test_refuses_a_bad_trigger_in_the_list(dcc_world):
@@ -74,11 +76,11 @@ def _cli(world, *args):
 
 def test_cli_pairs_repeated_flags_in_order(dcc_world):
     r = _cli(dcc_world, "Priests come asking", "free text",
-             "--trigger-type", "on_location", "--match", "Yard",
-             "--trigger-type", "on_npc", "--match", "Wren")
+             "--trigger-type", "on_location", "--match", "Floor 2 Junction",
+             "--trigger-type", "on_npc", "--match", "Mordecai")
     assert r.returncode == 0, r.stdout + r.stderr
     cid = json.loads(r.stdout)["data"]["id"]
-    assert _entry(dcc_world, cid)["triggers"] == TWO
+    assert _entry(dcc_world, cid)["triggers"] == STORED
 
 
 def test_cli_refuses_unpaired_flags(dcc_world):

@@ -12,9 +12,9 @@ from lib.consequence_manager import ConsequenceManager
 
 def test_tick_fires_then_dedups_same_scene(dcc_world):
     cm = ConsequenceManager(dcc_world)
-    scene = {"location": "Floor 4", "time": "day", "present_npcs": [], "events": []}
+    scene = {"location": "Floor 3 - The Over City", "time": "day", "present_npcs": [], "events": []}
     first = cm.tick(scene, limit=10)
-    assert any(c["id"] == "c3e61742" for c in first["fired"])  # Sheol on_location Floor 4
+    assert any(c["id"] == "c3e61742" for c in first["fired"])  # Sheol on_location, the Over City
     assert all("match_reason" in c for c in first["fired"])
     # Same scene again -> still reported, annotated already-fired, not re-stamped.
     second = cm.tick(scene, limit=10)
@@ -27,9 +27,9 @@ def test_tick_fires_then_dedups_same_scene(dcc_world):
 
 def test_tick_rearms_on_scene_change(dcc_world):
     cm = ConsequenceManager(dcc_world)
-    cm.tick({"location": "Floor 4", "time": "day", "present_npcs": []}, limit=10)
+    cm.tick({"location": "Floor 3 - The Over City", "time": "day", "present_npcs": []}, limit=10)
     # New scene (night) -> Nightstalker fires, and Sheol re-arms (different ctx key).
-    third = cm.tick({"location": "Floor 4 ruins", "time": "night", "present_npcs": []}, limit=10)
+    third = cm.tick({"location": "Floor 3 - The Over City", "time": "night", "present_npcs": []}, limit=10)
     ids = {c["id"] for c in third["fired"]}
     assert "a36a02f6" in ids  # Nightstalker on_time night
     assert "c3e61742" in ids  # Sheol re-armed by changed scene
@@ -37,10 +37,10 @@ def test_tick_rearms_on_scene_change(dcc_world):
 
 def test_tick_respects_limit(dcc_world):
     cm = ConsequenceManager(dcc_world)
-    scene = {"location": "Floor 4", "time": "night", "present_npcs": []}
+    scene = {"location": "Floor 3 - The Over City", "time": "night", "present_npcs": []}
     result = cm.tick(scene, limit=1)
     assert len(result["fired"]) == 1
-    # Floor 4 + night matches Sheol and Nightstalker; the rest are disclosed.
+    # The Over City + night matches Sheol and Nightstalker; the rest are disclosed.
     assert len(result["disclosed"]) >= 1
     assert all("match_reason" in c for c in result["fired"] + result["disclosed"])
 

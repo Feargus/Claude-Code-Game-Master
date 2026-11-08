@@ -12,7 +12,7 @@ def _path(dcc_world):
 
 def test_firing_writes_provenance(dcc_world):
     cm = ConsequenceManager(dcc_world)
-    cm.tick({"location": "Floor 4", "time": "day", "present_npcs": []}, limit=10)
+    cm.tick({"location": "Floor 3 - The Over City", "time": "day", "present_npcs": []}, limit=10)
     prov = cm.get_provenance()
     assert any(p["id"] == "c3e61742" for p in prov)
     rec = next(p for p in prov if p["id"] == "c3e61742")
@@ -21,7 +21,7 @@ def test_firing_writes_provenance(dcc_world):
 
 def test_rollback_restores_pre_fire_state(dcc_world):
     cm = ConsequenceManager(dcc_world)
-    cm.tick({"location": "Floor 4", "time": "day", "present_npcs": []}, limit=10)
+    cm.tick({"location": "Floor 3 - The Over City", "time": "day", "present_npcs": []}, limit=10)
     after = json.loads(_path(dcc_world).read_text(encoding="utf-8"))
     sheol_after = next(c for c in after["active"] if c["id"] == "c3e61742")
     assert sheol_after.get("last_fired_key")  # stamped by the fire

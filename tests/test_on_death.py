@@ -37,7 +37,7 @@ def test_on_death_needs_a_known_npc_or_player(dcc_world):
     assert cm.add_consequence("x", "y", trigger_type="on_death", match="Nobody Atall") == ""
     cid = cm.add_consequence("x", "y", trigger_type="on_death", match=npc.lower())
     stored = next(c for c in _active(dcc_world) if c["id"] == cid)
-    assert stored["triggers"] == [{"type": "on_death", "match": npc}]  # canonical name
+    assert stored["triggers"] == [{"type": "on_death", "match": f"npc:{npc}"}]  # canonical id
     cid = cm.add_consequence("x", "y", trigger_type="on_death", match="player")
     assert cid
 

@@ -146,6 +146,36 @@ class WorldIds:
                 ids.append(cid)
         return ids
 
+    def resolve_as(self, raw: str, kinds) -> Tuple[str, str]:
+        """Like resolve, limited to some kinds ("player", "npc", "location"), as
+        a trigger type needs: a bare name is looked up only among those kinds,
+        and an id of another kind is refused."""
+        text = str(raw or "").strip()
+        wanted = " or ".join({"player": "the player", "npc": "an NPC",
+                              "location": "a place"}.get(k, k) for k in kinds)
+        if ":" in text:
+            cid, error = self.resolve(text)
+        elif "player" in kinds and self._is_player(text):
+            return "player", ""
+        else:
+            named = tuple(k for k in kinds if k in KINDS)
+            hits = [f"{kind}:{key}" for kind in named
+                    if (key := resolve_entity_name(text, self._load()[kind])) is not None]
+            if len(hits) > 1:
+                return "", f"'{text}' fits several: {', '.join(hits)}. Give the kind."
+            if hits:
+                cid, error = hits[0], ""
+            else:
+                cid, error = self.resolve(text)  # something of another kind?
+                if not cid:
+                    hint = self._suggest(text, named)
+                    return "", f"No {' or '.join(named) or 'player'} '{text}'{hint or '.'}"
+        if error:
+            return "", error
+        if cid.partition(":")[0] not in kinds:
+            return "", f"'{text}' is {cid}, not {wanted}."
+        return cid, ""
+
     def resolve_holder(self, raw: str) -> Tuple[str, str]:
         """Like resolve, for who can know a fact: a place can't."""
         cid, error = self.resolve(raw)

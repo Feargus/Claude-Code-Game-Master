@@ -106,8 +106,8 @@ def test_pending_consequences_show_their_typed_triggers(dcc_world):
     from lib.consequence_manager import ConsequenceManager
     ConsequenceManager(dcc_world).add_consequence(
         "The bouncer remembers", "when Carl is back at the club",
-        triggers=[{"type": "on_location", "match": "Bone Garden"},
+        triggers=[{"type": "on_location", "match": "Floor 2 Junction"},
                   {"type": "on_npc", "match": "Mordecai"}])
     ctx = _context(dcc_world)
     assert ("-> triggers: when Carl is back at the club "
-            "[on_location Bone Garden · on_npc Mordecai]") in ctx
+            "[on_location location:Floor 2 Junction · on_npc npc:Mordecai]") in ctx

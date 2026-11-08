@@ -22,7 +22,10 @@ Like the scene-illustrator, you run off the critical path so the GM keeps playin
 - **Dormant, so it cannot disturb the live scene.** It sleeps until it surfaces.
 - **Reference names, do not create records.** Point at real names from the WORLD INDEX;
   a face/place is materialized later by the GM (`gm-npc.sh create`, or `gm-playpack.sh from-book` in a campaign from a book) when play
-  walks toward it. You never write npcs.json / locations.json.
+  walks toward it. You never write npcs.json / locations.json. So an `on_npc` or
+  `on_location` trigger works only for an NPC or place that already has a record
+  (`gm-npc.sh list`, `gm-location.sh list`); for one that is only in the WORLD INDEX, use
+  `--trigger-type on_event --match "<name> is next in the scene"` instead.
 - **Persist before you report.** If it isn't saved, it didn't happen.
 
 ## Step 1 — Ground the seed (RAG is mandatory)

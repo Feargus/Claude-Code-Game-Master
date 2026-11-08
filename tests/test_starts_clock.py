@@ -101,8 +101,8 @@ def test_a_death_starts_a_clock_whose_segment_fires_the_next_beat(dcc_world):
 def test_scene_check_carries_out_effects(dcc_world):
     cm = ConsequenceManager(dcc_world)
     cm.add_consequence("Gangers spot you", "x", trigger_type="on_location",
-                       match="Zzyzx Alley", effects=[HUNT])
-    fired = cm.tick({"location": "Zzyzx Alley", "time": "night", "date": "d1"})["fired"]
+                       match="Floor 2 Junction", effects=[HUNT])
+    fired = cm.tick({"location": "Floor 2 Junction", "time": "night", "date": "d1"})["fired"]
     assert any("started clock Vendetta" in line
                for c in fired for line in c.get("effects_done", []))
 

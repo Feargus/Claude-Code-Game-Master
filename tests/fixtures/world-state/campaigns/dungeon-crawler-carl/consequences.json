@@ -6,7 +6,7 @@
       "trigger": "When party encounters friendly NPCs",
       "created": "2026-01-28T22:46:26.793274+00:00",
       "trigger_type": "on_npc",
-      "match": "friendly"
+      "match": "npc:Squeeks"
     },
     {
       "id": "a36a02f6",
@@ -19,10 +19,10 @@
     {
       "id": "c3e61742",
       "consequence": "Sheol Glass Reaper Case inside Tandy's stomach - unstable WMD absorbing magic pulses internally. Unknown side effects.",
-      "trigger": "Ongoing - each magic pulse, and when party reaches Floor 4",
+      "trigger": "Ongoing - each magic pulse, and when party reaches the Over City",
       "created": "2026-02-08T13:28:33.332706+00:00",
       "trigger_type": "on_location",
-      "match": "Floor 4"
+      "match": "location:Floor 3 - The Over City"
     }
   ],
   "resolved": [

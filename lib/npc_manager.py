@@ -191,7 +191,7 @@ class NPCManager(EntityManager):
 
         from consequence_manager import ConsequenceManager
         fired = ConsequenceManager(self.base_dir).fire_event(
-            'on_death', key, f"{key} died" + (f" ({cause})" if cause else ""))
+            'on_death', f"npc:{key}", f"{key} died" + (f" ({cause})" if cause else ""))
         return {'success': True, 'name': key, 'status': 'dead', 'cause': cause,
                 'fact': fact_id, 'fired': fired}
 

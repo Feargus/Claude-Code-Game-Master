@@ -24,9 +24,9 @@ def test_legacy_accessor_returns_active_list(dcc_world):
 
 def test_on_location_fires_with_reason(dcc_world):
     fired = ConsequenceManager(dcc_world).check_pending(
-        {"location": "Floor 4 - The Over City", "time": "day", "present_npcs": []}, limit=10)
+        {"location": "Floor 3 - The Over City", "time": "day", "present_npcs": []}, limit=10)
     ids = {c["id"] for c in fired}
-    assert "c3e61742" in ids  # Sheol: on_location -> "Floor 4"
+    assert "c3e61742" in ids  # Sheol: on_location -> the Over City
     assert all("match_reason" in c for c in fired)
 
 
@@ -38,8 +38,8 @@ def test_on_time_fires(dcc_world):
 
 def test_on_npc_fires(dcc_world):
     fired = ConsequenceManager(dcc_world).check_pending(
-        {"location": "Inn", "time": "day", "present_npcs": ["a friendly trader"]}, limit=10)
-    assert "b5aeefab" in {c["id"] for c in fired}  # Squeeks: on_npc -> "friendly"
+        {"location": "Inn", "time": "day", "present_npcs": ["Squeeks"]}, limit=10)
+    assert "b5aeefab" in {c["id"] for c in fired}  # Squeeks: on_npc -> npc:Squeeks
 
 
 def test_nothing_fires_when_no_match(dcc_world):
@@ -50,7 +50,7 @@ def test_nothing_fires_when_no_match(dcc_world):
 
 def test_cap_discloses_overflow_instead_of_dropping(dcc_world):
     cm = ConsequenceManager(dcc_world)
-    ws = {"location": "Floor 4", "time": "night", "present_npcs": [], "events": []}
+    ws = {"location": "Floor 3 - The Over City", "time": "night", "present_npcs": [], "events": []}
     all_hits = cm.check_pending(ws, limit=10)
     assert len(all_hits) >= 2  # Sheol + Nightstalker both match
     sliced = cm.check_pending(ws, limit=1)

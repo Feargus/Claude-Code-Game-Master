@@ -18,6 +18,7 @@ def _campaign(tmp_path, extra=None):
     (ws / "active-campaign.txt").write_text("c")
     overview = {"campaign_name": "C", "player_position": {"current_location": "Town Square"}}
     (camp / "campaign-overview.json").write_text(json.dumps(overview))
+    (camp / "locations.json").write_text(json.dumps({"Town Square": {}}))
     extra = extra or {}
     for name, payload in extra.items():
         (camp / name).write_text(json.dumps(payload) if not isinstance(payload, str) else payload)

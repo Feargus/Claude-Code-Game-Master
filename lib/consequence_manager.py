@@ -40,6 +40,14 @@ class ConsequenceManager(EntityManager):
     EVENT_TRIGGER_TYPES = ('on_death', 'on_event', 'on_clock', 'on_learn')
     # A trigger either matches or not. There is no word matching: free-text
     # conditions are on_event triggers, judged by the GM.
+    # Triggers whose match is an id (world_ids.py), checked when added and
+    # compared exactly: (the kinds it may be, what to do if it doesn't exist).
+    ID_TRIGGERS = {
+        'on_location': (('location',), "a known place; add a new one with gm-location.sh add"),
+        'on_npc': (('npc',), "a known NPC; create a new one with gm-npc.sh create"),
+        'on_death': (('player', 'npc'),
+                     "the player or a known NPC; create a new one with gm-npc.sh create"),
+    }
 
     def add_consequence(self, description: str, trigger: str,
                         trigger_type: str = None, match: str = None,
@@ -77,14 +85,14 @@ class ConsequenceManager(EntityManager):
             if not t.get('match'):
                 print(f"[ERROR] Trigger {t['type']} needs a --match value.", file=sys.stderr)
                 return ""
-            if t['type'] == 'on_death':
-                who = self._death_target(t['match'])
-                if not who:
-                    print(f"[ERROR] on_death matches an NPC's name or 'player'; no NPC "
-                          f"'{t['match']}' exists. Create the NPC first (gm-npc.sh create).",
-                          file=sys.stderr)
+            if t['type'] in self.ID_TRIGGERS:
+                kinds, what = self.ID_TRIGGERS[t['type']]
+                from world_ids import WorldIds
+                cid, error = WorldIds(self.json_ops).resolve_as(t['match'], kinds)
+                if error:
+                    print(f"[ERROR] {t['type']}: {error} It matches {what}.", file=sys.stderr)
                     return ""
-                t['match'] = who
+                t['match'] = cid
             if t['type'] == 'on_learn':
                 canonical, error = self._learn_target(t['match'])
                 if error:
@@ -150,7 +158,8 @@ class ConsequenceManager(EntityManager):
           annotated with `match_reason`. The first `limit` are the fire slice; the
           rest are disclosed (`matched_not_fired`) rather than dropped.
 
-        world_state keys (all optional): location (str), present_npcs (list[str]),
+        world_state keys (all optional): location (str, a locations.json key),
+        present_npcs (list[str], npcs.json keys),
         time (str), events (list[str]), date (str).
 
         Firing does NOT remove a consequence — the GM vetoes for timing or resolves
@@ -176,18 +185,6 @@ class ConsequenceManager(EntityManager):
                 hit['matched_not_fired'] = True
             out.append(hit)
         return out
-
-    def _death_target(self, name: str) -> str:
-        """The canonical on_death match for `name`: 'player', an NPC key, or '' if unknown."""
-        from world_ids import WorldIds
-        ids = WorldIds(self.json_ops)
-        raw = str(name).strip()
-        if raw.lower().startswith('npc:'):
-            raw = raw[4:]
-        if ids.resolve(raw)[0] == 'player':  # 'player' or the character's name
-            return 'player'
-        cid, _ = ids.resolve(f"npc:{raw}")
-        return cid[4:] if cid else ''
 
     EFFECT_TYPES = ('start_clock', 'tell')
 
@@ -382,14 +379,17 @@ class ConsequenceManager(EntityManager):
 
     @staticmethod
     def _evaluate_one(ttype: str, raw_match: str, world_state: Dict[str, Any]) -> str:
-        """The reason a single structured trigger matches now, or '' if it doesn't."""
+        """The reason a single structured trigger matches now, or '' if it doesn't.
+
+        on_location and on_npc hold ids (location:<key>, npc:<key>), compared
+        with the current location and the NPCs present, whose names are keys.
+        """
         match = str(raw_match).lower()
-        if ttype == 'on_location' and match in str(world_state.get('location', '')).lower():
-            return f"at location matching '{raw_match}'"
-        if ttype == 'on_npc':
-            npcs = ' '.join(str(x) for x in world_state.get('present_npcs', []) or []).lower()
-            if match in npcs:
-                return f"NPC matching '{raw_match}' present"
+        if ttype == 'on_location' and match == f"location:{world_state.get('location', '')}".lower():
+            return f"at {raw_match}"
+        if ttype == 'on_npc' and match in {f"npc:{n}".lower()
+                                          for n in world_state.get('present_npcs') or []}:
+            return f"{raw_match} is here"
         if ttype == 'on_time' and match in str(world_state.get('time', '')).lower():
             return f"time matching '{raw_match}'"
         return ''

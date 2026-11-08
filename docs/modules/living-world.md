@@ -78,8 +78,11 @@ than dropped. `check_pending(..., world_state)` uses the same disclose-not-hide 
 ## How triggers match, and one check that misfires
 
 Structured triggers (`--trigger-type on_location|on_npc|on_time|on_death|on_clock|on_event`
-with `--match`, repeatable for several triggers, any one of which fires the consequence)
-score 1.0 on a substring hit against the corresponding world-state field. `on_death`,
+with `--match`, repeatable for several triggers, any one of which fires the consequence).
+`on_location` and `on_npc` hold ids (`location:<key>`, `npc:<key>`, see `lib/world_ids.py`),
+checked when the consequence is added and compared exactly with the current location and
+the NPCs present (2026-11-08; before, any substring matched, so "Ro" fired for Old Iron).
+`on_time` still matches a substring of the time-of-day word. `on_death`,
 `on_clock` and `on_event` are the exceptions, event triggers never checked on the scene:
 `on_death` fires once, inside `gm-npc.sh kill` / `gm-player.sh kill`; `on_clock` fires once
 per segment, inside `gm-clock.sh advance` or the time update that moves the clock;
