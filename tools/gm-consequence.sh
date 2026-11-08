@@ -27,7 +27,11 @@ add:
   Triggers (repeat --trigger-type/--match pairs; any one fires it):
     --trigger-type on_location --match "<place>"         (a known place, exactly)
     --trigger-type on_npc      --match "<NPC>"           (a known NPC, in the scene)
-    --trigger-type on_time     --match night             (a time-of-day word, not a date)
+    --trigger-type on_time     --match noon              (a time-of-day word = its hours on the
+                                                          game clock: small hours 01-05, dawn 05-07,
+                                                          morning 07-11, noon 11-13, afternoon 13-17,
+                                                          evening 17-19, dusk 19-21, night 21-23,
+                                                          midnight 23-01; not a date)
     --trigger-type on_death    --match "<NPC>" | player
   Places and NPCs are stored as ids (location:<name>, npc:<name>); add new ones first.
     --trigger-type on_clock    --match "<clock>" | "<clock>:<segment>"

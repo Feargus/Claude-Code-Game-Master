@@ -91,6 +91,26 @@ def derive_time_of_day(moment: datetime) -> str:
     return [word for start, word in TIMES_OF_DAY if start <= moment.hour][-1]
 
 
+def hours_of(word: str) -> str:
+    """The hours a time-of-day word covers on the game clock: "11:00–12:59" for
+    Noon, "23:00–00:59" for Midnight (it wraps around 00:00); '' if unknown."""
+    spans = [(start, TIMES_OF_DAY[i + 1][0] if i + 1 < len(TIMES_OF_DAY) else 24)
+             for i, (start, w) in enumerate(TIMES_OF_DAY)
+             if w.lower() == str(word).strip().lower()]
+    if not spans:
+        return ""
+    if len(spans) == 2 and spans[0][0] == 0 and spans[-1][1] == 24:  # across midnight
+        spans = [(spans[-1][0], spans[0][1])]
+    start, end = spans[0]
+    return f"{start:02d}:00–{(end - 1) % 24:02d}:59"
+
+
+def all_hours() -> str:
+    """Every time-of-day word with its hours, for help texts and errors."""
+    words = list(dict.fromkeys(w for _, w in TIMES_OF_DAY))
+    return ", ".join(f"{w.lower()} {hours_of(w)}" for w in words)
+
+
 def derive_date(moment: datetime) -> str:
     return f"{DAYS[moment.weekday()]}, {moment.day} {MONTHS[moment.month - 1]} {moment.year}"
 

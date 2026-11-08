@@ -363,7 +363,7 @@ Tracks events that will trigger in the future.
       "triggers": [   (OPTIONAL, structured; any one fires it)
         {"type": "on_location | on_npc | on_time | on_death | on_clock | on_learn | on_event",
          "match": "on_location: location:<key>; on_npc: npc:<key>; on_death: npc:<key> or player;
-                   on_time: a time-of-day word; on_clock: <clock>:<segment>;
+                   on_time: a time-of-day word (its hours); on_clock: <clock>:<segment>;
                    on_learn: <who> learns <fact id> | <who> learns about:<id>; on_event: free text"}
       ],
       "effects": [   (OPTIONAL, carried out by the script each time it fires)

@@ -72,3 +72,35 @@ def test_on_time_refuses_a_date_and_points_to_a_clock(dcc_world, capsys):
 def test_on_time_accepts_a_time_of_day_word(dcc_world):
     assert ConsequenceManager(dcc_world).add_consequence(
         "The market closes", "tonight", trigger_type="on_time", match="Small hours")
+
+
+def test_on_time_fires_only_in_its_hours(dcc_world):
+    """on_time compares the word for the game time exactly: noon is 11:00-12:59.
+    Before, a substring match made 'noon' fire in the Afternoon and 'night' at
+    Midnight."""
+    cm = ConsequenceManager(dcc_world)
+    noon = cm.add_consequence("The market opens", "x", trigger_type="on_time", match="noon")
+    night = cm.add_consequence("The patrol passes", "x", trigger_type="on_time", match="night")
+
+    def fired(**world):
+        return {c["id"] for c in cm.check_pending(world, limit=10)} & {noon, night}
+
+    assert fired(game_time="2187-10-26T11:30") == {noon}
+    assert fired(game_time="2187-10-26T14:00") == set()           # Afternoon
+    assert fired(time="Afternoon") == set()
+    assert fired(game_time="2187-10-26T21:15") == {night}
+    assert fired(game_time="2187-10-26T23:30") == set()           # Midnight
+    # The game time decides, not a word stored elsewhere.
+    assert fired(game_time="2187-10-26T11:00", time="Night") == {noon}
+    reason = next(c for c in cm.check_pending({"game_time": "2187-10-26T12:59"}, limit=10)
+                  if c["id"] == noon)["match_reason"]
+    assert reason == "it is Noon (11:00–12:59)"
+
+
+def test_hours_of_each_word():
+    from lib.time_manager import hours_of
+    assert hours_of("Noon") == "11:00–12:59"
+    assert hours_of("small hours") == "01:00–04:59"
+    assert hours_of("midnight") == "23:00–00:59"
+    assert hours_of("night") == "21:00–22:59"
+    assert hours_of("teatime") == ""

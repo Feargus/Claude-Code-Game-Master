@@ -108,8 +108,9 @@ class ConsequenceManager(EntityManager):
             if t['type'] == 'on_time':
                 ok, _ = self.validators.validate_time_of_day(t['match'])
                 if not ok:
-                    print(f"[ERROR] on_time matches the time-of-day word (small hours, dawn, morning, "
-                          f"noon, afternoon, evening, dusk, night, midnight), not '{t['match']}'. For a "
+                    from time_manager import all_hours
+                    print(f"[ERROR] on_time matches a time-of-day word, which means its hours on the "
+                          f"game clock ({all_hours()}), not '{t['match']}'. For a "
                           f"deadline at a date and time, use a clock: gm-clock.sh add \"<name>\" 1 "
                           f"--due \"YYYY-MM-DD HH:MM\" --consequence \"<what happens>\"", file=sys.stderr)
                     return ""
@@ -157,8 +158,9 @@ class ConsequenceManager(EntityManager):
           rest are disclosed (`matched_not_fired`) rather than dropped.
 
         world_state keys (all optional): location (str, a locations.json key),
-        present_npcs (list[str], npcs.json keys),
-        time (str), events (list[str]), date (str).
+        present_npcs (list[str], npcs.json keys), game_time ("YYYY-MM-DDTHH:MM"),
+        time (str, the time-of-day word, used when there is no game_time),
+        events (list[str]), date (str).
 
         Firing does NOT remove a consequence — the GM vetoes for timing or resolves
         it explicitly; the tick layer stamps last_fired_key so a beat doesn't stutter.
@@ -381,6 +383,8 @@ class ConsequenceManager(EntityManager):
 
         on_location and on_npc hold ids (location:<key>, npc:<key>), compared
         with the current location and the NPCs present, whose names are keys.
+        on_time holds a time-of-day word, compared with the word for the game
+        time, so it fires exactly in that word's hours ("noon": 11:00–12:59).
         """
         match = str(raw_match).lower()
         if ttype == 'on_location' and match == f"location:{world_state.get('location', '')}".lower():
@@ -388,9 +392,26 @@ class ConsequenceManager(EntityManager):
         if ttype == 'on_npc' and match in {f"npc:{n}".lower()
                                           for n in world_state.get('present_npcs') or []}:
             return f"{raw_match} is here"
-        if ttype == 'on_time' and match in str(world_state.get('time', '')).lower():
-            return f"time matching '{raw_match}'"
+        if ttype == 'on_time':
+            from time_manager import hours_of
+            word = ConsequenceManager._time_word(world_state)
+            if word and match.strip() == word.lower():
+                return f"it is {word} ({hours_of(word)})"
         return ''
+
+    @staticmethod
+    def _time_word(world_state: Dict[str, Any]) -> str:
+        """The time-of-day word now: derived from the game time when there is one
+        (never from words written elsewhere), else the stored word."""
+        from datetime import datetime
+        from time_manager import STORED_FORMAT, derive_time_of_day
+        stored = world_state.get('game_time')
+        if stored:
+            try:
+                return derive_time_of_day(datetime.strptime(str(stored), STORED_FORMAT))
+            except ValueError:
+                pass
+        return str(world_state.get('time', '')).strip()
 
     def _matches_now(self, consequence: Dict[str, Any], world_state: Dict[str, Any]) -> str:
         """Why a state trigger of this consequence matches now, or '' if none does.
@@ -623,6 +644,7 @@ class ConsequenceManager(EntityManager):
         world_state = {
             "location": location,
             "time": overview.get("time_of_day", ""),
+            "game_time": overview.get("game_time", ""),
             "date": overview.get("current_date", ""),
             "present_npcs": present,
             "events": [],

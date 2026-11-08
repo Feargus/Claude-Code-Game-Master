@@ -32,7 +32,7 @@ def test_on_location_fires_with_reason(dcc_world):
 
 def test_on_time_fires(dcc_world):
     fired = ConsequenceManager(dcc_world).check_pending(
-        {"location": "Village", "time": "night falls", "present_npcs": []}, limit=10)
+        {"location": "Village", "time": "Night", "present_npcs": []}, limit=10)
     assert "a36a02f6" in {c["id"] for c in fired}  # Nightstalker: on_time -> "night"
 
 
