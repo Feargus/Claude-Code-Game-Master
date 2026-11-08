@@ -107,4 +107,4 @@ def test_cli_tells_flags(dcc_world):
     assert r.returncode != 0 and "go together" in (r.stdout + r.stderr)
     r = run("add", "The witness talks", "y", "--tells", fid, "--to", "Mordecai", "--to", "public")
     assert r.returncode == 0, r.stderr
-    assert f"npc:Mordecai, public learn(s) {fid}" in r.stdout
+    assert f"when it fires, tells {fid} to npc:Mordecai, public" in r.stdout

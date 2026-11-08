@@ -20,6 +20,7 @@ from note_manager import fact_text
 from schemas import PLOT_TYPE_SORT
 from world_kit import WorldKit
 from threat_clocks import ThreatClockManager
+from consequence_manager import describe_effects
 
 
 class SessionManager(EntityManager):
@@ -1005,7 +1006,9 @@ class SessionManager(EntityManager):
                                        for t in cdata.get('triggers') or []
                                        if isinstance(t, dict) and t.get('type'))
                     line = f"[{short_id}] {event} -> triggers: {trigger}"
-                    pending.append(line + (f" [{typed}]" if typed else ""))
+                    line += f" [{typed}]" if typed else ""
+                    then = describe_effects(cdata.get('effects'))
+                    pending.append(line + (f" -> when it fires, {then}" if then else ""))
         elif isinstance(consequences, list):
             for cdata in consequences:
                 if isinstance(cdata, dict):

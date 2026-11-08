@@ -140,11 +140,9 @@ class ConsequenceManager(EntityManager):
         data['active'].append(consequence)
 
         if self.json_ops.save_json(self.consequences_file, data):
-            starts = ''.join(f"; when it fires, starts clock {e['name']}" if e['type'] == 'start_clock'
-                             else f"; when it fires, {', '.join(e['holders'])} learn(s) {e['fact']}"
-                             for e in effects)
+            then = describe_effects(effects)
             print(f"[SUCCESS] Added consequence [{consequence_id}]: {description} "
-                  f"(triggers: {trigger}{starts})")
+                  f"(triggers: {trigger}{'; when it fires, ' + then if then else ''})")
             return consequence_id
         return ""
 
@@ -672,6 +670,36 @@ class ConsequenceManager(EntityManager):
         return data.get('resolved', [])
 
 
+def describe_effects(effects) -> str:
+    """What a consequence's effects will do when it fires, in words, or ''.
+
+    Shown wherever pending consequences are listed, so the GM can see that a
+    firing starts a clock or spreads a fact before deciding anything about it.
+    """
+    parts = []
+    for e in effects or []:
+        if not isinstance(e, dict):
+            continue
+        if e.get('type') == 'start_clock':
+            n = int(e.get('segments', 1))
+            size = f"{n} segment{'s' if n != 1 else ''}"
+            if e.get('on') == 'event':
+                when = "advanced by hand"
+            elif e.get('due_in'):
+                when = f"full {e['due_in']} after it fires"
+            elif e.get('due'):
+                when = f"full at {e['due']}"
+            else:  # a time clock without a due time: one day per segment
+                when = f"full {n} day{'s' if n != 1 else ''} after it fires"
+            text = f"starts clock '{e.get('name')}' ({size}, {when})"
+            if e.get('consequence'):
+                text += f", and when it is full: {e['consequence']}"
+            parts.append(text)
+        elif e.get('type') == 'tell':
+            parts.append(f"tells {e.get('fact')} to {', '.join(e.get('holders') or [])}")
+    return "; ".join(parts)
+
+
 def print_fired(fired: List[Dict[str, Any]]) -> None:
     """Human output for consequences fired by an event or by hand."""
     if not fired:
@@ -849,7 +877,9 @@ def main():
         else:
             print(f"{len(pending)} pending consequences:")
             for c in pending:
-                print(f"  [{c['id']}] {c['consequence']} (triggers: {c['trigger']})")
+                then = describe_effects(c.get('effects'))
+                print(f"  [{c['id']}] {c['consequence']} (triggers: {c['trigger']})"
+                      + (f"; when it fires, {then}" if then else ""))
 
     elif args.action == 'tick':
         _print_tick_report(manager.tick_from_session())
