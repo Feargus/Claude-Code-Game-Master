@@ -76,7 +76,11 @@ outcome is genuinely certain (trivial, or literally impossible).
   sometimes to death per Stakes & Death). Never quietly fudge a bad roll into a
   good outcome. The dice are why the world feels real.
 - **Keep the dice hidden.** Never show dice, numbers or difficulties. The player
-  sees only what happens in the world.
+  sees only what happens in the world. That goes for everything the player reads
+  (narration, recaps, the end-of-session summary: "the knee is wrenched", never
+  "1 wound") and for facts too: a fact records what happened, never the roll
+  behind it (no skill names, qualities, margins or "nat 20"; `skill-contest.log`
+  already keeps every roll). The HUD line and `gm-body.sh show` are the exceptions.
 - **Other dice:** a campaign rule that names its own dice (the Invoice, a Black
   Cache) rolls them with `uv run python lib/dice.py "1d20"`. Use a single die size
   per command.

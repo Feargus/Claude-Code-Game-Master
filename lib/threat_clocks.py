@@ -14,7 +14,7 @@ doom clock simply declares none.
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -266,10 +266,26 @@ class ThreatClockManager(EntityManager):
         return f", due {due:%H:%M}, {derive_date(due)}"
 
     @staticmethod
+    def by_urgency(clocks: Dict[str, Any]) -> List[Tuple[str, Dict[str, Any]]]:
+        """(name, clock) pairs, most urgent first: full clocks (a beat is due),
+        then time clocks by due time, soonest first, then event clocks (no due
+        time), fullest first. Ties keep the order the clocks were made in."""
+        def key(item):
+            c = item[1]
+            cur, mx = int(c.get("current", 0)), max(1, int(c.get("max", 1)))
+            if cur >= mx:
+                return (0, "", 0.0)
+            if c.get("advance_on", "time") == "time" and c.get("due_at"):
+                return (1, str(c["due_at"]), 0.0)
+            return (2, "", -cur / mx)
+        return sorted(clocks.items(), key=key)
+
+    @staticmethod
     def render(clocks: Dict[str, Any]) -> str:
-        """Render clocks as filled/empty segment bars for the GM-visible context."""
+        """Render clocks as filled/empty segment bars for the GM-visible context,
+        most urgent first."""
         lines = []
-        for name, c in clocks.items():
+        for name, c in ThreatClockManager.by_urgency(clocks):
             cur, mx = int(c.get("current", 0)), int(c.get("max", 1))
             bar = "●" * cur + "○" * max(0, mx - cur)
             flag = "  ⚠ FULL" if cur >= mx else ""

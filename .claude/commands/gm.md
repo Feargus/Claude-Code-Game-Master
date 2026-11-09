@@ -239,6 +239,12 @@ bash tools/gm-recall.sh arc '{"summary": "...", "who_matters": [...], "open_debt
 - **`/gm cliffhanger`:** the same, but you may close on a real new development: a twist, an arrival, a reveal. Persist it properly as well (a fact, a consequence or a plot), not only in the cliffhanger, so the next session treats it as established.
 
 Confirm the session is saved: who rests where, and that progress is recorded. No fenced boxes; phone-friendly.
+This confirmation is for the player, so the fourth wall holds (`CLAUDE.md` → Dice): tell only
+what the character knows. Never mention threat clocks, due times, pending consequences or
+anything still to come ("the priests come for Ishbel at 16:30" is the GM's knowledge). A
+portent that has already happened in play may be recalled ("something on Level 18 scraped,
+then went still"). No numbers: no wound counts, rolls or difficulties ("the knee is wrenched",
+not "1 wound").
 
 ---
 

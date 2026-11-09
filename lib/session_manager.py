@@ -841,8 +841,8 @@ class SessionManager(EntityManager):
         clocks = self.json_ops.load_json("threat-clocks.json") or {}
         if clocks:
             lines.append("")
-            lines.append("--- THREAT CLOCKS ---")
-            for clock_name, c in clocks.items():
+            lines.append("--- THREAT CLOCKS (most urgent first) ---")
+            for clock_name, c in ThreatClockManager.by_urgency(clocks):
                 cur, mx = int(c.get('current', 0)), int(c.get('max', 1))
                 bar = "●" * cur + "○" * max(0, mx - cur)
                 flag = "  ⚠ FULL — a beat is due" if cur >= mx else ""

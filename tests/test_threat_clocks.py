@@ -164,3 +164,19 @@ def test_a_time_clock_is_not_advanced_by_hand(dcc_world):
     m.add_clock("Hunt", 4, advance_on="event")
     with pytest.raises(ValueError):
         m.advance("Hunt", 0)
+
+
+def test_clocks_are_listed_most_urgent_first():
+    """Full first, then time clocks by due time, then event clocks, fullest first;
+    the brief and gm-clock.sh used to list them in the order they were made."""
+    from lib.threat_clocks import ThreatClockManager
+    clocks = {
+        "Foreclosure": {"current": 3, "max": 4, "advance_on": "time", "due_at": "2187-10-27T04:30"},
+        "Vendetta": {"current": 1, "max": 4, "advance_on": "event"},
+        "Slow scrub": {"current": 0, "max": 4, "advance_on": "time", "due_at": "2187-10-26T07:15"},
+        "Tracker": {"current": 2, "max": 3, "advance_on": "event"},
+        "Raid": {"current": 2, "max": 2, "advance_on": "time", "due_at": "2187-10-26T05:00"},
+    }
+    order = [name for name, _ in ThreatClockManager.by_urgency(clocks)]
+    assert order == ["Raid", "Slow scrub", "Foreclosure", "Tracker", "Vendetta"]
+    assert ThreatClockManager.render(clocks).splitlines()[0].startswith("Raid:")
