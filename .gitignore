@@ -20,8 +20,8 @@ eggs/
 .pnpm-store/
 
 # Campaign Data (Personal/Runtime)
-world-state/campaigns/*
-!world-state/campaigns/.gitkeep
+# A link to the campaign repo's campaigns/ folder (see that repo's README)
+world-state/campaigns
 world-state/active-campaign.txt
 
 # Source Material (User-provided documents for import)
