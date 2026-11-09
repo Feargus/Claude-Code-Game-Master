@@ -55,8 +55,9 @@ Display all available commands and tools.
   Rolls and fights
   gm-skill-contest.sh  Roll a skill contest
   gm-combat.sh      Enemies' wounds in a fight
+  gm-mob.sh         Mobs: interchangeable enemies with stats
   People and story
-  gm-npc.sh         Create and update NPCs
+  gm-npc.sh         Create and update NPCs, their stats
   gm-note.sh        Facts: what happened, who knows it
   gm-consequence.sh What happens later, and what triggers it
   gm-clock.sh       Threat clocks

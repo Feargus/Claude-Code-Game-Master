@@ -19,6 +19,8 @@ if [ "$#" -lt 1 ]; then
     echo "                                          Create new NPC (where they're usually found;"
     echo "                                          aliases: shorter names the story will use)"
     echo "  alias <name> <alias>... [--remove <alias>]  Add or remove an NPC's shorter names"
+    echo "  stats <name> [--attr STR=12]... [--skill Handguns=4]... [--remove-skill X] [--wounds N]"
+    echo "                                          Show or set their stat block (checked; never edit JSON)"
     echo "  update <name> <event>                   Add event to NPC history"
     echo "  status <name>                           Show NPC details"
     echo "  kill <name> [--cause \"<how>\"]           Mark NPC dead (fires its on_death consequences)"
@@ -143,6 +145,10 @@ case "$ACTION" in
             exit 1
         fi
         $PYTHON_CMD "$LIB_DIR/npc_manager.py" enhance "$NAME" "$1"
+        ;;
+
+    stats)
+        $PYTHON_CMD "$LIB_DIR/npc_manager.py" stats "$NAME" "$@"
         ;;
 
     alias)

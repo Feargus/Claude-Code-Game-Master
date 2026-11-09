@@ -286,6 +286,23 @@ class NPCManager(EntityManager):
         print(f"[SUCCESS] {name} re-grounded — canon check stamped at {n} beat(s)")
         return True
 
+    def set_stats(self, name: str, attrs=None, skills=None, remove_skills=None,
+                  wounds: Optional[int] = None) -> Dict[str, Any]:
+        """Set or update an NPC's stat block (attributes, skills, wounds), checked
+        (stat_block.py). Merges into what is there. Returns {"name", "entry",
+        "warnings"}; raises stat_block.StatError, or ValueError for an unknown NPC."""
+        from stat_block import check, merged
+        key = self._find_entity_name(self.npcs_file, name)
+        if not key:
+            raise ValueError(f"NPC '{name}' not found")
+        npcs = self._load_entities(self.npcs_file)
+        entry = merged(npcs[key], attrs, skills, remove_skills, wounds)
+        warnings = check(entry, self.campaign_dir)
+        if attrs or skills or remove_skills or wounds is not None:
+            npcs[key] = entry
+            self._save_entities(self.npcs_file, npcs)
+        return {"name": key, "entry": entry, "warnings": warnings}
+
     def get_npc_status(self, name: str) -> Optional[Dict[str, Any]]:
         """
         Get NPC status and information
@@ -1061,6 +1078,16 @@ def main():
     create_parser.add_argument('--alias', action='append', dest='aliases',
                                help='a shorter name the story will use (repeatable)')
 
+    # Stats
+    stats_parser = subparsers.add_parser('stats', help="Show or set an NPC's stat block")
+    stats_parser.add_argument('name', help='NPC name')
+    stats_parser.add_argument('--attr', action='append', default=[],
+                              help='ATTR=DIE, e.g. STR=12; default=10 for the rest')
+    stats_parser.add_argument('--skill', action='append', default=[],
+                              help='Skill=VALUE, e.g. Handguns=4; default=0 for untrained')
+    stats_parser.add_argument('--remove-skill', dest='remove_skill', action='append', default=[])
+    stats_parser.add_argument('--wounds', type=int, help='how many wounds take them out')
+
     # Aliases
     alias_parser = subparsers.add_parser('alias', help="Add or remove an NPC's aliases")
     alias_parser.add_argument('name', help='NPC name')
@@ -1231,6 +1258,19 @@ def main():
                                   locations=args.locations, nowhere=args.nowhere,
                                   aliases=args.aliases):
             sys.exit(1)
+
+    elif args.action == 'stats':
+        from stat_block import StatError, describe, parse_pairs
+        try:
+            result = manager.set_stats(args.name, parse_pairs(args.attr, 'attr'),
+                                       parse_pairs(args.skill, 'skill'), args.remove_skill,
+                                       args.wounds)
+        except (StatError, ValueError) as error:
+            print(f"[ERROR] {error}")
+            sys.exit(1)
+        print(describe(result['name'], result['entry']))
+        for warning in result['warnings']:
+            print(f"  [WARNING] {warning}")
 
     elif args.action == 'alias':
         from world_ids import change_aliases

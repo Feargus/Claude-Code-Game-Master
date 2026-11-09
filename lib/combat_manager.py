@@ -40,12 +40,36 @@ class CombatManager(EntityManager):
         self._save(data)
         return data
 
-    def add_combatant(self, name: str, wounds: int) -> Dict[str, Any]:
+    def add_combatant(self, name: str, wounds: Optional[int] = None,
+                      sheet: Optional[str] = None) -> Dict[str, Any]:
+        """Add an enemy line. `sheet` names the NPC or mob it is an instance of
+        ("street thug 2" as "street thug"): its wounds come from that sheet, and
+        contests use that name. Raises ValueError."""
+        if (wounds is None) == (sheet is None):
+            raise ValueError("Give the wounds, or --as <NPC or mob> to read them from its sheet.")
+        if sheet is not None:
+            from skill_contest import ContestError, find_sheet
+            try:
+                found = find_sheet(self.campaign_dir, sheet)
+            except ContestError as error:
+                raise ValueError(str(error))
+            if found.get('is_player'):
+                raise ValueError("The player's wounds live on the sheet (gm-body.sh), not here.")
+            wounds = found.get('wounds')
+            if not isinstance(wounds, int) or wounds < 1:
+                raise ValueError(f"'{sheet}' has no wounds on its sheet; set them with "
+                                 f"gm-npc.sh stats / gm-mob.sh stats --wounds N.")
+        if int(wounds) < 1:
+            raise ValueError("wounds: at least 1.")
         data = self._load()
         if not data.get('active'):
             data = self.start()
+        if self._find(data, name):
+            raise ValueError(f"There is already a line '{name}'; number them ('{name} 2').")
         combatant = {'name': name, 'wounds': int(wounds), 'taken': 0,
                      'notes': [], 'conditions': []}
+        if sheet is not None:
+            combatant['as'] = sheet
         data.setdefault('combatants', []).append(combatant)
         self._save(data)
         return combatant
@@ -96,7 +120,8 @@ class CombatManager(EntityManager):
             boxes = '●' * c['taken'] + '○' * (c['wounds'] - c['taken'])
             out = ', out' if c['taken'] >= c['wounds'] else ''
             extra = ', '.join(c['notes'] + c['conditions'])
-            lines.append(f"  {c['name']}: {boxes}{out}" + (f" ({extra})" if extra else ""))
+            sheet = f" [rolls as {c['as']}]" if c.get('as') and c['as'].lower() != c['name'].lower() else ""
+            lines.append(f"  {c['name']}{sheet}: {boxes}{out}" + (f" ({extra})" if extra else ""))
         return "\n".join(lines)
 
 
@@ -108,7 +133,8 @@ def main():
     parser = argparse.ArgumentParser(description="Persisted fight state")
     sub = parser.add_subparsers(dest='action')
     sub.add_parser('start')
-    p = sub.add_parser('add-enemy'); p.add_argument('name'); p.add_argument('wounds', type=int)
+    p = sub.add_parser('add-enemy'); p.add_argument('name'); p.add_argument('wounds', type=int, nargs='?')
+    p.add_argument('--as', dest='sheet', help='the NPC or mob it is an instance of; wounds from its sheet')
     p = sub.add_parser('wound'); p.add_argument('name'); p.add_argument('count', type=int, nargs='?', default=1)
     p.add_argument('--note')
     p = sub.add_parser('condition'); p.add_argument('name'); p.add_argument('op', choices=['add', 'remove']); p.add_argument('condition')
@@ -126,7 +152,10 @@ def main():
     if args.action == 'start':
         out = m.start()
     elif args.action == 'add-enemy':
-        out = m.add_combatant(args.name, args.wounds)
+        try:
+            out = m.add_combatant(args.name, args.wounds, args.sheet)
+        except ValueError as error:
+            sys.exit(emit_error(str(error), json_mode=json_mode))
     elif args.action == 'wound':
         out = m.wound(args.name, args.count, args.note)
     elif args.action == 'condition':

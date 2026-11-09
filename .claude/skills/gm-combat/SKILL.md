@@ -11,15 +11,16 @@ Before a fight can kill, make the danger readable: see Stakes & Death in `CLAUDE
 
 ## Start
 
-Track every fight with more than one enemy or more than a couple of beats. Each enemy gets its own line, numbered, with the `wounds` from its sheet (`npcs.json` or `mobs.json`): the number of wounds that takes it out.
+Track every fight with more than one enemy or more than a couple of beats. Each enemy gets its own line, numbered, and `--as` reads the number of wounds that takes it out from its sheet (an NPC or a mob):
 
 ```
 bash tools/gm-combat.sh start
-bash tools/gm-combat.sh add-enemy "street thug 1" 2
-bash tools/gm-combat.sh add-enemy "street thug 2" 2
+bash tools/gm-combat.sh add-enemy "street thug 1" --as "street thug"
+bash tools/gm-combat.sh add-enemy "street thug 2" --as "street thug"
+bash tools/gm-combat.sh add-enemy "Rook" --as "Rook"
 ```
 
-Contests use the sheet's name ("street thug"), not the numbered line. An enemy without stats is added first, as [Rolling](../gm-skills/SKILL.md#rolling) describes.
+Contests use the sheet's name ("street thug"), not the numbered line; the fight shows each line's sheet. An enemy without stats gets them first, as [Rolling](../gm-skills/SKILL.md#rolling) describes.
 
 ## Order
 

@@ -121,8 +121,17 @@ bash tools/gm-skill-contest.sh --active Fearghas Larceny DFT DFT LOG --reactive-
 bash tools/gm-skill-contest.sh --active-dc 20 "nerve toxin" --reactive Fearghas Endurance VIG VIG ITU
 ```
 
-- **Names:** the player, an NPC from `npcs.json`, or a mob from `mobs.json`. Mobs have no personality, and their instances are interchangeable. Mobs you invent go in the campaign's `mobs.json`.
-- **Unknown name or no stats:** the script refuses. Add the entry, using `mobs.json` in this folder as the scale, then roll again.
+- **Names:** the player, an NPC from `npcs.json`, or a mob from `mobs.json`. Mobs have no personality, and their instances are interchangeable. Mobs you invent belong to the campaign.
+- **Unknown name or no stats:** the script refuses. Give them stats, then roll again; never edit the JSON by hand. `gm-mob.sh list` shows the repo's example mobs: they are the scale.
+  ```
+  bash tools/gm-npc.sh stats "Rook" --attr STR=12 --attr AGI=11 --attr default=10 \
+    --skill Handguns=4 --skill Guard=3 --wounds 3
+  bash tools/gm-npc.sh stats "Rook" --skill Insight=2        # later: merged in
+  bash tools/gm-mob.sh add "Mastiff" --note "military war-chassis, IFF ripped out" \
+    --attr STR=18 --attr VIG=18 --attr default=10 --skill Brawling=6 --wounds 6
+  ```
+  `--attr default=N` is the die for every attribute not listed; `--skill default=N` the value for untrained skills (otherwise −1). The script checks every value and warns about a skill that isn't canon or improvised.
+- **Decide the stats before the roll that needs them,** and don't change them because of how a roll went: they are facts about the world, and the world doesn't get harder after a failure.
 - **Advantage and disadvantage** belong to an attribute and affect all its dice in the roll. Each flag takes the attribute and a reason. Repeat the flag to stack them. See [Advantage or modifier](#advantage-or-modifier) for which to use.
 - **`--mod`** is one net list, relative to the active side: positive helps the active side, negative helps the reactive side. Leave out anything that affects both sides equally. Every modifier has a label.
 - **Difficulties:** easy 15, normal 20, hard 25, very hard 30 or more.

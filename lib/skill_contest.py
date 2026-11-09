@@ -143,7 +143,9 @@ def find_sheet(campaign_dir: Path, name: str) -> Dict[str, Any]:
 
 def dice_sizes(sheet: Dict[str, Any], name: str, attributes: List[str]) -> Dict[str, int]:
     """The die size of each attribute. Mobs may set a `default` for the rest."""
-    table = sheet.get("stats") or sheet.get("attributes")
+    # NPCs and mobs keep die sizes under "attributes" (gm-npc.sh stats, gm-mob.sh);
+    # the player's sheet and older entries under "stats".
+    table = sheet.get("attributes") or sheet.get("stats")
     if not table:
         raise ContestError(f"{name} has no stats yet. Add them, then roll again.")
 
