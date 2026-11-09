@@ -114,3 +114,12 @@ def test_cli_alias_commands(world):
     assert "Old Iron's Yard: also called the Yard" in r.stdout
     r = run("npc_manager.py", "alias", "Old Iron", "the Yard")
     assert r.returncode == 1 and "already names location:Old Iron's Yard" in r.stdout
+
+
+def test_an_alias_the_name_check_already_finds_is_explained(world, capsys):
+    """In play the GM gave 'Saint Ayo's' the alias "Ayo's" and was told it was the
+    place's 'own name', which made no sense; titles are ignored, so it is found."""
+    ws, camp = world
+    assert not LocationManager(ws).add_location("Saint Ayo's", "a clinic", aliases=["Ayo's"])
+    out = capsys.readouterr().out
+    assert "needs no alias: the name check already finds it as 'Saint Ayo's'" in out

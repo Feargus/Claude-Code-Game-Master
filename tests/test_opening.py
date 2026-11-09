@@ -168,3 +168,14 @@ def test_cli(world):
     assert "[SUCCESS] The opening is set up" in r.stdout
     r = run()
     assert r.returncode == 1 and "set up already" in r.stderr
+
+
+def test_the_plot_starts_with_its_hook_and_consequences_say_when(world):
+    """Two things play showed: the plot's first beat was the placeholder 'Thread
+    seeded', and the opening's consequences read 'triggers: off-screen development'."""
+    ws, camp = world
+    Opening(ws).apply(json.loads(json.dumps(SPEC)))
+    events = [e["event"] for e in _load(camp, "plots.json")["The Writ"]["events"]]
+    assert events == [SPEC["plot"]["hook"]]
+    con = _load(camp, "consequences.json")["active"][0]
+    assert con["trigger"] == "the Lantern"   # the match it waits for

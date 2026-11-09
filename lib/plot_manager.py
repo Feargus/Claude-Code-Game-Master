@@ -117,7 +117,7 @@ class PlotManager(EntityManager):
     def add_plot(self, name: str, plot_type: str = 'idea', description: str = '',
                  status: str = 'dormant', objectives: Optional[List[str]] = None,
                  npcs: Optional[List[str]] = None, locations: Optional[List[str]] = None,
-                 sequence: Optional[int] = None) -> bool:
+                 sequence: Optional[int] = None, first_event: Optional[str] = None) -> bool:
         """Create a NEW plot row (the only live plot-creation path).
 
         Refuses to clobber an existing plot of the same name — use `update` to advance
@@ -151,7 +151,7 @@ class PlotManager(EntityManager):
             'npcs': list(npcs or []),
             'locations': list(locations or []),
             'objectives': list(objectives or []),
-            'events': [{'event': 'Thread seeded', 'timestamp': self.get_timestamp()}],
+            'events': [{'event': first_event or 'Thread seeded', 'timestamp': self.get_timestamp()}],
             'created': self.get_timestamp(),
         }
         if sequence is not None:

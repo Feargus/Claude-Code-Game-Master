@@ -191,8 +191,13 @@ class WorldIds:
             return f"'{text}' is not a name."
         if text.lower() in RESERVED or norm in RESERVED:
             return f"'{text}' is a word ids use ({', '.join(RESERVED)})."
-        if norm == normalize_entity_name(owner.partition(":")[2]):
-            return f"'{text}' is {owner}'s own name; an alias is another name for it."
+        own = owner.partition(":")[2]
+        if norm == normalize_entity_name(own):
+            if text.lower() == own.lower():
+                return f"'{text}' is {owner}'s own name; an alias is another name for it."
+            return (f"'{text}' needs no alias: the name check already finds it as '{own}' "
+                    f"(case, punctuation and a leading title such as 'the' or 'Saint' "
+                    f"are ignored).")
         for cid, name in self._names():
             if cid != owner and (normalize_entity_name(name) or name.lower()) == norm:
                 return f"'{text}' already names {cid}."

@@ -222,8 +222,10 @@ class Opening:
             if not plots.add_plot(key, plot.get("type") or "main", plot.get("description") or "",
                                   status="active", objectives=_as_list(plot.get("objectives")),
                                   npcs=_as_list(plot.get("npcs")),
-                                  locations=_as_list(plot.get("locations"))):
+                                  locations=_as_list(plot.get("locations")),
+                                  first_event=str(hook).strip()):
                 raise OpeningError(f"The plot '{key}' was refused")
+            return key, str(hook).strip()
         plots.update_plot(key, str(hook).strip())
         return key, str(hook).strip()
 

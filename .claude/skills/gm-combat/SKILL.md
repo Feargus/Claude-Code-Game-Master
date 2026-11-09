@@ -74,6 +74,8 @@ Each zone of the player's body takes four wounds. Wounds absorbed by armor or ch
 
 A wound is the character's own state, so it's always a disadvantage, never a modifier.
 
+**A missing or destroyed limb** (four wounds in an arm or leg, or lost before the story) works the same way, for good: **disadvantage** on every roll that would use it, on the attribute that depends on it most (as for wound 2). On top of that, some actions are simply **impossible**, or fail without a roll: one-handed, there is no two-handed lift, no climbing a rope hand over hand, no reloading a pump shotgun while holding on; one-legged, no running. Decide which before the roll, as the stakes. It is never a modifier. Chrome that replaces the limb ends both, for as long as it works.
+
 ## Death
 
 The fourth wound in head, chest or groin kills. There is no dying state and no rescue roll; the earlier wounds and armor damage were the warning. When the player dies, run the Death Protocol in `CLAUDE.md`.

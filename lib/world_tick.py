@@ -177,9 +177,9 @@ class WorldTick:
 
                 con = d.get("consequence")
                 if con:
-                    cid = self.cm.add_consequence(
-                        con["text"], con.get("trigger") or "off-screen development",
-                        triggers=con["triggers"])
+                    when = con.get("trigger") or " or ".join(
+                        str(t.get("match", "")) for t in con["triggers"] if isinstance(t, dict))
+                    cid = self.cm.add_consequence(con["text"], when, triggers=con["triggers"])
                     if not cid:
                         raise WorldTickError(f"development {i + 1}: the consequence was "
                                              f"refused (see the error above)")
