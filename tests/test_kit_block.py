@@ -32,7 +32,7 @@ def test_dcc_context_kit_block_names_resource_axis(dcc_world):
     kit = _kit_section(ctx)
     assert "kit:" not in kit
     assert "progression: resource-axis" in kit
-    assert "vitals: hp" in kit
+    assert "vitals: (none)" in kit  # hp is never a vital: wounds replaced it
 
 
 def test_signature_systems_list_appear_in_world_rules(tmp_path):
@@ -145,3 +145,33 @@ def test_skills_from_list_or_empty(tmp_path):
         "skills": ["might", "guile"],
     })
     assert WorldKit(world).skills() == ["might", "guile"]
+
+
+def test_a_campaign_without_a_ruleset_plays_the_standard_rules(tmp_path):
+    """A one-shot has no ruleset.json: it gets xp-levels, no extra counters and the
+    canon skills, so experience awards count (under milestone they were zero)."""
+    ws = tmp_path / "world-state"
+    camp = ws / "campaigns" / "solo"
+    camp.mkdir(parents=True)
+    (ws / "active-campaign.txt").write_text("solo")
+    (camp / "campaign-overview.json").write_text('{"campaign_name": "Solo"}')
+    from lib.world_kit import WorldKit
+    kit = WorldKit(str(ws))
+    assert (kit.name(), kit.progression_model(), kit.vitals()) == ("Standard rules", "xp-levels", [])
+    block = _kit_section(SessionManager(str(ws)).get_full_context())
+    assert "progression: xp-levels" in block and "vitals: (none)" in block
+    assert "skills: the standard list (gm-skills)" in block
+
+
+def test_new_campaigns_have_no_fantasy_default_and_count_their_sessions(isolated_world_state):
+    import json
+    from lib.campaign_manager import CampaignManager
+    cm = CampaignManager()
+    cdir = cm.create("Solo", "Solo")
+    overview = json.loads((cdir / "campaign-overview.json").read_text())
+    assert overview["genre"] == "" and overview["current_date"] == ""
+    with open(cdir / "session-log.md", "a") as f:
+        f.write("## Session Started: a\n\n### Session Ended: b\nOne.\n\n---\n\n"
+                "## Session Started: c\n\n### Session Ended: d\nTwo.\n\n---\n\n")
+    info = next(c for c in cm.list_campaigns() if c["name"] == cdir.name)
+    assert info["session_count"] == 2

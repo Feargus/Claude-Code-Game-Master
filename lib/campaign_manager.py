@@ -129,6 +129,10 @@ class CampaignManager:
                     campaign_info["campaign_name"] = overview.get("campaign_name", "Unnamed")
                     campaign_info["current_location"] = overview.get("player_position", {}).get("current_location")
                     campaign_info["session_count"] = overview.get("session_count", 0)
+                    log = campaign_dir / "session-log.md"
+                    if log.exists():  # the log is the record; the overview's count was never kept up
+                        campaign_info["session_count"] = log.read_text(
+                            encoding="utf-8").count("### Session Ended:")
                 except (json.JSONDecodeError, IOError):
                     campaign_info["campaign_name"] = "Unknown"
 
@@ -369,14 +373,14 @@ class CampaignManager:
         if not preserve_existing or not overview_path.exists():
             overview = {
                 "campaign_name": campaign_name,
-                "genre": "Fantasy",
+                "genre": "",
                 "tone": {
                     "horror": 30,
                     "comedy": 30,
                     "drama": 40
                 },
-                "current_date": "1st of the First Month, Year 1",
-                "time_of_day": "Morning",
+                "current_date": "",
+                "time_of_day": "",
                 "player_position": {
                     "current_location": None,
                     "previous_location": None
@@ -500,7 +504,7 @@ def main():
             print("Create one with: gm-campaign.sh create <name>")
         else:
             active = manager.get_active()
-            print(f"{'':2}{'NAME':20}{'CHARACTER':25}{'SESSIONS':10}")
+            print(f"{'':2}{'NAME':20}{'SESSIONS':10}CHARACTER")
             print("-" * 60)
             for c in campaigns:
                 marker = "*" if c["name"] == active else " "
@@ -509,7 +513,7 @@ def main():
                     char = c["character"]
                     char_info = f"{char['name']} ({char['race']} {char['class']} L{char['level']})"
                 sessions = c.get("session_count", 0)
-                print(f"{marker} {c['name']:20}{char_info:25}{sessions}")
+                print(f"{marker} {c['name']:20}{sessions:<10}{char_info}")
             print()
             if active:
                 print(f"* = active campaign ({active})")

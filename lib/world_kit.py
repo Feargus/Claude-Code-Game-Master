@@ -34,10 +34,17 @@ from campaign_manager import CampaignManager
 from game_core import make_progression
 
 
+# The standard rules: what a campaign without its own ruleset.json plays by (a
+# one-shot, a new world before its kit is drafted). The rolls, attributes,
+# skills and wounds are the repo's (gm-skills, gm-combat); a campaign's
+# ruleset only adds on top: its own counters (vitals), signature systems,
+# a different progression. Vitals are those extra counters, so none here.
+STANDARD_NAME = "Standard rules"
+DEFAULT_PROGRESSION = "xp-levels"
 DEFAULT_RULESET = {
-    "name": "Generic Adventure",
-    "stat_schema": {"vitals": ["hp"]},
-    "progression": {"model": "milestone"},
+    "name": STANDARD_NAME,
+    "stat_schema": {"vitals": []},
+    "progression": {"model": DEFAULT_PROGRESSION},
     "active_agents": [],
     "rules_doc": None,
 }
@@ -56,32 +63,29 @@ class WorldKit:
         if isinstance(prog, str):          # shorthand: "progression": "milestone"
             prog = {"model": prog}
         self.progression = make_progression(
-            prog.get("model", "milestone"),
+            prog.get("model", DEFAULT_PROGRESSION),
             **{k: v for k, v in prog.items() if k != "model"},
         )
 
     # --- declared configuration ---
     def name(self) -> str:
-        return self.ruleset.get("name", "Generic Adventure")
+        return self.ruleset.get("name", STANDARD_NAME)
 
     def stat_schema(self) -> Dict[str, Any]:
         return self.ruleset.get("stat_schema", {})
 
     def vitals(self) -> List[str]:
-        """Vital tracks this world declares ('hp' plus kit vitals: vigor,
-        corruption, water, ...).
-
-        A kit that declares none — no `stat_schema`, an empty list, or no ruleset at
-        all — gets ['hp']. Every world has a body; returning nothing here would make
-        an under-declared kit refuse plain damage.
-        """
-        return (self.stat_schema() or {}).get("vitals") or ["hp"]
+        """The campaign's own counters (Drift, corruption, water, ...), on top of
+        the standard rules; [] when it declares none. Never 'hp': wounds replaced
+        it, and every character has a body (gm-body.sh)."""
+        declared = (self.stat_schema() or {}).get("vitals") or []
+        return [v for v in declared if str(v).lower() != "hp"]
 
     def progression_model(self) -> str:
         prog = self.ruleset.get("progression") or {}
         if isinstance(prog, str):
             return prog
-        return prog.get("model", "milestone")
+        return prog.get("model", DEFAULT_PROGRESSION)
 
     def active_agents(self) -> List[str]:
         return self.ruleset.get("active_agents", [])

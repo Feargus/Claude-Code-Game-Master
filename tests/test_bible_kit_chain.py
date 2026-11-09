@@ -104,7 +104,7 @@ def test_ruleset_is_drafted_from_the_bible(campaign):
     assert "kit" not in ruleset
     assert ruleset["name"] == "The Iron Tangle"
     assert ruleset["active_agents"] == ["npc-builder"]
-    assert ruleset["stat_schema"] == {"vitals": ["hp"]}
+    assert ruleset["stat_schema"] == {"vitals": []}
     assert ruleset["progression"] == {"model": "resource-axis", "resource": "viewers"}
 
 
@@ -167,7 +167,7 @@ def test_cli_drives_the_whole_chain(campaign):
 
     ruleset = json.loads((campaign / "ruleset.json").read_text(encoding="utf-8"))
     overview = json.loads((campaign / "campaign-overview.json").read_text(encoding="utf-8"))
-    assert ruleset["stat_schema"] == {"vitals": ["hp"]}
+    assert ruleset["stat_schema"] == {"vitals": []}
     assert overview["campaign_rules"]["signature_systems"] == ["loot boxes"]
 
     # Second draft-ruleset is refused rather than silently overwriting.

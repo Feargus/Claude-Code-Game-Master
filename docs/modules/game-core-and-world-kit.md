@@ -60,11 +60,12 @@ would silently swap out a world's math now say so.
    (`"xp-level"` for `"xp-levels"`) still costs the campaign its XP math, but it no longer
    does it invisibly. The warnings go to **stderr**, never stdout, so `--json` output on
    the tool wrappers stays parseable.
-2. **Missing ruleset → generic kit.** `WorldKit.__init__` falls back to `DEFAULT_RULESET`
-   — an unnamed world with no attributes, milestone progression, and `hp` as its one
-   vital. `vitals()` returns `['hp']` for an under-declared kit too (no `stat_schema`, or
-   an empty list), because every world has a body and a kit half-authored into silence
-   should not refuse plain damage.
+2. **Missing ruleset → the standard rules.** `WorldKit.__init__` falls back to
+   `DEFAULT_RULESET`: "Standard rules", `xp-levels` progression, no vitals, and the canon
+   skills of `gm-skills` (2026-11-08; before, "Generic Adventure" with milestone
+   progression and `hp`, which left one-shots at level 0 with zero experience awards).
+   Vitals are a world's own counters on top of the standard rules, never `hp`: wounds
+   replaced it, and every character has a body.
 3. **Dangling `rules_doc` → `None`.** `rules_doc_path()` returns `None` when the declared
    file is absent, so a kit copied from a sibling campaign quietly loses its rules prose.
    `overview_seed.py` nulls the dangling pointer at import time rather than repairing it.

@@ -73,19 +73,20 @@ def bible_to_campaign_rules(bible: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def draft_ruleset_from_bible(bible: Dict[str, Any], progression_model: str = "milestone",
+def draft_ruleset_from_bible(bible: Dict[str, Any], progression_model: str = "xp-levels",
                              **progression_config) -> Dict[str, Any]:
     """Auto-draft a World Kit ruleset.json from a world-bible.
 
-    progression_model is chosen by the importer / human (default milestone, the
-    safest book-native option).
+    progression_model is chosen by the importer / human (default xp-levels, as in
+    the standard rules). No vitals: those are the world's own counters, added
+    with its signature systems; wounds come with every character.
     """
     progression = {"model": progression_model}
     progression.update(progression_config)
     agents = ["npc-builder"]
     return {
         "name": bible.get("name", "Imported World"),
-        "stat_schema": {"vitals": ["hp"]},
+        "stat_schema": {"vitals": []},
         "progression": progression,
         "active_agents": agents,
         "rules_doc": "rules.md",

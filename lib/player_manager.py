@@ -366,13 +366,9 @@ class PlayerManager(EntityManager):
         }
 
     def _kit_vitals(self) -> List[str]:
-        """Vital tracks the active World Kit declares — 'hp' plus whatever else the
-        world runs on (vigor, corruption, water, heat).
-
-        Asked of the kit rather than re-read off ruleset.json here, so a campaign
-        with no ruleset gets the kit's own default (['hp']) instead of an empty list
-        that would refuse a plain HP change.
-        """
+        """The campaign's own counters the World Kit declares (Drift, corruption,
+        water, ...); none under the standard rules. Asked of the kit rather than
+        re-read off ruleset.json, so every ruleset form it accepts counts."""
         return self.world_kit().vitals()
 
     @staticmethod
