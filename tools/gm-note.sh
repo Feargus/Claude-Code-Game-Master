@@ -10,7 +10,12 @@ usage() {
     echo "       gm-note.sh tell <fact id> <holder>...      someone learns it"
     echo "       gm-note.sh about <fact id> [--add <id>]... [--remove <id>]..."
     echo "       gm-note.sh truth <fact id> wrong|partial|true [--version-of <id>]"
-    echo "       gm-note.sh get [<category>]                  print the recorded facts"
+    echo "       gm-note.sh show <fact id>...                 facts in full (truth, versions)"
+    echo "       gm-note.sh find [--held-by <id>]... [--about <id>]... [--secret | --hidden]"
+    echo "                       [--truth wrong|partial] [--category C] [--text \"words\"] [--limit N]"
+    echo "                                                    facts by who knows them, who they're about"
+    echo "       gm-note.sh recent [N]                        the last N facts (default 10)"
+    echo "       gm-note.sh get [<category>]                  print the recorded facts (raw JSON)"
     echo "       gm-note.sh categories"
     echo ""
     echo "Categories: session_events, plot_local, plot_regional, plot_world,"
@@ -34,7 +39,7 @@ fi
 require_active_campaign
 
 case "$1" in
-    tell|about|truth|get|categories)
+    tell|about|truth|get|categories|show|find|recent)
         $PYTHON_CMD "$LIB_DIR/note_manager.py" "$@"
         ;;
     *)

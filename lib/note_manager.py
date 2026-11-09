@@ -356,6 +356,73 @@ class NoteManager:
             return
         print_waiting(fact_id, waiting)
 
+    # ---------- looking facts up ----------
+
+    def _all(self) -> list:
+        """Every fact with its category, newest first (by the number in its id)."""
+        facts = self.json_ops.load_json("facts.json") or {}
+        entries = [dict(f, category=cat) for cat, items in facts.items()
+                   if isinstance(items, list) for f in items if isinstance(f, dict)]
+        def number(f):
+            fid = str(f.get('id', ''))
+            return int(fid[1:]) if fid[1:].isdigit() else 0
+        return sorted(entries, key=number, reverse=True)
+
+    def show(self, fact_ids) -> list:
+        """The facts with these ids, each with `versions`: the ids of the facts
+        that are versions of it. Raises ValueError for an unknown id."""
+        everything = self._all()
+        by_id = {f.get('id'): f for f in everything}
+        out = []
+        for fid in fact_ids:
+            if fid not in by_id:
+                raise ValueError(f"No fact '{fid}'.")
+            entry = dict(by_id[fid])
+            entry['versions'] = [f['id'] for f in everything if f.get('version_of') == fid]
+            out.append(entry)
+        return out
+
+    def find(self, held_by=None, about=None, secret=False, hidden=False, truth=None,
+             category=None, text=None) -> list:
+        """Facts matching every filter given, newest first.
+
+        held_by: holder ids (or names); each must know it, and a fact held by
+        `public` counts as known to everyone (`street` doesn't: who belongs to
+        the street isn't recorded). about: ids it must be about. secret: nobody
+        knows it. hidden: the player doesn't. truth: wrong or partial. text:
+        every word must occur. Matching facts get `public: True` when only
+        `public` made a held_by match. Raises ValueError for an unknown id.
+        """
+        from world_ids import WorldIds
+        ids = WorldIds(self.json_ops)
+        holders, errors = ids.resolve_all(held_by, holders=True)
+        abouts, more = ids.resolve_all(about)
+        if errors + more:
+            raise ValueError("; ".join(errors + more))
+        words = [w.lower() for w in str(text or '').split()]
+        out = []
+        for f in self._all():
+            known = f.get('holders')
+            if holders:
+                if known is None or not all(h in known or 'public' in known for h in holders):
+                    continue
+                if any(h not in known for h in holders):
+                    f = dict(f, public=True)
+            if abouts and not all(a in (f.get('about') or []) for a in abouts):
+                continue
+            if secret and known != []:
+                continue
+            if hidden and (known is None or {'player', 'public'} & set(known)):
+                continue
+            if truth and f.get('truth') != truth:
+                continue
+            if category and f.get('category') != category:
+                continue
+            if words and not all(w in str(f.get('fact', '')).lower() for w in words):
+                continue
+            out.append(f)
+        return out
+
     def get_facts(self, category: str = None) -> dict:
         """Get facts, optionally filtered by category."""
         facts = self.json_ops.load_json("facts.json")
@@ -367,6 +434,49 @@ class NoteManager:
         """List all fact categories."""
         facts = self.get_facts()
         return list(facts.keys())
+
+
+def fact_line(f: dict, width: int = 160) -> str:
+    """One fact on one line: id, game time, the marked text (cut), who it's about
+    and who knows it."""
+    text = fact_text(f)
+    if len(text) > width:
+        text = text[:width - 1].rstrip() + "…"
+    when = str(f.get('game_time', '')).replace('T', ' ')
+    known = f.get('holders')
+    who = ("who knows it isn't recorded" if known is None else
+           f"known to: {', '.join(known) or 'nobody'}")
+    if f.get('public'):
+        who += " (public: everyone)"
+    about = f"about: {', '.join(f['about'])}; " if f.get('about') else ""
+    return f"{f.get('id')} [{when or 'no game time'}] {text}  ({about}{who})"
+
+
+def fact_details(f: dict) -> str:
+    """A fact in full, with its truth and its versions."""
+    lines = [f"{f.get('id')} ({f.get('category')}, {str(f.get('game_time') or 'no game time').replace('T', ' ')})",
+             f"  {fact_text(f)}"]
+    if f.get('about'):
+        lines.append(f"  about: {', '.join(f['about'])}")
+    known = f.get('holders')
+    lines.append("  known to: " + ("not recorded (an old fact)" if known is None else
+                                   ', '.join(known) or "nobody (a secret)"))
+    if f.get('truth'):
+        lines.append(f"  truth: {f['truth']}" + (f", a version of {f['version_of']}"
+                                                  if f.get('version_of') else ""))
+    if f.get('versions'):
+        lines.append(f"  versions of it: {', '.join(f['versions'])}")
+    return "\n".join(lines)
+
+
+def _print_found(found: list, limit: int) -> None:
+    shown = found if limit <= 0 else found[:limit]
+    for f in shown:
+        print(fact_line(f))
+    if not found:
+        print("No facts match.")
+    elif len(found) > len(shown):
+        print(f"+{len(found) - len(shown)} more (--limit 0 for all; gm-note.sh show <id> for one in full)")
 
 
 def main():
@@ -404,7 +514,23 @@ def main():
     p.add_argument("--remove", action="append", default=[])
     p = sub.add_parser("get"); p.add_argument("category", nargs="?")
     sub.add_parser("categories")
-    args = parser.parse_args()
+    p = sub.add_parser("show", help="facts in full, by id")
+    p.add_argument("fact_ids", nargs="+")
+    p = sub.add_parser("find", help="facts by who knows them, who they are about, ...")
+    p.add_argument("--held-by", dest="held_by", action="append", default=[],
+                   help="who knows it (repeatable; public facts count, street ones don't)")
+    p.add_argument("--about", action="append", default=[], help="who or what it concerns (repeatable)")
+    p.add_argument("--secret", action="store_true", help="nobody knows it")
+    p.add_argument("--hidden", action="store_true", help="the player doesn't know it")
+    p.add_argument("--truth", choices=list(TRUTH_VALUES))
+    p.add_argument("--category")
+    p.add_argument("--text", help="words that must all occur in it")
+    p.add_argument("--limit", type=int, default=20, help="how many (0: all); newest first")
+    p = sub.add_parser("recent", help="the latest facts")
+    p.add_argument("count", type=int, nargs="?", default=10)
+    from cli_output import strip_json_flag, wants_json
+    json_mode = wants_json()
+    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
     if not args.action:
         parser.print_help()
         sys.exit(1)
@@ -436,6 +562,20 @@ def main():
         elif args.action == 'categories':
             for cat in manager.list_categories():
                 print(f"  - {cat}")
+        elif args.action in ('show', 'find', 'recent'):
+            if args.action == 'show':
+                found = manager.show(args.fact_ids)
+            elif args.action == 'find':
+                found = manager.find(args.held_by, args.about, args.secret, args.hidden,
+                                     args.truth, args.category, args.text)
+            else:
+                found = manager.find()[:max(0, args.count)]
+            if json_mode:
+                print(json.dumps(found, indent=2, ensure_ascii=False))
+            elif args.action == 'show':
+                print("\n\n".join(fact_details(f) for f in found))
+            else:
+                _print_found(found, args.limit if args.action == 'find' else 0)
     except (RuntimeError, ValueError) as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)
