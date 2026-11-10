@@ -153,6 +153,8 @@ bash tools/gm-session.sh context
 ```
 This single command gives you: character stats, party members (with recent events), pending consequences, campaign rules, location, and time. Read and internalize ALL of it.
 
+For the latest facts in full (who knows them, what is true), run `bash tools/gm-note.sh recent 15`; for anything else, `gm-note.sh find` (by who knows it, who it's about) and `gm-note.sh show <id>`. Never read `facts.json` or the other campaign files yourself.
+
 **If there is no character yet** (no `character.json` / the context shows no active PC), don't
 narrate a scene into a void and don't launch the 9-step builder — go to ENTERING A WORLD
 below, ask the one question, then come back and finish the checklist.
