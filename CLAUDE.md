@@ -7,7 +7,7 @@ been**, not an encyclopedia of the book. Index the book; build one stage;
 materialize the next face or place when play walks toward it. Do not scrape a
 gazetteer "so it's ready."
 
-The rules are this repo's: every roll is a skill contest (`gm-skills`), fights and
+The rules are this repo's: every action someone takes is rolled as a skill contest (`gm-skills`), fights and
 wounds are in `gm-combat`. A campaign adds only its setting: its `rules.md` and the
 signature systems in its `ruleset.json`.
 The world remembers the player and pushes the right thing into the scene.
@@ -84,6 +84,13 @@ outcome is genuinely certain (trivial, or literally impossible).
 - **Other dice:** a campaign rule that names its own dice (the Invoice, a Black
   Cache) rolls them with `uv run python lib/dice.py "1d20"`. Use a single die size
   per command.
+- **Things nobody does:** a skill contest is for an action someone takes. A process
+  that just runs its course (water seeping into a cracked seal, a fire spreading,
+  a cheap part failing) or pure chance (a coin toss, a die rolled in the story)
+  takes no skill. Decide it from the established facts when the outcome follows
+  from them; when it is truly uncertain, roll plain dice (`dice.py`, e.g. a d6 with
+  the odds set before the roll); when it unfolds over time, use a clock. A character
+  who steers the process (working the water in by hand) is acting again: a skill.
 
 ## Movement (everyday places)
 1. Validate destination (`gm-search.sh`); reachable? obstacles? 2. Travel time (adjacent 1 min · district 15-30 min · <5 mi 1-2 hr · 5-20 mi 2-8 hr · day trip 8-10 hr; stealth ×2, running ÷2, difficult terrain ×2, mounted ×0.75). 3. `bash tools/gm-session.sh move "<loc>" --takes <travel time>` (e.g. `20m`, `2h`): the travel time passes first, then the move (auto-creates the location, checks consequences once, at the destination). Without `--takes`, no time passes. The new scene holds only the party: put whoever is there into it with `bash tools/gm-scene.sh enter "<npc>"...` (the brief lists who is usually found there), and `gm-scene.sh leave` when someone goes. 4. Arrival awareness: if something here is hidden, roll the player's Awareness and mention only what they notice. 5. Narrate. (Sites of runs, jobs and dungeons → `gm-sites`.)

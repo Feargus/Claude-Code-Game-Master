@@ -5,7 +5,7 @@ description: How every dice roll works. Load whenever the player attempts someth
 
 # Attributes and skills
 
-Every roll uses a skill. There are no checks on attributes alone. A skill is a way of using your attributes, so combat, defense, resistance (saving throws), tradecraft and knowledge are all skills.
+Every roll for something someone *does* uses a skill. There are no checks on attributes alone. A skill is a way of using your attributes, so combat, defense, resistance (saving throws), tradecraft and knowledge are all skills.
 
 This file defines when to roll, what is rolled, and how to read the result.
 
@@ -18,6 +18,8 @@ This file defines when to roll, what is rolled, and how to read the result.
 - Time pressure
 
 **Don't roll for:** trivial tasks, impossible tasks, routine professional work, or anything with no meaningful consequence for failure.
+
+**Not a skill contest:** a process nobody steers (water seeping into a cracked seal while the character lies still, a fire spreading, a worn part giving out) or pure chance (a coin toss, a die rolled in the story). No skill applies, so don't pick one. Decide it from the facts when the outcome follows from them; if it is truly uncertain, set the odds and roll plain dice (`uv run python lib/dice.py "1d6"`); if it unfolds over time, it is a clock. Once a character steers it, it is an action again and takes a skill.
 
 ## Attributes
 
