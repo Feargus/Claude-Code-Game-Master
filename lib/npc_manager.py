@@ -168,8 +168,25 @@ class NPCManager(EntityManager):
             elif alias_hint("npc", name):
                 print(alias_hint("npc", name))
             print(f"  Not in the scene yet: bash tools/gm-scene.sh enter \"{name}\" if they're here.")
+            self._witness_hint(name)
             return True
         return False
+
+    def _witness_hint(self, name: str) -> None:
+        """A new NPC may have seen what happened here before they had a name (Lord
+        Thane in the gallery, a guard who was a mob): point at gm-note.sh witness
+        when facts were recorded at the current location."""
+        from note_manager import NoteManager
+        try:
+            notes = NoteManager(self.base_dir) if self.base_dir else NoteManager()
+            place, _ = notes._where()
+            here = notes.find(at=place) if place else []
+        except (RuntimeError, ValueError):
+            return
+        if here:
+            print(f"  Was {name} here for what happened before ({len(here)} fact(s) at "
+                  f"{place[9:]})? bash tools/gm-note.sh witness \"{name}\" [--from \"YYYY-MM-DD HH:MM\"] "
+                  f"(--dry-run to see what they would learn)")
 
     def kill_npc(self, name: str, cause: Optional[str] = None) -> Dict[str, Any]:
         """Mark an NPC dead, record the death as a fact, and fire the on_death

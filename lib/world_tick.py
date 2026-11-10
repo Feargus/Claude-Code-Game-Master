@@ -157,6 +157,9 @@ class WorldTick:
             _, errors = notes._holders(as_list(d.get("holders")))
             if errors:
                 raise WorldTickError(f"development {i + 1}: holders: {'; '.join(errors)}")
+            _, errors = notes._where(d.get("at"), auto=False)
+            if errors:
+                raise WorldTickError(f"development {i + 1}: {'; '.join(errors)}")
             _, _, _, errors = notes._check_version(
                 notes.json_ops.load_json("facts.json") or {}, d.get("truth"), d.get("version_of"))
             if errors:
@@ -169,7 +172,8 @@ class WorldTick:
                 fid = notes.add_fact(d.get("category") or DEFAULT_CATEGORY, text,
                                      list_waiting=False, about=as_list(d.get("about")),
                                      holders=as_list(d.get("holders")),
-                                     truth=d.get("truth"), version_of=d.get("version_of"))
+                                     truth=d.get("truth"), version_of=d.get("version_of"),
+                                     at=d.get("at"), auto_at=False)
                 if not fid:
                     raise WorldTickError(f"development {i + 1}: the fact could not be saved")
                 written["facts"].append(fid)

@@ -112,6 +112,24 @@ class NoteManager:
         found = [i for i in ids.mentioned(fact) if i not in given and i not in dropped]
         return [i for i in given if i not in dropped] + found, found, errors
 
+    def _where(self, at=None, nowhere: bool = False, auto: bool = True):
+        """(location id or None, errors): where a fact happened. `at` names a
+        place; `nowhere` means none (a truth about the world, a secret, something
+        off-screen); otherwise, with `auto`, the current location."""
+        from world_ids import WorldIds
+        if at and nowhere:
+            return None, ["Give --at or --nowhere, not both."]
+        ids = WorldIds(self.json_ops)
+        if at:
+            cid, error = ids.resolve_as(at, ("location",))
+            return (cid or None), ([f"at: {error}"] if error else [])
+        if nowhere or not auto:
+            return None, []
+        pos = (self.json_ops.load_json("campaign-overview.json") or {}).get("player_position") or {}
+        here = pos.get("current_location") if isinstance(pos, dict) else None
+        cid, _ = ids.resolve_as(here, ("location",)) if here else ("", "")
+        return (cid or None), []
+
     def _holders(self, holders=None, secret: bool = False, also=None):
         """(holder ids, errors) for a new fact. None = the default: the player and
         the NPCs present; `also` adds to the default. `secret` = nobody (a GM-only
@@ -131,7 +149,8 @@ class NoteManager:
 
     def add_fact(self, category: str, fact: str, list_waiting: bool = True,
                  about=None, not_about=None, holders=None, secret: bool = False,
-                 also=None, truth=None, version_of=None) -> str:
+                 also=None, truth=None, version_of=None, at=None, nowhere: bool = False,
+                 auto_at: bool = True) -> str:
         """Add a fact to the specified category. Returns its id, or "" on failure.
 
         Each fact carries an id, the in-game time it was recorded (`game_time`,
@@ -143,8 +162,12 @@ class NoteManager:
         replaces it; `secret`
         (or an empty list) means nobody, a GM-only secret. Afterwards it lists
         the consequences waiting on an event, unless `list_waiting` is False.
+        `at` is where it happened: the place given, else the current location
+        (with `auto_at`), or none with `nowhere`.
         """
         about_ids, found, errors = self._about(fact, about, not_about)
+        where, more = self._where(at, nowhere, auto_at)
+        errors += more
         holder_ids, more = self._holders(holders, secret, also)
         errors += more
         truth, version_of, version_notes, more = self._check_version(
@@ -170,6 +193,8 @@ class NoteManager:
             entry['truth'] = truth
         if version_of:
             entry['version_of'] = version_of
+        if where:
+            entry['at'] = where
         game_time = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
         if game_time:
             entry['game_time'] = game_time
@@ -187,6 +212,8 @@ class NoteManager:
                     f"gm-note.sh about {fact_id} --remove <id>)") if found else ""
             print(f"  about: {', '.join(about_ids)}{note}")
         print(f"  known to: {', '.join(holder_ids) if holder_ids else 'nobody (a secret)'}")
+        if where:
+            print(f"  at: {where}")
         for note in version_notes:
             print(f"  {note}")
         if truth:
@@ -383,7 +410,7 @@ class NoteManager:
         return out
 
     def find(self, held_by=None, about=None, secret=False, hidden=False, truth=None,
-             category=None, text=None) -> list:
+             category=None, text=None, at=None, since=None, until=None) -> list:
         """Facts matching every filter given, newest first.
 
         held_by: holder ids (or names); each must know it, and a fact held by
@@ -397,8 +424,13 @@ class NoteManager:
         ids = WorldIds(self.json_ops)
         holders, errors = ids.resolve_all(held_by, holders=True)
         abouts, more = ids.resolve_all(about)
-        if errors + more:
-            raise ValueError("; ".join(errors + more))
+        errors += more
+        place = None
+        if at:
+            place, error = ids.resolve_as(at, ("location",))
+            errors += [error] if error else []
+        if errors:
+            raise ValueError("; ".join(errors))
         words = [w.lower() for w in str(text or '').split()]
         out = []
         for f in self._all():
@@ -420,8 +452,128 @@ class NoteManager:
                 continue
             if words and not all(w in str(f.get('fact', '')).lower() for w in words):
                 continue
+            if place and f.get('at') != place:
+                continue
+            when = str(f.get('game_time') or '')
+            if (since or until) and not when:
+                continue
+            if since and when < since or until and when > until:
+                continue
             out.append(f)
         return out
+
+    def witness(self, who: str, at=None, since=None, until=None, include=None,
+                dry_run: bool = False) -> dict:
+        """Someone was there: they learn the facts recorded at a place (default:
+        the current location), optionally within a game-time window.
+
+        Taught by default: what happened in the open there, the facts the player
+        or the public holds (except the player's wrong beliefs). Not taught, only
+        suggested: secrets, facts only others hold, wrong beliefs; `include`
+        adds chosen ones (the GM decides what this person could have perceived).
+        Facts they hold already are skipped. Returns {"who", "taught",
+        "suggested"} as lists of facts; with `dry_run` nothing is changed.
+        Raises ValueError.
+        """
+        from time_manager import STORED_FORMAT, parse_time
+        from world_ids import WorldIds
+        cid, error = WorldIds(self.json_ops).resolve_as(who, ("npc",))
+        if error:
+            raise ValueError(error)
+        if at is None:
+            place, errors = self._where()
+            if not place:
+                raise ValueError("Where were they? The current location is unknown; give --at.")
+            at = place
+        window = [parse_time(t).strftime(STORED_FORMAT) if t else None for t in (since, until)]
+        candidates = [f for f in self.find(at=at, since=window[0], until=window[1])
+                      if cid not in (f.get('holders') or [])]
+        def seen(f):
+            known = f.get('holders')
+            return (isinstance(known, list) and bool({'player', 'public'} & set(known))
+                    and f.get('truth') != 'wrong')
+        chosen = set(include or [])
+        unknown = chosen - {f['id'] for f in candidates}
+        if unknown:
+            raise ValueError(f"Not among the facts at that place (or known already): "
+                             f"{', '.join(sorted(unknown))}.")
+        taught = [f for f in candidates if seen(f) or f['id'] in chosen]
+        suggested = [f for f in candidates if f not in taught]
+        self.last_fired = []
+        if not dry_run:
+            fired = []
+            for f in reversed(taught):  # oldest first, as they happened
+                self.tell(f['id'], [cid])
+                fired += self.last_fired
+            self.last_fired = fired
+        return {"who": cid, "taught": taught, "suggested": suggested}
+
+    def beat(self, items) -> list:
+        """Several facts of one beat at once, all checked before any is written.
+
+        Each item is a fact as `add` takes it ({"fact", "category", "about",
+        "not_about", "holders", "also", "secret", "truth", "version_of", "at",
+        "nowhere"}); `version_of` may name an earlier item of the same call as
+        "#1", "#2", ... (a deception: the truth first, then the false impression
+        the fooled one holds). Returns the new ids; raises ValueError and writes
+        nothing if any item is refused.
+        """
+        allowed = {"fact", "category", "about", "not_about", "holders", "also", "secret",
+                   "truth", "version_of", "at", "nowhere"}
+        def as_list(value):
+            return None if value is None else [value] if isinstance(value, str) else list(value)
+        if not isinstance(items, list) or not items:
+            raise ValueError("A beat is a JSON list of facts.")
+        facts = self.json_ops.load_json("facts.json") or {}
+        errors = []
+        for n, item in enumerate(items, 1):
+            where = f"fact #{n}"
+            if not isinstance(item, dict) or not str(item.get("fact") or "").strip():
+                errors.append(f"{where} needs a \"fact\".")
+                continue
+            extra = set(item) - allowed
+            if extra:
+                errors.append(f"{where}: unknown field(s) {', '.join(sorted(extra))}.")
+            _, _, more = self._about(item["fact"], as_list(item.get("about")),
+                                     as_list(item.get("not_about")))
+            errors += [f"{where}: {e}" for e in more]
+            _, more = self._holders(as_list(item.get("holders")), bool(item.get("secret")),
+                                    as_list(item.get("also")))
+            errors += [f"{where}: {e}" for e in more]
+            _, more = self._where(item.get("at"), bool(item.get("nowhere")))
+            errors += [f"{where}: {e}" for e in more]
+            ref = str(item.get("version_of") or "")
+            if ref.startswith("#"):
+                k = int(ref[1:]) if ref[1:].isdigit() else 0
+                if not 1 <= k < n:
+                    errors.append(f"{where}: version_of {ref} must name an earlier fact of this beat.")
+                elif not item.get("truth"):
+                    errors.append(f"{where}: a version is partial or wrong; give \"truth\".")
+                elif (items[k - 1] or {}).get("truth") == "wrong":
+                    errors.append(f"{where}: {ref} is marked wrong; version_of points at the truth.")
+            else:
+                _, _, _, more = self._check_version(facts, item.get("truth"), ref or None)
+                errors += [f"{where}: {e}" for e in more]
+        if errors:
+            raise ValueError(" ".join(errors))
+        written = []
+        for item in items:
+            ref = str(item.get("version_of") or "")
+            if ref.startswith("#"):
+                ref = written[int(ref[1:]) - 1]
+            fid = self.add_fact(item.get("category") or "session_events", item["fact"],
+                                list_waiting=False, about=as_list(item.get("about")),
+                                not_about=as_list(item.get("not_about")),
+                                holders=as_list(item.get("holders")),
+                                secret=bool(item.get("secret")), also=as_list(item.get("also")),
+                                truth=item.get("truth"), version_of=ref or None,
+                                at=item.get("at"), nowhere=bool(item.get("nowhere")))
+            if not fid:
+                self.remove_facts(written)
+                raise ValueError("A fact was refused (see above); none of this beat was kept.")
+            written.append(fid)
+        self._list_waiting(", ".join(written))
+        return written
 
     def get_facts(self, category: str = None) -> dict:
         """Get facts, optionally filtered by category."""
@@ -449,13 +601,16 @@ def fact_line(f: dict, width: int = 160) -> str:
     if f.get('public'):
         who += " (public: everyone)"
     about = f"about: {', '.join(f['about'])}; " if f.get('about') else ""
-    return f"{f.get('id')} [{when or 'no game time'}] {text}  ({about}{who})"
+    at = f"at: {f['at']}; " if f.get('at') else ""
+    return f"{f.get('id')} [{when or 'no game time'}] {text}  ({at}{about}{who})"
 
 
 def fact_details(f: dict) -> str:
     """A fact in full, with its truth and its versions."""
     lines = [f"{f.get('id')} ({f.get('category')}, {str(f.get('game_time') or 'no game time').replace('T', ' ')})",
              f"  {fact_text(f)}"]
+    if f.get('at'):
+        lines.append(f"  at: {f['at']}")
     if f.get('about'):
         lines.append(f"  about: {', '.join(f['about'])}")
     known = f.get('holders')
@@ -501,6 +656,9 @@ def main():
                        help="partial (true, but leaves things out) or wrong; default true")
     p_add.add_argument("--version-of", dest="version_of",
                        help="the id of the fullest true version of this fact")
+    p_add.add_argument("--at", help="where it happened (default: the current location)")
+    p_add.add_argument("--nowhere", action="store_true",
+                       help="it happened nowhere in particular (a truth, a secret, off-screen)")
     p = sub.add_parser("truth", help="mark a recorded fact true, partial or wrong")
     p.add_argument("fact_id"); p.add_argument("truth", choices=["true"] + list(TRUTH_VALUES))
     p.add_argument("--version-of", dest="version_of")
@@ -525,7 +683,19 @@ def main():
     p.add_argument("--truth", choices=list(TRUTH_VALUES))
     p.add_argument("--category")
     p.add_argument("--text", help="words that must all occur in it")
+    p.add_argument("--at", help="where it happened")
     p.add_argument("--limit", type=int, default=20, help="how many (0: all); newest first")
+    p = sub.add_parser("beat", help="several facts of one beat at once")
+    p.add_argument("facts", help='JSON list: [{"fact": ..., "holders": [...], ...}, ...]; '
+                                 'version_of may be "#1" (an earlier fact of this beat)')
+    p = sub.add_parser("witness", help="someone was there: they learn what happened at a place")
+    p.add_argument("who")
+    p.add_argument("--at", help="the place (default: the current location)")
+    p.add_argument("--from", dest="since", help='game time "YYYY-MM-DD HH:MM"')
+    p.add_argument("--to", dest="until", help='game time "YYYY-MM-DD HH:MM"')
+    p.add_argument("--include", action="append", default=[],
+                   help="also teach this suggested fact (a secret, a fact only others hold)")
+    p.add_argument("--dry-run", dest="dry_run", action="store_true", help="only list")
     p = sub.add_parser("recent", help="the latest facts")
     p.add_argument("count", type=int, nargs="?", default=10)
     from cli_output import strip_json_flag, wants_json
@@ -542,7 +712,8 @@ def main():
                                     about=args.about, not_about=args.not_about,
                                     holders=args.holders, secret=args.secret,
                                     also=args.also, truth=args.truth,
-                                    version_of=args.version_of):
+                                    version_of=args.version_of, at=args.at,
+                                    nowhere=args.nowhere):
                 sys.exit(1)
         elif args.action == 'truth':
             entry = manager.set_truth(args.fact_id, args.truth, args.version_of,
@@ -562,12 +733,33 @@ def main():
         elif args.action == 'categories':
             for cat in manager.list_categories():
                 print(f"  - {cat}")
+        elif args.action == 'beat':
+            try:
+                items = json.loads(args.facts)
+            except ValueError as error:
+                raise ValueError(f"The beat isn't valid JSON: {error}")
+            written = manager.beat(items)
+            print(f"[SUCCESS] Recorded {', '.join(written)}")
+        elif args.action == 'witness':
+            result = manager.witness(args.who, args.at, args.since, args.until,
+                                     args.include, args.dry_run)
+            verb = "would learn" if args.dry_run else "learned"
+            print(f"{result['who']} {verb} {len(result['taught'])} fact(s):")
+            for f in result['taught']:
+                print(f"  {fact_line(f)}")
+            if result['suggested']:
+                print("Not taught (secrets, facts only others hold, wrong beliefs): add any this "
+                      "person could have perceived with --include <id>, or later gm-note.sh tell:")
+                for f in result['suggested']:
+                    print(f"  {fact_line(f)}")
+            from consequence_manager import print_fired
+            print_fired(manager.last_fired)
         elif args.action in ('show', 'find', 'recent'):
             if args.action == 'show':
                 found = manager.show(args.fact_ids)
             elif args.action == 'find':
                 found = manager.find(args.held_by, args.about, args.secret, args.hidden,
-                                     args.truth, args.category, args.text)
+                                     args.truth, args.category, args.text, args.at)
             else:
                 found = manager.find()[:max(0, args.count)]
             if json_mode:

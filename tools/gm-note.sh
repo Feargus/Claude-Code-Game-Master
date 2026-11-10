@@ -7,9 +7,14 @@ usage() {
     echo "Usage: gm-note.sh <category> <fact> [--about <id>]... [--not-about <id>]..."
     echo "                  [--also <id>]... | [--holders <id>]... | [--secret]"
     echo "                  [--truth wrong|partial] [--version-of <fact id>]"
+    echo "                  [--at <place> | --nowhere]   where it happened (default: here)"
     echo "       gm-note.sh tell <fact id> <holder>...      someone learns it"
     echo "       gm-note.sh about <fact id> [--add <id>]... [--remove <id>]..."
     echo "       gm-note.sh truth <fact id> wrong|partial|true [--version-of <id>]"
+    echo "       gm-note.sh beat '<json list>'               several facts of one beat at once"
+    echo "                                                    (version_of \"#1\": an earlier fact of it)"
+    echo "       gm-note.sh witness <npc> [--at <place>] [--from T] [--to T] [--include <id>]... [--dry-run]"
+    echo "                                                    they were there: they learn what happened"
     echo "       gm-note.sh show <fact id>...                 facts in full (truth, versions)"
     echo "       gm-note.sh find [--held-by <id>]... [--about <id>]... [--secret | --hidden]"
     echo "                       [--truth wrong|partial] [--category C] [--text \"words\"] [--limit N]"
@@ -39,7 +44,7 @@ fi
 require_active_campaign
 
 case "$1" in
-    tell|about|truth|get|categories|show|find|recent)
+    tell|about|truth|get|categories|show|find|recent|beat|witness)
         $PYTHON_CMD "$LIB_DIR/note_manager.py" "$@"
         ;;
     *)
