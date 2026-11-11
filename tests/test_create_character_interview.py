@@ -84,3 +84,19 @@ def test_a_sheet_without_race_or_class_saves_and_validates(tmp_path):
     assert r.returncode == 0, r.stdout + r.stderr
     ok, errs = validate_character(_sheet(world))
     assert ok, errs
+
+
+def test_a_new_campaign_asks_how_to_make_the_world():
+    """The user's flow (2026-11-11): the world together, from one sentence (setting
+    and lore only, the repo's rules) or from a book; then the character fast or
+    slow. The one-shot (which saved the character before its campaign existed) and
+    the import's "no one yet" are gone."""
+    commands = ROOT / ".claude" / "commands"
+    gm = (commands / "gm.md").read_text(encoding="utf-8")
+    assert "How do we make the world?" in gm and "From one sentence" in gm
+    assert "ONE-SHOT" not in gm and "one-shot" not in gm.lower()
+    assert "no one yet" not in (commands / "import.md").read_text(encoding="utf-8")
+    new_game = (commands / "new-game.md").read_text(encoding="utf-8")
+    quick = new_game[new_game.index("## QUICK WORLD"):]
+    assert '"signature_systems": []' in quick and "no `ruleset.json`" in quick
+    assert "gm-session.sh opening" in quick and "/create-character" in quick

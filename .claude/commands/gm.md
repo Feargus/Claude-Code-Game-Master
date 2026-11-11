@@ -77,38 +77,16 @@ Show a numbered list of saved campaigns (name, character, race/class/level, sess
 
 ## NEW CAMPAIGN
 
-Offer three numbered starts: CREATE WORLD (full setting from scratch), IMPORT DOCUMENT (PDF, book, or module), ONE-SHOT (quick adventure). Wait for a number. No fenced boxes; phone-friendly.
+Two questions make a new campaign; ask them in plain text, numbered, phone-friendly.
 
-- If CREATE WORLD → Run `/new-game`
-- If IMPORT DOCUMENT → Run `/import`
-- If ONE-SHOT → Go to ONE-SHOT ADVENTURE
+**1. How do we make the world?**
+1. **Together:** a conversation about premise, tone, voice and the world's own systems, then you build it and the player approves it. → `/new-game`
+2. **From one sentence:** the player gives one sentence ("a drowned arcology where the rich live on the roof"), you build the setting and lore from it without further questions. The repo's rules only: no signature systems. → `/new-game`, QUICK WORLD
+3. **From a book:** a PDF, book or module the player provides. → `/import`
 
----
+**2. How do we make the character?** Fast or slow, and someone of their own or someone from this world: the `/create-character` interview asks this, at the point each path hands over to it.
 
-## ONE-SHOT ADVENTURE
-
-One-shots start fast and stay tight; pick a hook that fits the player's appetite.
-
-### Character Creation
-
-Run the `/create-character` interview. For a one-shot, use its fast way: ask for a one-line
-concept, propose a complete character, let the player change what they like, save.
-
-### Temporary World State
-
-Create minimal world state:
-```bash
-bash tools/gm-campaign.sh create "one-shot" --campaign-name "One-Shot Adventure"
-bash tools/gm-campaign.sh switch "one-shot"
-bash tools/gm-location.sh add "<opening place>" "<one line about it>"
-bash tools/gm-npc.sh create "<first NPC>" "<who they are>" "<attitude>" --location "<opening place>"
-bash tools/gm-session.sh move "<opening place>"
-bash tools/gm-scene.sh enter "<first NPC>"
-```
-
-### Begin Adventure
-
-Jump into the opening scene. Option to convert to a full campaign at the end.
+Every path ends the same way: the interview saves the character (`gm-player.sh create`), then `gm-session.sh opening` writes the first scene with its plot, hook, clock and start time.
 
 ---
 
@@ -121,9 +99,9 @@ Entry costs **one question**: *"Who are you in this world — or who did you com
 Ask it in the world's tone. Two answers: **someone from this world** (an NPC in the
 campaign; offer names that actually exist, scene context and `gm-npc.sh` know who they are)
 or **someone of their own** (a one-line concept). Then run the `/create-character`
-interview, the fast way by default: propose a complete character, let the player change
-what they like, save with `gm-player.sh create` (`--canon "<NPC>"` for someone from this
-world). Don't interrogate a player who wants to start playing.
+interview, fast (the default: one complete proposal) or slow (entry by entry), and save
+with `gm-player.sh create` (`--canon "<NPC>"` for someone from this world). Don't
+interrogate a player who wants to start playing.
 
 `create` refuses to overwrite a campaign that already has a PC (it names who is sitting
 there). That refusal is a signal you asked the question at the wrong moment — check before

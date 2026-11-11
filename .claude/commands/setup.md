@@ -58,8 +58,8 @@ Run this command to install GM Claude dependencies. This runs automatically on f
 
 Installation is the only job of this command. `/gm` is the single front door for
 everything that follows — do NOT re-implement a campaign/import/new-game menu here.
-`/gm` already lists saved campaigns and offers **New Adventure** (Create World →
-`/new-game`, Import Document → `/import`, or One-Shot).
+`/gm` already lists saved campaigns and offers **New Adventure** (a world made together, from one sentence, or from a
+book: `/new-game` or `/import`).
 
 After install succeeds, display:
 
@@ -71,8 +71,8 @@ After install succeeds, display:
   Run /gm to begin.
 
   • Pick up a saved campaign, or
-  • Start a New Adventure: create a world, import a book,
-    or jump into a quick one-shot.
+  • Start a New Adventure: build a world together, from one
+    sentence, or from a book.
 ================================================================
 ```
 

@@ -9,6 +9,11 @@ living-world tools grow it from the table.
 
 See `docs/conventions/the-dream.md`.
 
+Two ways, as the player chose in `/gm`:
+- **Together:** Phases A–D below, a conversation at each step.
+- **From one sentence:** QUICK WORLD at the end. The same phases and files, built by
+  you without questions, and setting and lore only.
+
 ---
 
 ## PHASE A — SEED (genre-aware questionnaire)
@@ -167,18 +172,14 @@ Then display a summary box and hand off:
 Your world awaits its hero. Who are you in this world?
 ```
 
-Then ask that **one question** — identity first — with two answers:
+Then run the `/create-character` interview. It asks who the player wants to be:
+someone of their own, or **someone from this world**, one of the people in your
+sketch (name a few; create that one NPC first with `gm-npc.sh create`, so `--canon`
+can find them, and leave them out of the opening's people). It also asks fast or
+slow, and saves with `gm-player.sh create`.
 
-- **someone from this world:** one of the people in your sketch, so name a few. Create
-  that one NPC first (`gm-npc.sh create`), so `--canon` can find them, and leave them
-  out of the opening's people.
-- **someone of their own:** a one-line concept.
-
-Then run the `/create-character` interview, the fast way by default: propose a complete
-character, let the player change what they like, and save with `gm-player.sh create`
-(`--canon "<NPC>"` for someone from this world).
-
-**After identity, before you open the scene, ask where/when they want to start.**
+**After identity, before you open the scene, ask where/when they want to start**
+(in a quick world, choose it yourself).
 Offer a fitting default but let them name their own opening — a specific location,
 scene, or point in the timeline — and fit the sketch to it.
 
@@ -216,6 +217,31 @@ bash tools/gm-npc.sh set-appearance "<NPC name>" \
 ```
 
 Then open the scene from what `opening` printed: the place, who is here, the hook.
+
+---
+
+## QUICK WORLD (from one sentence)
+
+The player gives one sentence about the world. That is the only question about the
+world: you build everything else from it, with no questionnaire and no approval
+gate. **Setting and lore only:** no signature systems, no `ruleset.json`, no
+`rules.md`; the campaign plays by the repo's rules (`gm-skills`, `gm-combat`,
+`gm-growth`). New mechanics only come from the Together way.
+
+1. **Name the world** from the sentence, then create and switch the campaign
+   (Phase A's commands). If the name exists, pick another.
+2. **Seed:** write `world-seed.json` as in Phase A, every field chosen by you: the
+   sentence is the `premise`; tone, setting, genre bend, voice, art style and
+   chronicler fit it.
+3. **Bible:** write `world-bible.json` as in Phase B, with `"confirmed": true` and
+   `"signature_systems": []`, and validate it. Don't present it for approval.
+4. **World index:** Phase C step 2c. Skip steps 1, 2 and 2b (kit, rules, systems).
+5. **Sketch the opening** (Phase C step 3), and choose the start yourself: don't
+   ask where or when.
+6. **Phase D:** lock the chronicler, then tell the player in two lines what world
+   they're in. Then the `/create-character` interview (someone of their own, or
+   someone from your sketch; fast or slow), then the opening with
+   `gm-session.sh opening`, and play.
 
 ---
 

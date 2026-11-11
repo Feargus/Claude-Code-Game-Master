@@ -72,11 +72,10 @@ Ask, in the book's tone:
 
 **Who are you in this world — or who did you come to meet?**
 
-Three doors (same as `/gm` identity-first):
+Two doors (same as `/gm` identity-first):
 
 - someone from the book (name a few you can actually find via RAG — Conan, Bêlit, Valeria…)
 - someone of their own
-- no one yet
 
 They came for the fantasy of talking to a favorite character. Spend the spike on
 that, not on ability scores and not on a loading screen.
@@ -198,8 +197,8 @@ bash tools/gm-search.sh --rag-only "<character or opening scene>" 8
 bash tools/gm-lore.sh "<place>" --important
 ```
 
-Create the PC first: ask who they are (someone from the book, or their own concept),
-then run the `/create-character` interview, the fast way by default. Save with
+Create the PC first: the `/create-character` interview, with the answer to who they
+are (someone from the book, or their own concept), fast or slow as the player chooses. Save with
 `bash tools/gm-player.sh create '<json>'`, adding `--canon "<NPC name>"` for someone from
 the book; that one NPC is created first (`gm-npc.sh create`, from what the book says),
 and stays out of the opening's people.

@@ -31,7 +31,7 @@ from campaign_manager import CampaignManager
 
 
 # The standard rules: what a campaign without its own ruleset.json plays by (a
-# one-shot, a new world before its kit is drafted). The rolls, attributes,
+# world made from one sentence, a new world before its kit is drafted). The rolls, attributes,
 # skills and wounds are the repo's (gm-skills, gm-combat); a campaign's
 # ruleset only adds on top: its own counters (vitals), signature systems.
 # Vitals are those extra counters, so none here.
