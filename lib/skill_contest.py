@@ -14,6 +14,10 @@ so the GM can't leak them into the narration.
 
 Luck belongs to the player alone. It is spent automatically on the narrowest
 possible loss, which turns that loss into the narrowest possible win.
+
+The player's skill also learns from every contest it is rolled in (growth.py):
+close results teach, and enough learnings raise the skill and grant XP. That
+happens silently; the output stays the quality alone.
 """
 
 import argparse
@@ -271,8 +275,22 @@ def run_contest(args: argparse.Namespace, rng=random) -> Dict[str, Any]:
     result = resolve_contest(rng, active, reactive, mods, luck)
     if result["lucky"]:
         spend_luck(campaign_dir)
+    player = active if active.get("is_player") else reactive if reactive.get("is_player") else None
+    if player is not None:
+        result["learned"] = practise(campaign_dir, player["skill"], result["quality"])
     write_log(campaign_dir, active, reactive, mods, result)
     return result
+
+
+def practise(campaign_dir: Path, skill: str, quality: int) -> list:
+    """The player's skill learns from the contest (growth.learn); saves the sheet.
+    Returns the skill points gained, [] for none."""
+    from growth import learn
+    ops = JsonOperations(str(campaign_dir))
+    character = ops.load_json("character.json")
+    gains = learn(campaign_dir, character, skill, quality)
+    ops.save_json("character.json", character)
+    return gains
 
 
 def build_parser() -> argparse.ArgumentParser:

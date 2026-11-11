@@ -323,3 +323,28 @@ def test_wrapper_reports_errors_on_stderr(campaign):
     result = _run("--active", "Nobody", "Tech", "DFT", "AGI", "ITU", *DODGE)
     assert result.returncode == 1
     assert "Unknown name" in result.stderr and result.stdout == ""
+
+
+# --- Learning by use (growth.py) ---
+
+def test_the_player_learns_from_close_contests(campaign):
+    """A close result teaches (here quality 0 after luck: 3 learnings); a blowout
+    teaches nothing; the output stays the quality alone."""
+    result = run_contest(_args(*SHOOT, "--reactive-dc", "18", "door"), ScriptedDice(5, 5, 5))
+    assert result["quality"] == 0 and result["learned"] == []
+    sheet = json.loads((campaign / "character.json").read_text())
+    assert sheet["practice"] == {"Long guns": 3} and sheet["skills"]["Long guns"] == 2
+    run_contest(_args(*SHOOT, "--reactive-dc", "18", "door"), ScriptedDice(14, 12, 10))
+    assert json.loads((campaign / "character.json").read_text())["practice"] == {"Long guns": 3}
+    assert format_result(result) == "quality: 0 (lucky)"
+
+
+def test_enough_learnings_raise_the_skill_and_grant_xp(campaign):
+    sheet = json.loads((campaign / "character.json").read_text())
+    sheet["practice"] = {"Long guns": 7}
+    (campaign / "character.json").write_text(json.dumps(sheet))
+    result = run_contest(_args(*SHOOT, *DODGE), ScriptedDice(4, 4, 4, 4, 4, 4))  # 12+2 vs 12+1
+    assert result["learned"] == [{"skill": "Long guns", "value": 3, "xp": 30}]
+    sheet = json.loads((campaign / "character.json").read_text())
+    assert sheet["skills"]["Long guns"] == 3 and sheet["xp"]["current"] == 30
+    assert "+30 XP  skill: Long guns rose to 3" in (campaign / "xp.log").read_text()
