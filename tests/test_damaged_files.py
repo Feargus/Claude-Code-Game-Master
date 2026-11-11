@@ -58,7 +58,7 @@ def test_a_damaged_character_stops_the_roll_and_the_credits(dcc_world):
     env = dict(os.environ, GM_WORLD_STATE_BASE=dcc_world)
     for command in (["gm-skill-contest.sh", "--active", "Tandy", "Awareness", "ITU", "ITU",
                      "NRV", "--reactive-dc", "12", "a test"],
-                    ["gm-player.sh", "credits", "Tandy", "+5"]):
+                    ["gm-player.sh", "credits", "+5"]):
         result = subprocess.run(["bash", str(ROOT / "tools" / command[0]), *command[1:]],
                                 capture_output=True, text=True, env=env)
         assert result.returncode == 1, command

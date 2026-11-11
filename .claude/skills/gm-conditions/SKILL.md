@@ -10,8 +10,8 @@ A condition is the character's own temporary state, so it is a **disadvantage** 
 Apply a condition when the story causes it, and remove it as soon as it ends. Pass its disadvantage with the condition as the reason: `--active-dis NRV "frightened"`.
 
 ```
-bash tools/gm-condition.sh add Fearghas "grappled"
-bash tools/gm-condition.sh remove Fearghas "grappled"
+bash tools/gm-condition.sh add "grappled"
+bash tools/gm-condition.sh remove "grappled"
 bash tools/gm-combat.sh condition "street thug 1" add prone     # an enemy in a fight
 ```
 

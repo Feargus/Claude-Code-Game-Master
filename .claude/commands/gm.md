@@ -259,7 +259,7 @@ PC death is **NOT** the end-session path above. Death does not close the game �
 
 When the PC dies (see Stakes & Death in CLAUDE.md and the wound rules in `gm-combat`):
 
-1. **Persist first** — `bash tools/gm-player.sh kill "<name>" --cause "<how>"` (sets status dead, stamps died_at, records the death as a fact, fires `on_death player` consequences), record any further consequence (`gm-consequence.sh add`).
+1. **Persist first** — `bash tools/gm-player.sh kill --cause "<how>"` (sets status dead, stamps died_at, records the death as a fact, fires `on_death player` consequences), record any further consequence (`gm-consequence.sh add`).
 2. **Narrate the death** with weight. No menu yet.
 3. **Offer the hand-off** (the show goes on — not GAME OVER). The three routes — take over a party member already in the scene, roll a new character, or step in as a canon figure from the source. Frame them however CLAUDE.md's Death Protocol calls for. (If solo with no party and no fitting canon figure, offer the last two only.)
 4. **SWAP in the new PC:**
@@ -309,7 +309,7 @@ Confirm the save: who rests where, and that NPCs, locations, consequences, and t
 
 ### 1. Get Active Character
 ```bash
-bash tools/gm-player.sh get "<name>"
+bash tools/gm-player.sh get
 bash tools/gm-body.sh show
 ```
 

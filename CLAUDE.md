@@ -35,7 +35,7 @@ The PC CAN die. This is not a guaranteed power-fantasy. Fail-forward does NOT me
 
 ## Death Protocol (PC dies)
 PERSIST FIRST, then narrate, then offer the hand-off.
-1. Persist the death: `bash tools/gm-player.sh kill "<name>" --cause "<how>"` (sets status dead, stamps died_at, records the death as a fact, fires `on_death player` consequences). Record any further consequence the death triggers (`gm-consequence.sh add ...`).
+1. Persist the death: `bash tools/gm-player.sh kill --cause "<how>"` (sets status dead, stamps died_at, records the death as a fact, fires `on_death player` consequences). Record any further consequence the death triggers (`gm-consequence.sh add ...`).
 2. Narrate the death with weight — earn the moment, match prose to the beat. No menu yet.
 3. Offer the hand-off (the show goes on, not GAME OVER). The three routes — take over a party member already in the scene, roll a new character, or step in as a canon figure from the source — framed however the moment calls for. (If solo with no party and no fitting canon figure, offer the last two only.)
 4. On choice, switch the active PC (see SWAP), bridge the fiction (how/why control passes), update location/scene, then resume play.
@@ -120,9 +120,9 @@ later facts), ask the player out of character before narrating or noting it.
 ## State Persistence — if it happened, persist it FIRST
 | Change | Command |
 |---|---|
-| Credits (PC) | `gm-player.sh credits <name> +N\|-N`; loot: `gm-player.sh loot <name> --credits N --items "A" "B"` (into the inventory) |
+| Credits (PC) | `gm-player.sh credits +N\|-N`; loot: `gm-player.sh loot --credits N --items "A" "B"` (into the inventory). No player command takes a name |
 | Items (PC or NPC) | `gm-player.sh item add gear\|inventory "<item>" [--concealed]` / `item remove\|move "<item>"`; NPC: `gm-npc.sh item "<npc>" add gear "<item>"`. **gear** is worn or within reach (holstered, in pockets, slung on the back): others see it unless it is concealed. **inventory** is in bags and packs: hidden. Who knows about a hidden item is a fact |
-| A campaign counter (PC) | `gm-player.sh vital <name> +N\|-N\|set N` (the counters this campaign declares; the brief's SIGNATURE SYSTEMS names which they are, and their thresholds) |
+| A campaign counter (PC) | `gm-player.sh vital <counter> +N\|-N\|set N` (the counters this campaign declares; the brief's SIGNATURE SYSTEMS names which they are, and their thresholds) |
 | Wounds, armor, cyberware (PC) | `gm-body.sh` (`hit`, `heal`, `repair`, `show`; rules in `gm-combat`) |
 | XP for an achievement (an obstacle surmounted, a goal reached, a problem solved, power gained) | `gm-player.sh award --size small\|medium\|large --reason "..."`; skills and fights pay XP by themselves (`gm-growth`) |
 | A companion joins or leaves | `gm-npc.sh promote "<npc>"` / `demote` (party members are present wherever the player is) |
@@ -132,7 +132,7 @@ later facts), ask the player out of character before narrating or noting it.
 | Aliases (NPC or place) | the shorter names the story will use: a first name, the name without its title (`Ishbel` for Ishbel Rue, `Erasure` for Brother Erasure, `the Yard` for Old Iron's Yard). Never a family, house or company name others share (`Vey`), nor a common word (`Old`). Give them at creation, or later: `gm-npc.sh alias "<npc>" "<alias>"...` / `gm-location.sh alias "<place>" "<alias>"...` (`--remove <alias>`). The name check in facts finds aliases like full names; one that already names something else is refused |
 | An NPC's usual place changes (moves in, gets a job, is evicted) | `gm-npc.sh tag-location "<npc>" "<place>"...` / `untag-location` (known places only). Where someone *usually* is, not who is in the scene now (that's `gm-scene.sh`) |
 | **How an NPC feels about the player, what they remember, owe or hide** (a slight, a kindness, a debt, a lie they caught, a grudge) | a fact they hold: `gm-note.sh relations "<what>" --holders npc:<name> --about player` (when a feeling changes, record the new one; the newest counts). There are no mood or attitude fields: the brief shows what they know under them |
-| Condition (PC) | `gm-condition.sh` |
+| Condition (PC) | `gm-condition.sh add\|remove "<condition>"` (`check` lists them) |
 | PC death | `gm-player.sh kill` (status dead + log) — then run Death Protocol |
 | NPC death | `gm-npc.sh kill "<name>" --cause "<how>"` (status dead, no longer present anywhere, records the death as a fact, fires its `on_death` consequences) |
 | The opening (a new campaign's first scene, once, after the character exists) | `gm-session.sh opening '<json>'`: place, exits, people, the plot and its hook, facts, clocks, all or nothing (the fields: `lib/opening.py`) |

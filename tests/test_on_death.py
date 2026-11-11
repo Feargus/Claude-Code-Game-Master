@@ -123,8 +123,7 @@ def test_player_death_fires_on_death_player(dcc_world):
     cid = cm.add_consequence("The crew splits the loot", "when he dies",
                              trigger_type="on_death", match="player")
     pm = PlayerManager(dcc_world)
-    name = _load(dcc_world, "character.json")["identity"]["name"]
-    result = pm.kill_character(name, cause="fell")
+    result = pm.kill_character(cause="fell")
     assert result["success"]
     assert [c["id"] for c in result["fired"]] == [cid]
 
@@ -145,5 +144,5 @@ def test_npc_kill_records_the_death_as_a_fact(dcc_world):
 def test_player_kill_records_the_death_as_a_fact(dcc_world):
     from lib.player_manager import PlayerManager
     name = _load(dcc_world, "character.json")["identity"]["name"]
-    result = PlayerManager(dcc_world).kill_character(name)
+    result = PlayerManager(dcc_world).kill_character()
     assert _fact(dcc_world, result["fact"])["fact"] == f"{name} (the player character) died."

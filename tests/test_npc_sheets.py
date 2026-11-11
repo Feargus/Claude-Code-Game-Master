@@ -114,7 +114,7 @@ def test_player_set_and_item_commands(world):
     assert "ITEM_ADDED Lullaby gear: the ribbon (concealed)" in r.stdout
     r = run("item", "move", "ribbon")
     assert "gear -> inventory" in r.stdout
-    r = run("loot", "Lullaby", "--credits", "3", "--items", "scrap")
+    r = run("loot", "--credits", "3", "--items", "scrap")
     sheet = json.loads((camp / "character.json").read_text())
     assert sheet["look"] == {"style": "a pink ribbon in a chest seam"}
     assert sheet["items"]["inventory"] == [{"name": "the ribbon", "concealed": True}, {"name": "scrap"}]

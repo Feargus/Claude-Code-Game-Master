@@ -88,41 +88,41 @@ def test_kit_vitals_are_readable_and_modifiable(hyborian_world):
     _save(hyborian_world, CONAN)
     mgr = PlayerManager(str(hyborian_world))
 
-    assert mgr.modify_vital(None, "vigor")["current"] == 5
+    assert mgr.modify_vital("vigor")["current"] == 5
 
-    spent = mgr.modify_vital(None, "vigor", -2)
+    spent = mgr.modify_vital("vigor", -2)
     assert spent["success"] and spent["current"] == 3 and spent["max"] == 5
 
-    tainted = mgr.modify_vital(None, "corruption", +1)
+    tainted = mgr.modify_vital("corruption", +1)
     assert tainted["success"] and tainted["current"] == 1
 
     # Shape is preserved: the dict track stays a dict, the plain track stays plain.
     sheet = _sheet(hyborian_world)
     assert sheet["stats"]["counters"] == {"vigor": {"current": 3, "max": 5}, "corruption": 1}
 
-    assert mgr.modify_vital(None, "vigor", set_value=5)["current"] == 5
+    assert mgr.modify_vital("vigor", set_value=5)["current"] == 5
 
 
 def test_vitals_appear_in_show_output(hyborian_world):
     _save(hyborian_world, CONAN)
     mgr = PlayerManager(str(hyborian_world))
-    mgr.modify_vital(None, "vigor", -2)
-    mgr.modify_vital(None, "corruption", +1)
+    mgr.modify_vital("vigor", -2)
+    mgr.modify_vital("corruption", +1)
 
-    summary = mgr.show_player("Conan")
+    summary = mgr.show_player()
     assert "Vigor: 3/5" in summary and "Corruption: 1" in summary
 
 
 def test_undeclared_vital_is_refused(hyborian_world):
     _save(hyborian_world, CONAN)
-    result = PlayerManager(str(hyborian_world)).modify_vital(None, "sanity", -1)
+    result = PlayerManager(str(hyborian_world)).modify_vital("sanity", -1)
     assert result["success"] is False
 
 
 def test_hp_is_refused_because_wounds_replaced_it(hyborian_world):
     _save(hyborian_world, CONAN)
     mgr = PlayerManager(str(hyborian_world))
-    result = mgr.modify_vital(None, "hp", -8)
+    result = mgr.modify_vital("hp", -8)
     assert result["success"] is False and "gm-body.sh" in result["error"]
     assert "hp" not in _sheet(hyborian_world)["stats"]
 
@@ -131,8 +131,8 @@ def test_every_vital_response_has_the_same_shape(hyborian_world):
     _save(hyborian_world, CONAN)
     mgr = PlayerManager(str(hyborian_world))
 
-    vigor = mgr.modify_vital(None, "vigor", -2)
-    read = mgr.modify_vital(None, "corruption")
+    vigor = mgr.modify_vital("vigor", -2)
+    read = mgr.modify_vital("corruption")
 
     keys = {"success", "name", "vital", "current", "max"}
     assert keys <= vigor.keys() and keys <= read.keys()

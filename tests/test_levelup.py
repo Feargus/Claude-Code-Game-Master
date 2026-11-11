@@ -31,8 +31,8 @@ def _sheet(campaign):
 
 def test_xp_makes_growth_due_and_logs_it(campaign, isolated_world_state):
     mgr = PlayerManager(str(isolated_world_state))
-    assert mgr.award_xp("Fearghas", 99)["growth_due"] == 0
-    result = mgr.award_xp("Fearghas", 565, "fight", "a test")        # 664 in total
+    assert mgr.award_xp(99)["growth_due"] == 0
+    result = mgr.award_xp(565, "fight", "a test")        # 664 in total
     assert result["growth_due"] == 2                                  # level 2 needs 400
     sheet = _sheet(campaign)
     assert sheet["progress"]["level"] == 0 and sheet["progress"]["xp"] == 664
@@ -41,16 +41,16 @@ def test_xp_makes_growth_due_and_logs_it(campaign, isolated_world_state):
 
 def test_achievements_are_a_share_of_the_current_level(campaign, isolated_world_state):
     mgr = PlayerManager(str(isolated_world_state))
-    assert mgr.award(None, "small", "picked the lock")["xp_gained"] == 20     # 20 % of 100
-    assert mgr.award(None, "large", "the job is done")["xp_gained"] == 100
-    assert mgr.award(None, "huge", "x")["success"] is False
-    assert mgr.award(None, "small", "")["success"] is False                    # a reason is required
+    assert mgr.award("small", "picked the lock")["xp_gained"] == 20     # 20 % of 100
+    assert mgr.award("large", "the job is done")["xp_gained"] == 100
+    assert mgr.award("huge", "x")["success"] is False
+    assert mgr.award("small", "")["success"] is False                    # a reason is required
 
 
 def test_grow_applies_exactly_one_level(campaign, isolated_world_state):
     mgr = PlayerManager(str(isolated_world_state))
     assert mgr.grow("AGI", ["Long guns", "Stealth"], "Cat eyes", "+2 Awareness at night")["success"] is False
-    mgr.award_xp("Fearghas", 400)                                     # level 2 is due: two growths
+    mgr.award_xp(400)                                     # level 2 is due: two growths
     for attribute, skills, why in [("DEX", ["Long guns", "Stealth"], "Unknown attribute"),
                                    ("NRV", ["Long guns", "Stealth"], "no die"),
                                    ("AGI", ["Long guns"], "exactly two"),
@@ -75,7 +75,7 @@ def test_the_brief_tells_the_gm_when_growth_is_due(campaign, isolated_world_stat
     from lib.session_manager import SessionManager
     (campaign / "campaign-overview.json").write_text(json.dumps({"campaign_name": "T"}))
     assert "Growth due" not in SessionManager(str(isolated_world_state)).get_full_context()
-    PlayerManager(str(isolated_world_state)).award_xp("Fearghas", 100)
+    PlayerManager(str(isolated_world_state)).award_xp(100)
     assert "Growth due: 1 level, at the next quiet moment" in \
         SessionManager(str(isolated_world_state)).get_full_context()
 

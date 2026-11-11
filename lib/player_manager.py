@@ -3,8 +3,8 @@
 change its fields, items, credits, counters and conditions, XP and growth, death.
 
 Creation is new_character.py; wounds, armor and cyberware are body.py.
-A campaign has one player character, so the name some commands take is only
-for readability: they always work on the active one.
+A campaign has one player character, so no command takes a name: they all work
+on the active one.
 """
 
 import json
@@ -29,11 +29,11 @@ class PlayerManager(EntityManager):
 
     # ---------- loading ----------
 
-    def _load_character(self, name: str = None) -> Optional[Dict]:
-        """The player's sheet, or None (name is ignored: one PC per campaign)."""
+    def _load_character(self) -> Optional[Dict]:
+        """The player's sheet, or None."""
         return self.json_ops.load_json("character.json") or None
 
-    def _save_character(self, name: str, data: Dict) -> bool:
+    def _save_character(self, data: Dict) -> bool:
         return self.json_ops.save_json("character.json", data)
 
     def _sheet(self) -> Optional[Dict[str, Any]]:
@@ -55,7 +55,7 @@ class PlayerManager(EntityManager):
 
     # ---------- showing ----------
 
-    def get_player(self, name: str = None) -> Optional[Dict]:
+    def get_player(self) -> Optional[Dict]:
         return self._sheet()
 
     def summary_line(self, char: Dict[str, Any]) -> str:
@@ -73,7 +73,7 @@ class PlayerManager(EntityManager):
             line += f" | Conditions: {', '.join(sheet_mod.conditions(char))}"
         return line
 
-    def show_player(self, name: str = None) -> Optional[str]:
+    def show_player(self) -> Optional[str]:
         char = self._sheet()
         if not char:
             return None
@@ -94,14 +94,14 @@ class PlayerManager(EntityManager):
             sheet_mod.check(char, "player")
         except sheet_mod.SheetError as error:
             return self._refuse(str(error))
-        if not self._save_character(None, char):
+        if not self._save_character(char):
             return {'success': False}
         print(f"[SUCCESS] {sheet_mod.name(char)}: set {', '.join(changed)}")
         return {'success': True, 'changed': changed}
 
     # ---------- XP and growth ----------
 
-    def award_xp(self, name: str, amount: int, source: str = "correction",
+    def award_xp(self, amount: int, source: str = "correction",
                  reason: str = "") -> Dict[str, Any]:
         """Book XP (growth.add_xp: logged in xp.log). XP only makes growth due;
         the level rises when it is applied (`grow`) at a quiet moment. Prints
@@ -111,7 +111,7 @@ class PlayerManager(EntityManager):
         if not char:
             return {'success': False}
         result = add_xp(self.campaign_dir, char, int(amount), source, reason)
-        if not self._save_character(None, char):
+        if not self._save_character(char):
             return {'success': False}
         char_name = sheet_mod.name(char)
         print(f"XP_GAIN {char_name} gained {amount} XP ({result['total']} in all)")
@@ -121,7 +121,7 @@ class PlayerManager(EntityManager):
         return {'success': True, 'name': char_name, 'xp_gained': int(amount),
                 'current_xp': result['total'], 'growth_due': result['due']}
 
-    def award(self, name: str, size: str, reason: str) -> Dict[str, Any]:
+    def award(self, size: str, reason: str) -> Dict[str, Any]:
         """XP for an achievement the GM judges: small, medium or large, i.e. 20, 50
         or 100 % of the current level's span (growth.py)."""
         from growth import achievement_xp
@@ -134,9 +134,9 @@ class PlayerManager(EntityManager):
             amount = achievement_xp(char, size)
         except ValueError as error:
             return self._refuse(str(error))
-        return self.award_xp(None, amount, f"achievement ({size})", reason)
+        return self.award_xp(amount, f"achievement ({size})", reason)
 
-    def get_xp_status(self, name: str = None) -> Optional[Dict[str, Any]]:
+    def get_xp_status(self) -> Optional[Dict[str, Any]]:
         from growth import growth_due, level, next_level_xp, xp_total
         char = self._sheet()
         if not char:
@@ -180,7 +180,7 @@ class PlayerManager(EntityManager):
             key = self._skill_key(table, target.strip())
             old = table.get(key)
             table[key] = new = 1 if old is None else old + 1
-        if not self._save_character(None, char):
+        if not self._save_character(char):
             return {'success': False}
         shown = f"d{old} -> d{new}" if kind == 'attribute' else (
             f"{old} -> {new}" if old is not None else f"new, {new}")
@@ -196,7 +196,7 @@ class PlayerManager(EntityManager):
         key = next((k for k in perks if k.lower() == perk.lower()), perk)
         replaced = key in perks
         perks[key] = function
-        if not self._save_character(None, char):
+        if not self._save_character(char):
             return {'success': False}
         print(f"PERK {sheet_mod.name(char)} {'updated' if replaced else 'gained'} {key}: {function}")
         return {'success': True, 'perk': key, 'function': function, 'replaced': replaced}
@@ -242,7 +242,7 @@ class PlayerManager(EntityManager):
         perks[perk.strip()] = effect.strip()
         changes.append(f"perk {perk.strip()}: {effect.strip()}")
         sheet_mod.section(char, "progress")["level"] = level(char) + 1
-        if not self._save_character(None, char):
+        if not self._save_character(char):
             return {'success': False}
         log_growth(self.campaign_dir, char, "; ".join(changes))
         print(f"GROWN {sheet_mod.name(char)} to level {level(char)}: " + "; ".join(changes))
@@ -272,7 +272,7 @@ class PlayerManager(EntityManager):
                                                      else f"{current}"))
         return f" | {' | '.join(parts)}" if parts else ""
 
-    def modify_vital(self, name: str, vital: str, amount: Optional[int] = None,
+    def modify_vital(self, vital: str, amount: Optional[int] = None,
                      set_value: Optional[int] = None) -> Dict[str, Any]:
         """Read or change one of the campaign's counters (its ruleset's vitals)."""
         if vital == 'hp':
@@ -299,7 +299,7 @@ class PlayerManager(EntityManager):
             counters[vital]['current'] = new_value
         else:
             counters[vital] = new_value
-        if not self._save_character(None, char):
+        if not self._save_character(char):
             return {'success': False}
         print(f"VITAL {char_name} {vital}: {current} -> {new_value}")
         print(f"{vital.capitalize()}: " + (f"{new_value}/{maximum}" if maximum is not None
@@ -309,7 +309,7 @@ class PlayerManager(EntityManager):
 
     # ---------- death ----------
 
-    def kill_character(self, name: str = None, cause: Optional[str] = None) -> Dict[str, Any]:
+    def kill_character(self, cause: Optional[str] = None) -> Dict[str, Any]:
         """Mark the player character dead, record it as a fact, fire on_death player."""
         char = self._sheet()
         if not char:
@@ -320,7 +320,7 @@ class PlayerManager(EntityManager):
         status['died_at'] = self.get_timestamp()
         if cause:
             status['cause'] = cause
-        if not self._save_character(None, char):
+        if not self._save_character(char):
             return {'success': False}
         print(f"DEATH {char_name} has died.")
         if cause:
@@ -341,7 +341,7 @@ class PlayerManager(EntityManager):
 
     # ---------- credits and items ----------
 
-    def modify_credits(self, name: str = None, amount: Optional[int] = None) -> Dict[str, Any]:
+    def modify_credits(self, amount: Optional[int] = None) -> Dict[str, Any]:
         char = self._sheet()
         if not char:
             return {'success': False}
@@ -357,7 +357,7 @@ class PlayerManager(EntityManager):
                   f"{abs(amount)}). Set to 0.")
             new = 0
         possessions['credits'] = new
-        if not self._save_character(None, char):
+        if not self._save_character(char):
             return {'success': False}
         if amount > 0:
             print(f"CREDITS_GAINED {char_name} gained {amount} credits!")
@@ -401,12 +401,12 @@ class PlayerManager(EntityManager):
                 return self._refuse(f"Unknown item action '{action}': add, remove, move or list.")
         except sheet_mod.SheetError as error:
             return self._refuse(str(error))
-        if not self._save_character(None, char):
+        if not self._save_character(char):
             return {'success': False}
         print(message)
         return {'success': True, 'items': char.get('items', {})}
 
-    def apply_loot(self, name: str, items: List[str], credits: int = 0) -> Dict[str, Any]:
+    def apply_loot(self, items: List[str], credits: int = 0) -> Dict[str, Any]:
         """Loot into the inventory, plus credits, in one save."""
         char = self._sheet()
         if not char:
@@ -417,7 +417,7 @@ class PlayerManager(EntityManager):
             sheet_mod.add_item(char, 'inventory', entry)
         if credits:
             possessions['credits'] = before + credits
-        if not self._save_character(None, char):
+        if not self._save_character(char):
             return {'success': False}
         print(f"LOOT {sheet_mod.name(char)} received (into the inventory):")
         if credits > 0:
@@ -430,7 +430,7 @@ class PlayerManager(EntityManager):
 
     # ---------- conditions ----------
 
-    def modify_condition(self, name: str, action: str, condition: Optional[str] = None) -> Dict[str, Any]:
+    def modify_condition(self, action: str, condition: Optional[str] = None) -> Dict[str, Any]:
         char = self._sheet()
         if not char:
             return {'success': False}
@@ -457,7 +457,7 @@ class PlayerManager(EntityManager):
             message = f"CONDITION_REMOVED {char_name}: {found}"
         else:
             return self._refuse(f"Unknown condition action: {action}")
-        if not self._save_character(None, char):
+        if not self._save_character(char):
             return {'success': False}
         print(message)
         return {'success': True, 'name': char_name, 'conditions': conditions}
@@ -489,28 +489,22 @@ def main():
     parser = argparse.ArgumentParser(description='The player character')
     sub = parser.add_subparsers(dest='action')
 
-    p = sub.add_parser('show', help='The whole sheet, readable')
-    p.add_argument('name', nargs='?')
-    p = sub.add_parser('get', help='The sheet as JSON')
-    p.add_argument('name', nargs='?')
+    sub.add_parser('show', help='The whole sheet, readable')
+    sub.add_parser('get', help='The sheet as JSON')
     p = sub.add_parser('set', help='Text fields: identity, look, personality')
-    p.add_argument('name', nargs='?')
     sheet_mod.add_field_flags(p)
 
     p = sub.add_parser('xp', help='Correct XP by hand (logged)')
-    p.add_argument('name')
     p.add_argument('amount')
     p.add_argument('--reason', default='')
     p = sub.add_parser('award', help='XP for an achievement: small, medium or large')
-    p.add_argument('name', nargs='?')
     p.add_argument('--size', required=True, choices=['small', 'medium', 'large'])
     p.add_argument('--reason', required=True)
     p = sub.add_parser('grow', help='Apply one level of growth that is due')
     p.add_argument('--attribute', required=True)
     p.add_argument('--skill', action='append', default=[])
     p.add_argument('--perk', nargs=2, required=True, metavar=('NAME', 'EFFECT'))
-    p = sub.add_parser('level-check', help='XP and level')
-    p.add_argument('name', nargs='?')
+    sub.add_parser('level-check', help='XP and level')
     p = sub.add_parser('raise', help='Correction: an attribute or a skill +1')
     p.add_argument('kind', choices=['attribute', 'skill'])
     p.add_argument('target')
@@ -523,12 +517,10 @@ def main():
     p.add_argument('amount', nargs='?')
     p.add_argument('value', nargs='?')
     p = sub.add_parser('kill', help='The player character dies')
-    p.add_argument('name', nargs='?')
     p.add_argument('--cause')
 
     p = sub.add_parser('credits', help='Show or change credits')
-    p.add_argument('name', nargs='?')
-    p.add_argument('amount', nargs='?')
+    p.add_argument('amount', nargs='?', help='+N or -N; without it, show them')
     p = sub.add_parser('item', help='Items: add, remove, move, list')
     p.add_argument('item_action', choices=['add', 'remove', 'move', 'list'])
     p.add_argument('words', nargs='*', help='add: gear|inventory "<item>"; remove/move: "<item>"')
@@ -536,11 +528,9 @@ def main():
     p.add_argument('--note', default='')
     p.add_argument('--to', choices=list(sheet_mod.ITEM_PLACES), help='move: where to')
     p = sub.add_parser('loot', help='Items into the inventory, plus credits')
-    p.add_argument('name', nargs='?')
     p.add_argument('--credits', type=int, default=0)
     p.add_argument('--items', nargs='+', default=[])
     p = sub.add_parser('condition', help='Conditions: add, remove, list')
-    p.add_argument('name')
     p.add_argument('cond_action', choices=['add', 'remove', 'list'])
     p.add_argument('condition', nargs='?')
 
@@ -569,11 +559,11 @@ def main():
                     amount, set_value = _parse_vital_change(args)
                 except ValueError:
                     sys.exit(emit_error(f"invalid amount: {args.amount}", json_mode=True))
-                result = manager.modify_vital(None, args.vital, amount, set_value)
+                result = manager.modify_vital(args.vital, amount, set_value)
             elif args.action == 'kill':
-                result = manager.kill_character(None, args.cause)
+                result = manager.kill_character(args.cause)
             else:
-                result = manager.award(None, args.size, args.reason)
+                result = manager.award(args.size, args.reason)
         if result.get('success'):
             emit(result, json_mode=True)
         else:
@@ -589,9 +579,9 @@ def main():
     if args.action == 'set':
         result = manager.set_fields(sheet_mod.fields_from_args(args))
     elif args.action == 'xp':
-        result = manager.award_xp(None, _int(args.amount, "XP amount"), "correction", args.reason)
+        result = manager.award_xp(_int(args.amount, "XP amount"), "correction", args.reason)
     elif args.action == 'award':
-        result = manager.award(None, args.size, args.reason)
+        result = manager.award(args.size, args.reason)
     elif args.action == 'grow':
         result = manager.grow(args.attribute, args.skill, args.perk[0], args.perk[1])
     elif args.action == 'level-check':
@@ -606,15 +596,15 @@ def main():
         except ValueError:
             print(f"[ERROR] Invalid amount: {args.amount} {args.value or ''}".rstrip())
             sys.exit(1)
-        result = manager.modify_vital(None, args.vital, amount, set_value)
+        result = manager.modify_vital(args.vital, amount, set_value)
     elif args.action == 'kill':
-        result = manager.kill_character(None, args.cause)
+        result = manager.kill_character(args.cause)
         if result.get('success'):
             from consequence_manager import print_fired
             print_fired(result.get('fired'))
     elif args.action == 'credits':
         amount = None if args.amount is None else _int(args.amount, "credits amount")
-        result = manager.modify_credits(None, amount)
+        result = manager.modify_credits(amount)
     elif args.action == 'item':
         words = list(args.words)
         place = None
@@ -632,9 +622,9 @@ def main():
         if not args.items and args.credits == 0:
             print("[ERROR] Provide --items and/or --credits")
             sys.exit(1)
-        result = manager.apply_loot(None, args.items, args.credits)
+        result = manager.apply_loot(args.items, args.credits)
     elif args.action == 'condition':
-        result = manager.modify_condition(None, args.cond_action, args.condition)
+        result = manager.modify_condition(args.cond_action, args.condition)
     else:
         parser.print_help()
         sys.exit(1)

@@ -52,7 +52,7 @@ Order matters and is stated in `CLAUDE.md`: persist first, narrate second, menu 
 Offering the menu before the death has landed narratively is the failure mode this
 ordering exists to prevent.
 
-1. `gm-player.sh kill "<name>" --cause "<how>"` — sets `status: dead`, HP 0, stamps
+1. `gm-player.sh kill --cause "<how>"` — sets `status: dead`, HP 0, stamps
    `died_at`. Log it as a fact; record any consequence it triggers.
 2. Narrate the death with weight. **No menu yet.**
 3. Offer three continuations: take over a **party member**, roll a **new character**, or

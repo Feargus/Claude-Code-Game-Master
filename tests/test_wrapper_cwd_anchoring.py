@@ -127,7 +127,7 @@ READ_VERBS = [
     # `check <name>` is this wrapper's read verb. A bare `list` is not one of its
     # actions, and its arg-count guard exits before `require_active_campaign` —
     # so the run never reached the campaign resolution this test is about.
-    ("tools/gm-condition.sh", "check", "Tandy"),
+    ("tools/gm-condition.sh", "check"),
     ("tools/gm-extract.sh", "list"),
     ("tools/gm-image.sh", "chronicler"),
 ]

@@ -145,9 +145,9 @@ def test_the_live_world_state_is_never_touched(active_fixture_campaign, foreign_
 
 def test_kill_marks_the_character_dead(dcc_world):
     mgr = PlayerManager(dcc_world)
-    result = mgr.kill_character("Tandy", cause="the Iron Tangle")
+    result = mgr.kill_character(cause="the Iron Tangle")
     assert result["success"] and result["status"] == "dead"
-    assert mgr.get_player("Tandy")["status"]["state"] == "dead"
+    assert mgr.get_player()["status"]["state"] == "dead"
 
 
 # --- 3. get_xp_status is read-only ---------------------------------------------
@@ -162,7 +162,7 @@ def test_get_xp_status_does_not_write(dcc_world):
     character_file.write_text(json.dumps(char, indent=2))
     before = hashlib.sha256(character_file.read_bytes()).hexdigest()
 
-    status = PlayerManager(dcc_world).get_xp_status("Tandy")
+    status = PlayerManager(dcc_world).get_xp_status()
 
     assert status["current_xp"] == 7315
     assert hashlib.sha256(character_file.read_bytes()).hexdigest() == before
