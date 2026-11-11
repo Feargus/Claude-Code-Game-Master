@@ -35,15 +35,19 @@ def _swap(ids: List[str], old: str, new: str) -> List[str]:
 
 
 def _learn_match(match: str, old: str, new: str) -> str:
-    """An on_learn match ("<who> learns <fact id>" / "<who> learns about <id>")
-    with `old` replaced on either side."""
+    """An on_learn match with `old` replaced on either side. The stored form is
+    "<who> learns <fact id>" or "<who> learns about:<id>" (consequence_manager's
+    _learn_target); "about <id>" with a space is read too, and written back in
+    the stored form, the one fire_event compares with."""
     who, sep, what = match.partition(" learns ")
     if not sep:
         return match
     if who.strip() == old:
         who = new
-    if what.strip() == f"about {old}":
-        what = f"about {new}"
+    about = what.strip()
+    if about.startswith("about:") or about.startswith("about "):
+        target = about[len("about"):].lstrip(": ").strip()
+        what = f"about:{new if target == old else target}"
     return f"{who}{sep}{what}"
 
 

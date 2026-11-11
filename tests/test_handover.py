@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from lib.consequence_manager import ConsequenceManager
 from lib.json_ops import JsonOperations
 from lib.new_character import CharacterCreator
 from lib.note_manager import NoteManager
@@ -55,10 +56,13 @@ def test_a_canon_character_takes_what_the_npc_knew(camp):
                             holders=["npc:Tod Brask"])
     (directory / "consequences.json").write_text(json.dumps({"active": [
         {"id": "c1", "consequence": "x", "triggers": [{"type": "on_npc", "match": "npc:Tod Brask"}]},
-        {"id": "c2", "consequence": "y", "triggers": [
-            {"type": "on_learn", "match": "npc:Benno learns about npc:Tod Brask"}],
-         "effects": [{"type": "tell", "fact": secret, "holders": ["npc:Tod Brask", "npc:Benno"]}]},
     ], "resolved": []}))
+    # Through add_consequence, so the trigger is stored as play stores it ("about:<id>").
+    c2_id = ConsequenceManager(str(ws)).add_consequence(
+        "y", "Benno hears about Tod", trigger_type="on_learn",
+        match="npc:Benno learns about npc:Tod Brask",
+        effects=[{"type": "tell", "fact": secret, "holders": ["npc:Tod Brask", "npc:Benno"]}])
+    assert _consequences(directory)[1]["triggers"][0]["match"] == "npc:Benno learns about:npc:Tod Brask"
 
     # Lullaby dies; Tod takes over.
     result = CharacterCreator().create({}, canon="tod", replace=True)
@@ -69,8 +73,12 @@ def test_a_canon_character_takes_what_the_npc_knew(camp):
     assert facts[secret]["holders"] == ["player"]
     c1, c2 = _consequences(directory)
     assert c1["triggers"][0]["match"] == "player"
-    assert c2["triggers"][0]["match"] == "npc:Benno learns about player"
+    assert c2["triggers"][0]["match"] == "npc:Benno learns about:player"
     assert c2["effects"][0]["holders"] == ["player", "npc:Benno"]
+    # The rewritten trigger fires: Benno learns something about Tod, who is the player now.
+    later = NoteManager(str(ws))
+    later.add_fact("session_events", "Tod Brask limps.", holders=["npc:Benno"])
+    assert c2_id in {c["id"] for c in later.last_fired}
     assert any("c1 waited for npc:Tod Brask" in n for n in result["warnings"])
 
     npcs = json.loads((directory / "npcs.json").read_text())
