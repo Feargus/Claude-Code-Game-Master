@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 VALID_ATTITUDES = {'ally', 'neutral', 'enemy', 'friendly', 'hostile', 'suspicious', 'helpful'}
 
 # Valid plot types — THE canonical plot taxonomy. Every other site
-# (validators, minor_stubs, plot_manager, session_manager) imports these;
+# (validators, plot_manager, session_manager) imports these;
 # do not re-declare a local copy.
 # The values are ordered by narrative weight: this is both the sort order for
 # STORY THREADS and the display order for plot listings.

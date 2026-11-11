@@ -1,14 +1,7 @@
 #!/bin/bash
 #
-# gm-extract.sh - Concurrent agent extraction workflow for D&D modules
-#
-# Usage:
-#   gm-extract.sh prepare <document> [campaign-name] - Prepare document for extraction
-#   gm-extract.sh merge [campaign-name] [--cleanup]  - Merge results from agents
-#   gm-extract.sh save [strategy] [campaign-name]    - Save to world state
-#   gm-extract.sh review [campaign-name]             - Review extracted content
-#   gm-extract.sh list                               - List all campaign extractions
-#   gm-extract.sh clean [campaign-name]              - Clean extraction directory
+# gm-extract.sh - Preparing a book for play (/import): prepare, the bible and kit,
+# the World Index, list, clean. See show_usage.
 
 set -e
 source "$(dirname "$0")/common.sh"
@@ -76,63 +69,32 @@ campaign_dir() {
 
 show_usage() {
     cat << EOF
-D&D Module Extraction Tool
+Preparing a book for play (/import)
 
 Commands:
-  prepare <file> [name]     Extract text and create chunks for agent processing
-                            Optional: specify campaign name (defaults to filename)
-  normalize [campaign]      Copy extracted/*.json to campaign root, unwrapping
-                            agent wrapper keys into the flat {name:...} runtime shape
-  cap [campaign] [limit]    Tier each type: top-N (default 30) by importance stay
-                            active, the rest are marked background:true. Nothing
-                            is deleted (mention-frequency + plot-reference/party boost)
-  stub-npcs [campaign]      Stub plot NPCs the source names but extraction never
-                            produced; validate plot taxonomy (before the integrity gate)
-  normalize-connections [campaign]  Canonicalize connection targets; move routing
-                            rule-phrases into notes (runs before reconcile)
-  reconcile [campaign]      Stub every location ref that doesn't resolve to a node
-                            (low_confidence:true); only routing rule-prose is dropped,
-                            and that is recorded as a fact (before the integrity gate)
+  prepare <file> [name]     Make the book searchable: the campaign folder, the text
+                            in source/, the RAG index, chunk files for the World
+                            Index's extractor agents. Name defaults to the filename.
   draft-bible [campaign] [--name N] [--voice-json J] [--fields-json J]
                             Draft/refresh the campaign's world-bible.json from
                             current-document.txt (chapter map + verbatim-filtered
                             voice + skeleton keys). Idempotent; refuses a
                             confirmed bible. Run BEFORE draft-ruleset.
-  draft-ruleset [campaign]
-                            [--force]
+  draft-ruleset [campaign] [--force]
                             Draft the World Kit (ruleset.json) from the bible
   campaign-rules [campaign] Write the bible's signature systems into
                             campaign-overview.json as campaign_rules
-  integrity [campaign] [--no-strict]  Canonicalize cross-refs to real keys;
-                            fail on unresolved (strict by default)
-  merge [campaign] [--cleanup]  Combine results from all extraction agents
-                            --cleanup: Archive extracted/ folder after merge
-  save [strategy] [campaign] Save extracted content to world state
-                            Strategies: rename (default), skip, overwrite
-  review [campaign]         Review extracted content before saving
-  list                      List all campaign extractions
-  clean [campaign]          Clear extraction directory
-  archive [campaign]        Archive extracted/ folder after merge
-  validate [campaign]       Gate the extraction output: exits non-zero (naming the
-                            type and the reason) when a file is missing, is invalid
-                            JSON, or npcs/locations came back empty. Empty
-                            items/plots only warn. Run BEFORE normalize.
+  write-index [campaign] --index-json J    The World Index: {name, note} per entry
+  write-systems [campaign] --systems-json J
+  list                      List the campaigns made from a document
+  clean [campaign]          Remove a campaign folder (a failed import)
+
+Records are not extracted: they are made when play walks toward someone
+(gm-search.sh "<name>" --rag-only, then gm-npc.sh create / gm-location.sh add).
 
 Examples:
   $0 prepare "curse_of_strahd.pdf"
   $0 prepare "module.pdf" "temple-of-evil"
-  $0 merge "curse-of-strahd"
-  $0 review "curse-of-strahd"
-  $0 save rename "curse-of-strahd"
-  $0 list
-
-Files:
-  Input:  PDFs, Word docs, Markdown files
-  Output: NPCs and locations added to world state
-  Campaigns: $CAMPAIGNS_DIR/<campaign-name>/
-
-Each campaign extraction is stored in its own folder for organization.
-
 EOF
 }
 
@@ -193,128 +155,12 @@ prepare_document() {
     fi
 
     echo
-    echo "Document prepared for extraction."
-    echo
-    echo "Next steps:"
-    echo "1. Launch extraction agents to process chunks"
-    echo "2. Run: $0 merge [campaign-name]"
-    echo "3. Run: $0 review [campaign-name]"
-    echo "4. Run: $0 save [strategy] [campaign-name]"
+    echo "Document prepared: the book is searchable (gm-search.sh \"...\" --rag-only)."
+    echo "Next: /import goes on with the door question and the World Index (Step 5.5)."
 }
 
-merge_results() {
-    local campaign_name="$1"
-    local cleanup="$2"
 
-    echo "Merging extraction results from all agents..."
 
-    # Build command with optional campaign name
-    if [ -n "$campaign_name" ]; then
-        echo "Campaign: $campaign_name"
-        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || { list_campaigns; exit 1; }
-
-        # Check for agent results
-        if [ ! -d "$CAMPAIGN_DIR/extracted" ] || [ -z "$(ls -A $CAMPAIGN_DIR/extracted 2>/dev/null)" ]; then
-            echo "Error: No agent results found in $CAMPAIGN_DIR/extracted/"
-            echo "Make sure extraction agents have completed their work."
-            exit 1
-        fi
-
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" merge --world-state "$WORLD_STATE_BASE" --campaign "$campaign_name"
-    else
-        # Check default location
-        if [ ! -d "$EXTRACT_DIR/extracted" ] || [ -z "$(ls -A $EXTRACT_DIR/extracted 2>/dev/null)" ]; then
-            echo "Error: No agent results found in $EXTRACT_DIR/extracted/"
-            echo "Specify a campaign name or check that agents have completed."
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" merge --world-state "$WORLD_STATE_BASE"
-    fi
-
-    echo
-    echo "Results merged successfully."
-
-    # Auto-cleanup if --cleanup flag was passed
-    if [ "$cleanup" = "--cleanup" ]; then
-        echo
-        archive_extracted "$campaign_name"
-    else
-        echo
-        echo "Run '$0 review [campaign-name]' to review content before saving."
-        echo "(Optional: '$0 archive [campaign-name]' to archive extracted/ folder)"
-    fi
-}
-
-save_to_world() {
-    local strategy="${1:-rename}"
-    local campaign_name="$2"
-
-    echo "Saving extracted content to world state..."
-    echo "Conflict strategy: $strategy"
-
-    # Build command with optional campaign name
-    if [ -n "$campaign_name" ]; then
-        echo "Campaign: $campaign_name"
-        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-
-        if [ ! -f "$CAMPAIGN_DIR/merged-results.json" ]; then
-            echo "Error: No merged results found for campaign: $campaign_name"
-            echo "Run '$0 merge $campaign_name' first."
-            exit 1
-        fi
-
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" save "$strategy" --world-state "$WORLD_STATE_BASE" --campaign "$campaign_name"
-    else
-        if [ ! -f "$EXTRACT_DIR/merged-results.json" ]; then
-            echo "Error: No merged results found."
-            echo "Run '$0 merge' first."
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" save "$strategy" --world-state "$WORLD_STATE_BASE"
-    fi
-
-    echo
-    echo "Content saved to world state."
-    echo "Check the active campaign's npcs.json and locations.json files"
-}
-
-review_content() {
-    local campaign_name="$1"
-
-    echo "Reviewing extracted content..."
-
-    # Build command with optional campaign name
-    if [ -n "$campaign_name" ]; then
-        echo "Campaign: $campaign_name"
-        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-
-        if [ ! -f "$CAMPAIGN_DIR/merged-results.json" ]; then
-            echo "Error: No merged results to review for campaign: $campaign_name"
-            echo "Run '$0 merge $campaign_name' first."
-            exit 1
-        fi
-
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" review --world-state "$WORLD_STATE_BASE" --campaign "$campaign_name"
-
-        echo
-        echo "To view full details:"
-        echo "  cat $CAMPAIGN_DIR/merged-results.json | jq '.npcs | keys'"
-        echo "  cat $CAMPAIGN_DIR/merged-results.json | jq '.locations | keys'"
-    else
-        if [ ! -f "$EXTRACT_DIR/merged-results.json" ]; then
-            echo "Error: No merged results to review."
-            echo "Run '$0 merge' first."
-            exit 1
-        fi
-
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" review --world-state "$WORLD_STATE_BASE"
-
-        echo
-        echo "To view full details:"
-        echo "  cat $EXTRACT_DIR/merged-results.json | jq '.npcs | keys'"
-        echo "  cat $EXTRACT_DIR/merged-results.json | jq '.locations | keys'"
-    fi
-}
 
 clean_temp() {
     local campaign_name="$1"
@@ -357,25 +203,6 @@ clean_temp() {
     echo "Extraction directory cleared."
 }
 
-archive_extracted() {
-    local campaign_name="$1"
-
-    campaign_name=$(require_campaign "$campaign_name" archive) || exit 1
-    CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-    EXTRACTED_DIR="$CAMPAIGN_DIR/extracted"
-
-    if [ ! -d "$EXTRACTED_DIR" ]; then
-        echo "No extracted/ directory found for campaign: $campaign_name"
-        exit 1
-    fi
-
-    # Create archive with timestamp
-    ARCHIVE_NAME="extracted-archive-$(date +%Y%m%d-%H%M%S)"
-    mv "$EXTRACTED_DIR" "$CAMPAIGN_DIR/$ARCHIVE_NAME"
-
-    echo "[SUCCESS] Archived extracted/ to $ARCHIVE_NAME"
-    echo "Location: $CAMPAIGN_DIR/$ARCHIVE_NAME"
-}
 
 list_campaigns() {
     echo "Available campaign extractions:"
@@ -399,12 +226,6 @@ list_campaigns() {
                     echo "    Date: $date"
                     echo "    Chunks: $chunks"
 
-                    # Check for merged results
-                    if [ -f "$dir/merged-results.json" ]; then
-                        npcs=$(jq -r '.extraction_summary.npcs_extracted // 0' "$dir/merged-results.json" 2>/dev/null)
-                        locs=$(jq -r '.extraction_summary.locations_extracted // 0' "$dir/merged-results.json" 2>/dev/null)
-                        echo "    Extracted: $npcs NPCs, $locs locations"
-                    fi
                     echo
                 fi
             fi
@@ -421,160 +242,8 @@ list_campaigns() {
     fi
 }
 
-validate_extraction() {
-    local campaign_name="$1"
 
-    campaign_name=$(require_campaign "$campaign_name" validate) || exit 1
-    CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
 
-    echo "Validating extraction for: $campaign_name"
-    echo "================================="
-    echo ""
-
-    # This is a GATE: a non-zero exit stops the import before the repair chain
-    # touches anything. Counting runs through the same shape rule normalize uses,
-    # so a list-shaped file (what extraction_schemas.py declares) counts truthfully
-    # instead of reporting EMPTY.
-    $PYTHON_CMD - "$CAMPAIGN_DIR/extracted" "$LIB_DIR" "$campaign_name" <<'PY'
-import json, sys
-from pathlib import Path
-
-extracted, lib_dir, campaign_name = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
-sys.path.insert(0, lib_dir)
-from minor_stubs import EXTRACTION_TYPES, REQUIRED_NONEMPTY, entry_count, normalize_entity_shape
-
-failures, total = [], 0
-for type_name in EXTRACTION_TYPES:
-    path = extracted / f"{type_name}.json"
-    if not path.exists():
-        print(f"  {type_name}: MISSING ({path})")
-        failures.append(f"{type_name}: file missing")
-        continue
-    try:
-        data = json.loads(path.read_text())
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
-        print(f"  {type_name}: INVALID JSON ({e})")
-        failures.append(f"{type_name}: invalid JSON")
-        continue
-    try:
-        # A malformed entity is a named failure, never a bare traceback.
-        entities, entries = normalize_entity_shape(data, type_name), entry_count(data, type_name)
-    except ValueError as e:
-        print(f"  INVALID ENTITY - {e}")
-        failures.append(str(e))
-        continue
-    count = len(entities)
-    if count and entries != count:
-        # Same-name entities collapse onto one key; say so rather than lose them silently.
-        print(f"  {type_name}: {entries} entries, {count} unique names")
-        total += count
-    elif count:
-        print(f"  {type_name}: {count} entities")
-        total += count
-    elif type_name in REQUIRED_NONEMPTY:
-        print(f"  {type_name}: EMPTY (0 entities)")
-        failures.append(f"{type_name}: 0 entities")
-    else:
-        # An items- or plots-less book is unusual, not broken. Warn, don't fail.
-        print(f"  {type_name}: WARNING - 0 entities (optional type)")
-
-print("")
-if failures:
-    print("EXTRACTION FAILED: " + "; ".join(failures))
-    print("Re-run the extractor agent for each failed type before continuing the import.")
-    sys.exit(1)
-print(f"All required extraction output present. Total: {total} entities.")
-print(f'Ready to normalize: bash tools/gm-extract.sh normalize "{campaign_name}"')
-PY
-}
-
-normalize_extracted() {
-    # Copy extracted/*.json to the campaign root in the flat {name: {...}} shape
-    # the runtime managers expect. Extractor agents inconsistently wrap their
-    # output (a bare list, a keyed dict, or either nested under a wrapper key
-    # beside stray document/metadata keys); minor_stubs.normalize_entity_shape is
-    # the one rule that flattens all of them, shared with validate_extraction.
-    local campaign_name="$1"
-
-    campaign_name=$(require_campaign "$campaign_name" normalize) || exit 1
-    CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-
-    if [ ! -d "$CAMPAIGN_DIR/extracted" ]; then
-        echo "Error: No extracted/ directory for campaign: $campaign_name"
-        echo "Run extraction agents first."
-        exit 1
-    fi
-
-    echo "Normalizing extraction into campaign root: $campaign_name"
-    echo "================================="
-
-    # All four types are normalized in ONE pass so nothing is written until every
-    # present file has come through cleanly — a half-written normalize leaves the
-    # campaign root part old, part new, with no record of which is which.
-    $PYTHON_CMD - "$CAMPAIGN_DIR" "$LIB_DIR" <<'PY'
-import json, sys
-from pathlib import Path
-
-cdir, lib_dir = Path(sys.argv[1]), sys.argv[2]
-sys.path.insert(0, lib_dir)
-from minor_stubs import EXTRACTION_TYPES, normalize_entity_shape
-# Coerce bare-string location connections to {"to": name} dicts so the runtime
-# (move, integrity) never sees a string where it indexes conn["to"].
-from connection_normalize import coerce_connections
-# Collapse extraction-side location_tags into canonical tags.locations so every
-# downstream pass (cap, reconcile, integrity) and the whole runtime see ONE field.
-from tag_unify import unify_location_tags
-
-staged, notes, errors = {}, [], []
-for type_name in EXTRACTION_TYPES:
-    src = cdir / "extracted" / f"{type_name}.json"
-    if not src.exists():
-        notes.append(f"  {type_name}: MISSING (skipped)")
-        continue
-    try:
-        # A list, a keyed dict, or either under a wrapper key all land flat here.
-        flat = normalize_entity_shape(json.loads(src.read_text()), type_name)
-    except ValueError as e:  # includes JSONDecodeError
-        errors.append(f"  {type_name}: {e}")
-        continue
-    if type_name == "locations":
-        n = coerce_connections(flat)
-        if n:
-            notes.append(f"  {type_name}: coerced {n} string connection(s) to dict shape")
-    if type_name == "npcs":
-        r = unify_location_tags(flat)
-        if r["migrated"]:
-            notes.append(f"  {type_name}: unified location_tags -> tags.locations for {len(r['migrated'])} NPC(s)")
-    staged[type_name] = flat
-    notes.append(f"  {type_name}: {len(flat)} entities -> {type_name}.json (flat)")
-
-print("\n".join(notes))
-if errors:
-    print("")
-    print("NORMALIZE FAILED - nothing written:")
-    print("\n".join(errors))
-    sys.exit(1)
-for type_name, flat in staged.items():
-    (cdir / f"{type_name}.json").write_text(json.dumps(flat, indent=2))
-print("")
-print("Normalized to flat format. Runtime tools can now read these files.")
-PY
-}
-
-cap_extracted() {
-    # Tier each entity type in the campaign root: the top-N most important
-    # (mention-frequency + plot-reference/party boost) stay active, the rest are
-    # marked background:true in the same file. Nothing is deleted. After normalize.
-    local campaign_name="$1"
-    local limit="${2:-30}"
-
-    campaign_name=$(require_campaign "$campaign_name" cap) || exit 1
-    CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-
-    echo "Tiering extracted entities (top-$limit active, rest background): $campaign_name"
-    echo "================================="
-    $PYTHON_CMD "$LIB_DIR/extraction_cap.py" "$CAMPAIGN_DIR" --limit "$limit"
-}
 
 # Main command handling
 case "$1" in
@@ -582,13 +251,7 @@ case "$1" in
         prepare_document "$2" "$3"
         ;;
 
-    normalize)
-        normalize_extracted "$2"
-        ;;
 
-    cap)
-        cap_extracted "$2" "$3"
-        ;;
 
     draft-bible|draft-ruleset|campaign-rules|write-index|write-systems)
         # The bible -> kit -> campaign_rules chain (lib/book_bible.py). The
@@ -608,66 +271,12 @@ case "$1" in
         $PYTHON_CMD "$LIB_DIR/book_bible.py" "$verb" "$CAMPAIGN_DIR" "$@"
         ;;
 
-    stub-npcs)
-        # Stub plot NPCs extraction never produced; validate plot taxonomy.
-        campaign_name=$(require_campaign "$2" "$1") || exit 1
-        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-        echo "Stubbing never-extracted NPC refs + validating plot taxonomy: $campaign_name"
-        echo "================================="
-        $PYTHON_CMD "$LIB_DIR/minor_stubs.py" "$CAMPAIGN_DIR"
-        ;;
 
-    normalize-connections)
-        # Canonicalize connection targets; move routing rule-phrases into notes.
-        campaign_name=$(require_campaign "$2" "$1") || exit 1
-        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-        echo "Normalizing connection targets: $campaign_name"
-        echo "================================="
-        $PYTHON_CMD "$LIB_DIR/connection_normalize.py" "$CAMPAIGN_DIR"
-        ;;
 
-    reconcile)
-        # Stub every unresolved location reference (low_confidence); drop only
-        # routing rule-prose, recorded as a dropped_references fact.
-        campaign_name=$(require_campaign "$2" "$1") || exit 1
-        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-        echo "Reconciling missing locations: $campaign_name"
-        echo "================================="
-        $PYTHON_CMD "$LIB_DIR/location_reconcile.py" "$CAMPAIGN_DIR"
-        ;;
 
-    integrity)
-        # Canonicalize cross-references; fail (exit 1) on unresolved unless --no-strict.
-        campaign_name=$(require_campaign "$2" "$1") || exit 1
-        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-        echo "Running integrity gate: $campaign_name"
-        echo "================================="
-        $PYTHON_CMD "$LIB_DIR/integrity_gate.py" "$CAMPAIGN_DIR" $3
-        ;;
 
-    merge)
-        # Check for --cleanup flag
-        if [ "$3" = "--cleanup" ]; then
-            merge_results "$2" "--cleanup"
-        elif [ "$2" = "--cleanup" ]; then
-            merge_results "" "--cleanup"
-        else
-            merge_results "$2"
-        fi
-        ;;
 
-    save)
-        # Handle variable argument positions for save
-        if [[ "$2" =~ ^(rename|skip|overwrite)$ ]]; then
-            save_to_world "$2" "$3"
-        else
-            save_to_world "rename" "$2"
-        fi
-        ;;
 
-    review)
-        review_content "$2"
-        ;;
 
     list)
         list_campaigns
@@ -677,13 +286,7 @@ case "$1" in
         clean_temp "$2"
         ;;
 
-    archive)
-        archive_extracted "$2"
-        ;;
 
-    validate)
-        validate_extraction "$2"
-        ;;
 
     *)
         show_usage

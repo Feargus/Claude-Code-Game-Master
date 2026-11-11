@@ -65,7 +65,7 @@ The book is now searchable. That is enough of a "world" to start.
 
 ## Step 3: The door, not the gazetteer
 
-Do **not** launch extractor agents. Do **not** preview entity counts. Do **not**
+Do **not** launch extractor agents yet (they only build the World Index, Step 5.5). Do **not** preview entity counts. Do **not**
 ask "what should I extract?"
 
 Ask, in the book's tone:
@@ -245,10 +245,9 @@ bash tools/gm-enhance.sh query "<Name>"
 bash tools/gm-enhance.sh apply "<Name>"
 ```
 
-Do **not** run `gm-enhance.sh batch`. Do **not** run the four extractors **as a
-census** (full records + `cap` / `reconcile` / `stub-npcs` / `integrity`). The
-one sanctioned extractor use is the light World Index below — pointers, not a
-gazetteer. An unresolved name means not on stage yet.
+Do **not** run `gm-enhance.sh batch`. The one use of the `index-extractor` agent
+is the light World Index below — pointers, not a gazetteer. An unresolved name
+means not on stage yet.
 
 ---
 
@@ -259,15 +258,12 @@ book — **one sentence each** — so the GM reaches for real names (Yara, the
 Elephant Tower, Yag-kosha) instead of inventing generic ones. It is NOT the
 census: no full records, no stats, no `cap`/`reconcile`/`stub-npcs`/`integrity`.
 
-Spawn the extractor agents over the campaign's chunks — **hard cap 6 agents, and
-state that 6-agent cap INSIDE each subagent prompt** (subagents self-fan-out).
-Ask each for **named entities only** (drop nameless walk-ons), each reduced to
-`{name, note}` where the note is ONE sentence:
-
-- `extractor-npcs` → `index.npcs`
-- `extractor-locations` → `index.locations`
-- `extractor-items` → `index.items`
-- `extractor-monsters` (or the monster pass) → `index.monsters`
+Spawn the `index-extractor` agent over the campaign's chunk files
+(`chunks/chunk_NNN.txt`) — **hard cap 6 agents, and state that 6-agent cap INSIDE
+each prompt**. Give each one kind (`npcs`, `locations`, `items` or `monsters`) and
+the chunks to read (split a long book's chunks between agents of the same kind).
+Each answers with a JSON list of `{name, note}`, the note ONE sentence, named
+things only.
 
 Dedup by name, then persist in a single call:
 
@@ -288,18 +284,6 @@ and `gm-search.sh --rag-only` when someone new walks on. Persist that one new fa
 or place, then keep playing.
 
 The campaign JSON is a journal of where you've been. Grow it from the table.
-
----
-
-## Leftover machinery (do not use on a new import)
-
-`gm-extract.sh` still has `normalize`, `cap`, `reconcile`, `stub-npcs`, `integrity`,
-and the four extractor agents. Using them to build **full records** is the old
-**census** path — it front-loads a gazetteer so a graph looks complete. That is
-the opposite of this command. Leave the census machinery. (The extractor agents
-have exactly one sanctioned use here: the light one-sentence World Index in
-Step 5.5 — pointers, never records.) If an operator is repairing a legacy import,
-see `docs/import-guide.md`.
 
 ---
 

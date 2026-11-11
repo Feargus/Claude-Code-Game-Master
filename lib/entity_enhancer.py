@@ -578,7 +578,7 @@ class EntityEnhancer:
         """
         List entities that haven't been enhanced yet.
 
-        Background-tiered entities (`background: true`, set by extraction_cap) are
+        Background-tiered entities (`background: true`, set by the old import census) are
         skipped: the import keeps the book's whole cast, but a RAG round-trip per
         entity would then cost several times what the playable core costs. They are
         enhanced when they are promoted into play, not up front.
