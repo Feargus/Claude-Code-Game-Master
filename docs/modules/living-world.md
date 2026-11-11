@@ -66,9 +66,10 @@ leaves them **active**. The stamp is an annotation, not a suppressor: a second t
 the same scene still reports the match as already-fired (no re-stamp, no new provenance).
 Walking away and coming back **re-arms it**, because the key changed.
 
-The fire slice is still `limit=2` (highest-confidence first) so a beat does not stutter
-with five payoffs at once — remaining matches are disclosed as matched-not-fired rather
-than dropped. `check_pending(..., world_state)` uses the same disclose-not-hide rule.
+Every match fires: there is no limit per check, since a consequence left out would also
+miss its effects (a clock it starts) until the next check at the same place, which may
+never come. If several fire at once, the GM decides how they play out or vetoes one.
+`check_pending(..., world_state)` returns every match.
 
 - The GM can veto a firing narratively and nothing needs undoing; the consequence is
   still there.

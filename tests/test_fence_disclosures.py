@@ -1,4 +1,5 @@
-"""Fences become disclosures: tick remainder, world-tick overflow, context +N more."""
+"""Fences become disclosures: world-tick overflow, context +N more. (A tick has no
+fence: every match fires.)"""
 
 import json
 import re
@@ -25,7 +26,7 @@ def _campaign(tmp_path, extra=None):
     return str(ws), camp
 
 
-def test_tick_four_matches_fires_two_discloses_two(tmp_path):
+def test_tick_four_matches_fires_all_four(tmp_path):
     ws, camp = _campaign(tmp_path)
     cm = ConsequenceManager(ws)
     for i in range(4):
@@ -33,14 +34,11 @@ def test_tick_four_matches_fires_two_discloses_two(tmp_path):
             f"payoff {i}", "at Town Square",
             trigger_type="on_location", match="Town Square")
     result = cm.tick({"location": "Town Square", "time": "day", "present_npcs": []})
-    assert len(result["fired"]) == 2
-    assert len(result["disclosed"]) == 2
-    reported = result["fired"] + result["disclosed"]
-    assert len({c["id"] for c in reported}) == 4
-    assert all("match_reason" in c for c in reported)
+    assert len({c["id"] for c in result["fired"]}) == 4
+    assert all("match_reason" in c for c in result["fired"])
     data = json.loads((camp / "consequences.json").read_text(encoding="utf-8"))
     stamped = [c for c in data["active"] if c.get("last_fired_key")]
-    assert len(stamped) == 2
+    assert len(stamped) == 4
     fired_ids = {c["id"] for c in result["fired"]}
     assert {c["id"] for c in stamped} == fired_ids
 

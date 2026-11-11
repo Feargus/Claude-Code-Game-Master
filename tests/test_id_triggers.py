@@ -65,7 +65,7 @@ def test_matching_is_exact(tmp_path):
     ro_here = cm.add_consequence("c", "d", trigger_type="on_npc", match="Ro")
 
     def fired(location, present):
-        hits = cm.check_pending({"location": location, "present_npcs": present}, limit=10)
+        hits = cm.check_pending({"location": location, "present_npcs": present})
         return {c["id"] for c in hits}
 
     assert fired("Junkyard Market", ["Old Iron"]) == set()
@@ -79,6 +79,6 @@ def test_the_scene_check_fires_on_ids(tmp_path):
     at_yard = cm.add_consequence("a", "b", trigger_type="on_location", match="Yard")
     ro_here = cm.add_consequence("c", "d", trigger_type="on_npc", match="Ro")
     iron_here = cm.add_consequence("e", "f", trigger_type="on_npc", match="Old Iron")
-    fired = {c["id"] for c in cm.tick_from_session(limit=10)["fired"]}
+    fired = {c["id"] for c in cm.tick_from_session()["fired"]}
     assert fired == {at_yard, ro_here}
     assert iron_here not in fired

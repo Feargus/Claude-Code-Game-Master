@@ -2,9 +2,8 @@
 
 check_pending(world_state) evaluates triggers against the scene and returns
 the consequences that MATCH (annotated with a match_reason, sorted),
-auto-archiving expired ones. The fire-slice `limit` annotates overflow as
-`matched_not_fired` rather than dropping them. check_pending() with no args
-stays the legacy raw-active accessor.
+auto-archiving expired ones. Every match is returned; there is no fire limit.
+check_pending() with no args stays the legacy raw-active accessor.
 """
 
 import json
@@ -24,7 +23,7 @@ def test_legacy_accessor_returns_active_list(dcc_world):
 
 def test_on_location_fires_with_reason(dcc_world):
     fired = ConsequenceManager(dcc_world).check_pending(
-        {"location": "Floor 3 - The Over City", "time": "day", "present_npcs": []}, limit=10)
+        {"location": "Floor 3 - The Over City", "time": "day", "present_npcs": []})
     ids = {c["id"] for c in fired}
     assert "c3e61742" in ids  # Sheol: on_location -> the Over City
     assert all("match_reason" in c for c in fired)
@@ -32,28 +31,24 @@ def test_on_location_fires_with_reason(dcc_world):
 
 def test_on_time_fires(dcc_world):
     fired = ConsequenceManager(dcc_world).check_pending(
-        {"location": "Village", "time": "Night", "present_npcs": []}, limit=10)
+        {"location": "Village", "time": "Night", "present_npcs": []})
     assert "a36a02f6" in {c["id"] for c in fired}  # Nightstalker: on_time -> "night"
 
 
 def test_on_npc_fires(dcc_world):
     fired = ConsequenceManager(dcc_world).check_pending(
-        {"location": "Inn", "time": "day", "present_npcs": ["Squeeks"]}, limit=10)
+        {"location": "Inn", "time": "day", "present_npcs": ["Squeeks"]})
     assert "b5aeefab" in {c["id"] for c in fired}  # Squeeks: on_npc -> npc:Squeeks
 
 
 def test_nothing_fires_when_no_match(dcc_world):
     fired = ConsequenceManager(dcc_world).check_pending(
-        {"location": "Nowhere", "time": "noon", "present_npcs": ["Bob"], "events": []}, limit=10)
+        {"location": "Nowhere", "time": "noon", "present_npcs": ["Bob"], "events": []})
     assert fired == []
 
 
-def test_cap_discloses_overflow_instead_of_dropping(dcc_world):
+def test_every_match_is_returned(dcc_world):
     cm = ConsequenceManager(dcc_world)
     ws = {"location": "Floor 3 - The Over City", "time": "night", "present_npcs": [], "events": []}
-    all_hits = cm.check_pending(ws, limit=10)
-    assert len(all_hits) >= 2  # Sheol + Nightstalker both match
-    sliced = cm.check_pending(ws, limit=1)
-    assert len(sliced) == len(all_hits)
-    assert not sliced[0].get("matched_not_fired")
-    assert any(c.get("matched_not_fired") for c in sliced[1:])
+    ids = {c["id"] for c in cm.check_pending(ws)}
+    assert {"c3e61742", "a36a02f6"} <= ids  # Sheol + Nightstalker both match

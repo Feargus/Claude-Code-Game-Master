@@ -83,7 +83,7 @@ def test_on_time_fires_only_in_its_hours(dcc_world):
     night = cm.add_consequence("The patrol passes", "x", trigger_type="on_time", match="night")
 
     def fired(**world):
-        return {c["id"] for c in cm.check_pending(world, limit=10)} & {noon, night}
+        return {c["id"] for c in cm.check_pending(world)} & {noon, night}
 
     assert fired(game_time="2187-10-26T11:30") == {noon}
     assert fired(game_time="2187-10-26T14:00") == set()           # Afternoon
@@ -92,7 +92,7 @@ def test_on_time_fires_only_in_its_hours(dcc_world):
     assert fired(game_time="2187-10-26T23:30") == set()           # Midnight
     # The game time decides, not a word stored elsewhere.
     assert fired(game_time="2187-10-26T11:00", time="Night") == {noon}
-    reason = next(c for c in cm.check_pending({"game_time": "2187-10-26T12:59"}, limit=10)
+    reason = next(c for c in cm.check_pending({"game_time": "2187-10-26T12:59"})
                   if c["id"] == noon)["match_reason"]
     assert reason == "it is Noon (11:00–12:59)"
 

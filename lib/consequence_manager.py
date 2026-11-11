@@ -147,15 +147,13 @@ class ConsequenceManager(EntityManager):
             return consequence_id
         return ""
 
-    def check_pending(self, world_state: Dict[str, Any] = None,
-                      limit: int = 2) -> List[Dict[str, Any]]:
+    def check_pending(self, world_state: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """
         Pending consequences.
 
         - No world_state  -> the raw active list (legacy accessor).
         - With world_state -> every consequence a state trigger MATCHES now, each
-          annotated with `match_reason`. The first `limit` are the fire slice; the
-          rest are disclosed (`matched_not_fired`) rather than dropped.
+          annotated with `match_reason`.
 
         world_state keys (all optional): location (str, a locations.json key),
         present_npcs (list[str], npcs.json keys), game_time ("YYYY-MM-DDTHH:MM"),
@@ -178,13 +176,7 @@ class ConsequenceManager(EntityManager):
                 hit = dict(c)
                 hit['match_reason'] = reason
                 matched.append(hit)
-
-        out = []
-        for i, hit in enumerate(matched):
-            if i >= limit:
-                hit['matched_not_fired'] = True
-            out.append(hit)
-        return out
+        return matched
 
     EFFECT_TYPES = ('start_clock', 'tell')
 
@@ -425,14 +417,15 @@ class ConsequenceManager(EntityManager):
                 return reason
         return ''
 
-    def tick(self, world_state: Dict[str, Any], limit: int = 2) -> Dict[str, List[Dict[str, Any]]]:
-        """Evaluate all active consequences; fire the top `limit` that are new here.
+    def tick(self, world_state: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+        """Evaluate all active consequences; fire every one that matches and is new here.
 
         Same scene (location|time|date) will not re-stamp a consequence that already
-        fired on this ctx_key — it is disclosed as already-fired, not suppressed.
-        Remaining matches are disclosed, not dropped.
-        Newly fired items get last_fired_key +
-        provenance; the GM may still veto narratively — they stay active either way.
+        fired on this ctx_key — it is reported as already-fired, not suppressed.
+        There is no limit on how many fire at once: one left out would miss its
+        effects (a clock it starts) until the next check at the same place, which
+        may never come. Newly fired items get last_fired_key + provenance; the GM
+        may still veto narratively — they stay active either way.
         """
         data = self.json_ops.load_json(self.consequences_file)
         active = data.get('active', [])
@@ -451,25 +444,13 @@ class ConsequenceManager(EntityManager):
             if reason:
                 matches.append((c, reason))
 
-        already_fired, new_matches = [], []
+        already_fired, fired = [], []
         for c, reason in matches:
-            hit = dict(c)
-            hit['match_reason'] = reason
             if c.get('last_fired_key') == ctx_key:
-                hit['already_fired'] = True
-                already_fired.append(hit)
+                already_fired.append(dict(c, match_reason=reason, already_fired=True))
             else:
-                new_matches.append((c, reason, hit))
-
-        fired, disclosed = [], []
-        for i, (c, reason, hit) in enumerate(new_matches):
-            if i < limit:
                 c['last_fired_key'] = ctx_key  # stamp the live object (in active)
-                stamped = dict(c)
-                stamped['match_reason'] = reason
-                fired.append(stamped)
-            else:
-                disclosed.append(hit)
+                fired.append(dict(c, match_reason=reason))
 
         if fired:
             data['active'] = active
@@ -489,7 +470,6 @@ class ConsequenceManager(EntityManager):
         self._carry_out(fired)
         return {
             'fired': fired,
-            'disclosed': disclosed,
             'already_fired': already_fired,
         }
 
@@ -634,7 +614,7 @@ class ConsequenceManager(EntityManager):
             return True
         return False
 
-    def tick_from_session(self, limit: int = 2) -> Dict[str, List[Dict[str, Any]]]:
+    def tick_from_session(self) -> Dict[str, List[Dict[str, Any]]]:
         """Build world_state from current campaign state, then tick()."""
         overview = self.json_ops.load_json("campaign-overview.json") or {}
         pos = overview.get("player_position", {})
@@ -649,7 +629,7 @@ class ConsequenceManager(EntityManager):
             "present_npcs": present,
             "events": [],
         }
-        return self.tick(world_state, limit=limit)
+        return self.tick(world_state)
 
     def resolve(self, consequence_id: str) -> bool:
         """
@@ -746,28 +726,18 @@ def print_waiting(fact_id: str, waiting: List[Dict[str, Any]]) -> None:
 
 
 def _print_tick_report(result: Dict[str, List[Dict[str, Any]]]) -> None:
-    """Human CLI for tick(): fire slice plus disclosed remainder."""
+    """Human CLI for tick(): what fired, and what had already fired here."""
     fired = result.get('fired') or []
-    disclosed = result.get('disclosed') or []
     already = result.get('already_fired') or []
-    if not (fired or disclosed or already):
+    if not (fired or already):
         print("[REACTIVITY] (nothing triggered here)")
         return
-    extra = ""
-    if disclosed:
-        names = [c.get('consequence', c.get('id', '?')) for c in disclosed]
-        extra = f", {len(disclosed)} more matched: [{', '.join(names)}]"
-    print(f"[REACTIVITY] fired these {len(fired)}{extra}")
+    print(f"[REACTIVITY] fired these {len(fired)}")
     for c in fired:
         print(f"  [{c['id']}] {c['consequence']}")
         print(f"      ↳ fired because: {c['match_reason']} (veto if the timing's wrong)")
         for line in c.get('effects_done', []):
             print(f"      ↳ {line}")
-    if disclosed:
-        print("  matched-not-fired:")
-        for c in disclosed:
-            print(f"  [{c['id']}] {c['consequence']}")
-            print(f"      ↳ {c.get('match_reason', '')}")
     if already:
         print("  already fired here:")
         for c in already:
