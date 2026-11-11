@@ -98,17 +98,6 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/player_manager.py" kill "$NAME" "$@"
         ;;
 
-    "become")
-        if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh become <party_member_name>"
-            echo "Take over a party member as the active PC (Death Protocol hand-off)."
-            echo "Archives the fallen PC to the campaign's fallen/ dir."
-            exit 1
-        fi
-        NAME="$1"; shift
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" become "$NAME" "$@"
-        ;;
-
     "credits")
         if [ -z "$1" ]; then
             echo "Usage: gm-player.sh credits <character_name> [+/-amount]"
@@ -210,7 +199,6 @@ case "$ACTION" in
         echo "                               - Apply one level of growth that is due (gm-growth)"
         echo "  vital <vital> <+/-N|set N>   - Read/change a kit vital (vigor, corruption, ...)"
         echo "  kill <name> [--cause ...]    - Mark PC dead (then run Death Protocol)"
-        echo "  become <party_member>        - Take over a party member as the active PC"
         echo "  credits <name> [+/-amount]   - Modify or show character credits"
         echo "  inventory [name] [action]    - Manage inventory (add/remove/list; defaults to active PC + list)"
         echo "  condition <name> <action>    - Manage conditions (add/remove/list)"

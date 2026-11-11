@@ -285,9 +285,9 @@ When the PC dies (see Stakes & Death in CLAUDE.md and the wound rules in `gm-com
 2. **Narrate the death** with weight. No menu yet.
 3. **Offer the hand-off** (the show goes on — not GAME OVER). The three routes — take over a party member already in the scene, roll a new character, or step in as a canon figure from the source. Frame them however CLAUDE.md's Death Protocol calls for. (If solo with no party and no fitting canon figure, offer the last two only.)
 4. **SWAP in the new PC:**
-   - Party member → `bash tools/gm-player.sh become "<name>"` (copies their party sheet into character.json, archives the fallen PC to `fallen/`).
-   - New character → run the `/create-character` interview and save with `gm-player.sh create '<json>' --replace` (it archives the fallen PC to `fallen/`).
-   - Canon figure → the same interview with that NPC's data as suggestions, saved with `gm-player.sh create '<json>' --canon "<NPC>" --replace`.
+   - New character → run the `/create-character` interview and save with `gm-player.sh create '<json>' --replace`.
+   - A party member or a canon figure → the same interview, a canon character with that NPC's data as the first suggestion, saved with `gm-player.sh create '<json>' --canon "<NPC>" --replace`.
+   - Either way the fallen PC's sheet goes to `fallen/`, and they become an NPC with what they knew; the new character knows only what they witnessed or were told (`gm-note.sh witness` / `tell`), and a canon character keeps what the NPC knew.
 5. **Bridge the fiction** (how/why control passes), update location/scene, then resume play. The dead hero stays in the world's memory — referenced, mourned, looted, avenged. Threads and clocks persist.
 
 ---

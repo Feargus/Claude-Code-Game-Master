@@ -35,14 +35,28 @@ class WorldIds:
     def __init__(self, json_ops):
         self.json_ops = json_ops
         self._tables = None
+        self._pc = {}
 
     def _load(self) -> Dict[str, dict]:
+        """The NPC and location tables. A canon character's NPC record (the NPC the
+        player now plays) is not an NPC any more: it is set aside as `_pc`, and its
+        name and aliases resolve to `player`."""
         if self._tables is None:
+            npcs = dict(self.json_ops.load_json("npcs.json") or {})
+            name = self.player_name()
+            record = npcs.get(name)
+            self._pc = {}
+            if isinstance(record, dict) and record.get("is_player_character"):
+                self._pc = {name: npcs.pop(name)}
             self._tables = {
-                "npc": self.json_ops.load_json("npcs.json") or {},
+                "npc": npcs,
                 "location": self.json_ops.load_json("locations.json") or {},
             }
         return self._tables
+
+    def _player_aliases(self) -> List[str]:
+        self._load()
+        return [a for record in self._pc.values() for a in record.get("aliases") or [] if a]
 
     def player_name(self) -> str:
         return str((self.json_ops.load_json("character.json") or {}).get("name") or "")
@@ -56,8 +70,12 @@ class WorldIds:
     def _is_player(self, text: str) -> bool:
         name = self.player_name()
         low = text.strip().lower()
-        return low == "player" or bool(name) and (
-            low == name.lower() or normalize_entity_name(text) == normalize_entity_name(name))
+        if low == "player":
+            return True
+        for known in ([name] if name else []) + self._player_aliases():
+            if low == known.lower() or normalize_entity_name(text) == normalize_entity_name(known):
+                return True
+        return False
 
     def _suggest(self, text: str, kinds=KINDS) -> str:
         """', did you mean: …?' with up to three close ids, or ''."""
@@ -88,6 +106,9 @@ class WorldIds:
             return "", (f"'{text}': unknown kind '{kind}'. Use player, "
                         f"{', '.join(k + ':<name>' for k in KINDS)}, street or public.")
         key = resolve_entity_name(rest, self._load()[kind])
+        if key is None and kind == "npc" and self._pc and \
+                (resolve_entity_name(rest, self._pc) or self._is_player(rest)):
+            return "player", ""  # the NPC the player now plays
         if key is None:
             return "", f"No {kind} '{rest}'{self._suggest(rest, kinds=(kind,))}"
         return f"{kind}:{key}", ""
@@ -112,6 +133,7 @@ class WorldIds:
         player = self.player_name()
         if player:
             out.append(("player", player))
+        out += [("player", a) for a in self._player_aliases()]
         for kind in KINDS:
             for key, data in self._load()[kind].items():
                 out.append((f"{kind}:{key}", key))

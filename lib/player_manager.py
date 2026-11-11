@@ -339,86 +339,6 @@ class PlayerManager(EntityManager):
             'fired': fired,
         }
 
-    def become(self, npc_name: str) -> Dict[str, Any]:
-        """Hand off the active PC to a party member (Death Protocol SWAP).
-
-        Reads the named party member's character_sheet from npcs.json, flattens it
-        into the canonical character.json runtime shape, archives the current
-        character.json to fallen/<deadname>-<id>.json, writes the new sheet,
-        updates current_character on the campaign overview, and removes the
-        promoted NPC from the party list so they aren't double-tracked.
-        """
-        # Locate the party member sheet in npcs.json.
-        npcs = self.json_ops.load_json("npcs.json") or {}
-        npc = npcs.get(npc_name)
-        if npc is None:
-            # Alias-aware fallback (case/title drift).
-            from entity_aliases import resolve_entity_name
-            key = resolve_entity_name(npc_name, npcs)
-            if key:
-                npc_name = key
-                npc = npcs[key]
-        if npc is None:
-            print(f"[ERROR] NPC '{npc_name}' not found")
-            return {'success': False}
-        if not npc.get('is_party_member'):
-            print(f"[ERROR] '{npc_name}' is not a party member. Promote them first "
-                  f"(gm-npc.sh promote \"{npc_name}\").")
-            return {'success': False}
-
-        sheet = npc.get('character_sheet')
-        if not sheet:
-            print(f"[ERROR] '{npc_name}' has no character sheet to take over.")
-            return {'success': False}
-
-        # Build the new flat PC sheet from the party member's sheet.
-        new_char = dict(sheet)
-        new_char['name'] = npc_name
-        new_char.setdefault('status', 'alive')
-        # A new PC is taking the helm; clear any stale death stamps.
-        new_char.pop('died_at', None)
-        new_char.pop('cause', None)
-
-        # Archive the fallen PC (if a character.json exists) before overwriting.
-        archived_path = None
-        if self.character_file.exists():
-            old = self._load_character()
-            fallen_dir = self.campaign_dir / "fallen"
-            fallen_dir.mkdir(parents=True, exist_ok=True)
-            dead_name = (old.get('name') if old else None) or 'fallen-hero'
-            dead_id = (old.get('id') if old else None) or self._name_to_id(dead_name)
-            archived_path = fallen_dir / f"{self._name_to_id(dead_name)}-{dead_id}.json"
-            with open(archived_path, 'w', encoding='utf-8') as f:
-                json.dump(old or {}, f, indent=2)
-
-        # Write the new character.json.
-        if not self.json_ops.save_json("character.json", new_char):
-            return {'success': False}
-
-        # Update current_character on the campaign overview.
-        self.json_ops.update_json(self.campaign_file, {'current_character': npc_name})
-
-        # Remove the promoted NPC from the party so they aren't double-tracked.
-        npcs = self.json_ops.load_json("npcs.json") or {}
-        if npc_name in npcs:
-            npcs[npc_name]['is_party_member'] = False
-            npcs[npc_name]['became_pc'] = True
-            self.json_ops.save_json("npcs.json", npcs)
-
-        print(f"BECOME You now play as {npc_name}.")
-        if archived_path is not None:
-            print(f"Archived the fallen hero to: {archived_path}")
-        hp = new_char.get('hp', {})
-        print(f"HP: {hp.get('current', 0)}/{hp.get('max', 0)} | "
-              f"Level {new_char.get('level', 1)} {new_char.get('race', '?')} "
-              f"{new_char.get('class', '?')}")
-
-        return {
-            'success': True,
-            'name': npc_name,
-            'archived': str(archived_path) if archived_path else None,
-        }
-
     def modify_credits(self, name: str, amount: Optional[int] = None) -> Dict[str, Any]:
         """
         Modify character credits or show current credits if no amount given
@@ -837,10 +757,6 @@ def main():
     kill_parser.add_argument('name', help='Character name')
     kill_parser.add_argument('--cause', help='How they died')
 
-    # Become a party member (Death Protocol hand-off)
-    become_parser = subparsers.add_parser('become', help='Take over a party member as the active PC')
-    become_parser.add_argument('name', help='Party member NPC name')
-
     # Get full character JSON
     get_parser = subparsers.add_parser('get', help='Get full character JSON')
     get_parser.add_argument('name', help='Character name')
@@ -920,14 +836,11 @@ def main():
         else:
             sys.exit(emit_error(result.get('error', 'vital update failed'), json_mode=True))
         return
-    if json_mode and args.action in ('kill', 'become'):
+    if json_mode and args.action == 'kill':
         import contextlib
         import io
         with contextlib.redirect_stdout(io.StringIO()):
-            if args.action == 'kill':
-                result = manager.kill_character(args.name, getattr(args, 'cause', None))
-            else:
-                result = manager.become(args.name)
+            result = manager.kill_character(args.name, getattr(args, 'cause', None))
         if result.get('success'):
             emit(result, json_mode=True)
         else:
@@ -1008,11 +921,6 @@ def main():
             sys.exit(1)
         from consequence_manager import print_fired
         print_fired(result.get('fired'))
-
-    elif args.action == 'become':
-        result = manager.become(args.name)
-        if not result.get('success'):
-            sys.exit(1)
 
     elif args.action == 'get':
         char = manager.get_player(args.name)

@@ -10,8 +10,9 @@ and die sizes, zone names), writes the whole sheet, and wires the new character 
 - it refuses to overwrite an existing character unless `replace` is set, and then
   archives the outgoing sheet to fallen/ first;
 - it records the character on the campaign overview;
-- for a canon character (an NPC from the campaign), it marks that NPC as the player
-  so scene context stops voicing them;
+- the ids follow the people (handover.py): the outgoing character becomes an NPC
+  with what they knew, and a canon character (an NPC from the campaign) takes what
+  the NPC knew as the player's.
 """
 
 import sys
@@ -25,6 +26,7 @@ import visual_appearance as va_mod
 from entity_manager import EntityManager
 from skill_contest import ATTRIBUTES
 from world_kit import WorldKit
+from handover import hand_over
 from growth import xp_for_level
 from stat_block import canon_skills, common_skills
 
@@ -188,15 +190,6 @@ class CharacterCreator(EntityManager):
         self.json_ops.save_json(str(path), old)
         return str(path)
 
-    def _mark_as_pc(self, npc_name: str) -> None:
-        """Flag the canon NPC as the PC so scene context stops voicing them as an NPC."""
-        npcs = self.json_ops.load_json("npcs.json") or {}
-        if npc_name in npcs:
-            npcs[npc_name]["is_player_character"] = True
-            npcs[npc_name]["is_party_member"] = False
-            npcs[npc_name]["became_pc"] = True
-            self.json_ops.save_json("npcs.json", npcs)
-
     def create(self, data: Dict[str, Any], canon: Optional[str] = None,
                replace: bool = False) -> Dict[str, Any]:
         """Build, save and wire in the new character. Returns a result dict."""
@@ -220,14 +213,13 @@ class CharacterCreator(EntityManager):
             return {"success": False, "error": str(error)}
 
         archived = self._archive() if existing else None
+        notes = hand_over(self.json_ops, existing or None, data["name"] if canon else None,
+                          self.get_timestamp())
         if not self.json_ops.save_json("character.json", character):
             return {"success": False, "error": "failed to save character.json"}
 
         self.json_ops.update_json("campaign-overview.json", {"current_character": character["name"]})
-        if canon:
-            self._mark_as_pc(character["name"])
-
-        return {"success": True, "character": character, "warnings": warnings,
+        return {"success": True, "character": character, "warnings": warnings + notes,
                 "archived": archived}
 
 

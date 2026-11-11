@@ -26,16 +26,21 @@ def test_there_is_no_create_character_agent_any_more():
 
 def test_the_interview_has_its_steps_and_saves_with_create():
     text = _cmd()
-    for heading in ("## Start", "## Steps", "## Save"):
+    for heading in ("## Who", "## The default character", "## The entries", "## Save"):
         assert heading in text
     assert "gm-player.sh create" in text and "--canon" in text and "--replace" in text
     assert "save-json" not in text and "onboard" not in text
 
 
 def test_the_interview_suggests_defaults_but_never_forces_them():
+    """The user's defaults (2026-11-11): the GM knows the numbers and improvises
+    within ±20%; fast is the default, slow goes entry by entry."""
     text = _cmd()
-    assert "d12" in text and "d18" in text
-    assert "whatever they want" in text
+    assert "d12" in text and "d18" not in text
+    assert "whatever they want" in text and "±20%" in text
+    assert "Fast (the default)" in text and "Slow" in text
+    assert "you offer 3, the player picks 1 or 2" in text
+    assert "you offer 4, the player picks 2" in text
 
 
 def test_no_5e_left_in_the_interview():
