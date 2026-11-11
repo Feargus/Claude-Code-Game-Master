@@ -23,9 +23,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 import body
 import visual_appearance as va_mod
 from entity_manager import EntityManager
-from player_manager import PlayerManager
 from skill_contest import ATTRIBUTES
 from world_kit import WorldKit
+from growth import xp_for_level
 
 DEFAULT_ATTRIBUTE = 12
 DEFAULT_LUCK = 3
@@ -100,8 +100,7 @@ def _body(character: Dict[str, Any], data: Dict[str, Any]) -> None:
     character["armor"] = list(reversed(character.get("armor", [])))
 
 
-def build_character(data: Dict[str, Any], kit: WorldKit,
-                    thresholds: List[int]) -> Tuple[Dict[str, Any], List[str]]:
+def build_character(data: Dict[str, Any], kit: WorldKit) -> Tuple[Dict[str, Any], List[str]]:
     """The full sheet from the interview's answers, with defaults for the rest."""
     if not data.get("name"):
         raise CharacterError("Missing required field: name")
@@ -120,8 +119,7 @@ def build_character(data: Dict[str, Any], kit: WorldKit,
         "race": data.get("race", ""),
         "class": data.get("class", ""),
         "level": level,
-        "xp": {"current": int(data.get("xp", 0)),
-               "next_level": thresholds[level] if level < len(thresholds) else 0},
+        "xp": {"current": int(data.get("xp", 0)), "next_level": xp_for_level(level + 1)},
         "stats": _attributes(given_attributes),
         "skills": skills,
         "luck": luck,
@@ -186,8 +184,7 @@ class CharacterCreator(EntityManager):
 
         try:
             character, warnings = build_character(
-                data, WorldKit(str(self.campaign_mgr.world_state_dir)),
-                PlayerManager(str(self.campaign_mgr.world_state_dir))._xp_thresholds())
+                data, WorldKit(str(self.campaign_mgr.world_state_dir)))
         except CharacterError as error:
             return {"success": False, "error": str(error)}
 

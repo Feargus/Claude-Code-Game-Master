@@ -877,6 +877,12 @@ class SessionManager(EntityManager):
             cond_str = ', '.join(conditions) if conditions else '(none)'
             lines.append(f"{name} - Level {level} {race} {cls} | Wounds: {wound_summary(char)} | XP: {xp_val} | Credits: {credits}")
             lines.append(f"Conditions: {cond_str}")
+            from growth import growth_due
+            due = growth_due(char)
+            if due:
+                lines.append(f"Growth due: {due} level{'s' if due != 1 else ''}, at the next quiet "
+                             f"moment (rest, sleep, time alone): load gm-growth then. "
+                             f"Never mention it to the player before.")
         else:
             lines.append("No character found.")
 

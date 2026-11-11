@@ -18,11 +18,6 @@ from entity_manager import EntityManager
 class PlayerManager(EntityManager):
     """Manage player character operations. Inherits from EntityManager for common functionality."""
 
-    # Default XP thresholds (used only when the active World Kit does not declare
-    # its own xp-levels progression). Index L = XP needed to go from level L to L+1:
-    # a character starts at level 0, and each level costs 100 more than the last
-    # (100, 300, 600, 1000, 1500, ...).
-    DEFAULT_XP_THRESHOLDS = [50 * (level + 1) * (level + 2) for level in range(20)]
 
     def __init__(self, world_state_dir: str = None):
         super().__init__(world_state_dir)
@@ -68,49 +63,11 @@ class PlayerManager(EntityManager):
             self._kit = WorldKit(self._kit_base)
         return self._kit
 
-    def _xp_thresholds(self):
-        """Level thresholds from the active World Kit (xp-levels model), else the
-        default table. Index L = XP required to reach level L+1; index 0 == 0.
-
-        This is how leveling delegates to the kit instead of a hardcoded 5e path.
-        Asked of the kit's built progression object rather than re-parsed from
-        ruleset.json, so every ruleset syntax the kit accepts (including the bare
-        string form and the 'level' alias) is understood here too.
-        """
-        progression = self.world_kit().progression
-        thresholds = getattr(progression, 'thresholds', None)
-        if progression.name == "xp-levels" and thresholds:
-            return [0] + list(thresholds)
-        return self.DEFAULT_XP_THRESHOLDS
-
-    def _max_level(self) -> int:
-        """Top level this kit's threshold table describes (5e's 20 is just the
-        default table's length, not a law of the engine)."""
-        return len(self._xp_thresholds())
-
     def _xp_view(self, char: Dict) -> Dict[str, int]:
-        """{current, next_level} READ off the sheet without writing anything.
-
-        Both stored shapes are honored (legacy plain int, canonical object). Nothing
-        is created: a milestone or resource-axis sheet that has never tracked XP
-        must not grow a phantom xp object just because something read it.
-        """
-        thresholds = self._xp_thresholds()
-        level = char.get('level', 1)
-        raw = char.get('xp', 0)
-
-        if isinstance(raw, dict):
-            current = int(raw.get('current', 0) or 0)
-            next_level = raw.get('next_level')
-        elif isinstance(raw, (int, float)):
-            current, next_level = int(raw), None
-        else:
-            current, next_level = 0, None
-
-        if next_level is None:
-            next_level = thresholds[level] if level < len(thresholds) else current
-        return {'current': current, 'next_level': int(next_level)}
-
+        """{current, next_level} read off the sheet without writing anything."""
+        from growth import xp_for_level, xp_total
+        return {'current': xp_total(char),
+                'next_level': xp_for_level(int(char.get('level', 0) or 0) + 1)}
     def get_player(self, name: str) -> Optional[Dict]:
         """Get full player character data"""
         char = self._load_character(name)
@@ -189,182 +146,61 @@ class PlayerManager(EntityManager):
             return True
         return False
 
-    def award_xp(self, name: str, amount: int) -> Dict[str, Any]:
-        """
-        Award XP to character and check for level up
-        Returns dict with xp_gained, new_total, level_up, new_level
-        """
+    def award_xp(self, name: str, amount: int, source: str = "correction",
+                 reason: str = "") -> Dict[str, Any]:
+        """Book XP (growth.add_xp: logged in xp.log). XP only makes growth due;
+        the level rises when it is applied (`grow`) at a quiet moment. Prints
+        XP_GAIN, and GROWTH_DUE for the GM when a level has become due."""
+        from growth import add_xp
         char = self._load_character(name)
         if not char:
             print(f"[ERROR] Character '{name}' not found")
             return {'success': False}
-
-        current_xp = self._xp_view(char)['current'] + amount
-        current_level = char.get('level', 1)
-
-        # Check for level up — bound by the active kit's thresholds, not a hardcoded 20.
-        thresholds = self._xp_thresholds()
-        max_level = self._max_level()
-        new_level = current_level
-        while new_level < len(thresholds) and current_xp >= thresholds[new_level]:
-            new_level += 1
-
-        leveled_up = new_level > current_level
-        if leveled_up:
-            char['level'] = new_level
-
-        # Write the canonical XP object (kit-driven next threshold). An explicit XP
-        # award is the ONLY thing that puts one on a sheet.
-        next_threshold = thresholds[new_level] if new_level < len(thresholds) else current_xp
-        char['xp'] = {'current': current_xp, 'next_level': next_threshold}
-
-        # Save character
-        if not self._save_character(name, char):
+        result = add_xp(self.campaign_dir, char, int(amount), source, reason)
+        if not self._save_character(char.get('name', name), char):
             return {'success': False}
-
-        result = {
-            'success': True,
-            'name': char.get('name', name),
-            'xp_gained': amount,
-            'current_xp': current_xp,
-            'next_level_xp': next_threshold if new_level < max_level else 'MAX',
-            'level_up': leveled_up,
-            'old_level': current_level,
-            'new_level': new_level
-        }
-
-        # Print result
-        if leveled_up:
-            print(f"LEVEL_UP {char.get('name', name)} gained {amount} XP and leveled up to Level {new_level}!")
-            print(f"XP: {current_xp}/{next_threshold if new_level < max_level else 'MAX'}")
-        else:
-            print(f"XP_GAIN {char.get('name', name)} gained {amount} XP!")
-            print(f"XP: {current_xp}/{next_threshold if new_level < max_level else 'MAX'}")
-
-        return result
-
-    def _spectacle_config(self) -> Dict[str, Any]:
-        """Spectacle tier table + optional follower currency from the active kit.
-        Tiers default to game_core.DEFAULT_SPECTACLE_TIERS; a kit overrides them
-        (and declares a follower currency) via ruleset.json -> progression.spectacle."""
-        import game_core
-        ruleset = self.json_ops.load_json("ruleset.json") or {}
-        prog = ruleset.get("progression", {}) or {}
-        spec = (prog.get("spectacle") or {}) if isinstance(prog, dict) else {}
-        return {
-            # The EFFECTIVE model (what make_progression built), so a typo'd model
-            # name degrades to milestone here exactly as it does in the core.
-            'model': self.world_kit().progression.name,
-            'tiers': spec.get("tiers") or game_core.DEFAULT_SPECTACLE_TIERS,
-            'follower_field': spec.get("follower_field"),   # e.g. "followers"
-            'follower_label': spec.get("follower_label", "followers"),
-        }
-
-    def award_spectacle(self, name: str, tier: str, reason: str = None) -> Dict[str, Any]:
-        """
-        Award discretionary "spectacle" progress for a clever/effective/unique/
-        punishing beat of ANY kind (skill check, social win, exploration, escape,
-        surviving punishing odds) — not just kills. Kit-agnostic: the reward shape
-        is computed by game_core.spectacle_award against the active progression
-        model (XP for level kits, milestone for milestone kits) and any kit-defined
-        follower currency. Reuses award_xp so LEVEL_UP detection still fires.
-        """
-        import game_core
+        char_name = char.get('name', name)
+        print(f"XP_GAIN {char_name} gained {amount} XP ({result['total']} in all)")
+        if result['due']:
+            print(f"GROWTH_DUE {result['due']} level(s): at the next quiet moment (rest, sleep, "
+                  f"time alone), see gm-growth. Don't tell the player.")
+        return {'success': True, 'name': char_name, 'xp_gained': int(amount),
+                'current_xp': result['total'], 'growth_due': result['due']}
+    def award(self, name: str, size: str, reason: str) -> Dict[str, Any]:
+        """XP for an achievement the GM judges (an obstacle surmounted, a goal
+        reached, a problem solved, power gained): small, medium or large, i.e.
+        20, 50 or 100 % of the current level's span (growth.py)."""
+        from growth import achievement_xp
         char = self._load_character(name)
         if not char:
             print(f"[ERROR] Character '{name}' not found")
             return {'success': False, 'error': f"Character '{name}' not found"}
-
-        cfg = self._spectacle_config()
-        actual_name = char.get('name', name)
-
-        # XP gap to next level (drives XP scaling; read-only — a milestone or
-        # resource-axis sheet must not gain an xp object from a spectacle beat).
-        xp = self._xp_view(char)
-        xp_to_next = max(0, xp['next_level'] - xp['current'])
-
-        award = game_core.spectacle_award(
-            tier,
-            progression_model=cfg['model'],
-            xp_to_next=xp_to_next,
-            tiers=cfg['tiers'],
-            has_follower_currency=bool(cfg.get('follower_field')),
-        )
-        if not award.get('ok'):
-            valid = ', '.join(award.get('valid', []))
-            print(f"[ERROR] Unknown tier '{tier}'. Valid: {valid}")
-            return {'success': False, 'error': award.get('error', 'unknown tier')}
-
-        result = {'success': True, 'name': actual_name, 'tier': award['tier'], 'reason': reason}
-
-        # XP-based kits: route through award_xp (handles level-up + LEVEL_UP).
-        if award['xp'] > 0:
-            xp_result = self.award_xp(actual_name, award['xp'])
-            if not xp_result.get('success'):
-                return xp_result
-            result.update({k: v for k, v in xp_result.items() if k != 'reason'})
-
-        # Milestone kits: tick the milestone counter.
-        if award['milestone'] > 0:
-            char = self._load_character(actual_name) or char
-            new_ms = int(char.get('milestone', 0) or 0) + award['milestone']
-            char['milestone'] = new_ms
-            self._save_character(actual_name, char)
-            result['milestone_gained'] = award['milestone']
-            result['milestone_total'] = new_ms
-            print(f"MILESTONE +{award['milestone']} -> {new_ms}")
-
-        # Kit follower currency (DCC viewers), co-awarded in the same call.
-        follower_field = cfg.get('follower_field')
-        if follower_field and award['followers'] > 0:
-            char = self._load_character(actual_name) or char
-            new_followers = int(char.get(follower_field, 0) or 0) + award['followers']
-            char[follower_field] = new_followers
-            self._save_character(actual_name, char)
-            result['followers_gained'] = award['followers']
-            result['followers_total'] = new_followers
-            print(f"{cfg['follower_label'].upper()} +{award['followers']} -> {new_followers}")
-
-        if reason:
-            print(f"SPECTACLE [{award['tier']}] {actual_name}: {reason}")
-        return result
-
+        if not str(reason or '').strip():
+            print("[ERROR] Give --reason: what was achieved (it goes into xp.log).")
+            return {'success': False, 'error': 'reason required'}
+        try:
+            amount = achievement_xp(char, size)
+        except ValueError as error:
+            print(f"[ERROR] {error}")
+            return {'success': False, 'error': str(error)}
+        return self.award_xp(char.get('name', name), amount, f"achievement ({size})", reason)
     def get_xp_status(self, name: str) -> Optional[Dict[str, Any]]:
-        """Get XP and level status for character"""
+        """XP, level, and how many levels of growth are due."""
+        from growth import growth_due, xp_for_level, xp_total
         char = self._load_character(name)
         if not char:
             print(f"[ERROR] Character '{name}' not found")
             return None
-
-        # Read-only view of XP — a status check never writes, and never invents an
-        # xp object on a sheet that does not track one.
-        xp = self._xp_view(char)
-        current_xp = xp['current']
-        current_level = char.get('level', 1)
-        next_level_xp = xp['next_level']
-
-        # Check if ready to level up (top level comes from the kit's table)
-        ready_to_level = current_xp >= next_level_xp and current_level < self._max_level()
-        remaining = next_level_xp - current_xp if not ready_to_level else 0
-
+        level = int(char.get('level', 0) or 0)
+        current = xp_total(char)
+        due = growth_due(char)
         char_name = char.get('name', name)
-        print(f"{char_name} - Level {current_level}")
-        print(f"XP: {current_xp}/{next_level_xp}")
-
-        if ready_to_level:
-            print("READY_TO_LEVEL_UP")
-        else:
-            print(f"Next level in: {remaining} XP")
-
-        return {
-            'name': char_name,
-            'level': current_level,
-            'current_xp': current_xp,
-            'next_level_xp': next_level_xp,
-            'ready_to_level': ready_to_level,
-            'xp_remaining': remaining
-        }
-
+        print(f"{char_name} - Level {level}")
+        print(f"XP: {current}/{xp_for_level(level + 1)}")
+        print(f"GROWTH_DUE {due} level(s)" if due else
+              f"Next level in: {xp_for_level(level + 1) - current} XP")
+        return {'name': char_name, 'level': level, 'current_xp': current,
+                'next_level_xp': xp_for_level(level + 1), 'growth_due': due}
     def _kit_vitals(self) -> List[str]:
         """The campaign's own counters the World Kit declares (Drift, corruption,
         water, ...); none under the standard rules. Asked of the kit rather than
@@ -798,7 +634,8 @@ class PlayerManager(EntityManager):
         return {'success': True, 'kind': kind, 'name': key, 'previous': old, 'current': new}
 
     def set_perk(self, perk: str, function: str) -> Dict[str, Any]:
-        """Add or rewrite a perk on the active PC: its name and what it does."""
+        """Rewrite a perk, or add one by hand (a correction; growth adds perks
+        through `grow`)."""
         char = self._load_character()
         if not char:
             print("[ERROR] No character yet")
@@ -812,6 +649,64 @@ class PlayerManager(EntityManager):
         print(f"PERK {char.get('name')} {'updated' if replaced else 'gained'} {key}: {function}")
         return {'success': True, 'perk': key, 'function': function, 'replaced': replaced}
 
+    def grow(self, attribute: str, skills: List[str], perk: str, effect: str) -> Dict[str, Any]:
+        """Apply one level of growth that XP has made due: exactly one attribute
+        one die size up, two different skills +1 (a new one starts at 1) and one
+        new perk. Raises the level by one and logs it. Refuses when no growth is
+        due or the choice isn't exactly that."""
+        from growth import growth_due, log_growth, xp_for_level
+        from skill_contest import ATTRIBUTES
+        char = self._load_character()
+        if not char:
+            return self._refuse("No character yet")
+        if growth_due(char) < 1:
+            return self._refuse("No growth is due: the XP hasn't reached the next level.")
+        key = str(attribute or '').strip().upper()
+        stats = char.setdefault('stats', {})
+        if key not in ATTRIBUTES:
+            return self._refuse(f"Unknown attribute '{attribute}'. Use one of: {', '.join(ATTRIBUTES)}.")
+        if not isinstance(stats.get(key), int):
+            return self._refuse(f"{char.get('name')} has no die for {key} yet.")
+        table = char.setdefault('skills', {})
+        names = [str(x).strip() for x in skills or []]
+        if len(names) != 2 or names[0].lower() == names[1].lower():
+            return self._refuse("Growth raises exactly two different skills (--skill twice).")
+        if any(n.lower() == 'default' for n in names):
+            return self._refuse("'default' is not a skill.")
+        perks = char.setdefault('perks', {})
+        if not str(perk or '').strip() or not str(effect or '').strip():
+            return self._refuse('Growth brings one new perk: --perk "<name>" "<what it does>".')
+        if any(k.lower() == perk.strip().lower() for k in perks):
+            return self._refuse(f"{char.get('name')} has a perk '{perk}' already; name the new one differently.")
+
+        stats[key] += 1
+        changes = [f"{key} d{stats[key] - 1} -> d{stats[key]}"]
+        for n in names:
+            skill = next((k for k in table if k.lower() == n.lower()), None)
+            if skill is None:
+                from stat_block import canon_skills
+                skill = next((k for k in canon_skills() if k.lower() == n.lower()), n)
+            old = table.get(skill)
+            table[skill] = 1 if old is None or old < 1 else old + 1
+            changes.append(f"{skill} {old if old is not None else 'new'} -> {table[skill]}")
+        perks[perk.strip()] = effect.strip()
+        changes.append(f"perk {perk.strip()}: {effect.strip()}")
+        char['level'] = int(char.get('level', 0) or 0) + 1
+        char.setdefault('xp', {})
+        if isinstance(char['xp'], dict):
+            char['xp']['next_level'] = xp_for_level(char['level'] + 1)
+        if not self._save_character(char.get('name'), char):
+            return {'success': False}
+        log_growth(self.campaign_dir, char, "; ".join(changes))
+        print(f"GROWN {char.get('name')} to level {char['level']}: " + "; ".join(changes))
+        if growth_due(char):
+            print(f"GROWTH_DUE {growth_due(char)} more level(s): run grow again with new choices.")
+        return {'success': True, 'level': char['level'], 'changes': changes}
+
+    @staticmethod
+    def _refuse(message: str) -> Dict[str, Any]:
+        print(f"[ERROR] {message}")
+        return {'success': False, 'error': message}
     def modify_condition(self, name: str, action: str, condition: Optional[str] = None) -> Dict[str, Any]:
         """
         Add, remove, or list conditions on a character
@@ -908,15 +803,24 @@ def main():
     set_parser.add_argument('name', help='Character name')
 
     # Award XP
-    xp_parser = subparsers.add_parser('xp', help='Award XP to character')
+    xp_parser = subparsers.add_parser('xp', help='Correct XP by hand (logged)')
     xp_parser.add_argument('name', help='Character name')
     xp_parser.add_argument('amount', help='XP amount (can include + prefix)')
+    xp_parser.add_argument('--reason', default='', help='why (goes into xp.log)')
 
-    # Discretionary "spectacle" XP (kit-aware, level-scaled; co-awards followers)
-    award_parser = subparsers.add_parser('award', help='Award level-scaled spectacle XP for a clever/effective/unique/punishing beat')
+    # Achievement XP: a share of the current level (gm-growth)
+    award_parser = subparsers.add_parser('award', help='XP for an achievement: small, medium or large')
     award_parser.add_argument('name', nargs='?', help='Character name (optional; defaults to active PC)')
-    award_parser.add_argument('--tier', required=True, choices=['minor', 'major', 'legendary'], help='Reward tier')
-    award_parser.add_argument('--reason', help='Why the beat earned it (logged)')
+    award_parser.add_argument('--size', required=True, choices=['small', 'medium', 'large'],
+                              help='20, 50 or 100 %% of the current level')
+    award_parser.add_argument('--reason', required=True, help='what was achieved (goes into xp.log)')
+
+    # Growth: one level, at a quiet moment
+    grow_parser = subparsers.add_parser('grow', help='Apply one level of growth that is due')
+    grow_parser.add_argument('--attribute', required=True, help='one attribute, one die size up')
+    grow_parser.add_argument('--skill', action='append', default=[], help='a skill +1; exactly twice')
+    grow_parser.add_argument('--perk', nargs=2, required=True, metavar=('NAME', 'EFFECT'),
+                             help='one new perk: its name and what it does')
 
     # Check level status
     level_parser = subparsers.add_parser('level-check', help='Check XP and level status')
@@ -1034,7 +938,7 @@ def main():
         import contextlib
         import io
         with contextlib.redirect_stdout(io.StringIO()):
-            result = manager.award_spectacle(args.name, args.tier, getattr(args, 'reason', None))
+            result = manager.award(args.name, args.size, args.reason)
         if result.get('success'):
             emit(result, json_mode=True)
         else:
@@ -1071,13 +975,17 @@ def main():
             print(f"[ERROR] Invalid XP amount: {args.amount}")
             sys.exit(1)
 
-        result = manager.award_xp(args.name, amount)
+        result = manager.award_xp(args.name, amount, "correction", args.reason)
         if not result.get('success'):
             sys.exit(1)
 
     elif args.action == 'award':
-        result = manager.award_spectacle(args.name, args.tier, getattr(args, 'reason', None))
+        result = manager.award(args.name, args.size, args.reason)
         if not result.get('success'):
+            sys.exit(1)
+
+    elif args.action == 'grow':
+        if not manager.grow(args.attribute, args.skill, args.perk[0], args.perk[1]).get('success'):
             sys.exit(1)
 
     elif args.action == 'level-check':

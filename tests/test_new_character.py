@@ -84,7 +84,7 @@ def test_given_values_are_kept_whatever_they_are(campaign):
     assert sheet["stats"]["AGI"] == 18 and sheet["stats"]["LOG"] == 6
     assert sheet["skills"] == {"Piloting": 5} and sheet["luck"] == {"current": 1, "max": 1}
     assert sheet["traits"] == {"Vat-grown": "+2 Endurance, -2 Composure"}
-    assert sheet["xp"]["next_level"] == 600
+    assert sheet["xp"]["next_level"] == 900  # level 3 needs 100 × 3² XP
 
 
 def test_armor_and_cyberware_land_on_the_body(campaign):

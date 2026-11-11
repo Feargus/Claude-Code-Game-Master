@@ -45,13 +45,17 @@ case "$ACTION" in
             echo "Usage: gm-player.sh xp <character_name> <+amount>"
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" xp "$1" "$2"
+        $PYTHON_CMD "$LIB_DIR/player_manager.py" xp "$@"
         ;;
 
     "award")
-        # Discretionary spectacle XP (kit-aware, level-scaled).
-        # Name optional (defaults to active PC). Requires --tier; --reason optional.
+        # Achievement XP: --size small|medium|large (20/50/100 % of the current level), --reason.
         $PYTHON_CMD "$LIB_DIR/player_manager.py" award "$@"
+        ;;
+
+    "grow")
+        # One level of growth that is due: --attribute A --skill S --skill T --perk "Name" "Effect".
+        $PYTHON_CMD "$LIB_DIR/player_manager.py" grow "$@"
         ;;
 
     "level-check")
@@ -200,18 +204,20 @@ case "$ACTION" in
         echo "  list                         - List all player IDs"
         echo "  create '<json>' [--canon N] [--replace] - Save a new character from the interview"
         echo "  set <name>                   - Set character as current active PC"
-        echo "  xp <name> +<amount>          - Award XP to character"
-        echo "  award [name] --tier T        - Spectacle XP for a clever/effective/unique/punishing beat (T=minor|major|legendary; --reason \"...\")"
+        echo "  xp <name> +<amount> [--reason ...] - Correct XP by hand (logged; XP normally comes by itself)"
+        echo "  award --size S --reason \"...\" - XP for an achievement (S=small|medium|large: 20/50/100 % of the level)"
+        echo "  grow --attribute A --skill S --skill T --perk \"Name\" \"Effect\""
+        echo "                               - Apply one level of growth that is due (gm-growth)"
         echo "  vital <vital> <+/-N|set N>   - Read/change a kit vital (vigor, corruption, ...)"
         echo "  kill <name> [--cause ...]    - Mark PC dead (then run Death Protocol)"
         echo "  become <party_member>        - Take over a party member as the active PC"
         echo "  credits <name> [+/-amount]   - Modify or show character credits"
         echo "  inventory [name] [action]    - Manage inventory (add/remove/list; defaults to active PC + list)"
         echo "  condition <name> <action>    - Manage conditions (add/remove/list)"
-        echo "  raise attribute|skill <x>    - Level-up: +1 to an attribute (die size) or a skill"
-        echo "  perk <name> <what it does>   - Add or rewrite a perk"
+        echo "  raise attribute|skill <x>    - Correction: +1 to an attribute (die size) or a skill"
+        echo "  perk <name> <what it does>   - Correction: add or rewrite a perk"
         echo "  loot <name> --credits X --items - Batch add items + credits at once"
-        echo "  level-check <name>           - Check XP and level status"
+        echo "  level-check <name>           - XP, level, and growth due"
         echo ""
         echo "Note: Character is stored in the active campaign's character.json"
         if [ -n "$ACTION" ]; then

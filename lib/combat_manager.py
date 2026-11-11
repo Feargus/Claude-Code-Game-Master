@@ -103,12 +103,27 @@ class CombatManager(EntityManager):
         return c
 
     def end(self) -> Dict[str, Any]:
+        """Close the fight. Each enemy taken out earns the player its wounds² × 10
+        XP (growth.py), booked and logged here; driving one off or escaping is an
+        achievement the GM awards instead (gm-growth)."""
         data = self._load()
+        defeated = [c for c in data.get('combatants', []) if c['taken'] >= c['wounds']]
         summary = {
             'combatants': [c['name'] for c in data.get('combatants', [])],
-            'defeated': [c['name'] for c in data.get('combatants', []) if c['taken'] >= c['wounds']],
+            'defeated': [c['name'] for c in defeated],
+            'xp': 0,
         }
         self._save({})  # clear — the fight is over
+        if defeated and self.json_ops.load_json("character.json"):
+            from growth import add_xp, fight_xp
+            character = self.json_ops.load_json("character.json")
+            for c in defeated:
+                xp = fight_xp(c['wounds'])
+                result = add_xp(self.campaign_dir, character, xp, "fight",
+                                f"defeated {c['name']} ({c['wounds']} wounds)")
+                summary['xp'] += xp
+            self.json_ops.save_json("character.json", character)
+            summary['growth_due'] = result['due']
         return summary
 
     def header(self) -> str:

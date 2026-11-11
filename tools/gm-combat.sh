@@ -8,7 +8,7 @@
 #   gm-combat.sh wound "street thug 1" 1 --note "right arm disabled"
 #   gm-combat.sh condition "street thug 1" add prone
 #   gm-combat.sh header        # show the fight
-#   gm-combat.sh end           # clear state (award XP/loot via gm-player afterwards)
+#   gm-combat.sh end           # clear state; each enemy taken out gives XP (wounds² × 10)
 #
 # Add --json to any command for a structured envelope.
 
