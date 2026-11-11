@@ -6,9 +6,27 @@ Provides safe JSON read/write/update operations with proper error handling
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Union
 from datetime import datetime, timezone
+
+
+class JsonFileError(RuntimeError):
+    """A file that exists but can't be read. Reading it as empty would let the
+    next save write over everything in it, so the command stops instead."""
+
+
+def _plain_error(kind, error, traceback):
+    """Show an unhandled JsonFileError as one plain message, not a traceback."""
+    if issubclass(kind, JsonFileError):
+        print(f"[ERROR] {error}", file=sys.stderr)
+        sys.exit(1)
+    _previous_hook(kind, error, traceback)
+
+
+_previous_hook = sys.excepthook
+sys.excepthook = _plain_error
 
 
 class JsonOperations:
@@ -23,9 +41,11 @@ class JsonOperations:
             self.world_state_dir.mkdir(parents=True, exist_ok=True)
 
     def load_json(self, filename: str, default: Any = None) -> Any:
-        """
-        Load JSON file with error handling
-        Returns default value if file doesn't exist or is invalid
+        """The file's content, or `default` ({} if not given) if it doesn't exist.
+
+        A file that exists but isn't valid JSON (a hand edit gone wrong, a file
+        cut short) raises JsonFileError: returning the default would let the
+        caller save over the whole file.
         """
         filepath = self._resolve_path(filename)
 
@@ -38,11 +58,12 @@ class JsonOperations:
             with open(filepath, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except json.JSONDecodeError as e:
-            print(f"[ERROR] Invalid JSON in {filename}: {e}")
-            return default if default is not None else {}
-        except Exception as e:
-            print(f"[ERROR] Failed to read {filename}: {e}")
-            return default if default is not None else {}
+            raise JsonFileError(
+                f"{filepath} is not valid JSON ({e.msg} at line {e.lineno}, column {e.colno}). "
+                f"Nothing was changed. Repair the file, or get the last committed version "
+                f"back from git, then run the command again.") from e
+        except (OSError, UnicodeDecodeError) as e:
+            raise JsonFileError(f"Can't read {filepath}: {e}. Nothing was changed.") from e
 
     def save_json(self, filename: str, data: Any, indent: int = 2) -> bool:
         """
