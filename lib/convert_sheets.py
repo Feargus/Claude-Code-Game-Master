@@ -11,7 +11,8 @@ What goes where:
 - the 11 look fields are joined into look.physique / style / presence;
 - class -> identity.role; an NPC's description -> role (short) or background;
 - alignment, ideals, bonds -> personality.values; flaws -> personality.fears;
-- features -> traits (without an effect); equipment -> items.gear;
+- features -> traits (without an effect); equipment -> items.inventory (hidden:
+  the old list didn't say what others can see);
 - campaign counters (Drift) -> stats.counters;
 - an NPC's events, and an attitude other than neutral, become facts the NPC holds
   about the player (category npc_memories, no game time); mood is dropped.
@@ -78,8 +79,9 @@ def convert_player(old: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
                          "counters": counters}),
         "body": {"zones": old.get("body") or {}, "armor": old.get("armor") or [],
                  "cyberware": old.get("cyberware") or []},
-        "items": _clean({"gear": [sheet_mod.item(str(i)) for i in old.get("equipment") or []],
-                         "inventory": [sheet_mod.item(str(i)) for i in old.get("inventory") or []]}),
+        # The old list didn't say what others can see: hidden (inventory) is the safe side.
+        "items": _clean({"inventory": [sheet_mod.item(str(i)) for i in
+                                       list(old.get("equipment") or []) + list(old.get("inventory") or [])]}),
         "possessions": {"credits": int(old.get("credits") or 0)},
         "progress": _clean({"level": int(old.get("level") or 0),
                             "xp": int(xp.get("current", 0) if isinstance(xp, dict) else xp or 0),

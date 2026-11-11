@@ -1271,7 +1271,8 @@ class SessionManager(EntityManager):
         identity = npc.get('identity') or {}
         personality = npc.get('personality') or {}
         status = npc.get('status') or {}
-        head = [x for x in (identity.get('role'),
+        who = identity.get('role') or self._truncate(identity.get('background') or '', 100, full)
+        head = [x for x in (who,
                             f"Big Five {personality['big_five']}" if personality.get('big_five') else "",
                             personality.get('demeanor')) if x]
         lines = [f"{name}" + (f" ({'; '.join(head)})" if head else "") + ":"]

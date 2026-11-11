@@ -34,7 +34,7 @@ def test_a_campaign_converts(tmp_path):
     assert pc["stats"]["traits"] == {"Cracked governor": "x", "Combat Sleeve": ""}
     assert pc["stats"]["counters"] == {"drift": {"current": 2, "max": 10}}
     assert pc["progress"] == {"level": 2, "xp": 500}
-    assert pc["items"] == {"gear": [{"name": "pink ribbon"}]} and pc["possessions"] == {"credits": 4}
+    assert pc["items"] == {"inventory": [{"name": "pink ribbon"}]} and pc["possessions"] == {"credits": 4}
     assert pc["body"]["zones"] == {"left_leg": {"wounds": 4}}
     tod = check(json.loads((tmp_path / "npcs.json").read_text())["Tod"], "npc")
     assert tod["identity"] == {"name": "Tod", "aliases": ["Toddy"], "role": "a mechanic"}
