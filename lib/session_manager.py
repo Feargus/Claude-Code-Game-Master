@@ -35,6 +35,17 @@ class SessionManager(EntityManager):
     # disabled by default (2026-11-08: the campaigns have no book text, so each
     # search was wasted); re-enable with "rag_inspiration": true here or in a
     # campaign's overview.preferences.
+    # What the three options may contain. In play they handed the player a GM-only
+    # secret as something to say, promised what enemies would do, and invented a
+    # decoy (2026-11-11). Same wording in CLAUDE.md's Output Format.
+    MENU_RULE = ("The options are things the character could try, built only from what "
+                 "the character knows and what the scene has already shown: never a "
+                 "`[SECRET]` or `[HIDDEN FROM PLAYER]` fact, never anything the GM knows "
+                 "that they don't. An option never says how it will turn out, what someone "
+                 "will do, or that something is safe or will work, and it adds nothing new: "
+                 "no object, exit, weakness, ally or resource. An option built on a belief "
+                 "is the character's belief, and may be wrong.")
+
     DEFAULT_PREFERENCES = {"action_menu": True,
                            "beat_length": "adaptive", "rag_inspiration": False}
 
@@ -650,7 +661,8 @@ class SessionManager(EntityManager):
         if self.get_preferences().get("action_menu", True):
             lines.append("Play style: action menu ON — end each beat with exactly THREE "
                          "numbered options, then a final line \"Or something else...\" to "
-                         "signal the player can always choose their own action.")
+                         "signal the player can always choose their own action. "
+                         + self.MENU_RULE)
         else:
             lines.append("Play style: action menu OFF — end beats with an open prompt; do "
                          "NOT list numbered choices. The player drives freely. "

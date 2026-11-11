@@ -5,6 +5,8 @@ These snapshot the CURRENT (post-cleanup) behavior so later reimagining tickets
 and see exactly what moved. They also lock in the consequence-display fix.
 """
 
+from pathlib import Path
+
 from lib.session_manager import SessionManager
 
 
@@ -42,6 +44,20 @@ def test_action_menu_on_is_exactly_three_numbered(dcc_world):
     ctx = _context(dcc_world)
     assert "action menu ON" in ctx
     assert "exactly THREE" in ctx
+
+
+def test_menu_options_are_bound_to_what_the_character_knows(dcc_world):
+    """In play the options handed the player a GM-only secret to say, promised
+    what enemies would do, and invented a decoy. The rule rides with the menu,
+    and CLAUDE.md carries the same words."""
+    rule = SessionManager.MENU_RULE
+    assert "[SECRET]" in rule and "adds nothing new" in rule
+    assert rule in _context(dcc_world)
+    sm = SessionManager(dcc_world)
+    sm.set_preference("action_menu", False)
+    assert rule not in SessionManager(dcc_world).get_full_context()
+    claude_md = (Path(__file__).resolve().parent.parent / "CLAUDE.md").read_text(encoding="utf-8")
+    assert rule in claude_md
 
 
 def test_choices_on_confirmation_says_exactly_three(dcc_world, capsys, monkeypatch):
