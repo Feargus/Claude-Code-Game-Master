@@ -26,9 +26,10 @@ from entity_manager import EntityManager
 from skill_contest import ATTRIBUTES
 from world_kit import WorldKit
 from growth import xp_for_level
+from stat_block import canon_skills, common_skills
 
 DEFAULT_ATTRIBUTE = 12
-DEFAULT_LUCK = 3
+DEFAULT_LUCK = 7
 DEFAULT_CREDITS = 20
 
 
@@ -52,6 +53,38 @@ def _attributes(given: Dict[str, Any]) -> Dict[str, int]:
             raise CharacterError(f"{attribute} needs a whole die size of 2 or more, got {value!r}.")
         stats[attribute] = value
     return {attribute: stats.get(attribute, DEFAULT_ATTRIBUTE) for attribute in ATTRIBUTES}
+
+
+def _skills(given: Dict[str, Any], untrained: List[str]) -> Dict[str, int]:
+    """The interview's skills, plus every common skill at 0 unless it is listed in
+    `untrained` (a pacifist who never threw a punch). A skill left off the sheet is
+    untrained; the sheet never holds a negative value."""
+    canon = {name.lower(): name for name in canon_skills()}
+    skills = {}
+    for name, value in given.items():
+        name = canon.get(str(name).lower(), str(name))
+        if name.lower() == "default":
+            raise CharacterError("'default' is not a skill.")
+        if not isinstance(value, int) or value < 0:
+            raise CharacterError(f"{name}: a skill on the sheet is a whole number of 0 or more, "
+                                 f"not {value!r}. Leave an untrained skill off the sheet.")
+        skills[name] = value
+    common = common_skills()
+    if not isinstance(untrained, list):
+        raise CharacterError('"untrained" is a list of common skills the character lacks.')
+    dropped = set()
+    for name in untrained:
+        match = next((c for c in common if c.lower() == str(name).lower()), None)
+        if match is None:
+            raise CharacterError(f"'{name}' is not a common skill, so it is untrained anyway unless "
+                                 f"it is listed under skills. Common: {', '.join(common)}.")
+        if match in skills:
+            raise CharacterError(f"{match} is both under skills and untrained.")
+        dropped.add(match)
+    for name in common:
+        if name not in skills and name not in dropped:
+            skills[name] = 0
+    return skills
 
 
 def _named(given: Any, what: str) -> Dict[str, str]:
@@ -109,9 +142,7 @@ def build_character(data: Dict[str, Any], kit: WorldKit) -> Tuple[Dict[str, Any]
     luck = data.get("luck", DEFAULT_LUCK)
     if isinstance(luck, int):
         luck = {"current": luck, "max": luck}
-    skills = {str(k): int(v) for k, v in (data.get("skills") or {}).items()}
-    if "default" in {k.lower() for k in skills}:
-        raise CharacterError("'default' is not a skill.")
+    skills = _skills(data.get("skills") or {}, data.get("untrained") or [])
 
     character = {
         "id": character_id(data["name"]),

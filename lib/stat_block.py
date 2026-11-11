@@ -4,7 +4,7 @@
 One format, read by skill_contest.py and the combat tracker:
 
     "attributes": {"STR": 12, "AGI": 11, "default": 10},   die sizes; default = the rest
-    "skills":     {"Handguns": 4, "Guard": 3, "default": 0}, default = untrained (else -1)
+    "skills":     {"Handguns": 4, "Guard": 3, "default": 0}, default = untrained (else -3)
     "wounds":     3,                                       how many take them out
     "note":       "one line"                               mobs only
 
@@ -46,6 +46,18 @@ def canon_skills() -> List[str]:
     for line in index.splitlines():
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if len(cells) >= 3 and cells[0] and cells[0] not in ("Skill",) and not set(cells[0]) <= {"-"}:
+            names.append(cells[0])
+    return names
+
+
+def common_skills() -> List[str]:
+    """The skills every new character starts with at 0 or more: the index rows
+    marked in the Common column."""
+    index = SKILLS_FILE.read_text(encoding="utf-8").split("## Index", 1)[-1]
+    names = []
+    for line in index.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) >= 5 and cells[3].lower() == "yes":
             names.append(cells[0])
     return names
 
@@ -165,7 +177,7 @@ def describe(name: str, entry: Dict[str, Any]) -> str:
     if entry.get("note"):
         lines.append(f"  {entry['note']}")
     lines.append("  attributes: " + (", ".join(f"{a} d{attrs[a]}" for a in order) or "(none: can't roll)"))
-    lines.append("  skills: " + (", ".join(f"{k} {v}" for k, v in skills.items()) or "(none: untrained −1)"))
+    lines.append("  skills: " + (", ".join(f"{k} {v}" for k, v in skills.items()) or "(none: untrained −3)"))
     lines.append(f"  wounds: {entry.get('wounds', '(not set)')}")
     return "\n".join(lines)
 

@@ -13,7 +13,7 @@ import pytest
 from lib.combat_manager import CombatManager
 from lib.npc_manager import NPCManager
 from lib.skill_contest import build_side
-from lib.stat_block import Mobs, canon_skills, merged
+from lib.stat_block import Mobs, canon_skills, common_skills, merged
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -41,6 +41,8 @@ def _npcs(camp):
 def test_canon_skills_come_from_the_gm_skills_index():
     skills = canon_skills()
     assert len(skills) == 31 and "Long guns" in skills and "Skill" not in skills
+    common = common_skills()
+    assert len(common) == 14 and "Guard" in common and "Handguns" not in common
 
 
 def test_npc_stats_are_set_merged_and_rolled(world):

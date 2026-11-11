@@ -38,7 +38,7 @@ DICE_PER_ROLL = 3
 
 REPO_MOBS = Path(__file__).parent.parent / ".claude" / "skills" / "gm-skills" / "mobs.json"
 LOG_FILE = "skill-contest.log"
-UNTRAINED = -1  # skill value for a skill the sheet doesn't list, unless the sheet sets a default
+UNTRAINED = -3  # skill value for a skill the sheet doesn't list, unless the sheet sets a default
 
 
 class ContestError(Exception):

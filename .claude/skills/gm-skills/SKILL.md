@@ -58,7 +58,7 @@ Pass the names of the skill and attributes to the script. It looks up all the nu
 
 ## Untrained
 
-Anyone can try any skill. A skill missing from the sheet counts as −1; the script does this itself, so just write the skill's real name. A mob or NPC can set its own value with `"default"` in its skills, for example a boss who is competent at everything, or vermin hopeless at anything they weren't built for. Improvised skills are untrained for everyone until someone learns them.
+Anyone can try any skill. A skill missing from the sheet is untrained and counts as −3; the script does this itself, so just write the skill's real name. A skill on the sheet is trained, even at 0: every new character starts with the **common** skills of the [index](#index) (everyday fighting, defense, moving, noticing and talking) at 0 or more. The rest (weapon training, vehicles, tradecraft, knowledge) is untrained until learned. A sheet never holds a negative skill. A mob or NPC can set its own value with `"default"` in its skills, for example a boss who is competent at everything, or vermin hopeless at anything they weren't built for. Improvised skills are untrained for everyone until someone learns them.
 
 ## Advantage or modifier
 
@@ -132,7 +132,7 @@ bash tools/gm-skill-contest.sh --active-dc 20 "nerve toxin" --reactive Fearghas 
   bash tools/gm-mob.sh add "Mastiff" --note "military war-chassis, IFF ripped out" \
     --attr STR=18 --attr VIG=18 --attr default=10 --skill Brawling=6 --wounds 6
   ```
-  `--attr default=N` is the die for every attribute not listed; `--skill default=N` the value for untrained skills (otherwise −1). The script checks every value and warns about a skill that isn't canon or improvised.
+  `--attr default=N` is the die for every attribute not listed; `--skill default=N` the value for untrained skills (otherwise −3). The script checks every value and warns about a skill that isn't canon or improvised.
 - **Decide the stats before the roll that needs them,** and don't change them because of how a roll went: they are facts about the world, and the world doesn't get harder after a failure.
 - **Advantage and disadvantage** belong to an attribute and affect all its dice in the roll. Each flag takes the attribute and a reason. Repeat the flag to stack them. See [Advantage or modifier](#advantage-or-modifier) for which to use.
 - **`--mod`** is one net list, relative to the active side: positive helps the active side, negative helps the reactive side. Leave out anything that affects both sides equally. Every modifier has a label.
@@ -186,36 +186,38 @@ Framework: (1) What did they try? (2) What was the intent? (3) What goes sideway
 
 ## Index
 
-| Skill | Category | Anchor | In short |
-|---|---|---|---|
-| Brawling | [Combat](combat.md) | STR | Fighting with the body itself. |
-| Bludgeons | [Combat](combat.md) | STR | Swung weight and momentum. |
-| Slashing | [Combat](combat.md) | AGI | Flowing cuts, sweeps and whips. |
-| Throwing | [Combat](combat.md) | AGI | Anything that leaves the hand, or arrives in it. |
-| Evasion | [Combat](combat.md) | AGI | Ranged defense: not being where the bullet goes. |
-| Fencing | [Combat](combat.md) | DFT | Thrusts, feints and precise stabs. |
-| Handguns | [Combat](combat.md) | DFT | Pistols and guns held without a stock. |
-| Long guns | [Combat](combat.md) | DFT | Guns braced on the shoulder. |
-| Guard | [Combat](combat.md) | ITU | Close-combat defense: reading the attack in time. |
-| Heavy weapons | [Combat](combat.md) | NRV | Guns you can't just pick up and fire. |
-| Endurance | [Resistance](resistance.md) | VIG | The body holding out. |
-| Composure | [Resistance](resistance.md) | NRV | The mind holding out. |
-| Athletics | [Physical](physical.md) | STR | Force: climbing, swimming, lifting. |
-| Acrobatics | [Physical](physical.md) | AGI | Grace: balance, parkour, falling well. |
-| Stealth | [Physical](physical.md) | AGI | Not being noticed. |
-| Rigging | [Vehicles](vehicles.md) | AGI | Being the machine. |
-| Piloting | [Vehicles](vehicles.md) | DFT | Driving or flying by hand and eye. |
-| Investigation | [Perception](perception.md) | LOG | Deliberate searching and reasoning. |
-| Awareness | [Perception](perception.md) | ITU | Noticing anything. |
-| Insight | [Perception](perception.md) | EMP | Reading people. |
-| Persuasion | [Social](social.md) | PRS | Changing minds openly. |
-| Intimidation | [Social](social.md) | PRS | Making people afraid enough to comply. |
-| Streetwise | [Social](social.md) | PRS | Knowing the street. |
-| Deception | [Social](social.md) | EMP | Making people believe what isn't true. |
-| Corpspeak | [Social](social.md) | EMP | Knowing the suits. |
-| Larceny | [Tradecraft](tradecraft.md) | DFT | Hands where they shouldn't be. |
-| Tech | [Tradecraft](tradecraft.md) | LOG | Making machines work, or stop working. |
-| Netrunning | [Tradecraft](tradecraft.md) | LOG | All computer work worth a roll. |
-| Medicine | [Tradecraft](tradecraft.md) | LOG | Keeping bodies working. |
-| Science | [Knowledge](knowledge.md) | LOG | Academic and theoretical knowledge. |
-| Tactics | [Knowledge](knowledge.md) | LOG | Win first, then fight. |
+**Common:** every character starts with it at 0 or more (see [Untrained](#untrained)).
+
+| Skill | Category | Anchor | Common | In short |
+| --- | --- | --- | --- | --- |
+| Brawling | [Combat](combat.md) | STR | yes | Fighting with the body itself. |
+| Bludgeons | [Combat](combat.md) | STR | | Swung weight and momentum. |
+| Slashing | [Combat](combat.md) | AGI | | Flowing cuts, sweeps and whips. |
+| Throwing | [Combat](combat.md) | AGI | yes | Anything that leaves the hand, or arrives in it. |
+| Evasion | [Combat](combat.md) | AGI | yes | Ranged defense: not being where the bullet goes. |
+| Fencing | [Combat](combat.md) | DFT | | Thrusts, feints and precise stabs. |
+| Handguns | [Combat](combat.md) | DFT | | Pistols and guns held without a stock. |
+| Long guns | [Combat](combat.md) | DFT | | Guns braced on the shoulder. |
+| Guard | [Combat](combat.md) | ITU | yes | Close-combat defense: reading the attack in time. |
+| Heavy weapons | [Combat](combat.md) | NRV | | Guns you can't just pick up and fire. |
+| Endurance | [Resistance](resistance.md) | VIG | yes | The body holding out. |
+| Composure | [Resistance](resistance.md) | NRV | yes | The mind holding out. |
+| Athletics | [Physical](physical.md) | STR | yes | Force: climbing, swimming, lifting. |
+| Acrobatics | [Physical](physical.md) | AGI | yes | Grace: balance, parkour, falling well. |
+| Stealth | [Physical](physical.md) | AGI | yes | Not being noticed. |
+| Rigging | [Vehicles](vehicles.md) | AGI | | Being the machine. |
+| Piloting | [Vehicles](vehicles.md) | DFT | | Driving or flying by hand and eye. |
+| Investigation | [Perception](perception.md) | LOG | yes | Deliberate searching and reasoning. |
+| Awareness | [Perception](perception.md) | ITU | yes | Noticing anything. |
+| Insight | [Perception](perception.md) | EMP | yes | Reading people. |
+| Persuasion | [Social](social.md) | PRS | yes | Changing minds openly. |
+| Intimidation | [Social](social.md) | PRS | | Making people afraid enough to comply. |
+| Streetwise | [Social](social.md) | PRS | | Knowing the street. |
+| Deception | [Social](social.md) | EMP | yes | Making people believe what isn't true. |
+| Corpspeak | [Social](social.md) | EMP | | Knowing the suits. |
+| Larceny | [Tradecraft](tradecraft.md) | DFT | | Hands where they shouldn't be. |
+| Tech | [Tradecraft](tradecraft.md) | LOG | | Making machines work, or stop working. |
+| Netrunning | [Tradecraft](tradecraft.md) | LOG | | All computer work worth a roll. |
+| Medicine | [Tradecraft](tradecraft.md) | LOG | | Keeping bodies working. |
+| Science | [Knowledge](knowledge.md) | LOG | | Academic and theoretical knowledge. |
+| Tactics | [Knowledge](knowledge.md) | LOG | | Win first, then fight. |

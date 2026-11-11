@@ -240,11 +240,11 @@ def test_log_gives_each_part_its_own_line_and_separates_rolls(campaign):
     assert list(blocks[1]) == ["time", "active", "reactive", "mods", "result"]
 
 
-def test_a_missing_skill_counts_minus_one_and_is_logged_as_untrained(campaign):
+def test_a_missing_skill_counts_minus_three_and_is_logged_as_untrained(campaign):
     args = _args("--active", "Fearghas", "Medicine", "DFT", "AGI", "ITU",
                  "--reactive-dc", "10", "door")
     result = run_contest(args, ScriptedDice(5, 5, 5))
-    assert result["active_total"] == 15 - 1
+    assert result["active_total"] == 15 - 3
     entry = _log_blocks(campaign)[0]
     assert entry["active"]["skill"] == "Medicine"
     assert entry["active"]["untrained"] is True

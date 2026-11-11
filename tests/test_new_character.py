@@ -15,6 +15,9 @@ from lib.player_manager import PlayerManager
 
 ROOT = Path(__file__).resolve().parent.parent
 ATTRIBUTES = ("STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP")
+COMMON = ("Brawling", "Throwing", "Evasion", "Guard", "Endurance", "Composure", "Athletics",
+          "Acrobatics", "Stealth", "Awareness", "Investigation", "Insight", "Persuasion",
+          "Deception")
 RULESET = {
     "stat_schema": {"vitals": ["drift"]},
     "progression": {"model": "xp-levels"},
@@ -58,7 +61,8 @@ def test_a_name_alone_gets_every_default(campaign):
     assert sheet == _sheet(campaign)
     assert sheet["level"] == 0 and sheet["xp"] == {"current": 0, "next_level": 100}
     assert sheet["stats"] == {a: 12 for a in ATTRIBUTES}
-    assert sheet["luck"] == {"current": 3, "max": 3} and sheet["credits"] == 20
+    assert sheet["luck"] == {"current": 7, "max": 7} and sheet["credits"] == 20
+    assert sheet["skills"] == {name: 0 for name in COMMON}
     assert sheet["traits"] == {} and sheet["perks"] == {} and sheet["features"] == []
     assert set(sheet["body"]) == {"head", "chest", "groin", "left_arm", "right_arm",
                                   "left_leg", "right_leg"}
@@ -82,9 +86,20 @@ def test_given_values_are_kept_whatever_they_are(campaign):
         "attributes": {"agi": 18, "LOG": 6}, "skills": {"Piloting": 5}, "luck": 1,
         "traits": {"Vat-grown": "+2 Endurance, -2 Composure"}, "level": 2}))
     assert sheet["stats"]["AGI"] == 18 and sheet["stats"]["LOG"] == 6
-    assert sheet["skills"] == {"Piloting": 5} and sheet["luck"] == {"current": 1, "max": 1}
+    assert sheet["skills"] == dict({n: 0 for n in COMMON}, Piloting=5) and sheet["luck"] == {"current": 1, "max": 1}
     assert sheet["traits"] == {"Vat-grown": "+2 Endurance, -2 Composure"}
     assert sheet["xp"]["next_level"] == 900  # level 3 needs 100 × 3² XP
+
+
+def test_common_skills_start_at_zero_unless_raised_or_left_out(campaign):
+    """The user's rule (2026-11-11): everyday skills are on every sheet, at 0 or more;
+    the rest stays off it (untrained, −3). No negative value ever lands on the sheet."""
+    sheet = _ok(_create(data={"name": "Mara", "skills": {"brawling": 4, "long guns": 2},
+                              "untrained": ["deception"]}))
+    skills = sheet["skills"]
+    assert skills["Brawling"] == 4 and skills["Long guns"] == 2   # canon spelling
+    assert skills["Guard"] == 0 and "Deception" not in skills and "Handguns" not in skills
+    assert min(skills.values()) >= 0
 
 
 def test_armor_and_cyberware_land_on_the_body(campaign):
@@ -112,6 +127,9 @@ def test_left_out_attributes_are_named_in_the_human_output(campaign):
     ({"name": "Mara", "attributes": {"AGI": 1}}, "die size"),
     ({"name": "Mara", "cyberware": [{"name": "Tail", "zone": "tail"}]}, "Unknown zone"),
     ({"name": "Mara", "skills": {"default": 2}}, "not a skill"),
+    ({"name": "Mara", "skills": {"Handguns": -1}}, "Leave an untrained skill off the sheet"),
+    ({"name": "Mara", "untrained": ["Handguns"]}, "not a common skill"),
+    ({"name": "Mara", "skills": {"Brawling": 1}, "untrained": ["brawling"]}, "both"),
 ])
 def test_refusals_leave_no_sheet(campaign, data, message):
     assert message in _error(_create(data=data))
