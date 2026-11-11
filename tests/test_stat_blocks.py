@@ -45,6 +45,16 @@ def test_canon_skills_come_from_the_gm_skills_index():
     assert len(common) == 14 and "Guard" in common and "Handguns" not in common
 
 
+def test_the_example_mobs_have_the_common_skills():
+    """Like a starting character (2026-11-11): every common skill at 0 or more, so the
+    scale doesn't make a thug worse at noticing things than anyone else (untrained −3)."""
+    mobs = json.loads((ROOT / ".claude" / "skills" / "gm-skills" / "mobs.json").read_text())
+    for name, mob in mobs.items():
+        for skill in common_skills():
+            assert mob["skills"].get(skill, -1) >= 0, (name, skill)
+    assert mobs["combat merc"]["skills"]["Guard"] == 5 and mobs["rat"]["skills"]["Persuasion"] == 0
+
+
 def test_npc_stats_are_set_merged_and_rolled(world):
     ws, camp = world
     manager = NPCManager(ws)

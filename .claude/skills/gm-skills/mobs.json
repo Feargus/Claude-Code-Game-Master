@@ -12,7 +12,17 @@
       "Brawling": 1,
       "Evasion": 2,
       "Stealth": 3,
-      "Awareness": 3
+      "Awareness": 3,
+      "Throwing": 0,
+      "Guard": 0,
+      "Endurance": 0,
+      "Composure": 0,
+      "Athletics": 0,
+      "Acrobatics": 0,
+      "Investigation": 0,
+      "Insight": 0,
+      "Persuasion": 0,
+      "Deception": 0
     },
     "note": "Rust-level vermin. Bites, carries disease, comes in swarms.",
     "wounds": 1
@@ -29,7 +39,18 @@
       "Bludgeons": 2,
       "Guard": 1,
       "Evasion": 1,
-      "Intimidation": 2
+      "Intimidation": 2,
+      "Throwing": 0,
+      "Endurance": 0,
+      "Composure": 0,
+      "Athletics": 0,
+      "Acrobatics": 0,
+      "Stealth": 0,
+      "Investigation": 0,
+      "Awareness": 0,
+      "Insight": 0,
+      "Persuasion": 0,
+      "Deception": 0
     },
     "note": "Hired muscle with a pipe or a cheap knife. Runs when it stops being worth it.",
     "wounds": 2
@@ -47,7 +68,18 @@
       "Guard": 2,
       "Evasion": 2,
       "Stealth": 2,
-      "Streetwise": 3
+      "Streetwise": 3,
+      "Brawling": 0,
+      "Throwing": 0,
+      "Endurance": 0,
+      "Composure": 0,
+      "Athletics": 0,
+      "Acrobatics": 0,
+      "Investigation": 0,
+      "Awareness": 0,
+      "Insight": 0,
+      "Persuasion": 0,
+      "Deception": 0
     },
     "note": "Armed, young and local, with cheap chrome. Fights in packs on home ground.",
     "wounds": 2
@@ -66,7 +98,16 @@
       "Guard": 3,
       "Evasion": 3,
       "Awareness": 3,
-      "Composure": 2
+      "Composure": 2,
+      "Throwing": 0,
+      "Endurance": 0,
+      "Athletics": 0,
+      "Acrobatics": 0,
+      "Stealth": 0,
+      "Investigation": 0,
+      "Insight": 0,
+      "Persuasion": 0,
+      "Deception": 0
     },
     "note": "Trained and well equipped, with backup a call away. Follows procedure, not loyalty.",
     "wounds": 2
@@ -87,7 +128,16 @@
       "Awareness": 4,
       "Intimidation": 4,
       "Investigation": 3,
-      "Tech": 2
+      "Tech": 2,
+      "Throwing": 0,
+      "Endurance": 0,
+      "Composure": 0,
+      "Athletics": 0,
+      "Acrobatics": 0,
+      "Stealth": 0,
+      "Insight": 0,
+      "Persuasion": 0,
+      "Deception": 0
     },
     "note": "Takes back limbs, eyes and bodies from people behind on payments. Patient and carries a lawful-looking warrant.",
     "wounds": 3
@@ -110,7 +160,16 @@
       "Evasion": 5,
       "Awareness": 5,
       "Tactics": 4,
-      "Composure": 4
+      "Composure": 4,
+      "Throwing": 0,
+      "Endurance": 0,
+      "Athletics": 0,
+      "Acrobatics": 0,
+      "Stealth": 0,
+      "Investigation": 0,
+      "Insight": 0,
+      "Persuasion": 0,
+      "Deception": 0
     },
     "note": "Veteran in a military sleeve. Rare, expensive, and only sent when someone means it.",
     "wounds": 4
