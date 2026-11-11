@@ -22,12 +22,11 @@ from typing import Any, Dict, List, Optional, Tuple
 sys.path.insert(0, str(Path(__file__).parent))
 
 import body
-import visual_appearance as va_mod
+import sheet as sheet_mod
 from entity_manager import EntityManager
 from skill_contest import ATTRIBUTES
 from world_kit import WorldKit
 from handover import hand_over
-from growth import xp_for_level
 from stat_block import canon_skills, common_skills
 
 DEFAULT_ATTRIBUTE = 12
@@ -37,11 +36,6 @@ DEFAULT_CREDITS = 20
 
 class CharacterError(Exception):
     """A sheet that can't be saved. The message says what to fix."""
-
-
-def character_id(name: str) -> str:
-    """Convert character name to file-safe ID"""
-    return name.lower().replace(' ', '-').replace("'", '').replace('"', '')
 
 
 def _attributes(given: Dict[str, Any]) -> Dict[str, int]:
@@ -119,56 +113,62 @@ def _counters(given: Dict[str, Any], kit: WorldKit) -> Dict[str, Any]:
     return counters
 
 
-def _body(character: Dict[str, Any], data: Dict[str, Any]) -> None:
-    """Unwounded zones, plus armor and cyberware from the interview. Armor is listed
-    outermost first; add_armor puts each new piece outside, so the list is reversed."""
+def _body(character: Dict[str, Any], given: Dict[str, Any]) -> None:
+    """Unwounded zones, plus armor and cyberware from the interview. The interview
+    gives armor as {"name", "zones": {zone: boxes}, "dr"?}, outermost first; add_armor
+    puts each new piece outside, so they are added in reverse."""
+    character["body"] = {"zones": {}}
     body.body(character)
     try:
-        for item in data.get("armor") or []:
-            zones = [f"{zone}:{boxes}" for zone, boxes in (item.get("zones") or {}).items()]
-            body.add_armor(character, item["name"], zones, int(item.get("dr", 0)))
-        for item in data.get("cyberware") or []:
-            body.add_cyberware(character, item["name"], item["zone"], int(item.get("boxes", 1)),
-                               item.get("effect", ""))
-    except (body.BodyError, KeyError) as error:
+        for piece in reversed(given.get("armor") or []):
+            zones = [f"{zone}:{boxes}" for zone, boxes in (piece.get("zones") or {}).items()]
+            body.add_armor(character, piece["name"], zones, int(piece.get("dr", 0)))
+        for piece in given.get("cyberware") or []:
+            body.add_cyberware(character, piece["name"], piece["zone"], int(piece.get("boxes", 1)),
+                               piece.get("effect", ""))
+    except (body.BodyError, KeyError, TypeError) as error:
         raise CharacterError(f"Armor or cyberware: {error}")
-    character["armor"] = list(reversed(character.get("armor", [])))
 
 
 def build_character(data: Dict[str, Any], kit: WorldKit) -> Tuple[Dict[str, Any], List[str]]:
-    """The full sheet from the interview's answers, with defaults for the rest."""
-    if not data.get("name"):
-        raise CharacterError("Missing required field: name")
-    level = int(data.get("level", 0))
-    given_attributes = data.get("attributes", data.get("stats")) or {}
-    luck = data.get("luck", DEFAULT_LUCK)
+    """The full sheet (sheet.py) from the interview's answers, with defaults for the
+    rest. The answers come in the sheet's sections; `untrained` lists common skills
+    the character lacks."""
+    data = dict(data)
+    untrained = data.pop("untrained", None) or []
+    identity = dict(data.get("identity") or {})
+    if not identity.get("name"):
+        raise CharacterError("Missing required field: identity.name")
+    stats = dict(data.get("stats") or {})
+    given_attributes = stats.get("attributes") or {}
+    luck = stats.get("luck", DEFAULT_LUCK)
     if isinstance(luck, int):
         luck = {"current": luck, "max": luck}
-    skills = _skills(data.get("skills") or {}, data.get("untrained") or [])
+    progress = dict(data.get("progress") or {})
+    level = int(progress.get("level", 0))
 
-    character = {
-        "id": character_id(data["name"]),
-        "name": data["name"],
-        "race": data.get("race", ""),
-        "class": data.get("class", ""),
-        "level": level,
-        "xp": {"current": int(data.get("xp", 0)), "next_level": xp_for_level(level + 1)},
-        "stats": _attributes(given_attributes),
-        "skills": skills,
-        "luck": luck,
-        **_counters(data, kit),
-        "traits": _named(data.get("traits"), "traits"),
-        "perks": _named(data.get("perks"), "perks"),
-        "features": list(data.get("features") or []),
-        "background": data.get("background", ""),
-        "alignment": data.get("alignment", ""),
-        "equipment": list(data.get("equipment") or []),
-        "credits": int(data.get("credits", DEFAULT_CREDITS)),
-        "notes": list(data.get("notes") or []),
-        "conditions": list(data.get("conditions") or []),
-        "visual_appearance": va_mod.normalize(data.get("visual_appearance")),
-    }
-    _body(character, data)
+    character = sheet_mod.merge(data, {
+        "identity": identity,
+        "stats": {"attributes": _attributes(given_attributes),
+                  "skills": _skills(stats.get("skills") or {}, untrained),
+                  "traits": _named(stats.get("traits"), "traits"),
+                  "perks": _named(stats.get("perks"), "perks"),
+                  "luck": luck,
+                  "counters": _counters(stats.get("counters") or {}, kit)},
+        "progress": {"level": level, "xp": int(progress.get("xp", 0)),
+                     "practice": progress.get("practice") or {}},
+        "possessions": {"credits": DEFAULT_CREDITS, **(data.get("possessions") or {})},
+        "status": {"state": "alive", "conditions": [], **(data.get("status") or {})},
+    })
+    if not character["stats"]["counters"]:
+        del character["stats"]["counters"]
+    try:
+        character["items"] = {place: [sheet_mod.item(i) for i in (data.get("items") or {}).get(place) or []]
+                              for place in sheet_mod.ITEM_PLACES}
+        _body(character, data.get("body") or {})
+        sheet_mod.check(character, "player")
+    except sheet_mod.SheetError as error:
+        raise CharacterError(str(error))
 
     left_out = [a for a in ATTRIBUTES if a not in {k.upper() for k in given_attributes}]
     warnings = [f"attributes set to the default d{DEFAULT_ATTRIBUTE}: {', '.join(left_out)}"] \
@@ -178,15 +178,12 @@ def build_character(data: Dict[str, Any], kit: WorldKit) -> Tuple[Dict[str, Any]
 
 class CharacterCreator(EntityManager):
 
-    def _archive(self) -> Optional[str]:
-        """Archive the outgoing character.json to fallen/, the way become() does."""
-        old = self.json_ops.load_json("character.json")
-        if not old:
-            return None
+    def _archive(self, old: Dict[str, Any]) -> str:
+        """Archive the outgoing character.json to fallen/."""
         fallen_dir = self.campaign_dir / "fallen"
         fallen_dir.mkdir(parents=True, exist_ok=True)
-        slug = (old.get("name") or "former-hero").lower().replace(" ", "-")
-        path = fallen_dir / f"{slug}-{old.get('id') or slug}.json"
+        slug = (sheet_mod.name(old) or "former-hero").lower().replace(" ", "-").replace("'", "")
+        path = fallen_dir / f"{slug}.json"
         self.json_ops.save_json(str(path), old)
         return str(path)
 
@@ -195,7 +192,7 @@ class CharacterCreator(EntityManager):
         """Build, save and wire in the new character. Returns a result dict."""
         existing = self.json_ops.load_json("character.json")
         if existing and not replace:
-            who = existing.get("name", "an existing character")
+            who = sheet_mod.name(existing) or "an existing character"
             return {"success": False,
                     "error": f'this campaign already plays "{who}" — pass --replace to hand the story to someone new'}
 
@@ -204,7 +201,9 @@ class CharacterCreator(EntityManager):
             resolved = self._find_entity_name("npcs.json", canon)
             if not resolved:
                 return {"success": False, "error": f'no NPC named "{canon}" in this campaign'}
-            data["name"] = resolved
+            npc = (self.json_ops.load_json("npcs.json") or {})[resolved]
+            data = sheet_mod.merge(sheet_mod.from_npc(npc), data)
+            data["identity"]["name"] = resolved
 
         try:
             character, warnings = build_character(
@@ -212,13 +211,14 @@ class CharacterCreator(EntityManager):
         except CharacterError as error:
             return {"success": False, "error": str(error)}
 
-        archived = self._archive() if existing else None
-        notes = hand_over(self.json_ops, existing or None, data["name"] if canon else None,
+        archived = self._archive(existing) if existing else None
+        notes = hand_over(self.json_ops, existing or None, resolved if canon else None,
                           self.get_timestamp())
         if not self.json_ops.save_json("character.json", character):
             return {"success": False, "error": "failed to save character.json"}
 
-        self.json_ops.update_json("campaign-overview.json", {"current_character": character["name"]})
+        self.json_ops.update_json("campaign-overview.json",
+                                  {"current_character": sheet_mod.name(character)})
         return {"success": True, "character": character, "warnings": warnings + notes,
                 "archived": archived}
 
@@ -247,7 +247,7 @@ def main():
         sys.exit(emit_error(result["error"], json_mode))
 
     character = result["character"]
-    lines = [f"✓ {character['name']} enters the world (level {character['level']})"]
+    lines = [f"✓ {sheet_mod.name(character)} enters the world"]
     lines += [f"Note: {w}" for w in result["warnings"]]
     if result["archived"]:
         lines.append(f"Archived the outgoing hero to: {result['archived']}")

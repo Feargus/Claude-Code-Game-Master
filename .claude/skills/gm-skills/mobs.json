@@ -1,118 +1,160 @@
 {
   "rat": {
-    "attributes": {
-      "default": 6,
-      "STR": 4,
-      "AGI": 12,
-      "VIG": 8,
-      "ITU": 10,
-      "NRV": 8
+    "identity": {
+      "name": "rat",
+      "background": "Rust-level vermin. Bites, carries disease, comes in swarms."
     },
-    "skills": {
-      "Brawling": 1,
-      "Evasion": 2,
-      "Stealth": 3,
-      "Awareness": 3
+    "stats": {
+      "attributes": {
+        "default": 6,
+        "STR": 4,
+        "AGI": 12,
+        "VIG": 8,
+        "ITU": 10,
+        "NRV": 8
+      },
+      "skills": {
+        "Brawling": 1,
+        "Evasion": 2,
+        "Stealth": 3,
+        "Awareness": 3
+      }
     },
-    "note": "Rust-level vermin. Bites, carries disease, comes in swarms.",
-    "wounds": 1
+    "body": {
+      "wounds": 1
+    }
   },
   "street thug": {
-    "attributes": {
-      "default": 8,
-      "STR": 10,
-      "VIG": 10,
-      "LOG": 6
+    "identity": {
+      "name": "street thug",
+      "background": "Hired muscle with a pipe or a cheap knife. Runs when it stops being worth it."
     },
-    "skills": {
-      "Brawling": 2,
-      "Bludgeons": 2,
-      "Guard": 1,
-      "Evasion": 1,
-      "Intimidation": 2
+    "stats": {
+      "attributes": {
+        "default": 8,
+        "STR": 10,
+        "VIG": 10,
+        "LOG": 6
+      },
+      "skills": {
+        "Brawling": 2,
+        "Bludgeons": 2,
+        "Guard": 1,
+        "Evasion": 1,
+        "Intimidation": 2
+      }
     },
-    "note": "Hired muscle with a pipe or a cheap knife. Runs when it stops being worth it.",
-    "wounds": 2
+    "body": {
+      "wounds": 2
+    }
   },
   "ganger": {
-    "attributes": {
-      "default": 8,
-      "AGI": 10,
-      "DFT": 10,
-      "NRV": 10
+    "identity": {
+      "name": "ganger",
+      "background": "Armed, young and local, with cheap chrome. Fights in packs on home ground."
     },
-    "skills": {
-      "Handguns": 3,
-      "Slashing": 2,
-      "Guard": 2,
-      "Evasion": 2,
-      "Stealth": 2,
-      "Streetwise": 3
+    "stats": {
+      "attributes": {
+        "default": 8,
+        "AGI": 10,
+        "DFT": 10,
+        "NRV": 10
+      },
+      "skills": {
+        "Handguns": 3,
+        "Slashing": 2,
+        "Guard": 2,
+        "Evasion": 2,
+        "Stealth": 2,
+        "Streetwise": 3
+      }
     },
-    "note": "Armed, young and local, with cheap chrome. Fights in packs on home ground.",
-    "wounds": 2
+    "body": {
+      "wounds": 2
+    }
   },
   "corp guard": {
-    "attributes": {
-      "default": 10,
-      "STR": 11,
-      "DFT": 11,
-      "PRS": 8
+    "identity": {
+      "name": "corp guard",
+      "background": "Trained and well equipped, with backup a call away. Follows procedure, not loyalty."
     },
-    "skills": {
-      "Handguns": 4,
-      "Long guns": 3,
-      "Brawling": 3,
-      "Guard": 3,
-      "Evasion": 3,
-      "Awareness": 3,
-      "Composure": 2
+    "stats": {
+      "attributes": {
+        "default": 10,
+        "STR": 11,
+        "DFT": 11,
+        "PRS": 8
+      },
+      "skills": {
+        "Handguns": 4,
+        "Long guns": 3,
+        "Brawling": 3,
+        "Guard": 3,
+        "Evasion": 3,
+        "Awareness": 3,
+        "Composure": 2
+      }
     },
-    "note": "Trained and well equipped, with backup a call away. Follows procedure, not loyalty.",
-    "wounds": 2
+    "body": {
+      "wounds": 2
+    }
   },
   "repo agent": {
-    "attributes": {
-      "default": 10,
-      "STR": 12,
-      "DFT": 12,
-      "ITU": 12,
-      "NRV": 12
+    "identity": {
+      "name": "repo agent",
+      "background": "Takes back limbs, eyes and bodies from people behind on payments. Patient and carries a lawful-looking warrant."
     },
-    "skills": {
-      "Handguns": 4,
-      "Brawling": 4,
-      "Guard": 4,
-      "Evasion": 3,
-      "Awareness": 4,
-      "Intimidation": 4,
-      "Investigation": 3,
-      "Tech": 2
+    "stats": {
+      "attributes": {
+        "default": 10,
+        "STR": 12,
+        "DFT": 12,
+        "ITU": 12,
+        "NRV": 12
+      },
+      "skills": {
+        "Handguns": 4,
+        "Brawling": 4,
+        "Guard": 4,
+        "Evasion": 3,
+        "Awareness": 4,
+        "Intimidation": 4,
+        "Investigation": 3,
+        "Tech": 2
+      }
     },
-    "note": "Takes back limbs, eyes and bodies from people behind on payments. Patient and carries a lawful-looking warrant.",
-    "wounds": 3
+    "body": {
+      "wounds": 3
+    }
   },
   "combat merc": {
-    "attributes": {
-      "default": 10,
-      "STR": 14,
-      "AGI": 14,
-      "DFT": 16,
-      "VIG": 14,
-      "ITU": 14,
-      "NRV": 14
+    "identity": {
+      "name": "combat merc",
+      "background": "Veteran in a military sleeve. Rare, expensive, and only sent when someone means it."
     },
-    "skills": {
-      "Long guns": 6,
-      "Handguns": 5,
-      "Brawling": 5,
-      "Guard": 5,
-      "Evasion": 5,
-      "Awareness": 5,
-      "Tactics": 4,
-      "Composure": 4
+    "stats": {
+      "attributes": {
+        "default": 10,
+        "STR": 14,
+        "AGI": 14,
+        "DFT": 16,
+        "VIG": 14,
+        "ITU": 14,
+        "NRV": 14
+      },
+      "skills": {
+        "Long guns": 6,
+        "Handguns": 5,
+        "Brawling": 5,
+        "Guard": 5,
+        "Evasion": 5,
+        "Awareness": 5,
+        "Tactics": 4,
+        "Composure": 4
+      }
     },
-    "note": "Veteran in a military sleeve. Rare, expensive, and only sent when someone means it.",
-    "wounds": 4
+    "body": {
+      "wounds": 4
+    }
   }
 }

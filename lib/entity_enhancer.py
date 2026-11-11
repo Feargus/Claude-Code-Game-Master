@@ -368,11 +368,34 @@ class EntityEnhancer:
         return {
             "entity_type": entity["type"],
             "entity_name": entity["name"],
-            "current_description": entity["data"].get("description", "No description"),
+            "current_description": entity["data"].get("description")
+            or (entity["data"].get("identity") or {}).get("background") or "No description",
             "existing_context_count": len(entity["data"].get("context", [])),
             "found_passages": len(passages),
             "passages": passages
         }
+
+    def _enhance_npc_sheet(self, data: Dict, name: str, passages: List[str],
+                           description: Optional[str]) -> bool:
+        """An NPC sheet (sheet.py) keeps the book's passages in its source section,
+        at most 20, deduplicated; a description fills identity.background if empty."""
+        entity = data[name]
+        source = entity.setdefault("source", {})
+        kept = list(source.get("passages") or [])
+        seen = {p[:100].lower() for p in kept}
+        for passage in passages:
+            if passage[:100].lower() not in seen:
+                seen.add(passage[:100].lower())
+                kept.append(passage)
+        source["passages"] = kept[:20]
+        source["enhanced_at"] = self.json_ops.get_timestamp()
+        if description and not (entity.get("identity") or {}).get("background"):
+            entity.setdefault("identity", {})["background"] = description
+        if self.json_ops.save_json("npcs.json", data):
+            print(f"[SUCCESS] Enhanced npc: {name}")
+            print(f"  - Source passages: {len(source['passages'])}")
+            return True
+        return False
 
     def apply_enhancements(
         self,
@@ -418,6 +441,8 @@ class EntityEnhancer:
             return False
 
         entity = data[entity_name]
+        if entity_type == "npc":
+            return self._enhance_npc_sheet(data, entity_name, new_context, new_description)
 
         # Merge context (additive, deduplicated)
         existing_context = entity.get("context", [])
@@ -589,7 +614,8 @@ class EntityEnhancer:
             for name, entity_data in data.items():
                 if not isinstance(entity_data, dict) or entity_data.get("background"):
                     continue
-                if not entity_data.get("enhanced"):
+                if not (entity_data.get("enhanced")
+                        or (entity_data.get("source") or {}).get("enhanced_at")):
                     actual_type = etype
                     if etype == "location" and _is_site(name, data):
                         actual_type = "site"

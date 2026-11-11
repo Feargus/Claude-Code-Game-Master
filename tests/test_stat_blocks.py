@@ -26,9 +26,10 @@ def world(tmp_path):
     (ws / "active-campaign.txt").write_text("c")
     for name, payload in {
             "campaign-overview.json": {"campaign_name": "C"},
-            "character.json": {"name": "Cass", "stats": {"STR": 10}},
-            "npcs.json": {"Rook": {"description": "Asset Recovery",
-                                   "stats": {"hp": 10, "STR": 11}}},
+            "character.json": {"identity": {"name": "Cass"},
+                               "stats": {"attributes": {"STR": 10}}, "body": {"zones": {}}},
+            "npcs.json": {"Rook": {"identity": {"name": "Rook", "role": "Asset Recovery"},
+                                   "stats": {"attributes": {"STR": 11}}}},
             "locations.json": {}}.items():
         (camp / name).write_text(json.dumps(payload))
     return str(ws), camp
@@ -50,10 +51,10 @@ def test_a_skill_not_listed_counts_default_then_common_then_untrained():
     block's skill default; otherwise 0 for a common skill and −3 for the rest. The
     player's common skills live on the sheet, so one missing there is untrained."""
     from lib.skill_contest import untrained_value
-    thug = {"skills": {"Brawling": 2, "Composure": -2}}
-    boss = {"skills": {"default": 4}}
-    vermin = {"skills": {"default": -5}}
-    player = {"skills": {"Guard": 0}, "is_player": True}
+    thug = {"stats": {"skills": {"Brawling": 2, "Composure": -2}}}
+    boss = {"stats": {"skills": {"default": 4}}}
+    vermin = {"stats": {"skills": {"default": -5}}}
+    player = {"stats": {"skills": {"Guard": 0}}, "is_player": True}
     assert untrained_value(thug, "awareness") == 0
     assert untrained_value(thug, "Netrunning") == -3
     assert untrained_value(boss, "Awareness") == 4 and untrained_value(boss, "Tech") == 4
@@ -71,12 +72,11 @@ def test_npc_stats_are_set_merged_and_rolled(world):
                                {"handguns": 4, "Guard": 3}, wounds=3)
     assert result["name"] == "Rook" and result["warnings"] == []
     rook = _npcs(camp)["Rook"]
-    assert rook["attributes"] == {"STR": 12, "AGI": 11, "default": 10}
-    assert rook["stats"] == {"hp": 10}          # upstream's numbers stay as they were
-    assert rook["skills"] == {"Handguns": 4, "Guard": 3}  # canon spelling
+    assert rook["stats"]["attributes"] == {"STR": 12, "AGI": 11, "default": 10}
+    assert rook["stats"]["skills"] == {"Handguns": 4, "Guard": 3}  # canon spelling
     manager.set_stats("Rook", skills={"Insight": 2}, remove_skills=["guard"])
     rook = _npcs(camp)["Rook"]
-    assert rook["skills"] == {"Handguns": 4, "Insight": 2} and rook["wounds"] == 3
+    assert rook["stats"]["skills"] == {"Handguns": 4, "Insight": 2} and rook["body"]["wounds"] == 3
     side = build_side(camp, ["Rook", "Handguns", "DFT", "STR", "ITU"], None, None)
     assert side["dice_sizes"] == {"DFT": 10, "STR": 12, "ITU": 10} and side["skill_value"] == 4
 
@@ -118,7 +118,8 @@ def test_mobs_are_added_checked_and_kept_apart_from_npcs(world):
     warnings = mobs.save("street thug", entry, create=True)
     assert "this campaign's version wins" in warnings[0]
     stored = json.loads((camp / "mobs.json").read_text())
-    assert stored["Mastiff"]["attributes"] == {"STR": 18, "default": 10}
+    assert stored["Mastiff"]["stats"]["attributes"] == {"STR": 18, "default": 10}
+    assert stored["Mastiff"]["identity"] == {"name": "Mastiff", "background": "a war-dog"}
 
 
 def test_enemies_read_their_wounds_from_the_sheet(world):

@@ -1,584 +1,255 @@
 {
   "Carl": {
-    "description": "A twenty-seven year old marine electrician and former US Coast Guard member from Seattle. Carl was a trained technician aboard a Coast Guard cutter with significant hand-to-hand combat training. He's a large, athletic man built with natural muscle from his family's athletic heritage. Carl recently ended his relationship with his girlfriend Beatrice and became trapped in a mysterious dungeon dimension after a world-altering transformation. He carries Princess Donut, his ex-girlfriend's prized Persian show cat, through the dungeon as his companion.",
-    "attitude": "neutral",
-    "created": "2026-01-28T17:44:16.864199",
-    "events": [
-      {
-        "event": "Now equipped with improvised chitin armor (+2 AC). Armed with a rusty short sword.",
-        "timestamp": "2026-01-28T22:35:21.479528+00:00"
-      },
-      {
-        "event": "Allied with Tandy. Equipped with improvised chitin armor (+2 AC) and rusty short sword. Wounded in cricket fight but rested. Former US Coast Guard, capable fighter.",
-        "timestamp": "2026-01-28T22:46:12.883454+00:00"
-      },
-      {
-        "event": "Descended to Floor 2 with Tandy. Threw Princess Donut for killing blow on the Butcher. Currently negotiating with Mongo's crew.",
-        "timestamp": "2026-01-29T00:47:03.551732+00:00"
-      },
-      {
-        "event": "Wore clown skin disguise. Was thrown at Level 85 City Boss. Eyebrows burned off. Dignity destroyed.",
-        "timestamp": "2026-02-01T23:20:06.848465+00:00"
-      },
-      {
-        "event": "Participated in flash mob Mating Dance of Doom atop Prometheus. Mental state: questionable.",
-        "timestamp": "2026-02-02T14:15:12.926915+00:00"
-      },
-      {
-        "event": "Fastball Special'd from warehouse rooftop into crossbow crawler. Eliminated threat. Signature scream. Dignity remains absent.",
-        "timestamp": "2026-02-06T23:45:09.025248+00:00"
-      },
-      {
-        "event": "Fell off warehouse rooftop with Tandy. Unhurt. Watching Tandy glow with swallowed WMD case. Stairwell door just activated.",
-        "timestamp": "2026-02-08T13:28:50.453613+00:00"
-      }
-    ],
-    "tags": {
-      "locations": [
+    "identity": {
+      "name": "Carl",
+      "background": "A twenty-seven year old marine electrician and former US Coast Guard member from Seattle. Carl was a trained technician aboard a Coast Guard cutter with significant hand-to-hand combat training. He's a large, athletic man built with natural muscle from his family's athletic heritage. Carl recently ended his relationship with his girlfriend Beatrice and became trapped in a mysterious dungeon dimension after a world-altering transformation. He carries Princess Donut, his ex-girlfriend's prized Persian show cat, through the dungeon as his companion."
+    },
+    "personality": {
+      "voice": "Let me in! It's clear, but it won't be in about five seconds! / How the hell do I do that if you don't open the door! / I took too long? I just got here!"
+    },
+    "places": {
+      "usual": [
         "Tutorial Guild Hall",
         "Dungeon Hallway",
         "Safe Zone",
         "cricket-nest"
-      ],
-      "quests": [
-        "main-quest"
       ]
     },
-    "context": [
-      "Let me in! It's clear, but it won't be in about five seconds!",
-      "How the hell do I do that if you don't open the door!",
-      "I took too long? I just got here!",
-      "At least tell me how to open these damn loot boxes!",
-      "You're tracking my mother's ashes all over...",
-      "Carl: Don’t type in all caps. I think Frank is going to try to hurt or\nincapacitate us. This is important. Do not react. Do not fight back at\nall. Whatever you do, don’t fire a magic missile. Just let it happen.\nTrust me on this. I’m going to present an opening. I want to entice him\ninto action.\nDonut: WHAT DO YOU MEAN. FRANK IS AN AMERICAN\nHERO.\nCarl: Frank is full of shit. He’s lying. I think there might be\nsomebody else in here with us, and they are getting ready to jump us.",
-      "by someone more interested in the Maestro than me, as he was the obvious\nsubject of the video.\n“So,” Odette had said after we watched the scene and the audience’s\nuproarious laughter eased. “You are likely unaware of this, but Death Watch\nExtreme Dungeon Mayhem announced earlier that it was going into hiatus\nwhile the show restructured.”\n“I’m shocked,” Donut said. “Quite shocked.”\nThe audience laughed.\n“King Rust of the Skull Empire, who recently arrived in earth orbit, has",
-      "I moved forward to walk alongside Brandon, Chris, and Imani, keeping\nmy eye on the map. Yolanda kept up the rear, walking with her bow at the\nready. “We’re taking a left two intersections down, right past that safe\nroom. We’ll have to cross through an infested area, but I’ll firebomb it.”\nThe mass of red dots was already starting to shift toward us. Thankfully\nthey were painfully slow. I could take a nap before they’d reach this hall.\n“Carl, thank you,” Brandon said.",
-      "“Something tells me I wouldn’t be too welcome,” I said.\nThe show ended with a short description of the issues with the\nbathrooms and some bullshit explanation why they had been forced to\nimplement the rage elemental trap.\n“Yeah because piss is worse than blood and guts and whatever that is\nthat comes out of the grubs,” I said.\nIt replayed the scene from the beginning of the episode with Jack\nwhipping it out. It continued, showing Yolanda’s death in gruesome, slow-\nmotion detail.",
-      "Frank whispered something to Maggie, who returned to her chair. He\ntried to put an arm on her shoulder. She pushed him away.\n“As far as I’m concerned, any business I’ve had with these two has\nalready been transacted,” I said. I turned toward Frank and met the man’s\neyes. The man had changed significantly since the last time we’d seen each\nother. He looked away and down. “I’m sorry about what happened to your\nkid. But fuck you. Fuck both of you. She deserved better. We all would’ve",
-      "to watch Divorce Court, looked down at me as they passed. She was on the\nvery last train car, this one only carrying three riders. She was the only one\non the platform in a wheelchair. The other two were men with walkers, both\nsitting down.\nThe name over the woman said Crawler #12,330,800. “Elle McGib.”\n“Hi Carl,” she said.\n“Hi Mrs. McGibbons. You remembered my name today,” I said, moving\nto walk alongside the train.\n“This reminds me of the tunnel of love,” she said. “Back in my time, my",
-      "Deep breath, I thought. You will not break me. You will not fucking\nbreak me.\n“Can that other guy hear me right now?” I asked.\nA pause. “No, he cannot,” Mukta said.\n“As long as I don’t talk shit about you guys, will there be consequences\nfor what I say? As long as I participate, I mean?”\nAnother pause, and this one was longer than before. “They have paid\nfor your appearance. Nothing else.”\n“All right,” I said, “Tell him we want on the show. Now. Before this",
-      "He scoffed. “You think you could actually…”\nThe crowd went absolutely apeshit as the scene ended, and the lights\nsnapped back on. Donut stood on her hindlegs and raised her two front\npaws in the air. “That’s how it’s done!” she yelled. “Next time, we’ll kill\nthat thing ourselves and send pictures to his mama! We’ll tell her to… what\nwas it, Carl?”\n“Suck it,” I said.\n“Glurp, glurp! Glurp, glurp!” the audience cried.\nThe Maestro was back to his sneering, condescending self. His unseen",
-      "Donut was ignoring all of this as she hopped up and down. “Two shows\nin one day, Carl. Two shows! Maybe there is more, too. Do you think we’re\non more shows?”\nI sighed. “Donut. You need to stop obsessing over this. It’s dangerous.\nIt’s going to get us killed.”\n“I’m not obsessing,” she said. “What makes you think I’ve been\nobsessing?”\n“People like you because of what you’ve been doing,” I said. “If you\nstart playing for the camera, they’re going to like you less. And if you die,",
-      "toward their fallen brothers and sisters.\nOn the map, near the stairs, just a quarter mile away a group of fifteen\nred dots sat. I hadn’t noticed them before. I hovered over the icons.\nGrub – Pupa Stage.\nA counter, currently at just under 10 hours, was ticking away next to\ntheir names.\nI remembered the scene from the recap episode. The level 93 mob, after\nsliding down the hall, had been hurt by my boom jug. It’d taken almost a\nquarter of its life away before it healed itself."
-    ],
-    "is_party_member": true,
-    "character_sheet": {
-      "race": "Human",
-      "class": "Fighter",
-      "level": 5,
-      "hp": {
-        "current": 44,
-        "max": 44
-      },
-      "ac": 15,
-      "stats": {
-        "str": 10,
-        "dex": 10,
-        "con": 10,
-        "int": 10,
-        "wis": 10,
-        "cha": 10
-      },
-      "saves": {
-        "str": 0,
-        "dex": 0,
-        "con": 0,
-        "int": 0,
-        "wis": 0,
-        "cha": 0
-      },
-      "skills": {},
-      "attack_bonus": 3,
-      "damage": "1d6+1",
-      "equipment": [
-        "Improvised Chitin Armor",
-        "Rusty Short Sword"
-      ],
-      "features": [],
-      "conditions": [],
-      "xp": 0
+    "status": {
+      "state": "alive",
+      "party_member": true
     }
   },
   "Princess Donut": {
-    "description": "A champion Persian cat with a fluffy, flat face and tortoiseshell coloring. Princess Donut is a show cat who has won numerous ribbons, trophies, and Best-in-Show awards. She is worth more than Carl makes in a year and is temperamental, prone to scratching and spitting. She was originally being cared for by Carl (her owner's ex-boyfriend) when the world transformed. Despite her spoiled nature, she has proven surprisingly capable in the dungeon environment, often acting independently and wandering into situations against Carl's wishes. She displays surprising confidence and agency in exploring the dungeon.",
-    "attitude": "neutral",
-    "created": "2026-01-28T17:44:16.864210",
-    "events": [
-      {
-        "event": "Allied with Tandy. Has Cracked Glowstone. Discovered she can cast magic (golden light bolts). Very impressed by Tandy's supermodel walk. Calls Carl her 'servant'.",
-        "timestamp": "2026-01-28T22:46:13.550964+00:00"
-      },
-      {
-        "event": "Descended to Floor 2. Delivered killing blow on the Butcher with magic bolt attack. Very proud of herself. Currently claiming the warmest spot in Mongo's safe room.",
-        "timestamp": "2026-01-29T00:47:04.161853+00:00"
-      },
-      {
-        "event": "Won Mongo the Mongoliensis as her pet\\! He immediately bit her on the nose. His title is Royal Steed. She's very proud despite the biting.",
-        "timestamp": "2026-01-29T01:11:06.596533+00:00"
-      },
-      {
-        "event": "Received the Hive Mother's Psi-Fang as a trophy. Very pleased with herself. The fang whispers to her.",
-        "timestamp": "2026-01-29T19:45:07.887381+00:00"
-      },
-      {
-        "event": "Cast Animal Friendship on Prometheus. Now rides atop the dragon head like a queen. Has a dragon.",
-        "timestamp": "2026-02-01T23:20:07.751852+00:00"
-      },
-      {
-        "event": "Descended into the Laughing Crypt with the party to confront Grimaldi. Left Prometheus guarding the exit.",
-        "timestamp": "2026-02-02T15:58:34.636005+00:00"
-      },
-      {
-        "event": "Stowed Robe of Eyes for pulse prep. Confiscated Queen's Fang from Mongo. Rated Carl's Fastball landing 7/10.",
-        "timestamp": "2026-02-06T23:45:10.816231+00:00"
-      },
-      {
-        "event": "Fell off rooftop, landed on feet. Prometheus left on rooftop above. Stairwell door activated by first pulse.",
-        "timestamp": "2026-02-08T13:28:50.828539+00:00"
-      }
-    ],
-    "tags": {
-      "locations": [
+    "identity": {
+      "name": "Princess Donut",
+      "background": "A champion Persian cat with a fluffy, flat face and tortoiseshell coloring. Princess Donut is a show cat who has won numerous ribbons, trophies, and Best-in-Show awards. She is worth more than Carl makes in a year and is temperamental, prone to scratching and spitting. She was originally being cared for by Carl (her owner's ex-boyfriend) when the world transformed. Despite her spoiled nature, she has proven surprisingly capable in the dungeon environment, often acting independently and wandering into situations against Carl's wishes. She displays surprising confidence and agency in exploring the dungeon."
+    },
+    "personality": {
+      "voice": "Mewww! (hissing and spitting) / *knocks vase over* / *discovers fireplace and starts grooming*"
+    },
+    "places": {
+      "usual": [
         "cricket-nest",
         "Safe Zone",
         "Dungeon Hallway",
         "Tutorial Guild Hall"
-      ],
-      "quests": [
-        "main-quest"
       ]
     },
-    "context": [
-      "Mewww! (hissing and spitting)",
-      "*knocks vase over*",
-      "*discovers fireplace and starts grooming*",
-      "Princess Donut has named your party The Royal Court of Princess\nDonut.\nPrincess Donut has changed your title to Royal Bodyguard.\nPrincess Donut has changed her title to Grand Champion Best in\nDungeon.\n“Really?”\nMordecai laughed. “She has the highest combined stat total, so she’s the\ndesignated party leader. As such, she has more control over the party menu.\nDon’t worry. The titles don’t mean anything.” He paused, suddenly serious.\n“Listen up, kid.",
-      "Again, screams.\n“Now, let me ask you something,” Odette said. She turned and leaned\nin. Her massive breasts barely sloshed over, as if she had some sort of\naccordion system connecting her chest with the boobs. “So you might not\nrealize this, but we’ve been watching you two from the beginning. You\nmight not be getting any love on the official program, but you two are quite\nthe sensation. We are so excited to have you on the show tonight. But",
-      "“Thank you. I mean that.” I shook it. He then went to his knee and\nscratched Donut. “You too, Princess Donut.”\n“Of course, sweetheart,” she said, pushing her head against his hand.\n“Oh,” Brandon said, “and try to find Agatha if you can. She’s a crazy\nasshole, but she’s our crazy asshole.”\nI nodded. We turned and headed toward the stairs. I looked at Donut.\n“You ready?”\nShe flipped her tail, and I followed her down the ramp.",
-      "“He blew up one of your filthy tractors and smeared three of your\nfriends all over the cobblestones,” Donut declared. She pointed daintily\nsouth. “They’re in that next neighborhood over if you want to scoop ‘em\nup.”\n“Goddamnit, Donut,” I whispered. The goblins stared at us with a slack-\njawed gaze of incredulity. “Let me do the talking. I’m the one with the\nbrand.”\n“And I’m the one with the 37 in charisma,” said Donut. “They’re not\ngoing to care.",
-      "Like I did with that juicy boss we faced.” She looked at me. “What was his\nname? Juicy? Juiced? The Juice? Now that was a fight, wasn’t it?”\nThe crowd roared their approval.\nWe talked for about five more minutes. Odette would ask a question\nabout something that happened. Donut would answer. She had the crowd\neating out of her paws. Odette asked me about my pants. They showed\nDonut asking if there was a reward for worst-dressed in the dungeon, and it",
-      "The Maestro was playing this off like this was his idea. “Okay, piglets,\nmy next two guests do not need any introduction. The last you probably saw\nof these two, they were stuck in a room with a bunch of old fucks. Are they\ngoing to escape? Spoiler alert, they just got out. We were going to show\nwhat these crazy assholes did to get free, but since they want to suck on it\nso bad, we’re going to bring them on early.”\n“Glurp, glurp! Glurp, glurp!”\nYOU ARE NOW ON AIR."
-    ],
-    "is_party_member": true,
-    "character_sheet": {
-      "race": "Unknown",
-      "class": "Spellcaster",
-      "level": 5,
-      "hp": {
-        "current": 25,
-        "max": 25
-      },
-      "ac": 12,
-      "stats": {
-        "str": 10,
-        "dex": 10,
-        "con": 10,
-        "int": 10,
-        "wis": 10,
-        "cha": 10
-      },
-      "saves": {
-        "str": 0,
-        "dex": 0,
-        "con": 0,
-        "int": 0,
-        "wis": 0,
-        "cha": 0
-      },
-      "skills": {},
-      "attack_bonus": 5,
-      "damage": "1d6",
-      "equipment": [
-        "Robe of Eyes (adv. Perception, darkvision 120ft, see invisible, see ethereal)"
-      ],
-      "features": [],
-      "conditions": [],
-      "xp": 0
+    "status": {
+      "state": "alive",
+      "party_member": true
     }
   },
   "Mordecai": {
-    "description": "A rat hooligan guildmaster of the Tutorial Guild Hall, level 50. Mordecai is a Non-Combatant NPC who stands about a head shorter than Carl. He wears a black vest, blue pants, and well-worn sandals. Mordecai is characterized as wringing his hands nervously and worrying about rules and procedures. He is reminiscent of Master Splinter from Teenage Mutant Ninja Turtles. As a Rat Hooligan, he is one of the smartest, fastest, and ugliest of the Rat-Kin race, offering a blend of physical strength and magical capability. He is frustrated about not receiving newsletters and appears anxious about getting in trouble for rule violations.",
-    "attitude": "neutral",
-    "created": "2026-01-28T17:44:16.864212",
-    "events": [
-      {
-        "event": "Located at the Tutorial Guild Hall, ready to greet new crawlers",
-        "timestamp": "2026-01-28T21:41:29.010202+00:00"
-      },
-      {
-        "event": "Party visited after containing the Remex soul crystal. Mordecai now in Incubus form on Floor 3 - tuxedo, bat wings, Level 50. No longer rat hooligan appearance.",
-        "timestamp": "2026-02-05T23:58:18.863403+00:00"
-      }
-    ],
-    "tags": {
-      "locations": [
+    "identity": {
+      "name": "Mordecai",
+      "background": "A rat hooligan guildmaster of the Tutorial Guild Hall, level 50. Mordecai is a Non-Combatant NPC who stands about a head shorter than Carl. He wears a black vest, blue pants, and well-worn sandals. Mordecai is characterized as wringing his hands nervously and worrying about rules and procedures. He is reminiscent of Master Splinter from Teenage Mutant Ninja Turtles. As a Rat Hooligan, he is one of the smartest, fastest, and ugliest of the Rat-Kin race, offering a blend of physical strength and magical capability. He is frustrated about not receiving newsletters and appears anxious about getting in trouble for rule violations."
+    },
+    "personality": {
+      "voice": "Whaddya want? You mobs ain't allowed in here. You know that! / Sorry, crawler. You took too long. I can't open up if there are mobs directly outside. Rules are rules. / It doesn't work that way, kid. We can't just have untrained crawlers wandering around the dungeon, you know."
+    },
+    "places": {
+      "usual": [
         "Tutorial Guild Hall",
         "tutorial-guild-hall"
-      ],
-      "quests": []
+      ]
     },
-    "context": [
-      "Whaddya want? You mobs ain't allowed in here. You know that!",
-      "Sorry, crawler. You took too long. I can't open up if there are mobs directly outside. Rules are rules.",
-      "It doesn't work that way, kid. We can't just have untrained crawlers wandering around the dungeon, you know.",
-      "I shouldn't have let you in. Kid, get your creature! I'll get in trouble if they find out I let a crawler sneak in against the rules.",
-      "It's Mordecai, kid. And yes, yes. Of course.",
-      "Can you just grab that thing for me? Get him out of here? I think I might be allergic.",
-      "What the bloody hell did you do, kid?",
-      "Mordecai grunted. “Oh, you should go. Her program is one of the few I\nwould recommend. Not that they’d give you much of a choice. Speaking of\nshows, there’s someone who wants to speak with you. I’ve been asked to\nping her once you showed up here. She’ll arrive in about ten or fifteen\nminutes.”\n“Another show?” Donut asked. She’d just started combing through her\nachievements and boxes. She didn’t seem to have gotten anything\nnoteworthy except one item. Her boss box contained an Enchanted Fur",
-      "photographs of bird-like creatures. The other half of the room was nothing\nbut a well-worn and oval-shaped gray carpet and an empty desk. A half-\ndozen classroom-style chairs lay scattered about. I turned back to the door.\n“Is this the only way out of here?” I asked.\n“What?” Mordecai asked. The rat wasn’t paying attention to me. He\nwas focused on the cat.\n“Yo,” I said. “Morty. Is this the only exit?”\n“It’s Mordecai, kid. And yes, yes. Of course.”",
-      "a white, mesh spacesuit. The whole getup was half space-age, half old-\nschool deep diving suit.\n“Good evening, ma’am,” Mordecai said, standing straight.\n“Hello, Mordecai,” the fish woman said, her voice amplified through a\nlittle speaker on her outfit. “It’s nice to finally meet you face-to-face.”\nThere was something about the woman that suddenly made Mordecai\nvisibly relax, but I couldn’t tell what it was. There might have been an\nexchange I couldn’t hear. I just didn’t know.",
-      "rather meet a woman, sire children, and then devour those children than\nhave anything to do with her again.”\n“So that’s a no, then?” Donut asked.\nMordecai was no longer a Rat Hooligan. He’d shapeshifted into a much\nlarger, hairier, and obsidian creature called a Bugaboo. He was like a bear\nwith no neck, with enormous, owlish eyes, and comically skinny legs. His\nlong arms were also absurdly thin compared to the rest of the seven-foot-\ntall creature.",
-      "bottles littered the floor. The upset urn had been fixed, and the ashes all\ncleaned up.\n“There are six main types of bosses,” Mordecai said after we woke him\nup. His voice slurred ever so slightly, and I could smell the alcohol on his\nbreath. “Neighborhood, Borough, City, Province, Country, and Floor\nbosses. There are also others, but those are called elites. You won’t need to\nworry about them just yet.”\n“So that thing we just fought was the most common type of boss?”\n“Yes,” Mordecai said.",
-      "relieved, you know what I mean? Since her mom killed her, that means you\ndidn’t kill her. It would’ve been an accident, but still.”\n“Aren’t you tired?” I asked. I was exhausted. I rubbed the bottom of my\nfoot with the little stone thing. I could just feel the AI watching me. The\nrecap show would air in a few hours, and I wanted to get some sleep before\nthat. Afterward, we needed to head out.\nDonut plopped herself on my shoulder, settling in to sleep after I\nfinished with my feet.",
-      "“The tusklings are the rulers of the Orcish Supremacy. Stalwart and the\nMaestro are princes of the Skull Empire. That’s a whole different system. If\nthe Orcish Supremacy is a child with a lemonade stand, the Skull Empire is\nthe Wal-Mart corporation. It’s one of the largest and oldest Syndicate\ngovernments.”\n“Yeah, he’d said something about creating the crawl.” I glanced down at\nDonut. “He also talked a bit about the ninth floor. How he’s going to be\nthere.”",
-      "The audience cheered. Someone shouted, “Glurp, glurp!” A minute later\nthe whole audience was glurping.\nOdette shook her head in mock disgust.\nThe show soon ended after that. Like last time, Odette ushered Lexis\nout of the room so we could talk for a few minutes.\n“Is it worth it,” I asked, indicating the pet. “If he lives, I mean.”\n“You should’ve picked the Tummy Acher,” Odette said. “The little\nround guy with the mohawk. They’re very friendly and easy to work with.",
-      "Test passage one",
-      "Test passage two"
-    ],
-    "enhanced": true,
-    "enhanced_at": "2026-01-29T00:48:10.376646+00:00"
+    "status": {
+      "state": "alive"
+    }
   },
   "Squeeks": {
-    "description": "A small, scruffy rat who was being eaten by crickets. Works as a tutorial message runner. Grateful to the party for saving him. Knows dungeon lore.",
-    "attitude": "friendly",
-    "created": "2026-01-28T22:24:23.399898+00:00",
-    "events": [
-      {
-        "event": "Rescued from Giant Cave Crickets by the party. Grateful. Provided Tutorial Map and intel about the Butcher. Located at Cricket Nest.",
-        "timestamp": "2026-01-28T22:46:14.262511+00:00"
-      }
-    ],
-    "tags": {
-      "locations": [
+    "identity": {
+      "name": "Squeeks",
+      "background": "A small, scruffy rat who was being eaten by crickets. Works as a tutorial message runner. Grateful to the party for saving him. Knows dungeon lore."
+    },
+    "places": {
+      "usual": [
         "cricket-nest"
-      ],
-      "quests": []
+      ]
+    },
+    "status": {
+      "state": "alive"
     }
   },
   "The Butcher": {
-    "description": "A failed crawler from a previous season, transformed into a dungeon monster. Massive, wears a leather apron, carries an enormous cleaver. Slow but devastatingly powerful - one hit kills. Covered in old grease (vulnerable to fire). Stupid and follows patrol patterns. Guards the CENTER path to the Floor 1 stairs.",
-    "attitude": "hostile",
-    "created": "2026-01-28T22:46:20.536218+00:00",
-    "events": [],
-    "tags": {
-      "locations": [
+    "identity": {
+      "name": "The Butcher",
+      "background": "A failed crawler from a previous season, transformed into a dungeon monster. Massive, wears a leather apron, carries an enormous cleaver. Slow but devastatingly powerful - one hit kills. Covered in old grease (vulnerable to fire). Stupid and follows patrol patterns. Guards the CENTER path to the Floor 1 stairs."
+    },
+    "places": {
+      "usual": [
         "bone-garden"
-      ],
-      "quests": [
-        "main-quest"
       ]
+    },
+    "status": {
+      "state": "alive"
     }
   },
   "Mongo": {
-    "description": "A Male Mongoliensis - a small, psychotic dinosaur with pink feathers, a sharp beak, and tiny T-rex arms. Level 1 pet-class mob bonded to Princess Donut as her Royal Steed. Stubborn, hot-headed, and absolutely vicious. Goes berserk at the sight of enemies. Will try to bite anyone, including allies. Eats corpses with disturbing enthusiasm. Command word: \"sic em\". Getting him to level 15 would make him incredibly powerful - but keeping him alive that long is nearly impossible.",
-    "attitude": "neutral",
-    "created": "2026-01-29T01:10:00.000000+00:00",
-    "events": [
-      {
-        "event": "Won by Princess Donut. Bit her on the nose immediately. Has been trained to wait for \"sic em\" before charging.",
-        "timestamp": "2026-01-29T01:10:00.000000+00:00"
-      },
-      {
-        "event": "Nearly killed by centipede poison in first real combat. Stabilized by Carl. Learning that murder-charging has consequences.",
-        "timestamp": "2026-01-29T01:20:06.017813+00:00"
-      },
-      {
-        "event": "Survived near-death by centipede poison. Fully healed in safe room. Still murderously enthusiastic.",
-        "timestamp": "2026-01-29T01:29:41.465265+00:00"
-      },
-      {
-        "event": "Rested and recovered to 7/8 HP.",
-        "timestamp": "2026-01-29T18:37:38.282668+00:00"
-      },
-      {
-        "event": "Received Queen's Fang from Tandy. Now wields the poison dagger in his beak. Somehow even more terrifying.",
-        "timestamp": "2026-01-30T01:22:09.264509+00:00"
-      },
-      {
-        "event": "Long rest at the Broken Column Inn. Recovered to full HP (8/8). Enjoyed the stables - ate something questionable.",
-        "timestamp": "2026-01-30T01:40:16.213820+00:00"
-      },
-      {
-        "event": "Queen's Fang confiscated for pulse prep. Screeched betrayal at the sky. Still angry about it.",
-        "timestamp": "2026-02-06T23:45:12.211535+00:00"
-      },
-      {
-        "event": "Hit ground beak-first after rooftop fall. Tried to bite a cobblestone. Still angry about Queen's Fang confiscation.",
-        "timestamp": "2026-02-08T13:28:51.200067+00:00"
-      }
-    ],
-    "tags": {
-      "locations": [],
-      "quests": [
-        "main-quest"
-      ]
+    "identity": {
+      "name": "Mongo",
+      "background": "A Male Mongoliensis - a small, psychotic dinosaur with pink feathers, a sharp beak, and tiny T-rex arms. Level 1 pet-class mob bonded to Princess Donut as her Royal Steed. Stubborn, hot-headed, and absolutely vicious. Goes berserk at the sight of enemies. Will try to bite anyone, including allies. Eats corpses with disturbing enthusiasm. Command word: \"sic em\". Getting him to level 15 would make him incredibly powerful - but keeping him alive that long is nearly impossible."
     },
-    "context": [
-      "Mongo the Mongoliensis Level One (Pet of Grand Champion Best in Dungeon Princess Donut) has joined the party. Mongo's title has been changed to Royal Steed.",
-      "The stubborn and hot-headed Mongoliensis is not the type of pet to ever be \"tamed.\" The best one can hope for is mutual respect. And even then they still might try to eat you if the fancy strikes them.",
-      "While especially powerful, fast, and vicious when they are fully grown at level 15, getting them to level 15 is about as likely as a cheerleader from West Virginia...",
-      "If any sort of enemy came anywhere near us, the crazy chicken went absolutely apeshit. He screamed and snapped and tried to kill himself in an attempt to get to the creature. He was like a goddamned psychotic wolverine hopped up on bath salts.",
-      "We quickly learned that only one thing stopped the thing from trying to murder me and Donut: seeing another mob.",
-      "After a full day, we managed to keep him from just outright charging every time he saw something. He'd snarl and squawk and hop up and down, but he wouldn't plunge headfirst into battle until Donut said the command, which had somehow evolved from \"attack\" to \"sic em.\""
-    ],
-    "is_party_member": true,
-    "character_sheet": {
-      "race": "Mongoliensis",
-      "class": "Pet",
-      "level": 5,
-      "hp": {
-        "current": 30,
-        "max": 30
-      },
-      "ac": 13,
-      "stats": {
-        "str": 8,
-        "dex": 14,
-        "con": 10,
-        "int": 3,
-        "wis": 6,
-        "cha": 4
-      },
-      "saves": {
-        "str": -1,
-        "dex": 2,
-        "con": 0,
-        "int": -4,
-        "wis": -2,
-        "cha": -3
-      },
-      "skills": {},
-      "attack_bonus": 4,
-      "damage": "1d6+2",
-      "equipment": [],
-      "features": [
-        "Frenzy (goes berserk vs enemies)",
-        "Bite Attack",
-        "Devour Corpse"
-      ],
-      "conditions": [],
-      "xp": 0
+    "personality": {
+      "voice": "Mongo the Mongoliensis Level One (Pet of Grand Champion Best in Dungeon Princess Donut) has joined the party. Mongo's title has been changed to Royal Steed. / The stubborn and hot-headed Mongoliensis is not the type of pet to ever be \"tamed.\" The best one can hope for is mutual respect. And even then they still might try to eat you if the fancy strikes them. / While especially powerful, fast, and vicious when they are fully grown at level 15, getting them to level 15 is about as likely as a cheerleader from West Virginia..."
+    },
+    "places": {
+      "usual": []
+    },
+    "status": {
+      "state": "alive",
+      "party_member": true
     }
   },
   "Imani": {
-    "description": "Human woman, late 20s, shaved head, dark skin, calculating eyes. Carries a crossbow and watches everything with suspicion. Veteran crawler on Floor 2. Skeptical of newcomers but practical - survives by being smart, not strong. Uses weighted chains as a tactical weapon to impede enemies. Reliable in a crisis - tends to wounded allies, coordinates complex maneuvers, and stays until last when retreating. Forms bonds but keeps them guarded.",
-    "attitude": "neutral",
-    "created": "2026-01-29T00:46:21.065454+00:00",
-    "events": [
-      {
-        "event": "Encountered at Floor 2 Junction. Independent crawler, wary of alliances.",
-        "timestamp": "2026-01-29T01:10:00.000000+00:00"
-      },
-      {
-        "event": "Rescued from Cave Stalkers by Tandy's party. Lost most of her crew. Offered alliance to survive Floor 2.",
-        "timestamp": "2026-01-29T01:29:39.711147+00:00"
-      },
-      {
-        "event": "Alliance formed with Tandy's party. Now traveling together through Floor 2.",
-        "timestamp": "2026-01-29T01:39:32.030969+00:00"
-      }
-    ],
-    "tags": {
-      "locations": [
+    "identity": {
+      "name": "Imani",
+      "background": "Human woman, late 20s, shaved head, dark skin, calculating eyes. Carries a crossbow and watches everything with suspicion. Veteran crawler on Floor 2. Skeptical of newcomers but practical - survives by being smart, not strong. Uses weighted chains as a tactical weapon to impede enemies. Reliable in a crisis - tends to wounded allies, coordinates complex maneuvers, and stays until last when retreating. Forms bonds but keeps them guarded."
+    },
+    "personality": {
+      "voice": "Imani fed Yolanda a health potion, and the woman sat up, wobbling, holding the side of her head. / One\\! Imani yanked the door open. The massive, terrifying rage elemental lunged, and as always, teleported away. / Imani's chain, with heavy weights at either end, dropped away, snaking through the chamber. The monster, hopefully, would get its legs tangled in the thin, unbreakable link."
+    },
+    "places": {
+      "usual": [
         "floor-2",
         "east-tunnel",
         "floor-2-junction"
-      ],
-      "quests": [
-        "main-quest"
       ]
     },
-    "context": [
-      "Imani fed Yolanda a health potion, and the woman sat up, wobbling, holding the side of her head.",
-      "One\\! Imani yanked the door open. The massive, terrifying rage elemental lunged, and as always, teleported away.",
-      "Imani's chain, with heavy weights at either end, dropped away, snaking through the chamber. The monster, hopefully, would get its legs tangled in the thin, unbreakable link.",
-      "That last platform, connected by Imani's magic chain, remained attached to the rest of the cars.",
-      "Imani was the last to go down the ramp. It'd gone quickly. She waved, unsmiling at us. I waved back, and we turned away.",
-      "Imani and Yolanda worked together tending to the wounded after the battle.",
-      "Imani was level 11 now after the boss fight - a long-term survivor capable of significant growth."
-    ],
-    "enhanced": true,
-    "enhanced_at": "2026-01-29T01:37:18.480912+00:00"
+    "status": {
+      "state": "alive"
+    }
   },
   "Skitch": {
-    "description": "Twitchy goblin with a hooded cloak. Nervous, fingers always moving, pockets bulging with scavenged loot. Survivor crawler on Floor 2. Curious but easily spooked.",
-    "attitude": "neutral",
-    "created": "2026-01-29T00:46:21.654292+00:00",
-    "events": [
-      {
-        "event": "Spotted lurking near Floor 2 Junction. Trades information and small items.",
-        "timestamp": "2026-01-29T01:10:00.000000+00:00"
-      },
-      {
-        "event": "Rescued from Cave Stalkers. Arm wounded but bandaged. Terrified and fascinated by Mongo.",
-        "timestamp": "2026-01-29T01:29:40.306302+00:00"
-      },
-      {
-        "event": "Now allied with Tandy's party. Claims to know secret paths through the Warrens.",
-        "timestamp": "2026-01-29T01:39:32.488459+00:00"
-      }
-    ],
-    "tags": {
-      "locations": [
+    "identity": {
+      "name": "Skitch",
+      "background": "Twitchy goblin with a hooded cloak. Nervous, fingers always moving, pockets bulging with scavenged loot. Survivor crawler on Floor 2. Curious but easily spooked."
+    },
+    "places": {
+      "usual": [
         "east-tunnel",
         "floor-2-junction",
         "floor-2"
-      ],
-      "quests": [
-        "main-quest"
       ]
+    },
+    "status": {
+      "state": "alive"
     }
   },
   "Brennan": {
-    "description": "Human man, stocky build, broken leg from stalker attack. Part of Imani's crew. Grateful for rescue but immobile.",
-    "attitude": "friendly",
-    "created": "2026-01-29T01:29:48.067170+00:00",
-    "events": [
-      {
-        "event": "Alliance formed with Tandy's party. Broken leg - requires carrying to travel.",
-        "timestamp": "2026-01-29T01:39:32.981561+00:00"
-      },
-      {
-        "event": "Leg healed by Tandy's potion. Can walk again. Deeply grateful and loyal to the party.",
-        "timestamp": "2026-01-29T18:43:04.954689+00:00"
-      }
-    ],
-    "tags": {
-      "locations": [
+    "identity": {
+      "name": "Brennan",
+      "background": "Human man, stocky build, broken leg from stalker attack. Part of Imani's crew. Grateful for rescue but immobile."
+    },
+    "places": {
+      "usual": [
         "floor-2",
         "east-tunnel"
-      ],
-      "quests": [
-        "main-quest"
       ]
+    },
+    "status": {
+      "state": "alive"
     }
   },
   "Grok": {
-    "description": "Massive orc veteran. Killed Floor 1 boss alone. Respects strength and boldness. Now following Tandy's lead against the Hive Mother.",
-    "attitude": "friendly",
-    "created": "2026-01-29T19:15:20.445316+00:00",
-    "events": [],
-    "tags": {
-      "locations": [],
-      "quests": []
+    "identity": {
+      "name": "Grok",
+      "background": "Massive orc veteran. Killed Floor 1 boss alone. Respects strength and boldness. Now following Tandy's lead against the Hive Mother."
+    },
+    "places": {
+      "usual": []
+    },
+    "status": {
+      "state": "alive"
     }
   },
   "Orc Gate Guard": {
-    "description": "Massive orc warrior with a glowing halberd. Guards the village gates. Hard eyes but not unkind. Warns newcomers about the dangers of the night.",
-    "attitude": "neutral",
-    "created": "2026-01-30T01:33:43.073774+00:00",
-    "events": [],
-    "tags": {
-      "locations": [
+    "identity": {
+      "name": "Orc Gate Guard",
+      "background": "Massive orc warrior with a glowing halberd. Guards the village gates. Hard eyes but not unkind. Warns newcomers about the dangers of the night."
+    },
+    "places": {
+      "usual": [
         "over-city-village"
-      ],
-      "quests": []
+      ]
+    },
+    "status": {
+      "state": "alive"
     }
   },
   "Gryx": {
-    "description": "A scarred goblin bartender at the Desperado Club. Missing one ear. Knows everyone's business and trades information for gold or interesting stories. Speaks in clipped sentences. Has seen a thousand crawlers come and go.",
-    "attitude": "neutral",
-    "created": "2026-01-30T11:06:58.113712+00:00",
-    "events": [
-      {
-        "event": "Met Tandy's party at the Desperado Club. Witnessed Tandy's transformation to Sasquatch. Recommended buying explosives from Pustule.",
-        "timestamp": "2026-01-30T21:20:42.908716+00:00"
-      }
-    ],
-    "tags": {
-      "locations": [
+    "identity": {
+      "name": "Gryx",
+      "background": "A scarred goblin bartender at the Desperado Club. Missing one ear. Knows everyone's business and trades information for gold or interesting stories. Speaks in clipped sentences. Has seen a thousand crawlers come and go."
+    },
+    "places": {
+      "usual": [
         "desperado-club"
-      ],
-      "quests": []
+      ]
+    },
+    "status": {
+      "state": "alive"
     }
   },
   "Pustule": {
-    "description": "Hobgoblin explosives merchant at the Silk Road in the Desperado Club. Level 30. Sells hob-lobbers, dynamite, and bomb-making supplies. Friendly but eccentric - licks her merchandise. Says 'Beware of meteors\\!' as a farewell.",
-    "attitude": "friendly",
-    "created": "2026-01-30T21:20:45.390698+00:00",
-    "events": [],
-    "tags": {
-      "locations": [
+    "identity": {
+      "name": "Pustule",
+      "background": "Hobgoblin explosives merchant at the Silk Road in the Desperado Club. Level 30. Sells hob-lobbers, dynamite, and bomb-making supplies. Friendly but eccentric - licks her merchandise. Says 'Beware of meteors\\!' as a farewell."
+    },
+    "places": {
+      "usual": [
         "desperado-club"
-      ],
-      "quests": []
+      ]
+    },
+    "status": {
+      "state": "alive"
     }
   },
   "Prometheus": {
-    "description": "Ancient Red Dragon freed from Grimaldi's Circus. Scarred, one blind eye, three centuries of captivity. Now loyal to Princess Donut and the party.",
-    "attitude": "friendly",
-    "created": "2026-02-01T23:16:48.448553+00:00",
-    "events": [
-      {
-        "event": "Freed from Grimaldi's Circus. Allied with party. Currently at circus outskirts with the group.",
-        "timestamp": "2026-02-01T23:20:06.375425+00:00"
-      }
-    ],
-    "tags": {
-      "locations": [
+    "identity": {
+      "name": "Prometheus",
+      "background": "Ancient Red Dragon freed from Grimaldi's Circus. Scarred, one blind eye, three centuries of captivity. Now loyal to Princess Donut and the party."
+    },
+    "places": {
+      "usual": [
         "circus-outskirts"
-      ],
-      "quests": [
-        "grimaldi-circus"
       ]
+    },
+    "status": {
+      "state": "alive"
     }
   },
   "Odette": {
-    "description": "Host of the famous Odette Interview Show, broadcast from a production trailer orbiting Earth. A fish-woman in a white mesh spacesuit - half space-age, half old-school diving suit. Professional, charming, with a massive bosom that barely sloshes when she moves (accordion system). She conducts interviews with notable crawlers, revealing stats, discussing embarrassing moments, and driving audience engagement. Her show is one of the few Mordecai recommends. Known for leaning in dramatically and asking probing questions about crawler adventures.",
-    "attitude": "neutral",
-    "created": "2026-02-01T23:30:00.000000+00:00",
-    "events": [],
-    "tags": {
-      "locations": [
-        "production-trailer"
-      ],
-      "quests": []
+    "identity": {
+      "name": "Odette",
+      "background": "Host of the famous Odette Interview Show, broadcast from a production trailer orbiting Earth. A fish-woman in a white mesh spacesuit - half space-age, half old-school diving suit. Professional, charming, with a massive bosom that barely sloshes when she moves (accordion system). She conducts interviews with notable crawlers, revealing stats, discussing embarrassing moments, and driving audience engagement. Her show is one of the few Mordecai recommends. Known for leaning in dramatically and asking probing questions about crawler adventures."
     },
-    "context": [
-      "Good evening, ma'am,' Mordecai said, standing straight. 'Hello, Mordecai,' the fish woman said, her voice amplified through a little speaker on her outfit. 'It's nice to finally meet you face-to-face.'",
-      "Now, let me ask you something,' Odette said. She turned and leaned in. Her massive breasts barely sloshed over, as if she had some sort of accordion system connecting her chest with the boobs. 'So you might not realize this, but we've been watching you two from the beginning.'",
-      "Odette had said after we watched the scene and the audience's uproarious laughter eased. 'So,' Odette had said. 'You are likely unaware of this, but Death Watch Extreme Dungeon Mayhem announced earlier that it was going into hiatus while the show restructured.'",
-      "'You should've picked the Tummy Acher,' Odette said. 'The little round guy with the mohawk. They're very friendly and easy to work with.'",
-      "The show soon ended after that. Like last time, Odette ushered Lexis out of the room so we could talk for a few minutes.",
-      "Mordecai grunted. 'Oh, you should go. Her program is one of the few I would recommend. Not that they'd give you much of a choice.'"
-    ],
-    "interview_show": {
-      "format": "Production trailer orbiting Earth, floating cameras, live audience reactions",
-      "features": [
-        "Leaderboard reveals (views, favorites, levels, money earned)",
-        "Stats displayed over crawler heads (audience gasps)",
-        "Exclusive breaking news (floor openings, achievements)",
-        "Discussion of recent events (quests, embarrassments, deaths)",
-        "Audience reactions (applause, laughing, gasping, 'glurp glurp')"
+    "personality": {
+      "voice": "Good evening, ma'am,' Mordecai said, standing straight. 'Hello, Mordecai,' the fish woman said, her voice amplified through a little speaker on her outfit. 'It's nice to finally meet you face-to-face.' / Now, let me ask you something,' Odette said. She turned and leaned in. Her massive breasts barely sloshed over, as if she had some sort of accordion system connecting her chest with the boobs. 'So you might not realize this, but we've been watching you two from the beginning.' / Odette had said after we watched the scene and the audience's uproarious laughter eased. 'So,' Odette had said. 'You are likely unaware of this, but Death Watch Extreme Dungeon Mayhem announced earlier that it was going into hiatus while the show restructured.'"
+    },
+    "places": {
+      "usual": [
+        "production-trailer"
       ]
+    },
+    "status": {
+      "state": "alive"
     }
   },
   "Remex the Grand": {
-    "description": "A zombified, featherless skyfowl tethered to an overloading soul crystal. Black swirling orb eyes, hazy smoke rising from body, ethereal worm-like wisps where wings should be. Former husband of Miss Quill, a royal granddaughter who built an army of swordsmen. Tragic figure, centuries old, wants to tell his story before the crystal destroys everything.",
-    "attitude": "neutral",
-    "created": "2026-02-05T19:47:27.311253+00:00",
-    "events": [
-      {
-        "event": "Encountered by Tandy's party. Told his story - wife Quill, the swordsmen army, the overloading crystal. Party chose to listen rather than attack. Crystal pulsing, agitated.",
-        "timestamp": "2026-02-05T22:29:03.984537+00:00"
-      },
-      {
-        "event": "Soul crystal contained by Sheol Glass Reaper Case. Energy streamed into Remex, freeing him from centuries of tethered existence. Chains dissolved. Remex transformed - no longer zombified.",
-        "timestamp": "2026-02-05T23:25:24.422470+00:00"
-      },
-      {
-        "event": "Passed away peacefully surrounded by Tandy's party. Tandy placed a hand on his head as he faded. Final words were gratitude. Died free, unchained, after centuries of torment.",
-        "timestamp": "2026-02-05T23:31:59.922398+00:00"
-      }
-    ],
-    "tags": {
-      "locations": [
+    "identity": {
+      "name": "Remex the Grand",
+      "background": "A zombified, featherless skyfowl tethered to an overloading soul crystal. Black swirling orb eyes, hazy smoke rising from body, ethereal worm-like wisps where wings should be. Former husband of Miss Quill, a royal granddaughter who built an army of swordsmen. Tragic figure, centuries old, wants to tell his story before the crystal destroys everything."
+    },
+    "places": {
+      "usual": [
         "Swordsmen Warehouse - Upper Floor"
-      ],
-      "quests": [
-        "The Remex Soul Crystal Explosion"
       ]
+    },
+    "status": {
+      "state": "alive"
     }
   }
 }

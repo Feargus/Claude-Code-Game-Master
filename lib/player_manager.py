@@ -1,150 +1,105 @@
 #!/usr/bin/env python3
-"""
-Player character management module for GM tools
-Handles PC operations: XP, HP, level progression, and character data
+"""The player character's sheet (character.json, in sheet.py's format): show it,
+change its fields, items, credits, counters and conditions, XP and growth, death.
+
+Creation is new_character.py; wounds, armor and cyberware are body.py.
+A campaign has one player character, so the name some commands take is only
+for readability: they always work on the active one.
 """
 
-import sys
 import json
-from typing import Dict, List, Optional, Any
+import sys
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-# Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
+import sheet as sheet_mod
 from entity_manager import EntityManager
 
 
 class PlayerManager(EntityManager):
-    """Manage player character operations. Inherits from EntityManager for common functionality."""
-
+    """The active campaign's player character."""
 
     def __init__(self, world_state_dir: str = None):
         super().__init__(world_state_dir)
-
-        # Base dir the kit is loaded from (self.world_state_dir below is a legacy
-        # alias for the CAMPAIGN dir, so the real base has to be kept separately).
         self._kit_base = world_state_dir
         self._kit = None
-
-        # Additional paths specific to player management
-        self.world_state_dir = self.campaign_dir  # Alias for compatibility
-        self.campaign_file = "campaign-overview.json"
-
-        # Single character file per campaign
         self.character_file = self.campaign_dir / "character.json"
 
-    def _name_to_id(self, name: str) -> str:
-        """Convert character name to file ID"""
-        return name.lower().replace(' ', '-')
+    # ---------- loading ----------
 
     def _load_character(self, name: str = None) -> Optional[Dict]:
-        """Load the active PC from character.json (name is ignored)."""
-        if not self.character_file.exists():
-            return None
-        try:
-            with open(self.character_file, 'r', encoding='utf-8') as f:
-                raw = json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"[ERROR] Failed to load character: {e}")
-            return None
-        return raw
+        """The player's sheet, or None (name is ignored: one PC per campaign)."""
+        return self.json_ops.load_json("character.json") or None
 
     def _save_character(self, name: str, data: Dict) -> bool:
-        """Save character data to file using atomic writes via json_ops"""
         return self.json_ops.save_json("character.json", data)
 
+    def _sheet(self) -> Optional[Dict[str, Any]]:
+        char = self._load_character()
+        if not char:
+            print("[ERROR] No character yet. Create one: gm-player.sh create")
+        return char
+
     def world_kit(self):
-        """The active campaign's World Kit (cached). The single source of truth for
-        vitals and the progression model, so a ruleset-less campaign gets the kit's
-        own defaults instead of a second, disagreeing fallback here."""
         if self._kit is None:
             from world_kit import WorldKit
             self._kit = WorldKit(self._kit_base)
         return self._kit
 
-    def _xp_view(self, char: Dict) -> Dict[str, int]:
-        """{current, next_level} read off the sheet without writing anything."""
-        from growth import xp_for_level, xp_total
-        return {'current': xp_total(char),
-                'next_level': xp_for_level(int(char.get('level', 0) or 0) + 1)}
-    def get_player(self, name: str) -> Optional[Dict]:
-        """Get full player character data"""
-        char = self._load_character(name)
-        if not char:
-            print(f"[ERROR] Character '{name}' not found")
-            return None
-        return char
+    @staticmethod
+    def _refuse(message: str) -> Dict[str, Any]:
+        print(f"[ERROR] {message}")
+        return {'success': False, 'error': message}
 
-    def get_visual_appearance(self, name: str = None) -> Optional[Dict[str, Any]]:
-        """Return the PC's canonical visual_appearance block, or None if no PC."""
-        char = self._load_character(name)
-        if not char:
-            return None
-        import visual_appearance as va_mod
-        return va_mod.normalize(char.get('visual_appearance'))
+    # ---------- showing ----------
 
-    def set_visual_appearance(self, name: str = None, **fields) -> bool:
-        """Merge-update the PC's visual_appearance (only non-empty fields change)."""
-        char = self._load_character(name)
-        if not char:
-            return False
-        import visual_appearance as va_mod
-        char['visual_appearance'] = va_mod.merge(char.get('visual_appearance'), fields)
-        return self._save_character(char.get('name', name), char)
+    def get_player(self, name: str = None) -> Optional[Dict]:
+        return self._sheet()
 
-    def list_players(self) -> List[str]:
-        """List the active PC's ID (single-character campaigns)."""
-        char = self._load_character()
-        if not char:
-            return []
-        return [char.get('name', 'character').lower().replace(' ', '-')]
-
-    def show_player(self, name: str) -> Optional[str]:
-        """Get formatted player summary"""
-        char = self._load_character(name)
-        if not char:
-            print(f"[ERROR] Character '{name}' not found")
-            return None
-
+    def summary_line(self, char: Dict[str, Any]) -> str:
         from body import summary as wound_summary
-        credits = char.get('credits', 0)
-        summary = f"{char.get('name', name)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (Wounds: {wound_summary(char)}, Credits: {credits})"
-        summary += self._vitals_summary(char)
-        status = char.get('status')
-        if status in ('dying', 'dead'):
-            summary += f" | {status.upper()}"
-        conditions = char.get('conditions', [])
-        if conditions:
-            summary += f" | Conditions: {', '.join(conditions)}"
-        return summary
+        from growth import level
+        identity = char.get("identity") or {}
+        who = " ".join(x for x in (identity.get("race"), identity.get("role")) if x)
+        line = (f"{sheet_mod.name(char)}" + (f" - {who}" if who else "")
+                + f" - Level {level(char)} (Wounds: {wound_summary(char)}, "
+                  f"Credits: {sheet_mod.get(char, 'possessions', 'credits', 0)})")
+        line += self._counters_summary(char)
+        if sheet_mod.is_dead(char):
+            line += " | DEAD"
+        if sheet_mod.conditions(char):
+            line += f" | Conditions: {', '.join(sheet_mod.conditions(char))}"
+        return line
 
-    def show_all_players(self) -> List[str]:
-        """Summary line for the active PC (single-character campaigns)."""
-        char = self._load_character()
+    def show_player(self, name: str = None) -> Optional[str]:
+        char = self._sheet()
         if not char:
-            return []
-        from body import summary as wound_summary
-        credits = char.get('credits', 0)
-        return [
-            f"{char.get('name', 'Unknown')} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (Wounds: {wound_summary(char)}, Credits: {credits})"
-            + self._vitals_summary(char)
-        ]
+            return None
+        return "\n".join([self.summary_line(char), *sheet_mod.describe(char)])
 
-    def set_current_player(self, name: str) -> bool:
-        """Set character as current active PC in campaign."""
-        char = self._load_character(name)
+    # ---------- fields ----------
+
+    def set_fields(self, values: Dict[str, str]) -> Dict[str, Any]:
+        """Text fields of the sheet (identity, look, personality), by flag name."""
+        char = self._sheet()
         if not char:
-            print(f"[ERROR] Character '{name}' not found")
-            return False
+            return {'success': False}
+        if not values:
+            return self._refuse("Give at least one field, e.g. --style \"...\" "
+                                f"(fields: {', '.join(sheet_mod.TEXT_FIELDS)}).")
+        try:
+            changed = sheet_mod.set_fields(char, values)
+            sheet_mod.check(char, "player")
+        except sheet_mod.SheetError as error:
+            return self._refuse(str(error))
+        if not self._save_character(None, char):
+            return {'success': False}
+        print(f"[SUCCESS] {sheet_mod.name(char)}: set {', '.join(changed)}")
+        return {'success': True, 'changed': changed}
 
-        # Get actual name from character file
-        actual_name = char.get('name', name)
-
-        if self.json_ops.update_json(self.campaign_file, {'current_character': actual_name}):
-            print(f"[SUCCESS] Set current character to: {actual_name}")
-            return True
-        return False
+    # ---------- XP and growth ----------
 
     def award_xp(self, name: str, amount: int, source: str = "correction",
                  reason: str = "") -> Dict[str, Any]:
@@ -152,170 +107,224 @@ class PlayerManager(EntityManager):
         the level rises when it is applied (`grow`) at a quiet moment. Prints
         XP_GAIN, and GROWTH_DUE for the GM when a level has become due."""
         from growth import add_xp
-        char = self._load_character(name)
+        char = self._sheet()
         if not char:
-            print(f"[ERROR] Character '{name}' not found")
             return {'success': False}
         result = add_xp(self.campaign_dir, char, int(amount), source, reason)
-        if not self._save_character(char.get('name', name), char):
+        if not self._save_character(None, char):
             return {'success': False}
-        char_name = char.get('name', name)
+        char_name = sheet_mod.name(char)
         print(f"XP_GAIN {char_name} gained {amount} XP ({result['total']} in all)")
         if result['due']:
             print(f"GROWTH_DUE {result['due']} level(s): at the next quiet moment (rest, sleep, "
                   f"time alone), see gm-growth. Don't tell the player.")
         return {'success': True, 'name': char_name, 'xp_gained': int(amount),
                 'current_xp': result['total'], 'growth_due': result['due']}
+
     def award(self, name: str, size: str, reason: str) -> Dict[str, Any]:
-        """XP for an achievement the GM judges (an obstacle surmounted, a goal
-        reached, a problem solved, power gained): small, medium or large, i.e.
-        20, 50 or 100 % of the current level's span (growth.py)."""
+        """XP for an achievement the GM judges: small, medium or large, i.e. 20, 50
+        or 100 % of the current level's span (growth.py)."""
         from growth import achievement_xp
-        char = self._load_character(name)
+        char = self._sheet()
         if not char:
-            print(f"[ERROR] Character '{name}' not found")
-            return {'success': False, 'error': f"Character '{name}' not found"}
+            return {'success': False, 'error': 'no character'}
         if not str(reason or '').strip():
-            print("[ERROR] Give --reason: what was achieved (it goes into xp.log).")
-            return {'success': False, 'error': 'reason required'}
+            return self._refuse("Give --reason: what was achieved (it goes into xp.log).")
         try:
             amount = achievement_xp(char, size)
         except ValueError as error:
-            print(f"[ERROR] {error}")
-            return {'success': False, 'error': str(error)}
-        return self.award_xp(char.get('name', name), amount, f"achievement ({size})", reason)
-    def get_xp_status(self, name: str) -> Optional[Dict[str, Any]]:
-        """XP, level, and how many levels of growth are due."""
-        from growth import growth_due, xp_for_level, xp_total
-        char = self._load_character(name)
+            return self._refuse(str(error))
+        return self.award_xp(None, amount, f"achievement ({size})", reason)
+
+    def get_xp_status(self, name: str = None) -> Optional[Dict[str, Any]]:
+        from growth import growth_due, level, next_level_xp, xp_total
+        char = self._sheet()
         if not char:
-            print(f"[ERROR] Character '{name}' not found")
             return None
-        level = int(char.get('level', 0) or 0)
-        current = xp_total(char)
-        due = growth_due(char)
-        char_name = char.get('name', name)
-        print(f"{char_name} - Level {level}")
-        print(f"XP: {current}/{xp_for_level(level + 1)}")
+        now, current, due = level(char), xp_total(char), growth_due(char)
+        print(f"{sheet_mod.name(char)} - Level {now}")
+        print(f"XP: {current}/{next_level_xp(char)}")
         print(f"GROWTH_DUE {due} level(s)" if due else
-              f"Next level in: {xp_for_level(level + 1) - current} XP")
-        return {'name': char_name, 'level': level, 'current_xp': current,
-                'next_level_xp': xp_for_level(level + 1), 'growth_due': due}
+              f"Next level in: {next_level_xp(char) - current} XP")
+        return {'name': sheet_mod.name(char), 'level': now, 'current_xp': current,
+                'next_level_xp': next_level_xp(char), 'growth_due': due}
+
+    def _skill_key(self, skills: Dict[str, int], name: str) -> str:
+        key = next((k for k in skills if k.lower() == name.lower()), None)
+        if key is None:
+            from stat_block import canon_skills
+            key = next((k for k in canon_skills() if k.lower() == name.lower()), name)
+        return key
+
+    def raise_stat(self, kind: str, target: str) -> Dict[str, Any]:
+        """A correction: one attribute one die size up, or one skill +1 (a skill
+        not on the sheet starts at 1). Growth goes through `grow`."""
+        from sheet import ATTRIBUTES
+        char = self._sheet()
+        if not char:
+            return {'success': False, 'error': 'no character'}
+        stats = sheet_mod.section(char, "stats")
+        if kind == 'attribute':
+            key = target.upper()
+            if key not in ATTRIBUTES:
+                return self._refuse(f"Unknown attribute '{target}'. Use one of: {', '.join(ATTRIBUTES)}")
+            table = stats.setdefault('attributes', {})
+            old = table.get(key)
+            if not isinstance(old, int):
+                return self._refuse(f"{sheet_mod.name(char)} has no die for {key} yet")
+            table[key] = new = old + 1
+        else:
+            if target.strip().lower() == 'default':
+                return self._refuse("'default' is not a skill")
+            table = stats.setdefault('skills', {})
+            key = self._skill_key(table, target.strip())
+            old = table.get(key)
+            table[key] = new = 1 if old is None else old + 1
+        if not self._save_character(None, char):
+            return {'success': False}
+        shown = f"d{old} -> d{new}" if kind == 'attribute' else (
+            f"{old} -> {new}" if old is not None else f"new, {new}")
+        print(f"RAISED {sheet_mod.name(char)} {key}: {shown}")
+        return {'success': True, 'kind': kind, 'name': key, 'previous': old, 'current': new}
+
+    def set_perk(self, perk: str, function: str) -> Dict[str, Any]:
+        """A correction: rewrite a perk, or add one by hand."""
+        char = self._sheet()
+        if not char:
+            return {'success': False, 'error': 'no character'}
+        perks = sheet_mod.section(char, "stats").setdefault('perks', {})
+        key = next((k for k in perks if k.lower() == perk.lower()), perk)
+        replaced = key in perks
+        perks[key] = function
+        if not self._save_character(None, char):
+            return {'success': False}
+        print(f"PERK {sheet_mod.name(char)} {'updated' if replaced else 'gained'} {key}: {function}")
+        return {'success': True, 'perk': key, 'function': function, 'replaced': replaced}
+
+    def grow(self, attribute: str, skills: List[str], perk: str, effect: str) -> Dict[str, Any]:
+        """Apply one level of growth that XP has made due: exactly one attribute
+        one die size up, two different skills +1 (a new one starts at 1) and one
+        new perk. Raises the level by one and logs it."""
+        from growth import growth_due, level, log_growth
+        from sheet import ATTRIBUTES
+        char = self._sheet()
+        if not char:
+            return {'success': False, 'error': 'no character'}
+        if growth_due(char) < 1:
+            return self._refuse("No growth is due: the XP hasn't reached the next level.")
+        stats = sheet_mod.section(char, "stats")
+        attributes = stats.setdefault('attributes', {})
+        key = str(attribute or '').strip().upper()
+        if key not in ATTRIBUTES:
+            return self._refuse(f"Unknown attribute '{attribute}'. Use one of: {', '.join(ATTRIBUTES)}.")
+        if not isinstance(attributes.get(key), int):
+            return self._refuse(f"{sheet_mod.name(char)} has no die for {key} yet.")
+        table = stats.setdefault('skills', {})
+        names = [str(x).strip() for x in skills or []]
+        if len(names) != 2 or names[0].lower() == names[1].lower():
+            return self._refuse("Growth raises exactly two different skills (--skill twice).")
+        if any(n.lower() == 'default' for n in names):
+            return self._refuse("'default' is not a skill.")
+        perks = stats.setdefault('perks', {})
+        if not str(perk or '').strip() or not str(effect or '').strip():
+            return self._refuse('Growth brings one new perk: --perk "<name>" "<what it does>".')
+        if any(k.lower() == perk.strip().lower() for k in perks):
+            return self._refuse(f"{sheet_mod.name(char)} has a perk '{perk}' already; "
+                                f"name the new one differently.")
+
+        attributes[key] += 1
+        changes = [f"{key} d{attributes[key] - 1} -> d{attributes[key]}"]
+        for n in names:
+            skill = self._skill_key(table, n)
+            old = table.get(skill)
+            table[skill] = 1 if old is None or old < 1 else old + 1
+            changes.append(f"{skill} {old if old is not None else 'new'} -> {table[skill]}")
+        perks[perk.strip()] = effect.strip()
+        changes.append(f"perk {perk.strip()}: {effect.strip()}")
+        sheet_mod.section(char, "progress")["level"] = level(char) + 1
+        if not self._save_character(None, char):
+            return {'success': False}
+        log_growth(self.campaign_dir, char, "; ".join(changes))
+        print(f"GROWN {sheet_mod.name(char)} to level {level(char)}: " + "; ".join(changes))
+        if growth_due(char):
+            print(f"GROWTH_DUE {growth_due(char)} more level(s): run grow again with new choices.")
+        return {'success': True, 'level': level(char), 'changes': changes}
+
+    # ---------- the campaign's own counters (stats.counters) ----------
+
     def _kit_vitals(self) -> List[str]:
-        """The campaign's own counters the World Kit declares (Drift, corruption,
-        water, ...); none under the standard rules. Asked of the kit rather than
-        re-read off ruleset.json, so every ruleset form it accepts counts."""
-        return self.world_kit().vitals()
+        return [v for v in self.world_kit().vitals() if v != 'hp']
 
     @staticmethod
-    def _read_vital(char: Dict, vital: str):
-        """(current, max) for a vital. max is None for plain-number tracks, and an
-        undeclared-but-untracked vital reads as 0 rather than erroring."""
-        raw = char.get(vital)
+    def _read_counter(char: Dict, name: str):
+        raw = (sheet_mod.get(char, "stats", "counters") or {}).get(name)
         if isinstance(raw, dict):
             return raw.get('current', 0), raw.get('max')
         if isinstance(raw, (int, float)):
             return raw, None
         return 0, None
 
-    def _vitals_summary(self, char: Dict) -> str:
-        """' | Vigor: 3/5 | Corruption: 2' for the kit vitals present on the sheet."""
+    def _counters_summary(self, char: Dict) -> str:
         parts = []
-        for vital in self._kit_vitals():
-            if vital == 'hp' or vital not in char:
-                continue
-            current, maximum = self._read_vital(char, vital)
-            value = f"{current}/{maximum}" if maximum is not None else f"{current}"
-            parts.append(f"{vital.capitalize()}: {value}")
+        for name in (sheet_mod.get(char, "stats", "counters") or {}):
+            current, maximum = self._read_counter(char, name)
+            parts.append(f"{name.capitalize()}: " + (f"{current}/{maximum}" if maximum is not None
+                                                     else f"{current}"))
         return f" | {' | '.join(parts)}" if parts else ""
 
     def modify_vital(self, name: str, vital: str, amount: Optional[int] = None,
                      set_value: Optional[int] = None) -> Dict[str, Any]:
-        """Read or change any vital the active World Kit declares.
-
-        `hp` is refused: wounds replaced it (`gm-body.sh`). Other tracks keep whatever
-        shape the sheet stores:
-        a {current, max} dict stays a dict (and clamps to max), a plain number
-        stays a plain number. A vital the kit never declared is refused.
-        """
+        """Read or change one of the campaign's counters (its ruleset's vitals)."""
         if vital == 'hp':
-            print("[ERROR] HP isn't used. Wounds go through gm-body.sh.")
-            return {'success': False, 'error': 'hp is not used; use gm-body.sh'}
-
+            return self._refuse("HP isn't used. Wounds go through gm-body.sh.")
         declared = self._kit_vitals()
         if vital not in declared:
-            print(f"[ERROR] '{vital}' is not a vital in this world. "
-                  f"Declared: {', '.join(declared) if declared else '(none)'}")
-            return {'success': False, 'error': f"unknown vital: {vital}"}
-
-        char = self._load_character(name)
+            return self._refuse(f"'{vital}' is not a counter in this world. "
+                                f"Declared: {', '.join(declared) if declared else '(none)'}")
+        char = self._sheet()
         if not char:
-            print(f"[ERROR] Character '{name}' not found")
             return {'success': False}
-
-        char_name = char.get('name', name)
-        current, maximum = self._read_vital(char, vital)
-
+        char_name = sheet_mod.name(char)
+        current, maximum = self._read_counter(char, vital)
         if amount is None and set_value is None:
-            value = f"{current}/{maximum}" if maximum is not None else f"{current}"
-            print(f"{char_name} - {vital}: {value}")
+            print(f"{char_name} - {vital}: " + (f"{current}/{maximum}" if maximum is not None
+                                               else f"{current}"))
             return {'success': True, 'name': char_name, 'vital': vital,
                     'current': current, 'max': maximum}
-
-        new_value = set_value if set_value is not None else current + amount
-        new_value = max(0, new_value)
+        new_value = max(0, set_value if set_value is not None else current + amount)
         if maximum is not None:
             new_value = min(new_value, maximum)
-
-        if isinstance(char.get(vital), dict):
-            char[vital]['current'] = new_value
+        counters = sheet_mod.section(char, "stats").setdefault("counters", {})
+        if isinstance(counters.get(vital), dict):
+            counters[vital]['current'] = new_value
         else:
-            char[vital] = new_value
-
-        if not self._save_character(char_name, char):
+            counters[vital] = new_value
+        if not self._save_character(None, char):
             return {'success': False}
-
-        shown = f"{new_value}/{maximum}" if maximum is not None else f"{new_value}"
         print(f"VITAL {char_name} {vital}: {current} -> {new_value}")
-        print(f"{vital.capitalize()}: {shown}")
+        print(f"{vital.capitalize()}: " + (f"{new_value}/{maximum}" if maximum is not None
+                                          else f"{new_value}"))
+        return {'success': True, 'name': char_name, 'vital': vital, 'previous': current,
+                'current': new_value, 'max': maximum}
 
-        return {
-            'success': True,
-            'name': char_name,
-            'vital': vital,
-            'previous': current,
-            'current': new_value,
-            'max': maximum,
-        }
+    # ---------- death ----------
 
-    def kill_character(self, name: str, cause: Optional[str] = None) -> Dict[str, Any]:
-        """Mark a character as dead: status 'dead', stamp died_at + cause (and HP 0 if the sheet has HP).
-
-        Persists the death state. The Death Protocol (CLAUDE.md) handles the
-        hand-off; this just records the fact on the sheet.
-        """
-        char = self._load_character(name)
+    def kill_character(self, name: str = None, cause: Optional[str] = None) -> Dict[str, Any]:
+        """Mark the player character dead, record it as a fact, fire on_death player."""
+        char = self._sheet()
         if not char:
-            print(f"[ERROR] Character '{name}' not found")
             return {'success': False}
-
-        char_name = char.get('name', name)
-        hp = char.get('hp')
-        if isinstance(hp, dict):  # kits that still use HP
-            hp['current'] = 0
-        char['status'] = 'dead'
-        char['died_at'] = self.get_timestamp()
+        char_name = sheet_mod.name(char)
+        status = sheet_mod.section(char, "status")
+        status['state'] = 'dead'
+        status['died_at'] = self.get_timestamp()
         if cause:
-            char['cause'] = cause
-
-        if not self._save_character(name, char):
+            status['cause'] = cause
+        if not self._save_character(None, char):
             return {'success': False}
-
         print(f"DEATH {char_name} has died.")
         if cause:
             print(f"Cause: {cause}")
-        if isinstance(hp, dict):
-            print(f"HP: 0/{hp.get('max', 0)}")
         print("STATUS: DEAD")
 
         from note_manager import NoteManager
@@ -323,378 +332,139 @@ class PlayerManager(EntityManager):
         fact_id = NoteManager(self.base_dir).add_fact(
             DEATH_FACT_CATEGORY,
             f"{char_name} (the player character) died" + (f": {cause}" if cause else "."))
-
         from consequence_manager import ConsequenceManager
         fired = ConsequenceManager(self.base_dir).fire_event(
             'on_death', 'player', f"{char_name} (the player character) died"
             + (f" ({cause})" if cause else ""))
+        return {'success': True, 'name': char_name, 'status': 'dead',
+                'died_at': status['died_at'], 'cause': cause, 'fact': fact_id, 'fired': fired}
 
-        return {
-            'success': True,
-            'name': char_name,
-            'status': 'dead',
-            'died_at': char['died_at'],
-            'cause': cause,
-            'fact': fact_id,
-            'fired': fired,
-        }
+    # ---------- credits and items ----------
 
-    def modify_credits(self, name: str, amount: Optional[int] = None) -> Dict[str, Any]:
-        """
-        Modify character credits or show current credits if no amount given
-        Returns dict with credits status info
-        """
-        char = self._load_character(name)
+    def modify_credits(self, name: str = None, amount: Optional[int] = None) -> Dict[str, Any]:
+        char = self._sheet()
         if not char:
-            print(f"[ERROR] Character '{name}' not found")
             return {'success': False}
-
-        char_name = char.get('name', name)
-
-        # Get current credits, handling migration from equipment string
-        current_credits = char.get('credits', 0)
-        if not isinstance(current_credits, (int, float)):
-            current_credits = 0
-
-        # If no amount specified, just show current credits
+        char_name = sheet_mod.name(char)
+        possessions = sheet_mod.section(char, "possessions")
+        current = int(possessions.get('credits', 0) or 0)
         if amount is None:
-            print(f"{char_name}: {current_credits} credits")
-            return {
-                'success': True,
-                'name': char_name,
-                'credits': current_credits
-            }
-
-        # Apply change
-        new_credits = current_credits + amount
-        if new_credits < 0:
-            print(f"[WARNING] {char_name} only has {current_credits} credits (tried to spend {abs(amount)}). Set to 0.")
-            new_credits = 0
-        char['credits'] = new_credits
-
-        # Save character
-        if not self._save_character(name, char):
+            print(f"{char_name}: {current} credits")
+            return {'success': True, 'name': char_name, 'credits': current}
+        new = current + amount
+        if new < 0:
+            print(f"[WARNING] {char_name} only has {current} credits (tried to spend "
+                  f"{abs(amount)}). Set to 0.")
+            new = 0
+        possessions['credits'] = new
+        if not self._save_character(None, char):
             return {'success': False}
-
-        # Report change
         if amount > 0:
             print(f"CREDITS_GAINED {char_name} gained {amount} credits!")
         elif amount < 0:
             print(f"CREDITS_SPENT {char_name} spent {abs(amount)} credits!")
-        else:
-            print(f"{char_name} credits unchanged.")
+        print(f"Credits: {new}")
+        return {'success': True, 'name': char_name, 'credits_change': amount,
+                'current_credits': new}
 
-        print(f"Credits: {new_credits}")
-
-        return {
-            'success': True,
-            'name': char_name,
-            'credits_change': amount,
-            'current_credits': new_credits
-        }
-
-    def modify_inventory(self, name: str, action: str, item: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Add, remove, or list inventory items
-        action: 'add', 'remove', or 'list'
-        Returns dict with inventory status
-        """
-        char = self._load_character(name)
+    def item(self, action: str, place: Optional[str] = None, name: Optional[str] = None,
+             concealed: bool = False, note: str = "") -> Dict[str, Any]:
+        """add (to gear or inventory), remove (by name, either place), move (to the
+        other place), list."""
+        char = self._sheet()
         if not char:
-            print(f"[ERROR] Character '{name}' not found")
             return {'success': False}
-
-        char_name = char.get('name', name)
-        equipment = char.get('equipment', [])
-
-        if action == 'list':
-            print(f"{char_name}'s Inventory:")
-            if equipment:
-                for i, eq in enumerate(equipment, 1):
-                    print(f"  {i}. {eq}")
+        char_name = sheet_mod.name(char)
+        try:
+            if action == 'list':
+                for where in sheet_mod.ITEM_PLACES:
+                    listed = sheet_mod.items(char, where)
+                    print(f"{where}: " + ("; ".join(sheet_mod._item_text(i) for i in listed)
+                                          or "(nothing)"))
+                return {'success': True, 'items': char.get('items', {})}
+            if action == 'add':
+                entry = sheet_mod.add_item(char, place, name, concealed, note)
+                message = f"ITEM_ADDED {char_name} {place}: {sheet_mod._item_text(entry)}"
+            elif action == 'remove':
+                entry = sheet_mod.remove_item(char, name)
+                message = f"ITEM_REMOVED {char_name} {entry['place']}: {entry['name']}"
+            elif action == 'move':
+                entry = sheet_mod.remove_item(char, name)
+                target = place or ('inventory' if entry['place'] == 'gear' else 'gear')
+                moved = {k: v for k, v in entry.items() if k != 'place'}
+                if concealed:
+                    moved['concealed'] = True
+                sheet_mod.add_item(char, target, moved['name'], moved.get('concealed', False),
+                                   moved.get('note', ''))
+                message = f"ITEM_MOVED {char_name} {entry['name']}: {entry['place']} -> {target}"
             else:
-                print("  (empty)")
-            return {
-                'success': True,
-                'name': char_name,
-                'equipment': equipment
-            }
-
-        if not item:
-            print(f"[ERROR] Item name required for {action}")
+                return self._refuse(f"Unknown item action '{action}': add, remove, move or list.")
+        except sheet_mod.SheetError as error:
+            return self._refuse(str(error))
+        if not self._save_character(None, char):
             return {'success': False}
-
-        if action == 'add':
-            equipment.append(item)
-            char['equipment'] = equipment
-            if not self._save_character(name, char):
-                return {'success': False}
-            print(f"ITEM_ADDED {char_name} gained: {item}")
-            return {
-                'success': True,
-                'name': char_name,
-                'action': 'add',
-                'item': item,
-                'equipment': equipment
-            }
-
-        elif action == 'remove':
-            # Find item (case-insensitive partial match)
-            found_idx = None
-            for idx, eq in enumerate(equipment):
-                if item.lower() in eq.lower():
-                    found_idx = idx
-                    break
-
-            if found_idx is None:
-                print(f"[ERROR] Item '{item}' not found in inventory")
-                return {'success': False, 'error': 'item_not_found'}
-
-            removed_item = equipment.pop(found_idx)
-            char['equipment'] = equipment
-            if not self._save_character(name, char):
-                return {'success': False}
-            print(f"ITEM_REMOVED {char_name} lost: {removed_item}")
-            return {
-                'success': True,
-                'name': char_name,
-                'action': 'remove',
-                'item': removed_item,
-                'equipment': equipment
-            }
-
-        else:
-            print(f"[ERROR] Unknown inventory action: {action}")
-            return {'success': False}
+        print(message)
+        return {'success': True, 'items': char.get('items', {})}
 
     def apply_loot(self, name: str, items: List[str], credits: int = 0) -> Dict[str, Any]:
-        """
-        Apply multiple loot items and credits in a single operation.
-        Loads character once, adds all items + credits, saves once.
-        Returns dict with loot summary.
-        """
-        char = self._load_character(name)
+        """Loot into the inventory, plus credits, in one save."""
+        char = self._sheet()
         if not char:
-            print(f"[ERROR] Character '{name}' not found")
             return {'success': False}
-
-        char_name = char.get('name', name)
-        equipment = char.get('equipment', [])
-        current_credits = char.get('credits', 0)
-        if not isinstance(current_credits, (int, float)):
-            current_credits = 0
-
-        # Add items
-        for item in items:
-            equipment.append(item)
-        char['equipment'] = equipment
-
-        # Add credits
+        possessions = sheet_mod.section(char, "possessions")
+        before = int(possessions.get('credits', 0) or 0)
+        for entry in items:
+            sheet_mod.add_item(char, 'inventory', entry)
         if credits:
-            char['credits'] = current_credits + credits
-
-        # Save once
-        if not self._save_character(name, char):
+            possessions['credits'] = before + credits
+        if not self._save_character(None, char):
             return {'success': False}
-
-        # Print loot summary
-        print(f"LOOT {char_name} received:")
+        print(f"LOOT {sheet_mod.name(char)} received (into the inventory):")
         if credits > 0:
             print(f"  + {credits} credits")
-        for item in items:
-            print(f"  + {item}")
-        print(f"Credits: {current_credits} -> {char.get('credits', current_credits)}")
+        for entry in items:
+            print(f"  + {entry}")
+        print(f"Credits: {before} -> {possessions.get('credits', before)}")
+        return {'success': True, 'items_added': items, 'credits_added': credits,
+                'total_credits': possessions.get('credits', before)}
 
-        return {
-            'success': True,
-            'name': char_name,
-            'items_added': items,
-            'credits_added': credits,
-            'total_credits': char.get('credits', current_credits),
-            'equipment': char['equipment']
-        }
+    # ---------- conditions ----------
 
-    def raise_stat(self, kind: str, target: str) -> Dict[str, Any]:
-        """Level-up: one attribute +1 (one die size up), or one skill +1.
-
-        A skill the sheet doesn't list yet starts at 1. Works on the active PC.
-        """
-        from skill_contest import ATTRIBUTES
-        char = self._load_character()
-        if not char:
-            print("[ERROR] No character yet")
-            return {'success': False, 'error': 'no character'}
-
-        if kind == 'attribute':
-            key = target.upper()
-            if key not in ATTRIBUTES:
-                print(f"[ERROR] Unknown attribute '{target}'. Use one of: {', '.join(ATTRIBUTES)}")
-                return {'success': False, 'error': f'unknown attribute: {target}'}
-            table = char.setdefault('stats', {})
-            old = table.get(key)
-            if not isinstance(old, int):
-                print(f"[ERROR] {char.get('name')} has no die for {key} yet")
-                return {'success': False, 'error': f'no die for {key}'}
-            table[key] = old + 1
-            new = table[key]
-        else:
-            if target.strip().lower() == 'default':
-                print("[ERROR] 'default' is not a skill")
-                return {'success': False, 'error': "'default' is not a skill"}
-            table = char.setdefault('skills', {})
-            key = next((k for k in table if k.lower() == target.lower()), target)
-            old = table.get(key)
-            new = 1 if old is None else old + 1
-            table[key] = new
-
-        if not self._save_character(char.get('name'), char):
-            return {'success': False}
-        shown = f"d{old} -> d{new}" if kind == 'attribute' else (f"{old} -> {new}" if old is not None else f"new, {new}")
-        print(f"RAISED {char.get('name')} {key}: {shown}")
-        return {'success': True, 'kind': kind, 'name': key, 'previous': old, 'current': new}
-
-    def set_perk(self, perk: str, function: str) -> Dict[str, Any]:
-        """Rewrite a perk, or add one by hand (a correction; growth adds perks
-        through `grow`)."""
-        char = self._load_character()
-        if not char:
-            print("[ERROR] No character yet")
-            return {'success': False, 'error': 'no character'}
-        perks = char.setdefault('perks', {})
-        key = next((k for k in perks if k.lower() == perk.lower()), perk)
-        replaced = key in perks
-        perks[key] = function
-        if not self._save_character(char.get('name'), char):
-            return {'success': False}
-        print(f"PERK {char.get('name')} {'updated' if replaced else 'gained'} {key}: {function}")
-        return {'success': True, 'perk': key, 'function': function, 'replaced': replaced}
-
-    def grow(self, attribute: str, skills: List[str], perk: str, effect: str) -> Dict[str, Any]:
-        """Apply one level of growth that XP has made due: exactly one attribute
-        one die size up, two different skills +1 (a new one starts at 1) and one
-        new perk. Raises the level by one and logs it. Refuses when no growth is
-        due or the choice isn't exactly that."""
-        from growth import growth_due, log_growth, xp_for_level
-        from skill_contest import ATTRIBUTES
-        char = self._load_character()
-        if not char:
-            return self._refuse("No character yet")
-        if growth_due(char) < 1:
-            return self._refuse("No growth is due: the XP hasn't reached the next level.")
-        key = str(attribute or '').strip().upper()
-        stats = char.setdefault('stats', {})
-        if key not in ATTRIBUTES:
-            return self._refuse(f"Unknown attribute '{attribute}'. Use one of: {', '.join(ATTRIBUTES)}.")
-        if not isinstance(stats.get(key), int):
-            return self._refuse(f"{char.get('name')} has no die for {key} yet.")
-        table = char.setdefault('skills', {})
-        names = [str(x).strip() for x in skills or []]
-        if len(names) != 2 or names[0].lower() == names[1].lower():
-            return self._refuse("Growth raises exactly two different skills (--skill twice).")
-        if any(n.lower() == 'default' for n in names):
-            return self._refuse("'default' is not a skill.")
-        perks = char.setdefault('perks', {})
-        if not str(perk or '').strip() or not str(effect or '').strip():
-            return self._refuse('Growth brings one new perk: --perk "<name>" "<what it does>".')
-        if any(k.lower() == perk.strip().lower() for k in perks):
-            return self._refuse(f"{char.get('name')} has a perk '{perk}' already; name the new one differently.")
-
-        stats[key] += 1
-        changes = [f"{key} d{stats[key] - 1} -> d{stats[key]}"]
-        for n in names:
-            skill = next((k for k in table if k.lower() == n.lower()), None)
-            if skill is None:
-                from stat_block import canon_skills
-                skill = next((k for k in canon_skills() if k.lower() == n.lower()), n)
-            old = table.get(skill)
-            table[skill] = 1 if old is None or old < 1 else old + 1
-            changes.append(f"{skill} {old if old is not None else 'new'} -> {table[skill]}")
-        perks[perk.strip()] = effect.strip()
-        changes.append(f"perk {perk.strip()}: {effect.strip()}")
-        char['level'] = int(char.get('level', 0) or 0) + 1
-        char.setdefault('xp', {})
-        if isinstance(char['xp'], dict):
-            char['xp']['next_level'] = xp_for_level(char['level'] + 1)
-        if not self._save_character(char.get('name'), char):
-            return {'success': False}
-        log_growth(self.campaign_dir, char, "; ".join(changes))
-        print(f"GROWN {char.get('name')} to level {char['level']}: " + "; ".join(changes))
-        if growth_due(char):
-            print(f"GROWTH_DUE {growth_due(char)} more level(s): run grow again with new choices.")
-        return {'success': True, 'level': char['level'], 'changes': changes}
-
-    @staticmethod
-    def _refuse(message: str) -> Dict[str, Any]:
-        print(f"[ERROR] {message}")
-        return {'success': False, 'error': message}
     def modify_condition(self, name: str, action: str, condition: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Add, remove, or list conditions on a character
-        action: 'add', 'remove', or 'list'
-        """
-        char = self._load_character(name)
+        char = self._sheet()
         if not char:
-            print(f"[ERROR] Character '{name}' not found")
             return {'success': False}
-
-        char_name = char.get('name', name)
-
-        # Auto-init conditions list if missing
-        if 'conditions' not in char:
-            char['conditions'] = []
-
-        conditions = char['conditions']
-
+        char_name = sheet_mod.name(char)
+        conditions = sheet_mod.section(char, "status").setdefault("conditions", [])
         if action == 'list':
             print(f"{char_name}'s Conditions:")
-            if conditions:
-                for c in conditions:
-                    print(f"  - {c}")
-            else:
-                print("  (none)")
+            for c in conditions or ["(none)"]:
+                print(f"  - {c}")
             return {'success': True, 'name': char_name, 'conditions': conditions}
-
         if not condition:
-            print(f"[ERROR] Condition name required for {action}")
-            return {'success': False}
-
+            return self._refuse(f"Condition name required for {action}")
         if action == 'add':
-            # Case-insensitive dedup
-            if condition.lower() not in [c.lower() for c in conditions]:
-                conditions.append(condition)
-                char['conditions'] = conditions
-                if not self._save_character(name, char):
-                    return {'success': False}
-                print(f"CONDITION_ADDED {char_name}: {condition}")
-            else:
+            if condition.lower() in [c.lower() for c in conditions]:
                 print(f"{char_name} already has condition: {condition}")
-            return {'success': True, 'name': char_name, 'conditions': conditions}
-
+                return {'success': True, 'name': char_name, 'conditions': conditions}
+            conditions.append(condition)
+            message = f"CONDITION_ADDED {char_name}: {condition}"
         elif action == 'remove':
-            # Case-insensitive match
-            found_idx = None
-            for idx, c in enumerate(conditions):
-                if c.lower() == condition.lower():
-                    found_idx = idx
-                    break
-            if found_idx is None:
-                print(f"[ERROR] Condition '{condition}' not found on {char_name}")
-                return {'success': False}
-            removed = conditions.pop(found_idx)
-            char['conditions'] = conditions
-            if not self._save_character(name, char):
-                return {'success': False}
-            print(f"CONDITION_REMOVED {char_name}: {removed}")
-            return {'success': True, 'name': char_name, 'conditions': conditions}
-
+            found = next((c for c in conditions if c.lower() == condition.lower()), None)
+            if found is None:
+                return self._refuse(f"Condition '{condition}' not found on {char_name}")
+            conditions.remove(found)
+            message = f"CONDITION_REMOVED {char_name}: {found}"
         else:
-            print(f"[ERROR] Unknown condition action: {action}")
+            return self._refuse(f"Unknown condition action: {action}")
+        if not self._save_character(None, char):
             return {'success': False}
+        print(message)
+        return {'success': True, 'name': char_name, 'conditions': conditions}
 
 
 def _parse_vital_change(args):
-    """(amount, set_value) for `vital <name> [<+/-N> | set N]`. Both None = read only.
-    Raises ValueError on a malformed amount."""
+    """(amount, set_value) for `vital <name> [<+/-N> | set N]`. Both None = read only."""
     if args.amount is None:
         return None, None
     if args.amount.lower() == 'set':
@@ -704,303 +474,172 @@ def _parse_vital_change(args):
     return int(args.amount.lstrip('+')), None
 
 
+def _int(text: str, what: str) -> int:
+    try:
+        return int(str(text).replace('+', ''))
+    except ValueError:
+        print(f"[ERROR] Invalid {what}: {text}")
+        sys.exit(1)
+
+
 def main():
-    """CLI interface for player management"""
     import argparse
-
-    parser = argparse.ArgumentParser(description='Player character management')
-    subparsers = parser.add_subparsers(dest='action', help='Action to perform')
-
-    # Show player(s)
-    show_parser = subparsers.add_parser('show', help='Show player(s)')
-    show_parser.add_argument('name', nargs='?', help='Character name (optional, shows all if omitted)')
-
-    # List players
-    subparsers.add_parser('list', help='List all player IDs')
-
-    # Set current player
-    set_parser = subparsers.add_parser('set', help='Set current active character')
-    set_parser.add_argument('name', help='Character name')
-
-    # Award XP
-    xp_parser = subparsers.add_parser('xp', help='Correct XP by hand (logged)')
-    xp_parser.add_argument('name', help='Character name')
-    xp_parser.add_argument('amount', help='XP amount (can include + prefix)')
-    xp_parser.add_argument('--reason', default='', help='why (goes into xp.log)')
-
-    # Achievement XP: a share of the current level (gm-growth)
-    award_parser = subparsers.add_parser('award', help='XP for an achievement: small, medium or large')
-    award_parser.add_argument('name', nargs='?', help='Character name (optional; defaults to active PC)')
-    award_parser.add_argument('--size', required=True, choices=['small', 'medium', 'large'],
-                              help='20, 50 or 100 %% of the current level')
-    award_parser.add_argument('--reason', required=True, help='what was achieved (goes into xp.log)')
-
-    # Growth: one level, at a quiet moment
-    grow_parser = subparsers.add_parser('grow', help='Apply one level of growth that is due')
-    grow_parser.add_argument('--attribute', required=True, help='one attribute, one die size up')
-    grow_parser.add_argument('--skill', action='append', default=[], help='a skill +1; exactly twice')
-    grow_parser.add_argument('--perk', nargs=2, required=True, metavar=('NAME', 'EFFECT'),
-                             help='one new perk: its name and what it does')
-
-    # Check level status
-    level_parser = subparsers.add_parser('level-check', help='Check XP and level status')
-    level_parser.add_argument('name', help='Character name')
-
-    # Modify any vital the active World Kit declares (vigor, corruption, ...)
-    vital_parser = subparsers.add_parser('vital', help="Read or change a kit vital on the active PC")
-    vital_parser.add_argument('vital', help='Vital name as declared in ruleset.json stat_schema.vitals')
-    vital_parser.add_argument('amount', nargs='?', help='+N / -N to adjust, or the literal "set"')
-    vital_parser.add_argument('value', nargs='?', help='New value (only with "set")')
-
-    # Kill character (death state)
-    kill_parser = subparsers.add_parser('kill', help='Mark character dead (status + HP 0 + cause)')
-    kill_parser.add_argument('name', help='Character name')
-    kill_parser.add_argument('--cause', help='How they died')
-
-    # Get full character JSON
-    get_parser = subparsers.add_parser('get', help='Get full character JSON')
-    get_parser.add_argument('name', help='Character name')
-
-    # Visual appearance (canonical look for consistent image generation)
-    import visual_appearance as va_mod
-    appearance_parser = subparsers.add_parser('appearance', help='Get the PC visual_appearance')
-    appearance_parser.add_argument('name', nargs='?', help='Character name (optional)')
-    setappear_parser = subparsers.add_parser('set-appearance', help='Set PC visual_appearance fields')
-    setappear_parser.add_argument('name', nargs='?', help='Character name (optional)')
-    for _f in va_mod.VISUAL_FIELDS:
-        setappear_parser.add_argument(f'--{_f}')
-
-    # Modify credits
-    credits_parser = subparsers.add_parser('credits', help='Modify or show character credits')
-    credits_parser.add_argument('name', help='Character name')
-    credits_parser.add_argument('amount', nargs='?', help='Credits change (+50 to gain, -10 to spend). Omit to show current.')
-
-    # Manage inventory
-    inv_parser = subparsers.add_parser('inventory', help='Manage character inventory')
-    inv_parser.add_argument('name', nargs='?', help='Character name (optional; defaults to active PC)')
-    inv_parser.add_argument('inv_action', nargs='?', help='Action: add/remove/list (default: list)')
-    inv_parser.add_argument('item', nargs='?', help='Item name (required for add/remove)')
-
-    # Batch loot
-    loot_parser = subparsers.add_parser('loot', help='Apply multiple items + credits at once')
-    loot_parser.add_argument('name', help='Character name')
-    loot_parser.add_argument('--credits', type=int, default=0, help='Credits to add')
-    loot_parser.add_argument('--items', nargs='+', default=[], help='Items to add')
-
-    # Manage conditions
-    cond_parser = subparsers.add_parser('condition', help='Manage character conditions')
-    cond_parser.add_argument('name', help='Character name')
-    cond_parser.add_argument('cond_action', choices=['add', 'remove', 'list'], help='Action to perform')
-    cond_parser.add_argument('condition', nargs='?', help='Condition name (required for add/remove)')
-
-    # Level-up: raise one attribute or one skill by 1
-    raise_parser = subparsers.add_parser('raise', help='Raise an attribute or a skill by 1')
-    raise_parser.add_argument('kind', choices=['attribute', 'skill'])
-    raise_parser.add_argument('target', help='Attribute (DFT) or skill name ("Long guns")')
-
-    # Perks: name and what it does
-    perk_parser = subparsers.add_parser('perk', help='Add or rewrite a perk')
-    perk_parser.add_argument('perk', help='Perk name')
-    perk_parser.add_argument('function', help='What it does')
-
     from cli_output import wants_json, strip_json_flag, emit, emit_error
+
+    parser = argparse.ArgumentParser(description='The player character')
+    sub = parser.add_subparsers(dest='action')
+
+    p = sub.add_parser('show', help='The whole sheet, readable')
+    p.add_argument('name', nargs='?')
+    p = sub.add_parser('get', help='The sheet as JSON')
+    p.add_argument('name', nargs='?')
+    p = sub.add_parser('set', help='Text fields: identity, look, personality')
+    p.add_argument('name', nargs='?')
+    sheet_mod.add_field_flags(p)
+
+    p = sub.add_parser('xp', help='Correct XP by hand (logged)')
+    p.add_argument('name')
+    p.add_argument('amount')
+    p.add_argument('--reason', default='')
+    p = sub.add_parser('award', help='XP for an achievement: small, medium or large')
+    p.add_argument('name', nargs='?')
+    p.add_argument('--size', required=True, choices=['small', 'medium', 'large'])
+    p.add_argument('--reason', required=True)
+    p = sub.add_parser('grow', help='Apply one level of growth that is due')
+    p.add_argument('--attribute', required=True)
+    p.add_argument('--skill', action='append', default=[])
+    p.add_argument('--perk', nargs=2, required=True, metavar=('NAME', 'EFFECT'))
+    p = sub.add_parser('level-check', help='XP and level')
+    p.add_argument('name', nargs='?')
+    p = sub.add_parser('raise', help='Correction: an attribute or a skill +1')
+    p.add_argument('kind', choices=['attribute', 'skill'])
+    p.add_argument('target')
+    p = sub.add_parser('perk', help='Correction: add or rewrite a perk')
+    p.add_argument('perk')
+    p.add_argument('function')
+
+    p = sub.add_parser('vital', help="Read or change one of the campaign's counters")
+    p.add_argument('vital')
+    p.add_argument('amount', nargs='?')
+    p.add_argument('value', nargs='?')
+    p = sub.add_parser('kill', help='The player character dies')
+    p.add_argument('name', nargs='?')
+    p.add_argument('--cause')
+
+    p = sub.add_parser('credits', help='Show or change credits')
+    p.add_argument('name', nargs='?')
+    p.add_argument('amount', nargs='?')
+    p = sub.add_parser('item', help='Items: add, remove, move, list')
+    p.add_argument('item_action', choices=['add', 'remove', 'move', 'list'])
+    p.add_argument('words', nargs='*', help='add: gear|inventory "<item>"; remove/move: "<item>"')
+    p.add_argument('--concealed', action='store_true')
+    p.add_argument('--note', default='')
+    p.add_argument('--to', choices=list(sheet_mod.ITEM_PLACES), help='move: where to')
+    p = sub.add_parser('loot', help='Items into the inventory, plus credits')
+    p.add_argument('name', nargs='?')
+    p.add_argument('--credits', type=int, default=0)
+    p.add_argument('--items', nargs='+', default=[])
+    p = sub.add_parser('condition', help='Conditions: add, remove, list')
+    p.add_argument('name')
+    p.add_argument('cond_action', choices=['add', 'remove', 'list'])
+    p.add_argument('condition', nargs='?')
+
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
-
     if not args.action:
         parser.print_help()
         sys.exit(1)
-
     manager = PlayerManager()
 
-    if json_mode and args.action in ('get', 'show'):
-        # `show --json` emits the full active (or named) character record.
-        char = manager.get_player(args.name) if args.action == 'get' else manager._load_character(args.name)
-        if char:
+    if args.action in ('get', 'show') and json_mode or args.action == 'get':
+        char = manager._load_character()
+        if not char:
+            sys.exit(emit_error("no character yet", json_mode=True) if json_mode else 1)
+        if json_mode:
             emit(char, json_mode=True)
         else:
-            sys.exit(emit_error("player not found", json_mode=True))
+            print(json.dumps(char, indent=2, ensure_ascii=False))
         return
-    if json_mode and args.action == 'vital':
-        import contextlib
-        import io
-        try:
-            amount, set_value = _parse_vital_change(args)
-        except ValueError:
-            sys.exit(emit_error(f"invalid vital amount: {args.amount} {args.value or ''}".strip(),
-                                json_mode=True))
-        with contextlib.redirect_stdout(io.StringIO()):
-            result = manager.modify_vital(None, args.vital, amount, set_value)
-        if result.get('success'):
-            emit(result, json_mode=True)
-        else:
-            sys.exit(emit_error(result.get('error', 'vital update failed'), json_mode=True))
-        return
-    if json_mode and args.action == 'kill':
+    if json_mode and args.action in ('vital', 'kill', 'award'):
         import contextlib
         import io
         with contextlib.redirect_stdout(io.StringIO()):
-            result = manager.kill_character(args.name, getattr(args, 'cause', None))
+            if args.action == 'vital':
+                try:
+                    amount, set_value = _parse_vital_change(args)
+                except ValueError:
+                    sys.exit(emit_error(f"invalid amount: {args.amount}", json_mode=True))
+                result = manager.modify_vital(None, args.vital, amount, set_value)
+            elif args.action == 'kill':
+                result = manager.kill_character(None, args.cause)
+            else:
+                result = manager.award(None, args.size, args.reason)
         if result.get('success'):
             emit(result, json_mode=True)
         else:
             sys.exit(emit_error(result.get('error', f'{args.action} failed'), json_mode=True))
         return
 
-    if json_mode and args.action == 'award':
-        import contextlib
-        import io
-        with contextlib.redirect_stdout(io.StringIO()):
-            result = manager.award(args.name, args.size, args.reason)
-        if result.get('success'):
-            emit(result, json_mode=True)
-        else:
-            sys.exit(emit_error(result.get('error', 'award failed'), json_mode=True))
-        return
-
     if args.action == 'show':
-        if args.name:
-            result = manager.show_player(args.name)
-            if result:
-                print(result)
-            else:
-                sys.exit(1)
-        else:
-            summaries = manager.show_all_players()
-            for s in summaries:
-                print(s)
-
-    elif args.action == 'list':
-        players = manager.list_players()
-        for p in players:
-            print(p)
-
-    elif args.action == 'set':
-        if not manager.set_current_player(args.name):
+        text = manager.show_player()
+        if not text:
             sys.exit(1)
-
+        print(text)
+        return
+    if args.action == 'set':
+        result = manager.set_fields(sheet_mod.fields_from_args(args))
     elif args.action == 'xp':
-        # Parse amount (handle +150 format)
-        amount_str = args.amount.replace('+', '')
-        try:
-            amount = int(amount_str)
-        except ValueError:
-            print(f"[ERROR] Invalid XP amount: {args.amount}")
-            sys.exit(1)
-
-        result = manager.award_xp(args.name, amount, "correction", args.reason)
-        if not result.get('success'):
-            sys.exit(1)
-
+        result = manager.award_xp(None, _int(args.amount, "XP amount"), "correction", args.reason)
     elif args.action == 'award':
-        result = manager.award(args.name, args.size, args.reason)
-        if not result.get('success'):
-            sys.exit(1)
-
+        result = manager.award(None, args.size, args.reason)
     elif args.action == 'grow':
-        if not manager.grow(args.attribute, args.skill, args.perk[0], args.perk[1]).get('success'):
-            sys.exit(1)
-
+        result = manager.grow(args.attribute, args.skill, args.perk[0], args.perk[1])
     elif args.action == 'level-check':
-        if not manager.get_xp_status(args.name):
-            sys.exit(1)
-
+        result = {'success': bool(manager.get_xp_status())}
+    elif args.action == 'raise':
+        result = manager.raise_stat(args.kind, args.target)
+    elif args.action == 'perk':
+        result = manager.set_perk(args.perk, args.function)
     elif args.action == 'vital':
         try:
             amount, set_value = _parse_vital_change(args)
         except ValueError:
-            print(f"[ERROR] Invalid vital amount: {args.amount} {args.value or ''}".rstrip())
+            print(f"[ERROR] Invalid amount: {args.amount} {args.value or ''}".rstrip())
             sys.exit(1)
         result = manager.modify_vital(None, args.vital, amount, set_value)
-        if not result.get('success'):
-            sys.exit(1)
-
     elif args.action == 'kill':
-        result = manager.kill_character(args.name, getattr(args, 'cause', None))
-        if not result.get('success'):
-            sys.exit(1)
-        from consequence_manager import print_fired
-        print_fired(result.get('fired'))
-
-    elif args.action == 'get':
-        char = manager.get_player(args.name)
-        if char:
-            print(json.dumps(char, indent=2))
-        else:
-            sys.exit(1)
-
-    elif args.action == 'appearance':
-        va = manager.get_visual_appearance(args.name)
-        if va is None:
-            sys.exit(emit_error("no active character", json_mode=json_mode) if json_mode else 1)
-        if json_mode:
-            emit(va, json_mode=True)
-        else:
-            char = manager._load_character(args.name)
-            line = va_mod.format_line((char or {}).get('name', 'The hero'), va)
-            print(line if line else "(no visual_appearance set yet)")
-
-    elif args.action == 'set-appearance':
-        fields = {f: getattr(args, f) for f in va_mod.VISUAL_FIELDS}
-        if not manager.set_visual_appearance(args.name, **fields):
-            sys.exit(1)
-        print("[SUCCESS] Updated visual_appearance for the active character")
-
+        result = manager.kill_character(None, args.cause)
+        if result.get('success'):
+            from consequence_manager import print_fired
+            print_fired(result.get('fired'))
     elif args.action == 'credits':
-        # Parse amount if provided
-        amount = None
-        if args.amount:
-            amount_str = args.amount
-            try:
-                if amount_str.startswith('+'):
-                    amount = int(amount_str[1:])
-                else:
-                    amount = int(amount_str)
-            except ValueError:
-                print(f"[ERROR] Invalid credits amount: {args.amount}")
+        amount = None if args.amount is None else _int(args.amount, "credits amount")
+        result = manager.modify_credits(None, amount)
+    elif args.action == 'item':
+        words = list(args.words)
+        place = None
+        if args.item_action == 'add':
+            if len(words) != 2 or words[0] not in sheet_mod.ITEM_PLACES:
+                print('[ERROR] item add gear|inventory "<item>" [--concealed] [--note "..."]')
                 sys.exit(1)
-
-        result = manager.modify_credits(args.name, amount)
-        if not result.get('success'):
+            place, words = words[0], words[1:]
+        elif args.item_action in ('remove', 'move') and len(words) != 1:
+            print(f'[ERROR] item {args.item_action} "<item>"')
             sys.exit(1)
-
-    elif args.action == 'inventory':
-        # Allow `inventory [name] [action] [item]` with name optional. When the
-        # first positional is an action keyword, it lands in `name`; shift it so
-        # it's treated as the action against the active PC.
-        actions = ('add', 'remove', 'list')
-        name, inv_action, item = args.name, args.inv_action, args.item
-        if name in actions:
-            name, inv_action, item = None, name, inv_action
-        if inv_action is None:
-            inv_action = 'list'
-        if inv_action not in actions:
-            print(f"[ERROR] Unknown inventory action: {inv_action} (choose from add, remove, list)")
-            sys.exit(1)
-        result = manager.modify_inventory(name, inv_action, item)
-        if not result.get('success'):
-            sys.exit(1)
-
+        result = manager.item(args.item_action, place or args.to, words[0] if words else None,
+                              args.concealed, args.note)
     elif args.action == 'loot':
         if not args.items and args.credits == 0:
             print("[ERROR] Provide --items and/or --credits")
             sys.exit(1)
-        result = manager.apply_loot(args.name, args.items, args.credits)
-        if not result.get('success'):
-            sys.exit(1)
-
+        result = manager.apply_loot(None, args.items, args.credits)
     elif args.action == 'condition':
-        result = manager.modify_condition(args.name, args.cond_action, args.condition)
-        if not result.get('success'):
-            sys.exit(1)
-
-    elif args.action == 'raise':
-        if not manager.raise_stat(args.kind, args.target).get('success'):
-            sys.exit(1)
-
-    elif args.action == 'perk':
-        if not manager.set_perk(args.perk, args.function).get('success'):
-            sys.exit(1)
+        result = manager.modify_condition(None, args.cond_action, args.condition)
+    else:
+        parser.print_help()
+        sys.exit(1)
+    if not result.get('success'):
+        sys.exit(1)
 
 
 if __name__ == "__main__":

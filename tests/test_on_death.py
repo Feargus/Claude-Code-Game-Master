@@ -55,7 +55,7 @@ def test_killing_an_npc_fires_its_consequence_once(dcc_world):
     assert npc in result["fired"][0]["match_reason"]
 
     data = _load(dcc_world, "npcs.json")[npc]
-    assert data["status"] == "dead" and data["cause"] == "shot in the alley"
+    assert data["status"]["state"] == "dead" and data["status"]["cause"] == "shot in the alley"
     # Firing is not resolving: both still active, the fired one logged.
     assert {c["id"] for c in _active(dcc_world)} >= {cid, other}
     prov = _load(dcc_world, "consequences.json")["provenance"]
@@ -68,10 +68,10 @@ def test_killing_an_npc_fires_its_consequence_once(dcc_world):
 def test_the_dead_are_not_present(dcc_world):
     npc = _an_npc(dcc_world)
     npcs = _load(dcc_world, "npcs.json")
-    npcs[npc].pop("is_party_member", None)
+    npcs[npc].get("status", {}).pop("party_member", None)
     scene = {"location": "Alley", "present": [npc]}
     assert npc in npcs_present(npcs, "Alley", scene)
-    npcs[npc]["status"] = "dead"
+    npcs[npc].setdefault("status", {})["state"] = "dead"
     assert npc not in npcs_present(npcs, "Alley", scene)
 
 
@@ -123,7 +123,7 @@ def test_player_death_fires_on_death_player(dcc_world):
     cid = cm.add_consequence("The crew splits the loot", "when he dies",
                              trigger_type="on_death", match="player")
     pm = PlayerManager(dcc_world)
-    name = _load(dcc_world, "character.json")["name"]
+    name = _load(dcc_world, "character.json")["identity"]["name"]
     result = pm.kill_character(name, cause="fell")
     assert result["success"]
     assert [c["id"] for c in result["fired"]] == [cid]
@@ -144,6 +144,6 @@ def test_npc_kill_records_the_death_as_a_fact(dcc_world):
 
 def test_player_kill_records_the_death_as_a_fact(dcc_world):
     from lib.player_manager import PlayerManager
-    name = _load(dcc_world, "character.json")["name"]
+    name = _load(dcc_world, "character.json")["identity"]["name"]
     result = PlayerManager(dcc_world).kill_character(name)
     assert _fact(dcc_world, result["fact"])["fact"] == f"{name} (the player character) died."

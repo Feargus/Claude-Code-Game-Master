@@ -143,6 +143,6 @@ def test_a_named_npc_outside_the_scene_is_pointed_out(dcc_world, capsys):
 
 
 def test_the_dead_are_not_pointed_out(dcc_world, capsys):
-    _edit_npcs(dcc_world, lambda npcs: npcs["Mordecai"].update(status="dead"))
+    _edit_npcs(dcc_world, lambda npcs: npcs["Mordecai"].update(status={"state": "dead"}))
     NoteManager(dcc_world).add_fact("lore", "Mordecai was buried")
     assert "Named but not in the scene" not in capsys.readouterr().out

@@ -1,6 +1,6 @@
-"""Tests for `gm-player.sh create`: the sheet with its defaults, and the wiring
-(overwrite guard, --replace archiving, the overview, canon NPCs, the opening).
-"""
+"""Tests for `gm-player.sh create`: the sheet (sheet.py's sections) with its
+defaults, and the wiring (overwrite guard, --replace archiving, the overview,
+canon NPCs)."""
 
 import json
 import os
@@ -11,7 +11,6 @@ import pytest
 
 from lib.campaign_manager import CampaignManager
 from lib.new_character import CharacterCreator
-from lib.player_manager import PlayerManager
 
 ROOT = Path(__file__).resolve().parent.parent
 ATTRIBUTES = ("STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP")
@@ -20,7 +19,6 @@ COMMON = ("Brawling", "Throwing", "Evasion", "Guard", "Endurance", "Composure", 
           "Deception")
 RULESET = {
     "stat_schema": {"vitals": ["drift"]},
-    "progression": {"model": "xp-levels"},
     "systems": [{"primitive": "named_track", "name": "Drift", "config": {"max": 10}}],
 }
 
@@ -32,6 +30,10 @@ def campaign(isolated_world_state):
     (isolated_world_state / "active-campaign.txt").write_text("test")
     (directory / "ruleset.json").write_text(json.dumps(RULESET))
     return directory
+
+
+def _named(name, **sections):
+    return dict(sections, identity=dict(sections.get("identity") or {}, name=name))
 
 
 def _create(*args, data=None):
@@ -57,79 +59,97 @@ def _sheet(campaign):
 # --- The sheet ---
 
 def test_a_name_alone_gets_every_default(campaign):
-    sheet = _ok(_create(data={"name": "Mara"}))
+    sheet = _ok(_create(data=_named("Mara")))
     assert sheet == _sheet(campaign)
-    assert sheet["level"] == 0 and sheet["xp"] == {"current": 0, "next_level": 100}
-    assert sheet["stats"] == {a: 12 for a in ATTRIBUTES}
-    assert sheet["luck"] == {"current": 7, "max": 7} and sheet["credits"] == 20
-    assert sheet["skills"] == {name: 0 for name in COMMON}
-    assert sheet["traits"] == {} and sheet["perks"] == {} and sheet["features"] == []
-    assert set(sheet["body"]) == {"head", "chest", "groin", "left_arm", "right_arm",
-                                  "left_leg", "right_leg"}
-    for gone in ("hp", "ac", "bonds", "flaws", "ideals", "saves"):
-        assert gone not in sheet
+    assert set(sheet) == {"identity", "stats", "body", "items", "possessions", "progress", "status"}
+    assert sheet["progress"] == {"level": 0, "xp": 0, "practice": {}}
+    assert sheet["stats"]["attributes"] == {a: 12 for a in ATTRIBUTES}
+    assert sheet["stats"]["luck"] == {"current": 7, "max": 7}
+    assert sheet["possessions"] == {"credits": 20}
+    assert sheet["stats"]["skills"] == {name: 0 for name in COMMON}
+    assert sheet["stats"]["traits"] == {} and sheet["stats"]["perks"] == {}
+    assert set(sheet["body"]["zones"]) == {"head", "chest", "groin", "left_arm", "right_arm",
+                                           "left_leg", "right_leg"}
+    assert sheet["status"] == {"state": "alive", "conditions": []}
+    assert sheet["items"] == {"gear": [], "inventory": []}
 
 
 def test_the_campaigns_counters_come_from_its_ruleset(campaign):
-    assert _ok(_create(data={"name": "Mara"}))["drift"] == {"current": 0, "max": 10}
+    assert _ok(_create(data=_named("Mara")))["stats"]["counters"] == {"drift": {"current": 0, "max": 10}}
 
 
 def test_a_counter_without_a_track_is_a_plain_number(campaign):
     (campaign / "ruleset.json").write_text(json.dumps(dict(RULESET, stat_schema={"vitals": ["heat"]})))
-    sheet = _ok(_create(data={"name": "Mara", "heat": 2}))
-    assert sheet["heat"] == 2 and "drift" not in sheet
+    sheet = _ok(_create(data=_named("Mara", stats={"counters": {"heat": 2}})))
+    assert sheet["stats"]["counters"] == {"heat": 2}
 
 
 def test_given_values_are_kept_whatever_they_are(campaign):
-    sheet = _ok(_create(data={
-        "name": "Mara", "race": "AI", "class": "anything at all",
-        "attributes": {"agi": 18, "LOG": 6}, "skills": {"Piloting": 5}, "luck": 1,
-        "traits": {"Vat-grown": "+2 Endurance, -2 Composure"}, "level": 2}))
-    assert sheet["stats"]["AGI"] == 18 and sheet["stats"]["LOG"] == 6
-    assert sheet["skills"] == dict({n: 0 for n in COMMON}, Piloting=5) and sheet["luck"] == {"current": 1, "max": 1}
-    assert sheet["traits"] == {"Vat-grown": "+2 Endurance, -2 Composure"}
-    assert sheet["xp"]["next_level"] == 900  # level 3 needs 100 × 3² XP
+    sheet = _ok(_create(data=_named(
+        "Mara", identity={"race": "AI", "role": "anything at all"},
+        look={"physique": "tall", "style": "chrome and denim", "presence": "fills a room"},
+        personality={"big_five": "o1 c-2 e3 a-1 n2", "voice": "clipped"},
+        stats={"attributes": {"agi": 18, "LOG": 6}, "skills": {"Piloting": 5}, "luck": 1,
+               "traits": {"Vat-grown": "+2 Endurance, -2 Composure"}},
+        progress={"level": 2})))
+    assert sheet["identity"] == {"name": "Mara", "race": "AI", "role": "anything at all"}
+    assert sheet["look"]["style"] == "chrome and denim"
+    assert sheet["personality"]["big_five"] == "O1 C-2 E3 A-1 N2"
+    assert sheet["stats"]["attributes"]["AGI"] == 18 and sheet["stats"]["attributes"]["LOG"] == 6
+    assert sheet["stats"]["skills"] == dict({n: 0 for n in COMMON}, Piloting=5)
+    assert sheet["stats"]["luck"] == {"current": 1, "max": 1}
+    assert sheet["progress"]["level"] == 2
 
 
 def test_common_skills_start_at_zero_unless_raised_or_left_out(campaign):
     """The user's rule (2026-11-11): everyday skills are on every sheet, at 0 or more;
     the rest stays off it (untrained, −3). No negative value ever lands on the sheet."""
-    sheet = _ok(_create(data={"name": "Mara", "skills": {"brawling": 4, "long guns": 2},
-                              "untrained": ["deception"]}))
-    skills = sheet["skills"]
+    sheet = _ok(_create(data=dict(_named("Mara", stats={"skills": {"brawling": 4, "long guns": 2}}),
+                                  untrained=["deception"])))
+    skills = sheet["stats"]["skills"]
     assert skills["Brawling"] == 4 and skills["Long guns"] == 2   # canon spelling
     assert skills["Guard"] == 0 and "Deception" not in skills and "Handguns" not in skills
     assert min(skills.values()) >= 0
+    assert "untrained" not in sheet
 
 
-def test_armor_and_cyberware_land_on_the_body(campaign):
-    sheet = _ok(_create(data={
-        "name": "Mara",
-        "armor": [{"name": "Long coat", "zones": {"chest": 1, "left_arm": 1}},
-                  {"name": "Vest", "zones": {"chest": 2}}],
-        "cyberware": [{"name": "Cybereye", "zone": "head", "effect": "zoom"}]}))
-    assert [a["name"] for a in sheet["armor"]] == ["Long coat", "Vest"]   # outermost first
-    assert sheet["armor"][1]["zones"]["chest"] == {"boxes": 2, "damage": 0}
-    assert sheet["cyberware"][0]["boxes"] == 1
+def test_armor_cyberware_and_items(campaign):
+    sheet = _ok(_create(data=_named(
+        "Mara",
+        body={"armor": [{"name": "Long coat", "zones": {"chest": 1, "left_arm": 1}},
+                        {"name": "Vest", "zones": {"chest": 2}}],
+              "cyberware": [{"name": "Cybereye", "zone": "head", "effect": "zoom"}]},
+        items={"gear": ["pistol", {"name": "holdout", "concealed": True}],
+               "inventory": ["lockpicks"]})))
+    armor = sheet["body"]["armor"]
+    assert [a["name"] for a in armor] == ["Long coat", "Vest"]   # outermost first
+    assert armor[1]["zones"]["chest"] == {"boxes": 2, "damage": 0}
+    assert sheet["body"]["cyberware"][0]["boxes"] == 1
+    assert sheet["items"]["gear"] == [{"name": "pistol"}, {"name": "holdout", "concealed": True}]
+    assert sheet["items"]["inventory"] == [{"name": "lockpicks"}]
 
 
 def test_left_out_attributes_are_named_in_the_human_output(campaign):
     result = subprocess.run(["bash", str(ROOT / "tools" / "gm-player.sh"), "create",
-                             json.dumps({"name": "Mara", "attributes": {"AGI": 14}})],
+                             json.dumps(_named("Mara", stats={"attributes": {"AGI": 14}}))],
                             capture_output=True, text=True, env=os.environ)
     assert "Mara enters the world" in result.stdout
     assert "default d12: STR, DFT" in result.stdout
 
 
 @pytest.mark.parametrize("data, message", [
-    ({}, "name"),
-    ({"name": "Mara", "attributes": {"DEX": 12}}, "Unknown attribute"),
-    ({"name": "Mara", "attributes": {"AGI": 1}}, "die size"),
-    ({"name": "Mara", "cyberware": [{"name": "Tail", "zone": "tail"}]}, "Unknown zone"),
-    ({"name": "Mara", "skills": {"default": 2}}, "not a skill"),
-    ({"name": "Mara", "skills": {"Handguns": -1}}, "Leave an untrained skill off the sheet"),
-    ({"name": "Mara", "untrained": ["Handguns"]}, "not a common skill"),
-    ({"name": "Mara", "skills": {"Brawling": 1}, "untrained": ["brawling"]}, "both"),
+    ({}, "identity.name"),
+    ({"name": "Mara"}, "identity.name"),   # the old flat format
+    (_named("Mara", stats={"attributes": {"DEX": 12}}), "Unknown attribute"),
+    (_named("Mara", stats={"attributes": {"AGI": 1}}), "die size"),
+    (_named("Mara", body={"cyberware": [{"name": "Tail", "zone": "tail"}]}), "Unknown zone"),
+    (_named("Mara", stats={"skills": {"default": 2}}), "not a skill"),
+    (_named("Mara", stats={"skills": {"Handguns": -1}}), "Leave an untrained skill off the sheet"),
+    (dict(_named("Mara"), untrained=["Handguns"]), "not a common skill"),
+    (dict(_named("Mara", stats={"skills": {"Brawling": 1}}), untrained=["brawling"]), "both"),
+    (_named("Mara", personality={"big_five": "ENTJ"}), "Big Five"),
+    (_named("Mara", look={"hair": "red"}), "no field 'hair'"),
+    (_named("Mara", secret={"x": 1}), "Unknown section"),
 ])
 def test_refusals_leave_no_sheet(campaign, data, message):
     assert message in _error(_create(data=data))
@@ -139,38 +159,42 @@ def test_refusals_leave_no_sheet(campaign, data, message):
 # --- The wiring ---
 
 def test_an_existing_character_is_not_overwritten(campaign):
-    _ok(_create(data={"name": "Mara"}))
-    assert "already plays" in _error(_create(data={"name": "Vex"}))
-    assert _sheet(campaign)["name"] == "Mara"
+    _ok(_create(data=_named("Mara")))
+    assert "already plays" in _error(_create(data=_named("Vex")))
+    assert _sheet(campaign)["identity"]["name"] == "Mara"
 
 
 def test_replace_archives_the_old_character(campaign):
-    _ok(_create(data={"name": "Mara"}))
-    _ok(_create("--replace", data={"name": "Vex"}))
-    assert _sheet(campaign)["name"] == "Vex"
-    assert json.loads((campaign / "fallen" / "mara-mara.json").read_text())["name"] == "Mara"
+    _ok(_create(data=_named("Mara")))
+    _ok(_create("--replace", data=_named("Vex")))
+    assert _sheet(campaign)["identity"]["name"] == "Vex"
+    assert json.loads((campaign / "fallen" / "mara.json").read_text())["identity"]["name"] == "Mara"
+    npcs = json.loads((campaign / "npcs.json").read_text())
+    assert npcs["Mara"]["status"]["former_player_character"] is True   # an NPC now
 
 
 def test_the_overview_records_the_character(campaign):
-    _ok(_create(data={"name": "Mara"}))
+    _ok(_create(data=_named("Mara")))
     overview = json.loads((campaign / "campaign-overview.json").read_text())
     assert overview["current_character"] == "Mara"
 
 
-def test_canon_resolves_the_npc_and_marks_it_as_the_player(dcc_world):
+def test_canon_takes_the_npcs_sheet_and_leaves_npcs_json(dcc_world):
     env = {**os.environ, "GM_WORLD_STATE_BASE": str(dcc_world)}
+    camp = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
+    before = json.loads((camp / "npcs.json").read_text())["Mordecai"]
     result = subprocess.run(["bash", str(ROOT / "tools" / "gm-player.sh"), "create",
-                             json.dumps({"name": "whatever", "class": "game guide"}),
+                             json.dumps({"identity": {"role": "game guide"}}),
                              "--canon", "mordecai", "--replace", "--json"],
                             capture_output=True, text=True, env=env)
-    assert _ok(result)["name"] == "Mordecai"
-    npc = json.loads((Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "npcs.json")
-                     .read_text())["Mordecai"]
-    assert npc["is_player_character"] is True and npc["became_pc"] is True
+    sheet = _ok(result)
+    assert sheet["identity"]["name"] == "Mordecai" and sheet["identity"]["role"] == "game guide"
+    assert sheet.get("look") == before.get("look")                    # carried over
+    assert "Mordecai" not in json.loads((camp / "npcs.json").read_text())
 
 
 def test_canon_unknown_npc_is_refused(campaign):
-    assert "Nobody" in _error(_create("--canon", "Nobody", data={"name": "Nobody"}))
+    assert "Nobody" in _error(_create("--canon", "Nobody", data=_named("Nobody")))
 
 
 def test_creating_a_character_moves_nothing(isolated_world_state):
@@ -182,8 +206,7 @@ def test_creating_a_character_moves_nothing(isolated_world_state):
     ov = json.loads((cdir / "campaign-overview.json").read_text())
     ov["player_position"] = {"current_location": "The Tigress"}
     (cdir / "campaign-overview.json").write_text(json.dumps(ov), encoding="utf-8")
-    assert CharacterCreator().create({"name": "Conan", "background": "a pirate"})["success"]
-    assert PlayerManager().set_current_player("Conan")
+    assert CharacterCreator().create(_named("Conan", identity={"background": "a pirate"}))["success"]
     ov = json.loads((cdir / "campaign-overview.json").read_text())
     assert ov["player_position"] == {"current_location": "The Tigress"}
     assert "opening_hook" not in ov

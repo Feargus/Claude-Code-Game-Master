@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from entity_manager import EntityManager, npcs_present, npcs_usually_at
+from entity_manager import EntityManager, is_party_member, npcs_present, npcs_usually_at
 from note_manager import fact_text
 from schemas import PLOT_TYPE_SORT
 from world_kit import WorldKit
@@ -200,16 +200,10 @@ class SessionManager(EntityManager):
         plots = self.json_ops.load_json("plots.json") or {}
         clocks = self.json_ops.load_json("threat-clocks.json") or {}
         consequences = self.json_ops.load_json("consequences.json") or {}
-        try:
-            from npc_manager import NPCManager
-            stale = NPCManager().stale_npcs()
-        except Exception:
-            stale = {}
-        return self._health_summary(self._get_session_number(), plots, clocks,
-                                    consequences, stale_npcs=stale)
+        return self._health_summary(self._get_session_number(), plots, clocks, consequences)
 
     @staticmethod
-    def _health_summary(session_num, plots, clocks, consequences, stale_npcs=None) -> list:
+    def _health_summary(session_num, plots, clocks, consequences) -> list:
         """Pure staleness computation over already-loaded state (unit-testable)."""
         closed = {'completed', 'resolved', 'failed', 'done', 'abandoned', 'dropped'}
 
@@ -255,10 +249,6 @@ class SessionManager(EntityManager):
             lines.append(f"Clocks: {len(due)} at a due beat ({', '.join(due)}) — resolve or advance the fiction")
         if pending:
             lines.append(f"Pending consequences: {pending} waiting on a trigger")
-        if stale_npcs:
-            worst = max(stale_npcs.items(), key=lambda kv: kv[1])
-            lines.append(f"Canon drift: {len(stale_npcs)} NPC(s) need re-grounding "
-                         f"(worst \"{worst[0]}\", {worst[1]} beats) — gm-npc.sh stale")
         return lines
 
     def get_status(self) -> Dict[str, Any]:
@@ -371,11 +361,6 @@ class SessionManager(EntityManager):
 
         self.json_ops.save_json(self.campaign_file, campaign)
 
-        # Update the active character's location if a sheet exists
-        if self.character_file.exists():
-            char_data = self.json_ops.load_json("character.json")
-            char_data['current_location'] = location
-            self.json_ops.save_json("character.json", char_data)
 
         result = {
             "previous_location": old_location,
@@ -829,8 +814,8 @@ class SessionManager(EntityManager):
 
         wrong = self._wrong_beliefs()
         if wrong:
-            name = ((self.json_ops.load_json("character.json") or {}).get("name")
-                    if self.character_file.exists() else None) or "The player character"
+            name = ((self.json_ops.load_json("character.json") or {}).get("identity") or {}).get(
+                "name") or "The player character"
             lines.append("")
             lines.append(f"--- WHAT {name.upper()} GETS WRONG (narrate from the belief; "
                          f"the truth is for you) ---")
@@ -861,22 +846,20 @@ class SessionManager(EntityManager):
                 pass
 
         if char:
-            name = char.get('name', 'Unknown')
-            level = char.get('level', 1)
-            race = char.get('race', '?')
-            cls = char.get('class', '?')
+            import sheet as sheet_mod
             from body import summary as wound_summary
-            xp = char.get('xp', {})
-            if isinstance(xp, dict):
-                xp_val = xp.get('current', 0)
-            else:
-                xp_val = xp
-            credits = char.get('credits', 0)
-            conditions = char.get('conditions', [])
-            cond_str = ', '.join(conditions) if conditions else '(none)'
-            lines.append(f"{name} - Level {level} {race} {cls} | Wounds: {wound_summary(char)} | XP: {xp_val} | Credits: {credits}")
-            lines.append(f"Conditions: {cond_str}")
-            from growth import growth_due
+            from growth import growth_due, level, next_level_xp, xp_total
+            identity = char.get('identity') or {}
+            who = " ".join(x for x in (identity.get('race'), identity.get('role')) if x)
+            conditions = sheet_mod.conditions(char)
+            lines.append(f"{sheet_mod.name(char)}" + (f" ({who})" if who else "")
+                         + f" - Level {level(char)} | Wounds: {wound_summary(char)}"
+                         f" | XP: {xp_total(char)}/{next_level_xp(char)}"
+                         f" | Credits: {sheet_mod.get(char, 'possessions', 'credits', 0)}")
+            lines.append(f"Conditions: {', '.join(conditions) if conditions else '(none)'}")
+            visible = sheet_mod.visible_items(char)
+            if visible:
+                lines.append(f"Gear (what others can see): {self._truncate(', '.join(visible), 200, full)}")
             due = growth_due(char)
             if due:
                 lines.append(f"Growth due: {due} level{'s' if due != 1 else ''}, at the next quiet "
@@ -886,96 +869,38 @@ class SessionManager(EntityManager):
             lines.append("No character found.")
 
         # --- Party Members ---
-        lines.append("")
-        lines.append("--- PARTY MEMBERS ---")
         npcs = self.json_ops.load_json("npcs.json") or {}
-        party = {n: d for n, d in npcs.items() if isinstance(d, dict) and d.get('is_party_member')}
+        party = [n for n, d in npcs.items() if isinstance(d, dict) and is_party_member(d)]
+        lines.append("")
+        lines.append("--- PARTY MEMBERS (with the player wherever they go) ---")
+        lines.append(", ".join(party) if party else "(none)")
 
-        if party:
-            party_items = list(party.items())
-            max_party = len(party_items) if full else 8
-            shown_party = party_items[:max_party]
-            for npc_name, npc_data in shown_party:
-                sheet = npc_data.get('character_sheet', {})
-                hp = sheet.get('hp', {'current': 10, 'max': 10})
-                ac = sheet.get('ac', 10)
-                level = sheet.get('level', 1)
-                race = sheet.get('race', 'Unknown')
-                cls = sheet.get('class', 'Commoner')
-                conditions = sheet.get('conditions', [])
-                cond_str = f" [{', '.join(conditions)}]" if conditions else ""
-                desc = self._truncate(npc_data.get('description', ''), 180, full)
-
-                lines.append(f"{npc_name} (Lvl {level} {race} {cls}) HP: {hp['current']}/{hp['max']} AC: {ac}{cond_str}")
-                if desc:
-                    lines.append(f"  {desc}")
-
-                recent = self._recent_events(npc_data, full=full)
-                if recent:
-                    lines.append(f"  {recent}")
-                lines.append("")
-            if not full and len(party_items) > max_party:
-                rem = self._remainder(
-                    len(party_items) - max_party, "party members", "--full")
-                if rem:
-                    lines.append(rem)
-                lines.append("")
-        else:
-            lines.append("(none)")
+        # --- People here (party and scene list): who they are, never mutated ---
+        present = list(npcs_present(npcs, location, self._scene()))
+        if present:
             lines.append("")
-
-        # --- Present NPCs (voices, inner life, and what they remember; never mutate) ---
-        present_npcs = self._present_npcs(npcs, location, full=full)
-        if present_npcs:
-            lines.append("")
-            lines.append("--- NPC VOICES (present NPCs — speak in their own words; "
-                         "they know only their Recent lines and what is under 'they know') ---")
-            fact_lists = self._npc_fact_lists(
-                npcs, [n for n, _ in present_npcs
-                       if not (npcs.get(n) or {}).get('is_party_member')],
-                already_shown=list(summaries) + list(remembered))
-            for npc_name, vlines in present_npcs:
-                inner = npcs.get(npc_name, {}) if isinstance(npcs, dict) else {}
-                tags = []
-                if inner.get('current_mood'):
-                    tags.append(f"mood: {inner['current_mood']}")
-                if inner.get('goal'):
-                    tags.append(f"wants: {inner['goal']}")
-                header = npc_name + (f" ({'; '.join(tags)})" if tags else "")
-                lines.append(f"{header}:")
-                for vl in vlines:
-                    lines.append(f'  "{vl}"')
-                if not full:
-                    ctx_raw = inner.get('context', [])
-                    raw_lines = ctx_raw if isinstance(ctx_raw, list) else (
-                        [ctx_raw] if ctx_raw else [])
-                    raw_n = len([x for x in raw_lines if x])
-                    rem = self._remainder(
-                        raw_n - len(vlines), "voice lines", "--full")
-                    if rem:
-                        lines.append(f"  {rem}")
-                # Party members already carry their history in the block above.
-                if not inner.get('is_party_member'):
-                    recent = self._recent_events(inner, full=full)
-                    if recent:
-                        lines.append(f"  {recent}")
-                    # What they know (holders) and what is known about them (about).
-                    lists = fact_lists.get(npc_name, {})
-                    for key, label in (("know", "they know"), ("about", "about them")):
-                        items = lists.get(key, [])
-                        shown_items = items if full else items[-3:]
-                        for text, old in shown_items:
-                            tag = (" (old fact: who knows it isn't recorded)" if old
-                                   else ", they don't know" if key == "about" else "")
-                            lines.append(f"  {label}{tag}: {self._truncate(text, 180, full)}")
-                        if not full:
-                            rem = self._remainder(len(items) - len(shown_items),
-                                                  f"facts {label}", "--full")
-                            if rem:
-                                lines.append(f"  {rem}")
+            lines.append("--- PEOPLE HERE (speak in their own voice; they know only what is "
+                         "under 'they know') ---")
+            fact_lists = self._npc_fact_lists(npcs, present,
+                                              already_shown=list(summaries) + list(remembered))
+            for npc_name in present:
+                lines += self._person_lines(npc_name, npcs.get(npc_name) or {}, full)
+                lists = fact_lists.get(npc_name, {})
+                for key, label in (("know", "they know"), ("about", "about them")):
+                    items = lists.get(key, [])
+                    shown_items = items if full else items[-3:]
+                    for text, old in shown_items:
+                        tag = (" (old fact: who knows it isn't recorded)" if old
+                               else ", they don't know" if key == "about" else "")
+                        lines.append(f"  {label}{tag}: {self._truncate(text, 180, full)}")
+                    if not full:
+                        rem = self._remainder(len(items) - len(shown_items),
+                                              f"facts {label}", "--full")
+                        if rem:
+                            lines.append(f"  {rem}")
 
         # Where NPCs usually are is a hint, not presence (gm-scene.sh).
-        present_names = {n for n, _ in present_npcs}
+        present_names = set(present)
         usual = [n for n in npcs_usually_at(npcs, location) if n not in present_names]
         if usual:
             lines.append("")
@@ -1308,7 +1233,7 @@ class SessionManager(EntityManager):
             from campaign_memory import CampaignMemory
             mem = CampaignMemory(self._wsd)
             npcs = self.json_ops.load_json("npcs.json") or {}
-            present = [name for name, _ in self._present_npcs(npcs, location)]
+            present = list(npcs_present(npcs, location, self._scene()))
             query = " ".join([location or ""] + present).strip()
             if not query:
                 return [], [], 0
@@ -1339,24 +1264,39 @@ class SessionManager(EntityManager):
         held_back = total - len(entries) if (entries and not full and total > len(entries)) else 0
         return entries, debts, held_back
 
-    def _recent_events(self, entity, full=False):
-        """The 'they remember you' line for an NPC, or None.
-
-        Shared by the party block and the present-NPC block so a character's
-        history renders identically wherever they appear.
-        """
-        if not isinstance(entity, dict):
-            return None
-        events = entity.get('events', [])
-        if not isinstance(events, list) or not events:
-            return None
-        recent = events[-3:] if full else events[-2:]
-        parts = []
-        for ev in recent:
-            text = ev.get('event', '') if isinstance(ev, dict) else str(ev)
-            if text:
-                parts.append(f'"{self._truncate(text, 120, full)}"')
-        return f"Recent: {' -> '.join(parts)}" if parts else None
+    def _person_lines(self, name, npc, full=False):
+        """An NPC in the brief: who they are and how to play them, from their sheet
+        (sheet.py). Only the fields that are filled in."""
+        import sheet as sheet_mod
+        identity = npc.get('identity') or {}
+        personality = npc.get('personality') or {}
+        status = npc.get('status') or {}
+        head = [x for x in (identity.get('role'),
+                            f"Big Five {personality['big_five']}" if personality.get('big_five') else "",
+                            personality.get('demeanor')) if x]
+        lines = [f"{name}" + (f" ({'; '.join(head)})" if head else "") + ":"]
+        look = sheet_mod.look_line(npc)
+        if look:
+            lines.append(f"  look: {self._truncate(look, 160, full)}")
+        for label, value in (("voice", personality.get('voice')),
+                             ("tells", personality.get('tells')),
+                             ("wants", personality.get('want')),
+                             ("after now", status.get('goal')),
+                             ("fears", personality.get('fears'))):
+            if value:
+                lines.append(f"  {label}: {self._truncate(value, 160, full)}")
+        if full:
+            for label, value in (("needs", personality.get('need')),
+                                 ("values", personality.get('values')),
+                                 ("affiliation", identity.get('affiliation'))):
+                if value:
+                    lines.append(f"  {label}: {value}")
+        visible = sheet_mod.visible_items(npc)
+        if visible:
+            lines.append(f"  gear: {self._truncate(', '.join(visible), 160, full)}")
+        if status.get('conditions'):
+            lines.append(f"  conditions: {', '.join(status['conditions'])}")
+        return lines
 
     def _npc_fact_lists(self, npcs, names, already_shown=()):
         """For each NPC name: {"know": [...], "about": [...]}, facts as (text, old).
@@ -1393,10 +1333,6 @@ class SessionManager(EntityManager):
                 about = ids.mentioned(str(f["fact"]))
             for name in names:
                 nid = f"npc:{name}"
-                events = (npcs.get(name) or {}).get('events') or []
-                if any(norm(e.get('event', '') if isinstance(e, dict) else e) == norm(f['fact'])
-                       for e in events):
-                    continue
                 if not old and nid in f['holders']:
                     out[name]["know"].append((text, False))
                 elif nid in (about or []):
@@ -1406,25 +1342,6 @@ class SessionManager(EntityManager):
     def _scene(self):
         """campaign-overview.json's scene list (see gm-scene.sh), or None."""
         return (self.json_ops.load_json(self.campaign_file) or {}).get("scene")
-
-    def _present_npcs(self, npcs, location, full=False):
-        """NPCs present in the scene, with any canonical voice lines they have.
-
-        Presence is `npcs_present` (party OR the scene list). This method
-        slices voice lines; it does not decide who is here. Returns
-        [(name, [lines])]; up to 4 lines each unless full, and an empty list when
-        the NPC has no extracted dialogue — presence does NOT require a voice, or
-        stubbed and original-world NPCs would stand in the room invisibly.
-        Read-only — never touches the stored `context` field (PROTECT
-        canonical-voice extraction).
-        """
-        out = []
-        for name, d in npcs_present(npcs, location, self._scene()).items():
-            ctx = d.get('context', [])
-            vlines = ctx if isinstance(ctx, list) else ([ctx] if ctx else [])
-            vlines = [str(x) for x in vlines if x]
-            out.append((name, vlines if full else vlines[:4]))
-        return out
 
     def _count_items(self, filename: str) -> int:
         """Count items in a JSON file"""

@@ -5,6 +5,7 @@ fired whenever Old Iron was present, "Yard" in the Junkyard Market."""
 import json
 
 from lib.consequence_manager import ConsequenceManager
+from tests.sheets import npc, player
 
 
 def _campaign(tmp_path, scene=None):
@@ -16,9 +17,9 @@ def _campaign(tmp_path, scene=None):
         "campaign-overview.json": {"campaign_name": "C",
                                    "player_position": {"current_location": "Yard"},
                                    "scene": scene or {"location": "Yard", "present": []}},
-        "npcs.json": {"Ro": {}, "Old Iron": {}},
+        "npcs.json": {"Ro": npc("Ro"), "Old Iron": npc("Old Iron")},
         "locations.json": {"Yard": {}, "Junkyard Market": {}},
-        "character.json": {"name": "Fearghas"},
+        "character.json": player("Fearghas"),
     }
     for name, payload in files.items():
         (camp / name).write_text(json.dumps(payload))

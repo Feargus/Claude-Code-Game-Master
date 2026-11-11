@@ -15,6 +15,7 @@ from pathlib import Path
 
 from lib.session_manager import SessionManager
 from tests.scene_helpers import put_in_scene
+from tests.sheets import npc
 
 
 def _load(world, name):
@@ -31,16 +32,9 @@ def _current_location(world):
     return overview.get("player_position", {}).get("current_location")
 
 
-def _add_npc(world, name, location, events=None, aliases=None):
+def _add_npc(world, name, location, aliases=None):
     npcs = _load(world, "npcs.json")
-    npcs[name] = {
-        "name": name,
-        "is_party_member": False,
-        "tags": {"locations": [location], "quests": []},
-        "events": events or [],
-    }
-    if aliases is not None:
-        npcs[name]["aliases"] = aliases
+    npcs[name] = npc(name, aliases=aliases, places=[location])
     _save(world, "npcs.json", npcs)
     if location == _current_location(world):
         put_in_scene(Path(world) / "campaigns" / "dungeon-crawler-carl", name)
@@ -106,18 +100,6 @@ def test_word_boundary_substring_is_not_a_false_positive(dcc_world):
     ctx = SessionManager(dcc_world).get_full_context()
     # "Ana" must not match inside "Banana".
     assert banana not in _npc_block(ctx, "Ana")
-
-
-def test_fact_already_in_npc_events_is_not_shown_twice(dcc_world):
-    loc = _current_location(dcc_world)
-    dup = "Griselda swore an oath to the party in the smoke-filled hall."
-    _add_npc(dcc_world, "Griselda", loc, events=[{"event": dup, "timestamp": "x"}])
-    _add_facts(dcc_world, "npc_relations", [dup])
-
-    ctx = SessionManager(dcc_world).get_full_context()
-    block = _npc_block(ctx, "Griselda")
-    # Rendered once by Recent/_recent_events, never a second time.
-    assert OLD + dup not in block
 
 
 def test_common_leading_token_is_not_a_false_positive(dcc_world):

@@ -49,6 +49,16 @@ def normalize_entity_name(name: str) -> str:
     return " ".join(tokens)
 
 
+def aliases_of(data, aliases_key="aliases"):
+    """An entity's aliases: a place's `aliases`, or an NPC sheet's identity.aliases."""
+    if not isinstance(data, dict):
+        return []
+    found = data.get(aliases_key)
+    if found is None and isinstance(data.get("identity"), dict):
+        found = data["identity"].get(aliases_key)
+    return [a for a in found or [] if a]
+
+
 def resolve_entity_name(query, entities, aliases_key="aliases"):
     """Resolve a query string to an actual key in `entities`.
 
@@ -88,7 +98,7 @@ def resolve_entity_name(query, entities, aliases_key="aliases"):
     for k in keys:
         data = data_map.get(k)
         if isinstance(data, dict):
-            for a in data.get(aliases_key, []) or []:
+            for a in aliases_of(data, aliases_key):
                 if a.lower() == q_lower or (q_norm and normalize_entity_name(a) == q_norm):
                     return k
 

@@ -1,307 +1,59 @@
 #!/bin/bash
-# gm-npc.sh - Create and update NPCs (Hybrid Architecture)
-# Uses Python modules for validation and data operations
+# NPC sheets (sheet.py format). Thin wrapper: logic in lib/npc_manager.py.
 
-# Source common utilities
 source "$(dirname "$0")/common.sh"
 
-# Usage: gm-npc.sh <action> <name> [additional args]
-# Examples:
-#   gm-npc.sh create "Grimnar" "dwarf blacksmith" "friendly" --location "The Forge"
-#   gm-npc.sh update "Grimnar" "insulted by player"
-#   gm-npc.sh status "Grimnar"
-
-if [ "$#" -lt 1 ]; then
+usage() {
     echo "Usage: gm-npc.sh <action> [name] [args]"
     echo ""
-    echo "=== NPC Management ==="
-    echo "  create <name> <description> <attitude> --location <place>... | --nowhere [--alias <short name>]..."
-    echo "                                          Create new NPC (where they're usually found;"
-    echo "                                          aliases: shorter names the story will use)"
-    echo "  alias <name> <alias>... [--remove <alias>]  Add or remove an NPC's shorter names"
+    echo "  create <name> \"<role>\" [\"<attitude>\"] --location <place>... | --nowhere [--alias <short name>]..."
+    echo "         [field flags]           Create an NPC. The attitude (how they regard the player) becomes"
+    echo "                                 a fact they hold. Only name, role and place are needed; add the rest"
+    echo "                                 when play needs it."
+    echo "  set <name> [field flags]       Fill in or change fields (\"\" clears one)"
+    echo "       field flags: --race --role --background --affiliation"
+    echo "                    --physique --style --presence                  (look)"
+    echo "                    --big-five \"O1 C-2 E3 A-1 N2\" --demeanor --voice --tells"
+    echo "                    --want --need --values --fears                 (personality)"
+    echo "                    --goal                                         (what they're after now)"
+    echo "  show <name>                    The whole sheet, and what they know and feel about the player"
     echo "  stats <name> [--attr STR=12]... [--skill Handguns=4]... [--remove-skill X] [--wounds N]"
-    echo "                                          Show or set their stat block (checked; never edit JSON)"
-    echo "  update <name> <event>                   Add event to NPC history"
-    echo "  status <name>                           Show NPC details"
-    echo "  kill <name> [--cause \"<how>\"]           Mark NPC dead (fires its on_death consequences)"
-    echo "  voice <name>                            Show NPC canonical voice lines"
-    echo "  inner-life <name>                       Show goal, mood, voice, bonds"
-    echo "  set-inner <name> [--goal X] [--mood X] [--voice X]"
-    echo "                                          Set them (what they hide: gm-note.sh --holders npc:<name>)"
-    echo "  mood <name> <mood>                      Change their mood"
-    echo "  appearance <name> / set-appearance <name> --<field> X ...  Their look"
-    echo "  enhance <name> <description>            Update NPC description"
-    echo "  list [--attitude X] [--location Y]      List all NPCs"
+    echo "  alias <name> <alias>... [--remove <alias>]"
+    echo "  tag-location / untag-location <name> <place>...   Usual places (known locations)"
+    echo "  item <name> add gear|inventory \"<item>\" [--concealed]  /  item <name> remove \"<item>\""
+    echo "  kill <name> [--cause \"<how>\"]  Dead; fires its on_death consequences"
+    echo "  promote / demote <name>        Into or out of the party (present wherever the player is)"
+    echo "  party                          The party members"
+    echo "  list [--location <place>]"
     echo ""
-    echo "=== Tags ==="
-    echo "  tag-location <name> <loc1> [loc2...]    Add usual places (known locations)"
-    echo "  untag-location <name> <loc1> [loc2...]  Remove usual places"
-    echo "  tag-quest <name> <quest1> [quest2...]   Add quest tags"
-    echo "  untag-quest <name> <quest1> [quest2...] Remove quest tags"
-    echo "  tags <name>                             Show NPC tags"
-    echo ""
-    echo "=== Party Members ==="
-    echo "  promote <name>                          Make NPC a party member"
-    echo "  demote <name>                           Remove party member status"
-    echo "  party                                   List all party members with HP/AC"
-    echo ""
-    echo "=== Party Member Stats (requires promote first) ==="
-    echo "  hp <name> <+/-amount>                   Damage/heal party member"
-    echo "  xp <name> <+amount>                     Award XP to party member"
-    echo "  set <name> <field> <value>              Set stat (ac, level, class, race, attack, damage, hp_max)"
-    echo "  equip <name> <item>                     Add equipment"
-    echo "  unequip <name> <item>                   Remove equipment"
-    echo "  condition <name> add/remove <cond>      Manage conditions (poisoned, stunned, etc)"
-    echo "  feature <name> add/remove <feature>     Manage features (Second Wind, etc)"
-    echo ""
-    echo "Examples:"
-    echo "  gm-npc.sh create \"Carl\" \"A dungeon crawler\" \"friendly\" --location \"Safe Zone\""
-    echo "  gm-npc.sh promote \"Carl\"                 # Make Carl a party member"
-    echo "  gm-npc.sh set \"Carl\" ac 14               # Set Carl's AC"
-    echo "  gm-npc.sh equip \"Carl\" \"Chitin Armor\"    # Give Carl armor"
-    echo "  gm-npc.sh hp \"Carl\" -4                   # Carl takes 4 damage"
-    echo "  gm-npc.sh party                          # See all party members"
-    exit 1
-fi
-
-require_active_campaign
+    echo "What an NPC knows, feels, remembers or hides: facts (gm-note.sh ... --holders npc:<name>)."
+}
 
 ACTION="$1"
-shift  # Remove action from arguments
+[ -z "$ACTION" ] && { usage; exit 1; }
+shift
 
-# Special handling for actions that don't require a name
-if [ "$ACTION" = "list" ]; then
-    $PYTHON_CMD "$LIB_DIR/npc_manager.py" list "$@"
-    exit $?
-fi
-
-if [ "$ACTION" = "party" ]; then
-    $PYTHON_CMD "$LIB_DIR/npc_manager.py" party
-    exit $?
-fi
-
-# All other actions require a name as first argument
-if [ "$#" -lt 1 ]; then
-    echo "Error: Action '$ACTION' requires a name argument"
-    exit 1
-fi
-
-NAME="$1"
-shift  # Remove name from arguments
-
-# Delegate to Python module based on action
 case "$ACTION" in
-    create)
-        if [ "$#" -lt 2 ]; then
-            echo "Usage: gm-npc.sh create <name> <description> <attitude> --location <place>... | --nowhere [--alias <short name>]..."
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" create "$NAME" "$@"
-        ;;
-
-    update)
-        if [ "$#" -ne 1 ]; then
-            echo "Usage: gm-npc.sh update <name> <event>"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" update "$NAME" "$@"
-        ;;
-
-    status)
-        STATUS_OUTPUT=$($PYTHON_CMD "$LIB_DIR/npc_manager.py" status "$NAME" "$@")
+    show|status)
+        NAME="$1"
+        STATUS_OUTPUT=$($PYTHON_CMD "$LIB_DIR/npc_manager.py" show "$@")
         STATUS_CODE=$?
         echo "$STATUS_OUTPUT"
-
-        # Auto-query RAG for NPC context if vectors exist
+        [ $STATUS_CODE -ne 0 ] && exit $STATUS_CODE
+        # A campaign from a book: what the book says about them.
         CAMPAIGN_DIR=$(bash "$TOOLS_DIR/gm-campaign.sh" path 2>/dev/null)
-        RAG_OUTPUT=""
-        RAG_CODE=0
-        if [ -d "$CAMPAIGN_DIR/vectors" ]; then
+        if [ -n "$NAME" ] && [ -d "$CAMPAIGN_DIR/vectors" ]; then
             echo ""
             echo "Source Material Context"
             echo "======================="
-            RAG_OUTPUT=$($PYTHON_CMD "$LIB_DIR/entity_enhancer.py" search "$NAME personality dialogue background" -n 4 --excerpt-chars 250)
-            RAG_CODE=$?
-            echo "$RAG_OUTPUT"
-        fi
-
-        STATUS_CHARS=${#STATUS_OUTPUT}
-        RAG_CHARS=${#RAG_OUTPUT}
-        STATUS_TOKENS=$(estimate_tokens_from_chars "$STATUS_CHARS")
-        RAG_TOKENS=$(estimate_tokens_from_chars "$RAG_CHARS")
-        log_token_usage "gm-npc-status" "name_chars=${#NAME}" "status_chars=$STATUS_CHARS" "status_tokens_est=$STATUS_TOKENS" "rag_chars=$RAG_CHARS" "rag_tokens_est=$RAG_TOKENS"
-
-        if [ $STATUS_CODE -ne 0 ]; then
-            exit $STATUS_CODE
-        fi
-        if [ $RAG_CODE -ne 0 ]; then
-            exit $RAG_CODE
+            $PYTHON_CMD "$LIB_DIR/entity_enhancer.py" search "$NAME personality dialogue background" -n 4 --excerpt-chars 250
         fi
         ;;
-
-    enhance)
-        if [ "$#" -ne 1 ]; then
-            echo "Usage: gm-npc.sh enhance <name> <enhanced_description>"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" enhance "$NAME" "$1"
+    create|set|stats|alias|tag-location|untag-location|item|kill|promote|demote|party|list)
+        $PYTHON_CMD "$LIB_DIR/npc_manager.py" "$ACTION" "$@"
         ;;
-
-    stats)
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" stats "$NAME" "$@"
-        ;;
-
-    alias)
-        if [ "$#" -lt 1 ]; then
-            echo "Usage: gm-npc.sh alias <name> <alias>... [--remove <alias>]..."
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" alias "$NAME" "$@"
-        ;;
-
-    tag-location)
-        if [ "$#" -lt 1 ]; then
-            echo "Usage: gm-npc.sh tag-location <name> <location1> [location2 ...]"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" tag-location "$NAME" "$@"
-        ;;
-
-    untag-location)
-        if [ "$#" -lt 1 ]; then
-            echo "Usage: gm-npc.sh untag-location <name> <location1> [location2 ...]"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" untag-location "$NAME" "$@"
-        ;;
-
-    tag-quest)
-        if [ "$#" -lt 1 ]; then
-            echo "Usage: gm-npc.sh tag-quest <name> <quest1> [quest2 ...]"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" tag-quest "$NAME" "$@"
-        ;;
-
-    untag-quest)
-        if [ "$#" -lt 1 ]; then
-            echo "Usage: gm-npc.sh untag-quest <name> <quest1> [quest2 ...]"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" untag-quest "$NAME" "$@"
-        ;;
-
-    tags)
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" tags "$NAME"
-        ;;
-
-    # Party member commands
-    promote)
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" promote "$NAME"
-        ;;
-
-    demote)
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" demote "$NAME"
-        ;;
-
-    hp)
-        if [ "$#" -ne 1 ]; then
-            echo "Usage: gm-npc.sh hp <name> <+/-amount>"
-            echo "Example: gm-npc.sh hp \"Carl\" -4"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" hp "$NAME" "$1"
-        ;;
-
-    xp)
-        if [ "$#" -ne 1 ]; then
-            echo "Usage: gm-npc.sh xp <name> <+amount>"
-            echo "Example: gm-npc.sh xp \"Carl\" +100"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" xp "$NAME" "$1"
-        ;;
-
-    set)
-        if [ "$#" -ne 2 ]; then
-            echo "Usage: gm-npc.sh set <name> <field> <value>"
-            echo "Fields: ac, level, class, race, attack, damage, hp_max"
-            echo "Example: gm-npc.sh set \"Carl\" ac 14"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" set "$NAME" "$1" "$2"
-        ;;
-
-    equip)
-        if [ "$#" -ne 1 ]; then
-            echo "Usage: gm-npc.sh equip <name> <item>"
-            echo "Example: gm-npc.sh equip \"Carl\" \"Chitin Armor\""
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" equip "$NAME" "$1"
-        ;;
-
-    unequip)
-        if [ "$#" -ne 1 ]; then
-            echo "Usage: gm-npc.sh unequip <name> <item>"
-            echo "Example: gm-npc.sh unequip \"Carl\" \"Torn Shirt\""
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" unequip "$NAME" "$1"
-        ;;
-
-    condition)
-        if [ "$#" -ne 2 ]; then
-            echo "Usage: gm-npc.sh condition <name> add/remove <condition>"
-            echo "Example: gm-npc.sh condition \"Carl\" add poisoned"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" condition "$NAME" "$1" "$2"
-        ;;
-
-    feature)
-        if [ "$#" -ne 2 ]; then
-            echo "Usage: gm-npc.sh feature <name> add/remove <feature>"
-            echo "Example: gm-npc.sh feature \"Carl\" add \"Second Wind\""
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" feature "$NAME" "$1" "$2"
-        ;;
-
-    voice)
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" voice "$NAME" "$@"
-        ;;
-
-    inner-life)
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" inner-life "$NAME" "$@"
-        ;;
-
-    set-inner)
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" set-inner "$NAME" "$@"
-        ;;
-
-    mood)
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" mood "$NAME" "$@"
-        ;;
-
-    kill)
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" kill "$NAME" "$@"
-        ;;
-
-    appearance)
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" appearance "$NAME" "$@"
-        ;;
-
-    set-appearance)
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" set-appearance "$NAME" "$@"
-        ;;
-
     *)
-        echo "Error: Unknown action '$ACTION'"
-        echo "Run 'gm-npc.sh' without arguments to see all available actions"
+        usage
         exit 1
         ;;
 esac
-
-# Exit with the same status as the Python command
-exit $?

@@ -17,6 +17,20 @@ from campaign_manager import CampaignManager
 from entity_aliases import resolve_entity_name
 
 
+def is_dead(data) -> bool:
+    return ((data.get("status") or {}) if isinstance(data.get("status"), dict) else {}).get("state") == "dead"
+
+
+def is_party_member(data) -> bool:
+    status = data.get("status")
+    return isinstance(status, dict) and bool(status.get("party_member"))
+
+
+def usual_places(data) -> list:
+    """An NPC sheet's usual places (sheet.py: places.usual)."""
+    return list(((data.get("places") or {}).get("usual")) or [])
+
+
 def npcs_present(npcs, location, scene=None):
     """Who is in this scene: party members, plus the NPCs on the scene list.
 
@@ -33,9 +47,9 @@ def npcs_present(npcs, location, scene=None):
         listed = [str(n) for n in scene.get("present") or []]
     out = {}
     for name, data in npcs.items():
-        if not isinstance(data, dict) or data.get("status") == "dead":
+        if not isinstance(data, dict) or is_dead(data):
             continue
-        if data.get("is_party_member") or name in listed:
+        if is_party_member(data) or name in listed:
             out[name] = data
     return out
 
@@ -51,10 +65,9 @@ def npcs_usually_at(npcs, location):
     loc_l = (location or "").lower()
     out = {}
     for name, data in npcs.items():
-        if not isinstance(data, dict) or data.get("status") == "dead" or data.get("is_party_member"):
+        if not isinstance(data, dict) or is_dead(data) or is_party_member(data):
             continue
-        tags = data.get("tags", {})
-        locs = [str(x).lower() for x in tags.get("locations", [])] if isinstance(tags, dict) else []
+        locs = [str(x).lower() for x in usual_places(data)]
         if loc_l and loc_l in locs:
             out[name] = data
     return out

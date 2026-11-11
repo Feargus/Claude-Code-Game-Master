@@ -147,7 +147,7 @@ def test_kill_marks_the_character_dead(dcc_world):
     mgr = PlayerManager(dcc_world)
     result = mgr.kill_character("Tandy", cause="the Iron Tangle")
     assert result["success"] and result["status"] == "dead"
-    assert mgr.get_player("Tandy")["hp"]["current"] == 0
+    assert mgr.get_player("Tandy")["status"]["state"] == "dead"
 
 
 # --- 3. get_xp_status is read-only ---------------------------------------------

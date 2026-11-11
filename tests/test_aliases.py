@@ -13,6 +13,7 @@ from lib.json_ops import JsonOperations
 from lib.location_manager import LocationManager
 from lib.npc_manager import NPCManager
 from lib.world_ids import WorldIds, change_aliases
+from tests.sheets import npc, player
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -26,10 +27,10 @@ def world(tmp_path):
     files = {
         "campaign-overview.json": {"campaign_name": "C",
                                    "player_position": {"current_location": "Old Iron's Yard"}},
-        "npcs.json": {"Old Iron": {"tags": {"locations": ["Old Iron's Yard"]}},
-                      "Brother Erasure": {"tags": {"locations": []}}},
+        "npcs.json": {"Old Iron": npc("Old Iron", places=["Old Iron's Yard"]),
+                      "Brother Erasure": npc("Brother Erasure", places=[])},
         "locations.json": {"Old Iron's Yard": {}, "Lanternside": {}},
-        "character.json": {"name": "Fearghas"},
+        "character.json": player("Fearghas"),
     }
     for name, payload in files.items():
         (camp / name).write_text(json.dumps(payload))
@@ -45,7 +46,7 @@ def test_create_with_aliases_and_find_them_in_text(world):
     assert NPCManager(ws).create_npc("Ishbel Rue", "a Scrubbed woman", "neutral",
                                      locations=["Old Iron's Yard"], aliases=["Ishbel"])
     npcs = json.loads((camp / "npcs.json").read_text())
-    assert npcs["Ishbel Rue"]["aliases"] == ["Ishbel"]
+    assert npcs["Ishbel Rue"]["identity"]["aliases"] == ["Ishbel"]
     ids = _ids(camp)
     assert ids.mentioned("Erasure took forty years from Ishbel.") == ["npc:Ishbel Rue"]
     assert ids.resolve("Ishbel") == ("npc:Ishbel Rue", "")
@@ -85,7 +86,7 @@ def test_add_and_remove_aliases_later(world):
         change_aliases(ops, "npc", "Old Iron", remove=["Iron"])
     assert change_aliases(ops, "npc", "Brother Erasure", remove=["erasure"]) == (
         "Brother Erasure", [])
-    assert "aliases" not in json.loads((camp / "npcs.json").read_text())["Brother Erasure"]
+    assert "aliases" not in json.loads((camp / "npcs.json").read_text())["Brother Erasure"]["identity"]
 
 
 def test_places_get_aliases_too(world, capsys):

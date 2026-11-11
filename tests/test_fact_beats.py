@@ -13,6 +13,7 @@ import pytest
 
 from lib.note_manager import NoteManager
 from lib.npc_manager import NPCManager
+from tests.sheets import npc, player
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -28,8 +29,8 @@ def world(tmp_path):
                                    "player_position": {"current_location": "The Holding Pens"},
                                    "scene": {"location": "The Holding Pens",
                                              "present": ["Tod", "Benno Rusk"]}},
-        "character.json": {"name": "Lullaby"},
-        "npcs.json": {"Tod": {}, "Benno Rusk": {"aliases": ["Benno"]}},
+        "character.json": player("Lullaby"),
+        "npcs.json": {"Tod": npc("Tod"), "Benno Rusk": npc("Benno Rusk", aliases=["Benno"])},
         "locations.json": {"The Holding Pens": {}, "The Sanguine Ring": {}},
     }
     for name, payload in files.items():

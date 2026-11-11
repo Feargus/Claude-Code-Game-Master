@@ -142,11 +142,12 @@ class CampaignManager:
                 try:
                     with open(char_file, 'r', encoding='utf-8') as f:
                         char = json.load(f)
+                    identity = char.get("identity") or {}
                     campaign_info["character"] = {
-                        "name": char.get("name", "Unknown"),
-                        "race": char.get("race", "?"),
-                        "class": char.get("class", "?"),
-                        "level": char.get("level", 1)
+                        "name": identity.get("name", "Unknown"),
+                        "race": identity.get("race", ""),
+                        "role": identity.get("role", ""),
+                        "level": (char.get("progress") or {}).get("level", 0)
                     }
                 except (json.JSONDecodeError, IOError) as e:
                     print(f"[WARNING] Could not read character for {campaign_dir.name}: {e}", file=sys.stderr)
@@ -511,7 +512,8 @@ def main():
                 char_info = ""
                 if "character" in c:
                     char = c["character"]
-                    char_info = f"{char['name']} ({char['race']} {char['class']} L{char['level']})"
+                    who = " ".join(x for x in (char['race'], char['role']) if x)
+                    char_info = f"{char['name']}" + (f" ({who})" if who else "") + f" L{char['level']}"
                 sessions = c.get("session_count", 0)
                 print(f"{marker} {c['name']:20}{sessions:<10}{char_info}")
             print()

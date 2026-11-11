@@ -31,15 +31,12 @@ def _campaign_with_style_and_appearance(dcc_world):
     campaign = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
     char_path = campaign / "character.json"
     char = json.loads(char_path.read_text())
-    char["visual_appearance"] = {
-        "sex": "male", "age": "late 20s", "race": "Human", "species": "human",
-        "hair": "short brown", "face": "stubbled", "eyes": "brown",
-        "clothing": "boxer shorts", "gear": "barefoot, spiked gauntlet",
-        "demeanor": "scrappy", "size": "average build",
-    }
+    char["look"] = {"physique": "male, late 20s, short brown hair, stubbled",
+                    "style": "boxer shorts, barefoot, spiked gauntlet",
+                    "presence": "scrappy"}
     char_path.write_text(json.dumps(char))
     save_chronicler(style=STYLE, campaign_dir=campaign)
-    return campaign, char["name"]
+    return campaign, char["identity"]["name"]
 
 
 def test_both_locks_fire_by_default(dcc_world):

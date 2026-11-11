@@ -51,16 +51,21 @@ def campaign(isolated_world_state):
     (isolated_world_state / "active-campaign.txt").write_text("test")
     sheets = {
         "character.json": {
-            "name": "Fearghas", "level": 2, "luck": {"current": 3, "max": 3},
-            "stats": {"DFT": 14, "AGI": 12, "ITU": 10},
-            "skills": {"Long guns": 2},
+            "identity": {"name": "Fearghas"}, "progress": {"level": 2, "xp": 0},
+            "stats": {"attributes": {"DFT": 14, "AGI": 12, "ITU": 10},
+                      "skills": {"Long guns": 2}, "luck": {"current": 3, "max": 3}},
+            "body": {"zones": {}},
         },
         "npcs.json": {
-            "Dekker": {"stats": {"AGI": 8, "ITU": 8, "NRV": 8}, "skills": {"Evasion": 1}},
-            "Auntie Ro": {"description": "No stats yet."},
+            "Dekker": {"identity": {"name": "Dekker"},
+                       "stats": {"attributes": {"AGI": 8, "ITU": 8, "NRV": 8},
+                                 "skills": {"Evasion": 1}}},
+            "Auntie Ro": {"identity": {"name": "Auntie Ro", "role": "No stats yet."}},
         },
-        "mobs.json": {"cockroach": {"attributes": {"default": 4, "AGI": 10},
-                                    "skills": {"default": -3, "Evasion": 3}}},
+        "mobs.json": {"cockroach": {"identity": {"name": "cockroach"},
+                                    "stats": {"attributes": {"default": 4, "AGI": 10},
+                                              "skills": {"default": -3, "Evasion": 3}},
+                                    "body": {"wounds": 1}}},
     }
     for filename, data in sheets.items():
         (directory / filename).write_text(json.dumps(data))
@@ -195,12 +200,12 @@ def test_luck_is_spent_from_the_sheet(campaign):
     result = run_contest(args, ScriptedDice(5, 5, 5))  # 15 + 2 against 18
     assert result["quality"] == 0 and result["lucky"]
     sheet = json.loads((campaign / "character.json").read_text())
-    assert sheet["luck"] == {"current": 2, "max": 3}
+    assert sheet["stats"]["luck"] == {"current": 2, "max": 3}
 
 
 def test_missing_luck_field_counts_as_none_left(campaign):
     sheet = json.loads((campaign / "character.json").read_text())
-    del sheet["luck"]
+    del sheet["stats"]["luck"]
     (campaign / "character.json").write_text(json.dumps(sheet))
     result = run_contest(_args(*SHOOT, "--reactive-dc", "18", "door"), ScriptedDice(5, 5, 5))
     assert result["quality"] == -1
@@ -343,18 +348,18 @@ def test_the_player_learns_from_close_contests(campaign):
     result = run_contest(_args(*SHOOT, "--reactive-dc", "18", "door"), ScriptedDice(5, 5, 5))
     assert result["quality"] == 0 and result["learned"] == []
     sheet = json.loads((campaign / "character.json").read_text())
-    assert sheet["practice"] == {"Long guns": 3} and sheet["skills"]["Long guns"] == 2
+    assert sheet["progress"]["practice"] == {"Long guns": 3} and sheet["stats"]["skills"]["Long guns"] == 2
     run_contest(_args(*SHOOT, "--reactive-dc", "18", "door"), ScriptedDice(14, 12, 10))
-    assert json.loads((campaign / "character.json").read_text())["practice"] == {"Long guns": 3}
+    assert json.loads((campaign / "character.json").read_text())["progress"]["practice"] == {"Long guns": 3}
     assert format_result(result) == "quality: 0 (lucky)"
 
 
 def test_enough_learnings_raise_the_skill_and_grant_xp(campaign):
     sheet = json.loads((campaign / "character.json").read_text())
-    sheet["practice"] = {"Long guns": 7}
+    sheet["progress"]["practice"] = {"Long guns": 7}
     (campaign / "character.json").write_text(json.dumps(sheet))
     result = run_contest(_args(*SHOOT, *DODGE), ScriptedDice(4, 4, 4, 4, 4, 4))  # 12+2 vs 12+1
     assert result["learned"] == [{"skill": "Long guns", "value": 3, "xp": 30}]
     sheet = json.loads((campaign / "character.json").read_text())
-    assert sheet["skills"]["Long guns"] == 3 and sheet["xp"]["current"] == 30
+    assert sheet["stats"]["skills"]["Long guns"] == 3 and sheet["progress"]["xp"] == 30
     assert "+30 XP  skill: Long guns rose to 3" in (campaign / "xp.log").read_text()

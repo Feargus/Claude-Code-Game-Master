@@ -1,8 +1,6 @@
 #!/bin/bash
-# Player Character management
-# Thin CLI wrapper - logic in lib/player_manager.py
+# The player character's sheet (sheet.py format). Thin wrapper: logic in lib/player_manager.py.
 
-# Source common utilities
 source "$(dirname "$0")/common.sh"
 
 require_active_campaign
@@ -11,20 +9,11 @@ ACTION=$1
 shift
 
 case "$ACTION" in
-    "show")
-        # Optional [name] and optional --json (full record). Pass all through.
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" show "$@"
-        ;;
-
-    "list")
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" list
-        ;;
-
     "create")
         if [ -z "$1" ]; then
             echo "Usage: gm-player.sh create '<character json>' [--canon \"<NPC>\"] [--replace]"
             echo ""
-            echo "Saves the character from a finished interview; anything left out gets a default."
+            echo "Saves the character from a finished interview (/create-character); anything left out gets a default."
             echo "  --canon NPC   the character is this NPC from the campaign"
             echo "  --replace     hand the story to a new PC (archives the current one to fallen/)"
             exit 1
@@ -32,188 +21,36 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/new_character.py" "$@"
         ;;
 
-    "set")
-        if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh set <character_name>"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" set "$1"
-        ;;
-
-    "xp")
-        if [ -z "$1" ] || [ -z "$2" ]; then
-            echo "Usage: gm-player.sh xp <character_name> <+amount>"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" xp "$@"
-        ;;
-
-    "award")
-        # Achievement XP: --size small|medium|large (20/50/100 % of the current level), --reason.
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" award "$@"
-        ;;
-
-    "grow")
-        # One level of growth that is due: --attribute A --skill S --skill T --perk "Name" "Effect".
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" grow "$@"
-        ;;
-
-    "level-check")
-        if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh level-check <character_name>"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" level-check "$1"
-        ;;
-
-    "vital")
-        if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh vital <vital_name> [<+/-amount> | set <value>]"
-            echo "Example: gm-player.sh vital vigor -2      (spend 2 vigor)"
-            echo "Example: gm-player.sh vital corruption +1 (gain 1 corruption)"
-            echo "Example: gm-player.sh vital vigor set 5   (set vigor to 5)"
-            echo "Example: gm-player.sh vital corruption    (show current)"
-            echo "Vitals are whatever the World Kit declares (ruleset.json stat_schema.vitals)."
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" vital "$@"
-        ;;
-
-    "get")
-        if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh get <character_name>"
-            exit 1
-        fi
-        NAME="$1"; shift
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" get "$NAME" "$@"
-        ;;
-
-    "kill")
-        if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh kill <character_name> [--cause \"<how>\"]"
-            echo "Example: gm-player.sh kill Tandy --cause \"crushed by the Iron Tangle\""
-            exit 1
-        fi
-        NAME="$1"; shift
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" kill "$NAME" "$@"
-        ;;
-
-    "credits")
-        if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh credits <character_name> [+/-amount]"
-            echo "Example: gm-player.sh credits theron +50  (gain 50 credits)"
-            echo "Example: gm-player.sh credits theron -10  (spend 10 credits)"
-            echo "Example: gm-player.sh credits theron      (show current credits)"
-            exit 1
-        fi
-        if [ -z "$2" ]; then
-            $PYTHON_CMD "$LIB_DIR/player_manager.py" credits "$1"
-        else
-            $PYTHON_CMD "$LIB_DIR/player_manager.py" credits "$1" "$2"
-        fi
-        ;;
-
-    "inventory")
-        # All positionals are optional: defaults to the active PC and `list`.
-        # Forms: `inventory` · `inventory list` · `inventory <name> <action> [item]`.
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" inventory "$@"
-        ;;
-
-    "loot")
-        if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh loot <character_name> --credits <amount> --items \"Item1\" \"Item2\" ..."
-            echo ""
-            echo "Examples:"
-            echo "  gm-player.sh loot Fearghas --credits 47 --items \"Data chip\" \"Stim pak\""
-            echo "  gm-player.sh loot Tandy --items \"Scroll of Fireball\""
-            echo "  gm-player.sh loot Fearghas --credits 100"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" loot "$@"
-        ;;
-
-    "raise")
-        if [ -z "$1" ] || [ -z "$2" ]; then
-            echo "Usage: gm-player.sh raise attribute <ATTR>     (one die size up, e.g. DFT)"
-            echo "       gm-player.sh raise skill \"<skill>\"     (+1; a new skill starts at 1)"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" raise "$1" "$2"
-        ;;
-
-    "perk")
-        if [ -z "$1" ] || [ -z "$2" ]; then
-            echo "Usage: gm-player.sh perk \"<name>\" \"<what it does>\""
-            echo "Example: gm-player.sh perk \"Night eyes\" \"+2 Awareness in the dark, -2 in bright light\""
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" perk "$1" "$2"
-        ;;
-
-    "condition")
-        if [ -z "$1" ] || [ -z "$2" ]; then
-            echo "Usage: gm-player.sh condition <character_name> <action> [condition]"
-            echo ""
-            echo "Actions:"
-            echo "  add <condition>    - Add condition to character"
-            echo "  remove <condition> - Remove condition from character"
-            echo "  list               - Show current conditions"
-            echo ""
-            echo "Example: gm-player.sh condition Tandy add poisoned"
-            echo "Example: gm-player.sh condition Tandy remove poisoned"
-            echo "Example: gm-player.sh condition Tandy list"
-            exit 1
-        fi
-        if [ "$2" = "list" ]; then
-            $PYTHON_CMD "$LIB_DIR/player_manager.py" condition "$1" "$2"
-        else
-            if [ -z "$3" ]; then
-                echo "Error: Condition name required for $2"
-                exit 1
-            fi
-            $PYTHON_CMD "$LIB_DIR/player_manager.py" condition "$1" "$2" "$3"
-        fi
-        ;;
-
-    "appearance")
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" appearance "$@"
-        ;;
-
-    "set-appearance")
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" set-appearance "$@"
+    "show"|"get"|"set"|"xp"|"award"|"grow"|"level-check"|"raise"|"perk"|"vital"|"kill"|"credits"|"item"|"loot"|"condition")
+        $PYTHON_CMD "$LIB_DIR/player_manager.py" "$ACTION" "$@"
         ;;
 
     *)
         echo "Player Character Manager"
         echo "Usage: gm-player.sh <action> [args]"
         echo ""
-        echo "Actions:"
-        echo "  show [name] [--json]         - Show summary (or full record with --json)"
-        echo "  get <name>                   - Get full character JSON"
-        echo "  list                         - List all player IDs"
-        echo "  create '<json>' [--canon N] [--replace] - Save a new character from the interview"
-        echo "  set <name>                   - Set character as current active PC"
-        echo "  xp <name> +<amount> [--reason ...] - Correct XP by hand (logged; XP normally comes by itself)"
-        echo "  award --size S --reason \"...\" - XP for an achievement (S=small|medium|large: 20/50/100 % of the level)"
-        echo "  grow --attribute A --skill S --skill T --perk \"Name\" \"Effect\""
-        echo "                               - Apply one level of growth that is due (gm-growth)"
-        echo "  vital <vital> <+/-N|set N>   - Read/change a kit vital (vigor, corruption, ...)"
-        echo "  kill <name> [--cause ...]    - Mark PC dead (then run Death Protocol)"
-        echo "  credits <name> [+/-amount]   - Modify or show character credits"
-        echo "  inventory [name] [action]    - Manage inventory (add/remove/list; defaults to active PC + list)"
-        echo "  condition <name> <action>    - Manage conditions (add/remove/list)"
-        echo "  raise attribute|skill <x>    - Correction: +1 to an attribute (die size) or a skill"
-        echo "  perk <name> <what it does>   - Correction: add or rewrite a perk"
-        echo "  loot <name> --credits X --items - Batch add items + credits at once"
-        echo "  level-check <name>           - XP, level, and growth due"
+        echo "  create '<json>' [--canon N] [--replace] - save a new character from the interview"
+        echo "  show [--json]                - the whole sheet (JSON with --json; get is the same)"
+        echo "  set --style \"...\" ...        - text fields: identity, look, personality"
+        echo "                                 (--race --role --background --affiliation --physique --style"
+        echo "                                  --presence --big-five --demeanor --voice --tells --want --need"
+        echo "                                  --values --fears --goal; \"\" clears one)"
+        echo "  item add gear|inventory \"<item>\" [--concealed] [--note \"...\"]"
+        echo "  item remove|move \"<item>\" [--to gear|inventory]   item list"
+        echo "  loot <name> --credits X --items \"A\" \"B\"  - into the inventory, plus credits"
+        echo "  credits <name> [+/-amount]   - show or change credits"
+        echo "  condition <name> add|remove|list [<condition>]"
+        echo "  vital <counter> [+/-N | set N] - the campaign's own counters (Drift, ...)"
+        echo "  award --size small|medium|large --reason \"...\" - XP for an achievement"
+        echo "  grow --attribute A --skill S --skill T --perk \"Name\" \"Effect\" - growth that is due (gm-growth)"
+        echo "  level-check                  - XP, level, growth due"
+        echo "  kill <name> [--cause ...]    - the PC dies (then the Death Protocol)"
+        echo "  xp <name> +N [--reason ...]  - correction: XP by hand (logged)"
+        echo "  raise attribute|skill <x>    - correction: +1"
+        echo "  perk \"<name>\" \"<effect>\"     - correction: add or rewrite a perk"
         echo ""
-        echo "Note: Character is stored in the active campaign's character.json"
-        if [ -n "$ACTION" ]; then
-            echo "Error: unknown action '$ACTION'" >&2
-            exit 1
-        fi
+        echo "Wounds, armor and cyberware: gm-body.sh."
+        [ -z "$ACTION" ] && exit 1
+        exit 1
         ;;
 esac
-
-# Propagate Python exit code
-exit $?

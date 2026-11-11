@@ -70,13 +70,11 @@ def test_context_remainder_counts_on_every_truncated_section(tmp_path):
     plots = {f"Thread {i}": {"name": f"Thread {i}", "type": "side", "status": "active"}
              for i in range(8)}
     facts = {"plot_local": [{"fact": f"local fact {i}"} for i in range(5)]}
-    voice_lines = [f"line {i}" for i in range(6)]
     vocab = [f"term-{i}" for i in range(15)]
     npcs = {
         "Hero": {
-            "is_party_member": True,
-            "context": voice_lines,
-            "description": "the PC's shadow",
+            "identity": {"name": "Hero", "role": "the PC's shadow"},
+            "status": {"party_member": True},
         }
     }
     bible = {
@@ -112,7 +110,6 @@ def test_context_remainder_counts_on_every_truncated_section(tmp_path):
     assert remainders, "truncated context must disclose +N more"
     assert "+2 more threads" in ctx
     assert "+2 more facts" in ctx
-    assert "+2 more voice lines" in ctx
     assert "+3 more terms" in ctx
     assert "+2 more sessions" in ctx
     assert "+2 more pending consequences" in ctx

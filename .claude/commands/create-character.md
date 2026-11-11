@@ -23,22 +23,26 @@ This is what a starting character looks like in numbers. Improvise from it to fi
 | Common skills | at 0 at least, added by the script |
 | Luck | 7 |
 | Traits | you offer 3, the player picks 1 or 2 |
-| Gear | you offer 4, the player picks 2, on top of what they'd normally carry |
+| Gear | you offer 4, the player picks 2: the strongest things they carry |
 | Credits | 20 |
 
 ## The entries
 
-1. **Identity.** Name; race (mostly flavor: human, augmented human, cyborg, synth, AI in a body, vat-grown clone, anything); class (a job or role: courier, fixer, ex-corp security, netrunner); background (education, former jobs, where they come from); alignment, optional.
+The character is saved as a sheet of sections, the same sheet NPCs have (`lib/sheet.py`). Fields left empty can be filled in later with `gm-player.sh set`.
+
+1. **Identity.** Name; race (mostly flavor: human, augmented human, cyborg, synth, AI in a body, vat-grown clone, anything); role (a job: courier, fixer, ex-corp security, netrunner); background (education, former jobs, where they come from); affiliation, optional (a crew, a corp, a gang).
 2. **Attributes.** The nine die sizes (meanings in `gm-skills`). Start from d12 and shift them to fit: a d14 here, a d10 there.
 3. **Skills.** The pyramid, from the index in `gm-skills`, fitting the background. The script adds the **common** skills of the index at 0 (everyday fighting, defense, moving, noticing, talking); list one higher if the character is better at it. A character who truly lacks a common skill (a pacifist who never threw a punch) gets it under `"untrained"`. Every other skill is untrained (−3) and stays off the sheet; never write a negative value.
 4. **Luck.** 7.
 5. **Traits.** Offer 3, the player picks 1 or 2. A trait is part of who the character is and stays with them, barring a major intervention: genetics, a disease, an old injury, a bad sense (eyesight, hearing), a stiff joint, glitchy chrome. It makes the character feel different, special. Like a perk it has a good and a bad side, but stronger: advantage or disadvantage on an attribute in some situation, ±4, or something the character can't do at all or always manages. It isn't limited to skills. A name and what it does, e.g. "Old knee: disadvantage on AGI when running or jumping; +4 Composure when in pain, it has hurt for years".
-6. **Gear.** The character carries what someone like them normally would (clothes, phone, the tools of their trade); list those under equipment. On top of that, offer 4 options and the player picks 2: the most powerful things they own. For example two armors or outfits, a weapon, a tool; cyberware can be one of them. Anything else they carry is weaker or less useful than the picks.
-   - **Armor:** which zones it covers and how many boxes, usually 1; list the outermost layer first.
-   - **Cyberware:** the zone, 1 box unless it's a full limb, and what it does.
-7. **Credits.** A trivial amount; 20 if nothing else fits.
-8. **The campaign's own counters.** The KIT block of `bash tools/gm-session.sh context` lists them under `vitals:`. They start at 0; ask only if the concept suggests otherwise.
-9. **Look.** All 11 `visual_appearance` fields: `sex, age, race, species, hair, face, eyes, clothing, gear, demeanor, size`. Never leave them blank; for a canon character, start from what is known.
+6. **Gear and items.** Offer 4 options and the player picks 2: the most powerful things they own, e.g. two armors or outfits, a weapon, a tool; cyberware can be one of them. Everything else they carry is weaker or less useful than the picks, and is what someone like them would normally carry.
+   - **Armor** and **cyberware** go under `body`. Armor: which zones it covers and how many boxes, usually 1, outermost layer first. Cyberware: the zone, 1 box unless it's a full limb, and what it does.
+   - **gear:** worn or within reach (holstered, in pockets, slung on the back). Others see it, unless an item is `"concealed": true`.
+   - **inventory:** in bags and packs: spare weapons, tools, loot. Hidden from others.
+7. **Possessions.** Credits: a trivial amount, 20 if nothing else fits. Vehicles, lodging, stashes if the concept has them.
+8. **The campaign's own counters.** The KIT block of `bash tools/gm-session.sh context` lists them under `vitals:`. They start at 0; ask only if the concept suggests otherwise (`stats.counters`).
+9. **Look.** Three short descriptions: `physique` (sex, age, ethnicity, build, distinguishing features), `style` (outfit, overall aesthetic, scent), `presence` (how they carry themselves and fill a room). For a canon character, start from what is known.
+10. **Personality**, optional: the player plays the character, but a few lines keep them consistent, and matter if the character ever becomes an NPC. `big_five`: the Big Five in OCEAN order, each −3 to +3, 0 the average person ("O1 C-1 E1 A0 N1"; N+ anxious, N− calm under pressure); `demeanor`, `voice` (vocabulary, accent, dialect, tics), `tells` (gestures, habits), `want` and `need`, `values`, `fears`.
 
 Level, XP, perks and wounds start empty; don't ask about them.
 
@@ -47,10 +51,10 @@ Level, XP, perks and wounds start empty; don't ask about them.
 Show a short summary and let the player confirm. Then save:
 
 ```bash
-bash tools/gm-player.sh create '{"name":"Mara Voss","race":"augmented human","class":"courier","background":"grew up in the Rust, ran parcels for the Lanternside clinics","attributes":{"STR":11,"AGI":14,"DFT":12,"VIG":12,"LOG":11,"ITU":13,"NRV":12,"PRS":11,"EMP":12},"skills":{"Piloting":4,"Athletics":3,"Streetwise":3,"Evasion":2,"Stealth":2,"Awareness":2,"Handguns":1,"Persuasion":1,"Tech":1,"Medicine":1},"untrained":["Brawling"],"luck":7,"traits":{"Iron lungs":"advantage on VIG over any distance; disadvantage on NRV when cornered"},"equipment":["street clothes","burner phone","courier bag","bike tools"],"armor":[{"name":"Padded jacket","zones":{"chest":1,"left_arm":1,"right_arm":1}}],"cyberware":[{"name":"Reflex wire","zone":"chest","effect":"quick starts"}],"credits":20,"visual_appearance":{"sex":"female","age":"mid 20s","race":"augmented human","species":"human","hair":"cropped, bleached","face":"narrow, wind-burned","eyes":"grey, restless","clothing":"padded jacket, cargo pants","gear":"courier bag across the chest","demeanor":"always half-moving","size":"lean, average height"}}'
+bash tools/gm-player.sh create '{"identity": {"name": "Mara Voss", "race": "augmented human", "role": "courier", "background": "grew up in the Rust, ran parcels for the Lanternside clinics"}, "look": {"physique": "female, mid 20s, lean and wind-burned, cropped bleached hair, restless grey eyes", "style": "padded jacket, cargo pants, courier bag across the chest; smells of chain oil", "presence": "always half-moving, as if the next delivery were already late"}, "personality": {"big_five": "O1 C-1 E1 A0 N1", "demeanor": "cheerful, impatient", "voice": "fast, clipped, Rust slang", "tells": "drums her fingers when she lies", "want": "to buy out her debt", "need": "to stop running", "values": "loyalty to her crew", "fears": "being cornered"}, "stats": {"attributes": {"STR": 11, "AGI": 14, "DFT": 12, "VIG": 12, "LOG": 11, "ITU": 13, "NRV": 12, "PRS": 11, "EMP": 12}, "skills": {"Piloting": 4, "Athletics": 3, "Streetwise": 3, "Evasion": 2, "Stealth": 2, "Awareness": 2, "Handguns": 1, "Persuasion": 1, "Tech": 1, "Medicine": 1}, "luck": 7, "traits": {"Iron lungs": "advantage on VIG over any distance; disadvantage on NRV when cornered"}}, "untrained": ["Brawling"], "body": {"armor": [{"name": "Padded jacket", "zones": {"chest": 1, "left_arm": 1, "right_arm": 1}}], "cyberware": [{"name": "Reflex wire", "zone": "chest", "effect": "quick starts"}]}, "items": {"gear": ["street clothes", "burner phone", {"name": "holdout pistol", "concealed": true}], "inventory": ["bike tools", "spare battery"]}, "possessions": {"credits": 20, "vehicles": ["a patched cargo bike"], "lodging": ["a bunk above the clinic"]}}'
 ```
 
-- **Canon character:** add `--canon "<NPC name>"`. The NPC's name becomes the character's name, the NPC is marked as the player, and what the NPC knew becomes the player's knowledge.
+- **Canon character:** add `--canon "<NPC name>"`. The NPC's sheet is the base: what the JSON gives overrides it, the rest is kept. The NPC's name becomes the character's name, the sheet moves from npcs.json to character.json, and what the NPC knew becomes the player's knowledge.
 - **A new character after a death:** add `--replace`. The old sheet is archived to `fallen/`. Taking over a companion is a canon character: `--canon "<companion>" --replace`.
 
 Anything left out gets its default (attributes d12, luck 7, credits 20, the common skills at 0). The command says which attributes got the default. When it's saved, tell the player in plain text that the character is ready, and go on with the opening.

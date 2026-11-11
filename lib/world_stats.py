@@ -180,10 +180,8 @@ class WorldStats:
         if self.character_file.exists():
             char_data = self.json_ops.load_json("character.json")
             details["characters"] = [{
-                "name": char_data.get("name", "Unknown"),
-                "level": char_data.get("level", 1),
-                "race": char_data.get("race", "Unknown"),
-                "class": char_data.get("class", "Unknown")
+                "name": (char_data.get("identity") or {}).get("name", "Unknown"),
+                "level": (char_data.get("progress") or {}).get("level", 0),
             }]
 
         return details
@@ -238,7 +236,7 @@ class WorldStats:
         print(f"\nCharacters: {counts['characters']}")
         if detailed and "details" in overview and "characters" in overview["details"]:
             for char in overview["details"]["characters"]:
-                print(f"  - {char['name']} - Level {char['level']} {char['race']} {char['class']}")
+                print(f"  - {char['name']} - Level {char['level']}")
 
         print(f"\nSessions: {counts['sessions']}")
 

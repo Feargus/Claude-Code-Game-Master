@@ -16,6 +16,7 @@ from campaign_manager import CampaignManager
 from cli_output import emit, emit_error
 from entity_aliases import resolve_entity_name
 from note_manager import fact_text
+from entity_manager import usual_places
 
 
 class WorldSearcher:
@@ -62,8 +63,9 @@ class WorldSearcher:
         for name, npc_data in npcs.items():
             if not isinstance(npc_data, dict):
                 continue
-            if (query_lower in name.lower() or
-                query_lower in npc_data.get('description', '').lower()):
+            identity = npc_data.get('identity') or {}
+            text = " ".join(str(identity.get(f) or "") for f in ("role", "background", "affiliation"))
+            if query_lower in name.lower() or query_lower in text.lower():
                 results[name] = npc_data
 
         return results
@@ -89,12 +91,9 @@ class WorldSearcher:
         for name, npc_data in npcs.items():
             if not isinstance(npc_data, dict):
                 continue
-            tags = npc_data.get('tags', {})
-            if isinstance(tags, dict):
-                tag_list = tags.get(tag_key, [])
-                if isinstance(tag_list, list):
-                    if any(tag_lower in t.lower() for t in tag_list):
-                        results[name] = npc_data
+            tag_list = usual_places(npc_data) if tag_key == 'locations' else []
+            if any(tag_lower in t.lower() for t in tag_list):
+                results[name] = npc_data
 
         return results
 
@@ -280,15 +279,10 @@ class WorldSearcher:
             print("\nNPCs:")
             found_anything = True
             for name, npc in results['npcs'].items():
-                desc = self._format_text(npc.get('description', ''), full=full, limit=240)
-                print(f"  - {name}: {desc} ({npc.get('attitude', '')})")
-                if npc.get('events'):
-                    last_event = npc['events'][-1]
-                    # Handle both string events and dict events
-                    if isinstance(last_event, dict):
-                        print(f"    Last event: {self._format_text(last_event.get('event', ''), full=full, limit=140)}")
-                    else:
-                        print(f"    Last event: {self._format_text(str(last_event), full=full, limit=140)}")
+                identity = npc.get('identity') or {}
+                desc = self._format_text(identity.get('role') or identity.get('background') or '',
+                                         full=full, limit=240)
+                print(f"  - {name}: {desc}")
 
         if results.get('locations'):
             print("\nLOCATIONS:")

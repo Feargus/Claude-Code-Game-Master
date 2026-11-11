@@ -18,7 +18,7 @@ from typing import Dict, List, Tuple
 sys.path.insert(0, str(Path(__file__).parent))
 
 from campaign_manager import CampaignManager
-from entity_manager import npcs_present, npcs_usually_at
+from entity_manager import is_dead, is_party_member, npcs_present, npcs_usually_at
 from json_ops import JsonOperations
 
 OVERVIEW = "campaign-overview.json"
@@ -84,12 +84,12 @@ class SceneManager:
         (and changes nothing) for an unknown or dead NPC."""
         keys, errors = self._resolve(names)
         npcs = self._npcs()
-        errors += [f"{k} is dead." for k in keys if npcs[k].get("status") == "dead"]
+        errors += [f"{k} is dead." for k in keys if is_dead(npcs[k])]
         if errors:
             raise ValueError("; ".join(errors))
         overview = self._overview()
         listed = self._listed(overview)
-        already = [k for k in keys if k in listed or npcs[k].get("is_party_member")]
+        already = [k for k in keys if k in listed or is_party_member(npcs[k])]
         entered = [k for k in keys if k not in already]
         if entered:
             self._save(overview, listed + entered)
@@ -102,7 +102,7 @@ class SceneManager:
         if errors and strict:
             raise ValueError("; ".join(errors))
         npcs = self._npcs()
-        party = [k for k in keys if npcs[k].get("is_party_member")]
+        party = [k for k in keys if is_party_member(npcs[k])]
         if party and strict:
             raise ValueError(f"{', '.join(party)}: party members are always present; "
                              f"gm-npc.sh demote first.")

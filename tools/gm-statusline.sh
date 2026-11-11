@@ -70,21 +70,23 @@ if [ ! -f "$CHAR" ]; then
 fi
 
 # --- Character fields -------------------------------------------------------
-IFS=$'\t' read -r NAME RACE CLASS LEVEL CREDITS XP_CUR XP_NEXT LOC < <(
+# The sheet's format: lib/sheet.py. Level N needs 100 × N² XP (lib/growth.py).
+IFS=$'\t' read -r NAME RACE CLASS LEVEL CREDITS XP_CUR XP_NEXT < <(
     jq -r '
-      [ (.name // .identity.name // "?"),
-        (.race // .identity.race // "?"),
-        (.class // .identity.class // "?"),
-        (.level // .progression.level // 1),
-        (.credits // 0),
-        (.xp.current // .progression.xp.current // .xp // 0),
-        (.xp.next_level // .progression.xp.next_level // 0),
-        (.current_location // .details.current_location // "?")
-      ] | @tsv' "$CHAR"
+      ((.progress.level // 0)) as $level
+      | [ (.identity.name // "?"),
+          (.identity.race // ""),
+          (.identity.role // ""),
+          $level,
+          (.possessions.credits // 0),
+          (.progress.xp // 0),
+          (100 * ($level + 1) * ($level + 1))
+        ] | @tsv' "$CHAR"
 )
+LOC="?"
 
 # Conditions array -> status label; fall back to the wound-derived state.
-CONDS=$(jq -r '(.conditions // []) | map(ascii_downcase) | join(", ")' "$CHAR" 2>/dev/null)
+CONDS=$(jq -r '(.status.conditions // []) | map(ascii_downcase) | join(", ")' "$CHAR" 2>/dev/null)
 
 # --- Overview fields (location/time/date) -----------------------------------
 DATE="" ; TOD="" ; OLOC=""
@@ -105,7 +107,7 @@ IFS=$'\t' read -r WOUNDS DANGER < <(
       {head: "head", chest: "chest", groin: "groin", left_arm: "l.arm", right_arm: "r.arm",
        left_leg: "l.leg", right_leg: "r.leg"} as $names
       | ["", "bruised", "injured", "nearly unusable", "destroyed"] as $word
-      | (.body // {}) as $body
+      | (.body.zones // {}) as $body
       | [ $names | keys_unsorted[] | select(($body[.].wounds // 0) > 0)
           | "\($names[.]) \($word[$body[.].wounds])" ] as $parts
       | [ $body | to_entries[] | .key as $zone | (.value.wounds // 0) as $w

@@ -224,5 +224,547 @@
       "fact": "Fastball Special from warehouse rooftop. Carl thrown at hostile crawler with crossbow. 21 damage, target eliminated. Collateral: two adjacent conspirators knocked prone.",
       "timestamp": "2026-02-06T20:46:49.636387+00:00"
     }
+  ],
+  "npc_memories": [
+    {
+      "id": "f1",
+      "fact": "Now equipped with improvised chitin armor (+2 AC). Armed with a rusty short sword.",
+      "about": [
+        "npc:Carl",
+        "player"
+      ],
+      "holders": [
+        "npc:Carl"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f2",
+      "fact": "Allied with Tandy. Equipped with improvised chitin armor (+2 AC) and rusty short sword. Wounded in cricket fight but rested. Former US Coast Guard, capable fighter.",
+      "about": [
+        "npc:Carl",
+        "player"
+      ],
+      "holders": [
+        "npc:Carl"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f3",
+      "fact": "Descended to Floor 2 with Tandy. Threw Princess Donut for killing blow on the Butcher. Currently negotiating with Mongo's crew.",
+      "about": [
+        "npc:Carl",
+        "player"
+      ],
+      "holders": [
+        "npc:Carl"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f4",
+      "fact": "Wore clown skin disguise. Was thrown at Level 85 City Boss. Eyebrows burned off. Dignity destroyed.",
+      "about": [
+        "npc:Carl",
+        "player"
+      ],
+      "holders": [
+        "npc:Carl"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f5",
+      "fact": "Participated in flash mob Mating Dance of Doom atop Prometheus. Mental state: questionable.",
+      "about": [
+        "npc:Carl",
+        "player"
+      ],
+      "holders": [
+        "npc:Carl"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f6",
+      "fact": "Fastball Special'd from warehouse rooftop into crossbow crawler. Eliminated threat. Signature scream. Dignity remains absent.",
+      "about": [
+        "npc:Carl",
+        "player"
+      ],
+      "holders": [
+        "npc:Carl"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f7",
+      "fact": "Fell off warehouse rooftop with Tandy. Unhurt. Watching Tandy glow with swallowed WMD case. Stairwell door just activated.",
+      "about": [
+        "npc:Carl",
+        "player"
+      ],
+      "holders": [
+        "npc:Carl"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f8",
+      "fact": "Allied with Tandy. Has Cracked Glowstone. Discovered she can cast magic (golden light bolts). Very impressed by Tandy's supermodel walk. Calls Carl her 'servant'.",
+      "about": [
+        "npc:Princess Donut",
+        "player"
+      ],
+      "holders": [
+        "npc:Princess Donut"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f9",
+      "fact": "Descended to Floor 2. Delivered killing blow on the Butcher with magic bolt attack. Very proud of herself. Currently claiming the warmest spot in Mongo's safe room.",
+      "about": [
+        "npc:Princess Donut",
+        "player"
+      ],
+      "holders": [
+        "npc:Princess Donut"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f10",
+      "fact": "Won Mongo the Mongoliensis as her pet\\! He immediately bit her on the nose. His title is Royal Steed. She's very proud despite the biting.",
+      "about": [
+        "npc:Princess Donut",
+        "player"
+      ],
+      "holders": [
+        "npc:Princess Donut"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f11",
+      "fact": "Received the Hive Mother's Psi-Fang as a trophy. Very pleased with herself. The fang whispers to her.",
+      "about": [
+        "npc:Princess Donut",
+        "player"
+      ],
+      "holders": [
+        "npc:Princess Donut"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f12",
+      "fact": "Cast Animal Friendship on Prometheus. Now rides atop the dragon head like a queen. Has a dragon.",
+      "about": [
+        "npc:Princess Donut",
+        "player"
+      ],
+      "holders": [
+        "npc:Princess Donut"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f13",
+      "fact": "Descended into the Laughing Crypt with the party to confront Grimaldi. Left Prometheus guarding the exit.",
+      "about": [
+        "npc:Princess Donut",
+        "player"
+      ],
+      "holders": [
+        "npc:Princess Donut"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f14",
+      "fact": "Stowed Robe of Eyes for pulse prep. Confiscated Queen's Fang from Mongo. Rated Carl's Fastball landing 7/10.",
+      "about": [
+        "npc:Princess Donut",
+        "player"
+      ],
+      "holders": [
+        "npc:Princess Donut"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f15",
+      "fact": "Fell off rooftop, landed on feet. Prometheus left on rooftop above. Stairwell door activated by first pulse.",
+      "about": [
+        "npc:Princess Donut",
+        "player"
+      ],
+      "holders": [
+        "npc:Princess Donut"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f16",
+      "fact": "Located at the Tutorial Guild Hall, ready to greet new crawlers",
+      "about": [
+        "npc:Mordecai",
+        "player"
+      ],
+      "holders": [
+        "npc:Mordecai"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f17",
+      "fact": "Party visited after containing the Remex soul crystal. Mordecai now in Incubus form on Floor 3 - tuxedo, bat wings, Level 50. No longer rat hooligan appearance.",
+      "about": [
+        "npc:Mordecai",
+        "player"
+      ],
+      "holders": [
+        "npc:Mordecai"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f18",
+      "fact": "Squeeks is friendly toward the player.",
+      "about": [
+        "npc:Squeeks",
+        "player"
+      ],
+      "holders": [
+        "npc:Squeeks"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f19",
+      "fact": "Rescued from Giant Cave Crickets by the party. Grateful. Provided Tutorial Map and intel about the Butcher. Located at Cricket Nest.",
+      "about": [
+        "npc:Squeeks",
+        "player"
+      ],
+      "holders": [
+        "npc:Squeeks"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f20",
+      "fact": "The Butcher is hostile toward the player.",
+      "about": [
+        "npc:The Butcher",
+        "player"
+      ],
+      "holders": [
+        "npc:The Butcher"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f21",
+      "fact": "Won by Princess Donut. Bit her on the nose immediately. Has been trained to wait for \"sic em\" before charging.",
+      "about": [
+        "npc:Mongo",
+        "player"
+      ],
+      "holders": [
+        "npc:Mongo"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f22",
+      "fact": "Nearly killed by centipede poison in first real combat. Stabilized by Carl. Learning that murder-charging has consequences.",
+      "about": [
+        "npc:Mongo",
+        "player"
+      ],
+      "holders": [
+        "npc:Mongo"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f23",
+      "fact": "Survived near-death by centipede poison. Fully healed in safe room. Still murderously enthusiastic.",
+      "about": [
+        "npc:Mongo",
+        "player"
+      ],
+      "holders": [
+        "npc:Mongo"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f24",
+      "fact": "Rested and recovered to 7/8 HP.",
+      "about": [
+        "npc:Mongo",
+        "player"
+      ],
+      "holders": [
+        "npc:Mongo"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f25",
+      "fact": "Received Queen's Fang from Tandy. Now wields the poison dagger in his beak. Somehow even more terrifying.",
+      "about": [
+        "npc:Mongo",
+        "player"
+      ],
+      "holders": [
+        "npc:Mongo"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f26",
+      "fact": "Long rest at the Broken Column Inn. Recovered to full HP (8/8). Enjoyed the stables - ate something questionable.",
+      "about": [
+        "npc:Mongo",
+        "player"
+      ],
+      "holders": [
+        "npc:Mongo"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f27",
+      "fact": "Queen's Fang confiscated for pulse prep. Screeched betrayal at the sky. Still angry about it.",
+      "about": [
+        "npc:Mongo",
+        "player"
+      ],
+      "holders": [
+        "npc:Mongo"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f28",
+      "fact": "Hit ground beak-first after rooftop fall. Tried to bite a cobblestone. Still angry about Queen's Fang confiscation.",
+      "about": [
+        "npc:Mongo",
+        "player"
+      ],
+      "holders": [
+        "npc:Mongo"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f29",
+      "fact": "Encountered at Floor 2 Junction. Independent crawler, wary of alliances.",
+      "about": [
+        "npc:Imani",
+        "player"
+      ],
+      "holders": [
+        "npc:Imani"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f30",
+      "fact": "Rescued from Cave Stalkers by Tandy's party. Lost most of her crew. Offered alliance to survive Floor 2.",
+      "about": [
+        "npc:Imani",
+        "player"
+      ],
+      "holders": [
+        "npc:Imani"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f31",
+      "fact": "Alliance formed with Tandy's party. Now traveling together through Floor 2.",
+      "about": [
+        "npc:Imani",
+        "player"
+      ],
+      "holders": [
+        "npc:Imani"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f32",
+      "fact": "Spotted lurking near Floor 2 Junction. Trades information and small items.",
+      "about": [
+        "npc:Skitch",
+        "player"
+      ],
+      "holders": [
+        "npc:Skitch"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f33",
+      "fact": "Rescued from Cave Stalkers. Arm wounded but bandaged. Terrified and fascinated by Mongo.",
+      "about": [
+        "npc:Skitch",
+        "player"
+      ],
+      "holders": [
+        "npc:Skitch"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f34",
+      "fact": "Now allied with Tandy's party. Claims to know secret paths through the Warrens.",
+      "about": [
+        "npc:Skitch",
+        "player"
+      ],
+      "holders": [
+        "npc:Skitch"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f35",
+      "fact": "Brennan is friendly toward the player.",
+      "about": [
+        "npc:Brennan",
+        "player"
+      ],
+      "holders": [
+        "npc:Brennan"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f36",
+      "fact": "Alliance formed with Tandy's party. Broken leg - requires carrying to travel.",
+      "about": [
+        "npc:Brennan",
+        "player"
+      ],
+      "holders": [
+        "npc:Brennan"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f37",
+      "fact": "Leg healed by Tandy's potion. Can walk again. Deeply grateful and loyal to the party.",
+      "about": [
+        "npc:Brennan",
+        "player"
+      ],
+      "holders": [
+        "npc:Brennan"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f38",
+      "fact": "Grok is friendly toward the player.",
+      "about": [
+        "npc:Grok",
+        "player"
+      ],
+      "holders": [
+        "npc:Grok"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f39",
+      "fact": "Met Tandy's party at the Desperado Club. Witnessed Tandy's transformation to Sasquatch. Recommended buying explosives from Pustule.",
+      "about": [
+        "npc:Gryx",
+        "player"
+      ],
+      "holders": [
+        "npc:Gryx"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f40",
+      "fact": "Pustule is friendly toward the player.",
+      "about": [
+        "npc:Pustule",
+        "player"
+      ],
+      "holders": [
+        "npc:Pustule"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f41",
+      "fact": "Prometheus is friendly toward the player.",
+      "about": [
+        "npc:Prometheus",
+        "player"
+      ],
+      "holders": [
+        "npc:Prometheus"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f42",
+      "fact": "Freed from Grimaldi's Circus. Allied with party. Currently at circus outskirts with the group.",
+      "about": [
+        "npc:Prometheus",
+        "player"
+      ],
+      "holders": [
+        "npc:Prometheus"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f43",
+      "fact": "Encountered by Tandy's party. Told his story - wife Quill, the swordsmen army, the overloading crystal. Party chose to listen rather than attack. Crystal pulsing, agitated.",
+      "about": [
+        "npc:Remex the Grand",
+        "player"
+      ],
+      "holders": [
+        "npc:Remex the Grand"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f44",
+      "fact": "Soul crystal contained by Sheol Glass Reaper Case. Energy streamed into Remex, freeing him from centuries of tethered existence. Chains dissolved. Remex transformed - no longer zombified.",
+      "about": [
+        "npc:Remex the Grand",
+        "player"
+      ],
+      "holders": [
+        "npc:Remex the Grand"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    },
+    {
+      "id": "f45",
+      "fact": "Passed away peacefully surrounded by Tandy's party. Tandy placed a hand on his head as he faded. Final words were gratitude. Died free, unchained, after centuries of torment.",
+      "about": [
+        "npc:Remex the Grand",
+        "player"
+      ],
+      "holders": [
+        "npc:Remex the Grand"
+      ],
+      "converted": "from the NPC's events in npcs.json"
+    }
   ]
 }

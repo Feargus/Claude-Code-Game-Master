@@ -19,8 +19,9 @@ def campaign(isolated_world_state):
     directory.mkdir()
     (isolated_world_state / "active-campaign.txt").write_text("test")
     (directory / "character.json").write_text(json.dumps({
-        "name": "Fearghas", "level": 0, "stats": {"DFT": 10, "AGI": 11},
-        "skills": {"Long guns": 2}}))
+        "identity": {"name": "Fearghas"}, "progress": {"level": 0, "xp": 0},
+        "stats": {"attributes": {"DFT": 10, "AGI": 11}, "skills": {"Long guns": 2}},
+        "body": {"zones": {}}}))
     return directory
 
 
@@ -34,7 +35,7 @@ def test_xp_makes_growth_due_and_logs_it(campaign, isolated_world_state):
     result = mgr.award_xp("Fearghas", 565, "fight", "a test")        # 664 in total
     assert result["growth_due"] == 2                                  # level 2 needs 400
     sheet = _sheet(campaign)
-    assert sheet["level"] == 0 and sheet["xp"] == {"current": 664, "next_level": 100}
+    assert sheet["progress"]["level"] == 0 and sheet["progress"]["xp"] == 664
     assert "+565 XP  fight: a test" in (campaign / "xp.log").read_text()
 
 
@@ -59,9 +60,10 @@ def test_grow_applies_exactly_one_level(campaign, isolated_world_state):
     result = mgr.grow("agi", ["long guns", "stealth"], "Cat eyes", "+2 Awareness at night, -2 by day")
     assert result["success"] and result["level"] == 1
     sheet = _sheet(campaign)
-    assert sheet["stats"]["AGI"] == 12 and sheet["skills"] == {"Long guns": 3, "Stealth": 1}
-    assert sheet["perks"] == {"Cat eyes": "+2 Awareness at night, -2 by day"}
-    assert sheet["xp"]["next_level"] == 400
+    assert sheet["stats"]["attributes"]["AGI"] == 12
+    assert sheet["stats"]["skills"] == {"Long guns": 3, "Stealth": 1}
+    assert sheet["stats"]["perks"] == {"Cat eyes": "+2 Awareness at night, -2 by day"}
+    assert sheet["progress"]["level"] == 1
     assert "already" in mgr.grow("DFT", ["Tech", "Stealth"], "cat eyes", "x")["error"]
     assert mgr.grow("DFT", ["Tech", "Stealth"], "Steady hand", "+1 Tech")["level"] == 2
     assert mgr.grow("DFT", ["Tech", "Stealth"], "One more", "x")["success"] is False   # nothing due
@@ -88,14 +90,14 @@ def test_ending_a_fight_pays_for_each_enemy_taken_out(campaign, isolated_world_s
     combat.wound("thug 1", 2)                                         # thug 2 got away
     summary = combat.end()
     assert summary["xp"] == 360 + 40 and summary["growth_due"] == 2
-    assert _sheet(campaign)["xp"]["current"] == 400
+    assert _sheet(campaign)["progress"]["xp"] == 400
     assert "defeated Mastiff (6 wounds)" in (campaign / "xp.log").read_text()
 
 
 def test_raise_attribute_goes_up_one_die_size(campaign, isolated_world_state):
     result = PlayerManager(str(isolated_world_state)).raise_stat("attribute", "dft")
     assert result["previous"] == 10 and result["current"] == 11
-    assert _sheet(campaign)["stats"]["DFT"] == 11
+    assert _sheet(campaign)["stats"]["attributes"]["DFT"] == 11
 
 
 def test_raise_attribute_refuses_unknown_or_missing(campaign, isolated_world_state):
@@ -106,7 +108,7 @@ def test_raise_attribute_refuses_unknown_or_missing(campaign, isolated_world_sta
 
 def test_raise_skill_adds_one_and_keeps_the_sheets_spelling(campaign, isolated_world_state):
     PlayerManager(str(isolated_world_state)).raise_stat("skill", "long guns")
-    assert _sheet(campaign)["skills"] == {"Long guns": 3}
+    assert _sheet(campaign)["stats"]["skills"] == {"Long guns": 3}
 
 
 def test_a_new_skill_starts_at_one(campaign, isolated_world_state):
@@ -119,7 +121,7 @@ def test_perks_are_name_and_function(campaign, isolated_world_state):
     mgr = PlayerManager(str(isolated_world_state))
     mgr.set_perk("Night eyes", "+2 Awareness in the dark, -2 in bright light")
     assert mgr.set_perk("night eyes", "+3 in the dark")["replaced"] is True
-    assert _sheet(campaign)["perks"] == {"Night eyes": "+3 in the dark"}
+    assert _sheet(campaign)["stats"]["perks"] == {"Night eyes": "+3 in the dark"}
 
 
 def test_wrapper_raise_and_perk(campaign):

@@ -16,11 +16,12 @@ with close matches, so a typo never becomes a new, empty id.
 import difflib
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from entity_aliases import normalize_entity_name, resolve_entity_name
+from entity_aliases import aliases_of, normalize_entity_name, resolve_entity_name
+from sheet import aliases as sheet_aliases, name as sheet_name
 
 RUNGS = ("street", "public")
 KINDS = ("npc", "location")
@@ -35,31 +36,26 @@ class WorldIds:
     def __init__(self, json_ops):
         self.json_ops = json_ops
         self._tables = None
-        self._pc = {}
+        self._pc = None
 
     def _load(self) -> Dict[str, dict]:
-        """The NPC and location tables. A canon character's NPC record (the NPC the
-        player now plays) is not an NPC any more: it is set aside as `_pc`, and its
-        name and aliases resolve to `player`."""
         if self._tables is None:
-            npcs = dict(self.json_ops.load_json("npcs.json") or {})
-            name = self.player_name()
-            record = npcs.get(name)
-            self._pc = {}
-            if isinstance(record, dict) and record.get("is_player_character"):
-                self._pc = {name: npcs.pop(name)}
             self._tables = {
-                "npc": npcs,
+                "npc": self.json_ops.load_json("npcs.json") or {},
                 "location": self.json_ops.load_json("locations.json") or {},
             }
         return self._tables
 
-    def _player_aliases(self) -> List[str]:
-        self._load()
-        return [a for record in self._pc.values() for a in record.get("aliases") or [] if a]
+    def _player(self) -> Dict[str, Any]:
+        if self._pc is None:
+            self._pc = self.json_ops.load_json("character.json") or {}
+        return self._pc
 
     def player_name(self) -> str:
-        return str((self.json_ops.load_json("character.json") or {}).get("name") or "")
+        return sheet_name(self._player())
+
+    def _player_aliases(self) -> List[str]:
+        return sheet_aliases(self._player())
 
     def all_ids(self) -> List[str]:
         """Every id that exists now, in a fixed order."""
@@ -106,9 +102,8 @@ class WorldIds:
             return "", (f"'{text}': unknown kind '{kind}'. Use player, "
                         f"{', '.join(k + ':<name>' for k in KINDS)}, street or public.")
         key = resolve_entity_name(rest, self._load()[kind])
-        if key is None and kind == "npc" and self._pc and \
-                (resolve_entity_name(rest, self._pc) or self._is_player(rest)):
-            return "player", ""  # the NPC the player now plays
+        if key is None and kind == "npc" and self._is_player(rest):
+            return "player", ""  # a canon character: the NPC is the player now
         if key is None:
             return "", f"No {kind} '{rest}'{self._suggest(rest, kinds=(kind,))}"
         return f"{kind}:{key}", ""
@@ -137,8 +132,7 @@ class WorldIds:
         for kind in KINDS:
             for key, data in self._load()[kind].items():
                 out.append((f"{kind}:{key}", key))
-                if isinstance(data, dict):
-                    out += [(f"{kind}:{key}", a) for a in data.get("aliases") or [] if a]
+                out += [(f"{kind}:{key}", a) for a in aliases_of(data)]
         return out
 
     def mentioned(self, text: str) -> List[str]:
@@ -277,20 +271,21 @@ def change_aliases(json_ops, kind: str, name: str, add=(), remove=()) -> Tuple[s
     key = cid.partition(":")[2]
     table = json_ops.load_json(TABLE_FILES[kind]) or {}
     entry = table[key]
-    have = {a.lower() for a in entry.get("aliases") or []}
+    holder = entry.setdefault("identity", {}) if kind == "npc" else entry
+    have = {a.lower() for a in holder.get("aliases") or []}
     gone = {r.strip().lower() for r in remove}
     errors = [f"{key} has no alias '{r}'." for r in remove if r.strip().lower() not in have]
     errors += [e for a in add if (e := ids.check_alias(a, cid))]
     if errors:
         raise ValueError(" ".join(errors))
-    aliases = [a for a in entry.get("aliases") or [] if a.lower() not in gone]
+    aliases = [a for a in holder.get("aliases") or [] if a.lower() not in gone]
     for a in add:
         if a.strip().lower() not in {x.lower() for x in aliases}:
             aliases.append(a.strip())
     if aliases:
-        entry["aliases"] = aliases
+        holder["aliases"] = aliases
     else:
-        entry.pop("aliases", None)
+        holder.pop("aliases", None)
     json_ops.save_json(TABLE_FILES[kind], table)
     return key, aliases
 

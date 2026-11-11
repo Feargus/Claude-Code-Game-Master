@@ -4,6 +4,7 @@ JSON schemas and validation for GM world state files.
 Provides schema definitions and validation functions for all entity types.
 """
 
+import json
 import sys
 from pathlib import Path
 from typing import Dict, Any, List, Tuple, Optional
@@ -62,52 +63,15 @@ VALID_RARITIES = {'common', 'uncommon', 'rare', 'very rare', 'legendary', 'artif
 
 
 def validate_npc(name: str, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
-    """Validate NPC data against schema.
-
-    Args:
-        name: NPC name (key)
-        data: NPC data dictionary
-
-    Returns:
-        Tuple of (is_valid, list of error messages)
-    """
-    errors = []
-
-    # Required fields
-    if not data.get('description'):
-        errors.append(f"NPC '{name}': missing description")
-
-    attitude = data.get('attitude', '').lower()
-    if not attitude:
-        errors.append(f"NPC '{name}': missing attitude")
-    elif attitude not in VALID_ATTITUDES:
-        errors.append(f"NPC '{name}': invalid attitude '{attitude}' (valid: {', '.join(VALID_ATTITUDES)})")
-
-    # Validate events array
-    events = data.get('events', [])
-    if not isinstance(events, list):
-        errors.append(f"NPC '{name}': events must be a list")
-
-    # Validate tags structure
-    tags = data.get('tags', {})
-    if isinstance(tags, dict):
-        if 'locations' in tags and not isinstance(tags['locations'], list):
-            errors.append(f"NPC '{name}': tags.locations must be a list")
-        if 'quests' in tags and not isinstance(tags['quests'], list):
-            errors.append(f"NPC '{name}': tags.quests must be a list")
-    elif isinstance(tags, list):
-        # Legacy format - just a list of tags, which is fine
-        pass
-    else:
-        errors.append(f"NPC '{name}': tags must be a dict or list")
-
-    # Validate character sheet if party member
-    if data.get('is_party_member') and data.get('character_sheet'):
-        sheet = data['character_sheet']
-        if not isinstance(sheet.get('hp'), dict):
-            errors.append(f"NPC '{name}': character_sheet.hp must be a dict with current/max")
-
-    return len(errors) == 0, errors
+    """Validate an NPC sheet (sheet.py). Returns (is_valid, list of error messages)."""
+    from sheet import SheetError, check
+    try:
+        check(json.loads(json.dumps(data)), "npc")
+    except SheetError as error:
+        return False, [f"NPC '{name}': {error}"]
+    if (data.get("identity") or {}).get("name") not in (None, name):
+        return False, [f"NPC '{name}': identity.name is '{data['identity']['name']}'"]
+    return True, []
 
 
 def validate_location(name: str, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
@@ -266,39 +230,13 @@ def validate_campaign_overview(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
 
 
 def validate_character(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
-    """Validate a character sheet.
-
-    The attributes are fixed for every campaign: the nine in skill_contest.
-    Returns (is_valid, list of error messages).
-    """
-    from skill_contest import ATTRIBUTES
-    errors = []
-
-    unknown = sorted(k for k in (data.get('stats') or {}) if k.upper() not in ATTRIBUTES)
-    if unknown:
-        errors.append(f"Character: unknown attributes {unknown} (use {', '.join(ATTRIBUTES)})")
-
-    # Required fields — only what every kit shares. race/class are optional flavor.
-    # Level 0 is a real level (new characters start there), so only absence counts.
-    if not data.get('name'):
-        errors.append("Character: missing name")
-    if data.get('level') is None:
-        errors.append("Character: missing level")
-
-    if 'level' in data and not isinstance(data['level'], (int, float)):
-        errors.append("Character: level must be a number")
-
-    # Validate XP (can be number or {current, next_level} object)
-    xp = data.get('xp')
-    if xp is not None:
-        if isinstance(xp, dict):
-            for key in ['current', 'next_level']:
-                if key in xp and not isinstance(xp[key], (int, float)):
-                    errors.append(f"Character: xp.{key} must be a number")
-        elif not isinstance(xp, (int, float)):
-            errors.append("Character: xp must be a number or dict with current/next_level")
-
-    return len(errors) == 0, errors
+    """Validate the player's sheet (sheet.py). Returns (is_valid, list of error messages)."""
+    from sheet import SheetError, check
+    try:
+        check(json.loads(json.dumps(data)), "player")
+    except SheetError as error:
+        return False, [f"Character: {error}"]
+    return True, []
 
 
 def validate_world_state(campaign_dir: str) -> Dict[str, List[str]]:

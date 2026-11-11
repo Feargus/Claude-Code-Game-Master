@@ -14,7 +14,8 @@ after the character exists and the player has said where and when to start.
               "path": "visible from here", "aliases": ["the Lantern"]}],
    "npcs": [{"name": "Auntie Ro", "who": "...", "attitude": "friendly",
              "aliases": ["Ro"], "location": ["The Lantern noodle stall"],
-             "present": true}],
+             "present": true, "physique": "...", "big_five": "O0 C2 E1 A1 N-1",
+             "voice": "..."}],
    "plot": {"name": "The Writ", "type": "main", "description": "...",
             "hook": "Dekker's crew walks into the market with a writ ...",
             "npcs": ["Dekker", "Seraphine Halcyon-Vey"], "locations": ["The Chrome"]},
@@ -24,7 +25,9 @@ after the character exists and the player has said where and when to start.
   alone and used as it is. A new place needs a `position` (an exit's defaults to
   "next to <the place>"); a new NPC needs `who`, and is usually found in the
   place unless `location` or `"nowhere": true` says otherwise. NPCs are in the
-  scene unless `"present": false`.
+  scene unless `"present": false`. Any sheet text field can be given too
+  (sheet.TEXT_FIELDS: physique, style, presence, big_five, voice, tells, want,
+  fears, ...). `attitude`, how they regard the player, becomes a fact they hold.
 - The plot is required: every campaign starts with at least one. Its `hook`, the
   problem that won't wait, becomes its first beat, so STORY THREADS carries it
   on from there. Its `npcs` and `locations` that have no record yet are the
@@ -46,6 +49,7 @@ from typing import Any, Dict, List, Tuple
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
+from sheet import TEXT_FIELDS, name as sheet_name
 
 PLAY_BEGUN = "### Session Ended:"  # what session-log.md holds once a session has ended
 
@@ -114,7 +118,7 @@ class Opening:
         if log.exists() and PLAY_BEGUN in log.read_text(encoding="utf-8"):
             raise OpeningError("Play has begun here (a session has ended); the opening "
                                "is for a new campaign.")
-        if not (self.json_ops.load_json("character.json") or {}).get("name"):
+        if not sheet_name(self.json_ops.load_json("character.json") or {}):
             raise OpeningError("Create the character first (/create-character): the "
                                "opening is built for them.")
 
@@ -201,9 +205,11 @@ class Opening:
             raise OpeningError(f"The new NPC '{name}' needs \"who\": who they are.")
         nowhere = bool(entry.get("nowhere"))
         usual = _as_list(entry.get("location")) or ([] if nowhere else [place])
+        fields = {flag: str(entry[key]) for flag in TEXT_FIELDS
+                  for key in (flag, flag.replace("-", "_")) if entry.get(key)}
         if not NPCManager(self.wsd).create_npc(
-                name, entry["who"], entry.get("attitude") or "neutral", locations=usual,
-                nowhere=nowhere, aliases=_as_list(entry.get("aliases"))):
+                name, entry["who"], entry.get("attitude"), locations=usual,
+                nowhere=nowhere, aliases=_as_list(entry.get("aliases")), fields=fields):
             raise OpeningError(f"The NPC '{name}' was refused")
         return name
 

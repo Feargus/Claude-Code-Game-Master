@@ -5,12 +5,12 @@ Facts and consequences name people by id, and the character being played is
 `player`. When the player takes over someone else, the ids follow the people,
 not the seat:
 
-- the outgoing character (on `--replace`) becomes an NPC record, if they aren't
-  one already, and everything that said `player` now says `npc:<their name>`:
+- the outgoing character (on `--replace`) goes into npcs.json as an NPC sheet
+  (sheet.as_npc), and everything that said `player` now says `npc:<their name>`:
   what they knew, what is known about them, the triggers waiting on them;
 - a canon character (`--canon`) was `npc:<name>`, and is `player` from now on.
-  Their NPC record stays (description, look, aliases), marked as the player
-  character, and leaves the scene list; the id resolver reads it as `player`.
+  Their sheet moves from npcs.json to character.json (new_character.py), and they
+  leave the scene list.
 
 Used by new_character.py; the GM never calls it directly.
 """
@@ -20,6 +20,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
+
+import sheet as sheet_mod
 
 
 def _swap(ids: List[str], old: str, new: str) -> List[str]:
@@ -93,52 +95,33 @@ def move_id(json_ops, old: str, new: str) -> List[str]:
     return notes
 
 
-def _former_record(sheet: Dict[str, Any], npcs: Dict[str, Any], timestamp: str) -> str:
-    """The NPC record of an outgoing character; created when they have none.
-    Returns its key."""
-    name = sheet.get("name") or "former character"
-    record = npcs.get(name)
-    if isinstance(record, dict) and record.get("is_player_character"):
-        record["is_player_character"] = False
-    else:
-        if name in npcs:
-            name = f"{name} (former character)"
-        record = npcs.setdefault(name, {
-            "description": f"the former player character ({sheet.get('class') or 'no role'})",
-            "attitude": "neutral",
-            "created": timestamp,
-            "events": [],
-            "visual_appearance": sheet.get("visual_appearance") or {},
-            "tags": {"locations": [], "quests": []},
-            "no_usual_place": True,
-        })
-    record["former_player_character"] = True
-    for field in ("status", "cause", "died_at"):
-        if sheet.get(field):
-            record[field] = sheet[field]
-    return name
+def _former_record(old: Dict[str, Any], npcs: Dict[str, Any]) -> str:
+    """Put the outgoing character into npcs.json as an NPC sheet. Returns its key."""
+    name = sheet_mod.name(old) or "former character"
+    key = name if name not in npcs else f"{name} (former character)"
+    npc = sheet_mod.as_npc(old)
+    npc["identity"]["name"] = key
+    npcs[key] = npc
+    return key
 
 
 def hand_over(json_ops, outgoing: Optional[Dict[str, Any]], canon: Optional[str],
-              timestamp: str) -> List[str]:
+              timestamp: str = "") -> List[str]:
     """Move the ids when the story passes from `outgoing` (the old sheet, or None)
     to the canon NPC `canon` (a key in npcs.json, or None). Returns notes."""
     notes = []
     if outgoing:
         npcs = json_ops.load_json("npcs.json") or {}
-        key = _former_record(outgoing, npcs, timestamp)
+        key = _former_record(outgoing, npcs)
         json_ops.save_json("npcs.json", npcs)
         notes += move_id(json_ops, "player", f"npc:{key}")
-        notes.append(f"{outgoing.get('name')} is npc:{key} now, with what they knew. The new "
+        notes.append(f"{sheet_mod.name(outgoing)} is npc:{key} now, with what they knew. The new "
                      f"character knows only what they witnessed or were told: "
                      f"gm-note.sh witness / tell.")
     if canon:
         npcs = json_ops.load_json("npcs.json") or {}
-        record = npcs.get(canon)
-        if isinstance(record, dict):
-            record["is_player_character"] = True
-            record["is_party_member"] = False
-            record["became_pc"] = True
+        if canon in npcs:
+            del npcs[canon]  # the sheet is character.json now
             json_ops.save_json("npcs.json", npcs)
         overview = json_ops.load_json("campaign-overview.json") or {}
         scene = overview.get("scene")

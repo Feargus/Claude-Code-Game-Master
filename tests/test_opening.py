@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from lib.opening import Opening, OpeningError, summary
+from tests.sheets import npc, player
 from lib.session_manager import SessionManager
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -47,7 +48,7 @@ def world(tmp_path):
     camp.mkdir(parents=True)
     (ws / "active-campaign.txt").write_text("c")
     for name, payload in {"campaign-overview.json": {"campaign_name": "C"},
-                          "character.json": {"name": "Fearghas"},
+                          "character.json": player("Fearghas"),
                           "npcs.json": {}, "locations.json": {}, "plots.json": {}}.items():
         (camp / name).write_text(json.dumps(payload))
     return str(ws), camp
@@ -69,9 +70,9 @@ def test_the_opening_makes_ordinary_records(world):
     assert locations["Lanternside"]["description"].startswith("A night market")
 
     npcs = _load(camp, "npcs.json")
-    assert npcs["Auntie Ro"]["tags"]["locations"] == ["The Lantern noodle stall"]
-    assert npcs["Dekker"]["tags"]["locations"] == ["Lanternside"]  # the place, by default
-    assert npcs["Mags Teller"].get("no_usual_place")
+    assert npcs["Auntie Ro"]["places"]["usual"] == ["The Lantern noodle stall"]
+    assert npcs["Dekker"]["places"]["usual"] == ["Lanternside"]  # the place, by default
+    assert npcs["Mags Teller"]["places"]["usual"] == []
 
     overview = _load(camp, "campaign-overview.json")
     assert overview["player_position"]["current_location"] == "Lanternside"
@@ -88,7 +89,10 @@ def test_the_opening_makes_ordinary_records(world):
     facts = [f for items in _load(camp, "facts.json").values() for f in items]
     assert {f["fact"]: f["holders"] for f in facts} == {
         SPEC["developments"][0]["fact"]: ["street", "npc:Auntie Ro"],
-        SPEC["developments"][1]["fact"]: ["npc:Auntie Ro"]}
+        SPEC["developments"][1]["fact"]: ["npc:Auntie Ro"],
+        # an attitude becomes a fact the NPC holds about the player
+        "Auntie Ro is friendly toward Fearghas.": ["npc:Auntie Ro"],
+        "Dekker is hostile toward Fearghas.": ["npc:Dekker"]}
     triggers = _load(camp, "consequences.json")["active"][0]["triggers"]
     assert triggers == [{"type": "on_location", "match": "location:The Lantern noodle stall"}]
 
@@ -136,7 +140,7 @@ def test_needs_a_character_and_a_new_campaign(world):
     (camp / "character.json").unlink()
     with pytest.raises(OpeningError, match="Create the character first"):
         Opening(ws).apply(json.loads(json.dumps(SPEC)))
-    (camp / "character.json").write_text(json.dumps({"name": "Fearghas"}))
+    (camp / "character.json").write_text(json.dumps(player("Fearghas")))
     (camp / "session-log.md").write_text("## Session Started: x\n\n### Session Ended: y\nDone.\n")
     with pytest.raises(OpeningError, match="Play has begun"):
         Opening(ws).apply(json.loads(json.dumps(SPEC)))
@@ -146,13 +150,13 @@ def test_existing_places_npcs_and_plot_are_used_as_they_are(world):
     ws, camp = world
     (camp / "locations.json").write_text(json.dumps({"Lanternside": {"position": "imported"}}))
     (camp / "npcs.json").write_text(json.dumps(
-        {"Dekker": {"description": "imported", "tags": {"locations": []}}}))
+        {"Dekker": npc("Dekker", places=[], identity={"name": "Dekker", "role": "imported"})}))
     (camp / "plots.json").write_text(json.dumps(
         {"The Writ": {"type": "main", "status": "available", "events": []}}))
     Opening(ws).apply({"place": "Lanternside", "npcs": ["Dekker"],
                        "plot": "The Writ", "hook": "The crew walks in."})
     assert _load(camp, "locations.json")["Lanternside"] == {"position": "imported"}
-    assert _load(camp, "npcs.json")["Dekker"]["description"] == "imported"
+    assert _load(camp, "npcs.json")["Dekker"]["identity"]["role"] == "imported"
     assert _load(camp, "campaign-overview.json")["scene"]["present"] == ["Dekker"]
     plot = _load(camp, "plots.json")["The Writ"]
     assert plot["status"] == "active" and plot["events"][-1]["event"] == "The crew walks in."

@@ -29,7 +29,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from campaign_manager import CampaignManager
-import visual_appearance as va_mod
+from sheet import look_line, name as sheet_name
 
 
 def resolve_campaign_dir(world_state_dir: str = "world-state"):
@@ -41,7 +41,7 @@ def appearance_line(name: str, campaign_dir=None) -> str:
     """Return the 'character bible' line for a character by name.
 
     Looks up the active PC (character.json) first, then NPCs (npcs.json), and
-    renders the canonical visual_appearance block as one prompt-ready line.
+    renders the look (physique, style, presence) as one prompt-ready line.
     Returns "" if the name is unknown or has no appearance authored yet.
     """
     campaign_dir = campaign_dir or resolve_campaign_dir()
@@ -54,9 +54,9 @@ def appearance_line(name: str, campaign_dir=None) -> str:
     if char_path.exists():
         try:
             char = json.loads(char_path.read_text(encoding="utf-8"))
-            if str(char.get("name", "")).strip().lower() == name.strip().lower():
-                return va_mod.format_line(char.get("name", name),
-                                          char.get("visual_appearance"))
+            if sheet_name(char).strip().lower() == name.strip().lower():
+                look = look_line(char)
+                return f"{sheet_name(char)}: {look}" if look else ""
         except (OSError, ValueError):
             pass
 
@@ -69,7 +69,8 @@ def appearance_line(name: str, campaign_dir=None) -> str:
                 npcs = npcs["npcs"]
             for key, data in npcs.items():
                 if key.strip().lower() == name.strip().lower() and isinstance(data, dict):
-                    return va_mod.format_line(key, data.get("visual_appearance"))
+                    look = look_line(data)
+                    return f"{key}: {look}" if look else ""
         except (OSError, ValueError):
             pass
 
@@ -248,7 +249,7 @@ def generate_image(prompt: str, *, title: str = "", quality: str = DEFAULT_QUALI
     """Generate one image and save it under the active campaign's images/ dir.
 
     ``characters`` is an optional list of character names in frame; each one's
-    canonical visual_appearance block is auto-injected into the prompt so the PC
+    look (physique, style, presence) is auto-injected into the prompt so the PC
     and NPCs render CONSISTENTLY image-to-image, even on direct/fallback calls.
     ``style_lock`` / ``appearance_lock`` opt a single beat out of those
     injections (see ``build_prompt``).
@@ -362,13 +363,13 @@ def main() -> None:
     parser.add_argument("--prompt", help="Scene description (or read from stdin if omitted)")
     parser.add_argument("--title", default="", help="Scene title (used in filename + canvas)")
     parser.add_argument("--character", action="append", default=[], metavar="NAME",
-                        help="Character in frame; auto-injects their visual_appearance. Repeatable.")
+                        help="Character in frame; auto-injects their look. Repeatable.")
     parser.add_argument("--no-style-lock", dest="style_lock", action="store_false",
                         help="Skip the campaign art-style injection (dream sequence, flashback)")
     parser.add_argument("--no-appearance-lock", dest="appearance_lock", action="store_false",
-                        help="Skip the visual_appearance injection (transformation, disguise, vision)")
+                        help="Skip the look injection (transformation, disguise, vision)")
     parser.add_argument("--appearance", metavar="NAME",
-                        help="Print one character's visual_appearance bible line and exit")
+                        help="Print one character's look line and exit")
     parser.add_argument("--quality", default=DEFAULT_QUALITY, choices=["low", "medium", "high", "auto"])
     parser.add_argument("--size", default=DEFAULT_SIZE, help="e.g. 1536x1024, 1024x1024, auto")
     parser.add_argument("--json", action="store_true", help="Emit the result as JSON")
@@ -388,7 +389,7 @@ def main() -> None:
         elif line:
             print(line)
         else:
-            print(f"No visual_appearance set for '{args.appearance}' "
+            print(f"No look set for '{args.appearance}' "
                   "(set it via gm-npc.sh set-appearance / gm-player.sh set-appearance).")
         return
 

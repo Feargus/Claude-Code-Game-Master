@@ -34,23 +34,22 @@ def presence_world(isolated_world_state):
     (isolated_world_state / "active-campaign.txt").write_text("presence-camp\n")
     (camp / "npcs.json").write_text(json.dumps({
         "Mara": {
-            "description": "Keeps the tap.",
-            "tags": {"locations": [LOC]},
-            "aliases": ["The Barkeep"],
-            "context": ["What'll it be?"],
+            "identity": {"name": "Mara", "role": "Keeps the tap.", "aliases": ["The Barkeep"]},
+            "personality": {"voice": "What'll it be?"},
+            "places": {"usual": [LOC]},
         },
         "Pip": {
-            "description": "An untagged companion.",
-            "is_party_member": True,
-            "tags": {"locations": []},
+            "identity": {"name": "Pip", "role": "An untagged companion."},
+            "status": {"party_member": True},
+            "places": {"usual": []},
         },
         "Voss": {
-            "description": "Lives where a prefix would lie.",
-            "tags": {"locations": [INNER]},
+            "identity": {"name": "Voss", "role": "Lives where a prefix would lie."},
+            "places": {"usual": [INNER]},
         },
         "Odo": {
-            "description": "Drinks here most nights, but not tonight.",
-            "tags": {"locations": [LOC]},
+            "identity": {"name": "Odo", "role": "Drinks here most nights, but not tonight."},
+            "places": {"usual": [LOC]},
         },
     }))
     (camp / "locations.json").write_text(json.dumps({
@@ -71,7 +70,7 @@ def _doors(world):
     """Names present according to session, SceneContext.build, and tick_from_session."""
     sm = SessionManager(world)
     npcs = sm.json_ops.load_json("npcs.json") or {}
-    session = {name for name, _ in sm._present_npcs(npcs, LOC)}
+    session = set(npcs_present(npcs, LOC, sm._scene()))
     scene = set(SceneContext(world).build(LOC)["world"]["npcs_present"])
     captured = {}
     cm = ConsequenceManager(world)

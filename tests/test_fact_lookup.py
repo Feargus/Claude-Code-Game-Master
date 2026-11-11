@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from tests.sheets import npc, player
 
 from lib.note_manager import NoteManager, fact_details, fact_line
 
@@ -21,8 +22,9 @@ def notes(tmp_path):
     (ws / "active-campaign.txt").write_text("c")
     files = {
         "campaign-overview.json": {"campaign_name": "C", "game_time": "2187-10-26T05:35"},
-        "character.json": {"name": "Fearghas"},
-        "npcs.json": {"Wren": {"aliases": ["the kid"]}, "Seraphine Halcyon-Vey": {"aliases": ["Seraphine"]}},
+        "character.json": player("Fearghas"),
+        "npcs.json": {"Wren": npc("Wren", aliases=["the kid"]),
+                      "Seraphine Halcyon-Vey": npc("Seraphine Halcyon-Vey", aliases=["Seraphine"])},
         "locations.json": {},
         "facts.json": {
             "plot_local": [

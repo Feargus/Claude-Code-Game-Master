@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Wounds, armor and cyberware on the player's sheet. Replaces HP and AC.
+Wounds, armor and cyberware on the player's sheet: its body section (sheet.py).
 
 Everything that can break is a row of boxes. A wound fills a box; a full row stops
 working. The sheet stores how many boxes are filled.
@@ -44,12 +44,21 @@ def zone_key(text: str) -> str:
     return zone
 
 
+def _section(sheet: Dict[str, Any]) -> Dict[str, Any]:
+    """The sheet's body section (sheet.py): zones, armor, cyberware."""
+    return sheet.setdefault("body", {})
+
+
 def body(sheet: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
-    """The sheet's body section, with every zone present."""
-    section = sheet.setdefault("body", {})
+    """The body's zones, every zone present."""
+    zones = _section(sheet).setdefault("zones", {})
     for zone in ZONES:
-        section.setdefault(zone, {"wounds": 0})
-    return section
+        zones.setdefault(zone, {"wounds": 0})
+    return zones
+
+
+def _items(sheet: Dict[str, Any], kind: str) -> List[Dict[str, Any]]:
+    return (sheet.get("body") or {}).get(kind) or []
 
 
 def _left(row: Dict[str, int]) -> int:
@@ -57,7 +66,7 @@ def _left(row: Dict[str, int]) -> int:
 
 
 def _find_item(sheet: Dict[str, Any], name: str) -> Optional[Dict[str, Any]]:
-    for item in sheet.get("armor", []) + sheet.get("cyberware", []):
+    for item in _items(sheet, "armor") + _items(sheet, "cyberware"):
         if item["name"].lower() == name.lower():
             return item
     return None
@@ -73,7 +82,7 @@ def hit(sheet: Dict[str, Any], zone: str, wounds: int, rng=random) -> List[str]:
     empty box of flesh or chrome. Returns what happened, one line each."""
     zone = zone_key(zone)
     events = []
-    covering = [item for item in sheet.get("armor", []) if zone in item["zones"]]
+    covering = [item for item in _items(sheet, "armor") if zone in item["zones"]]
 
     reduced = min(wounds, sum(item.get("dr", 0) for item in covering))
     if reduced:
@@ -93,7 +102,7 @@ def hit(sheet: Dict[str, Any], zone: str, wounds: int, rng=random) -> List[str]:
             events.append(f"{zone} is already destroyed")
             break
 
-        chrome = [item for item in sheet.get("cyberware", [])
+        chrome = [item for item in _items(sheet, "cyberware")
                   if item["zone"] == zone and _left(item)]
         boxes = [None] * (FLESH_BOXES - part["wounds"]) + \
                 [item for item in chrome for _ in range(_left(item))]
@@ -159,7 +168,7 @@ def add_armor(sheet: Dict[str, Any], name: str, zones: List[str], dr: int = 0) -
             raise BodyError(f"Expected ZONE:BOXES, got '{pair}'.")
         rows[zone_key(zone)] = {"boxes": _whole_number(boxes, 1), "damage": 0}
     item = {"name": name, "dr": dr, "zones": rows}
-    sheet.setdefault("armor", []).insert(0, item)
+    _section(sheet).setdefault("armor", []).insert(0, item)
     return [f"{name} worn on the {', '.join(rows)}"]
 
 
@@ -168,7 +177,7 @@ def add_cyberware(sheet: Dict[str, Any], name: str, zone: str, boxes: int,
     if _find_item(sheet, name):
         raise BodyError(f"'{name}' is already on the sheet. Remove it first, or pick another name.")
     item = {"name": name, "zone": zone_key(zone), "boxes": boxes, "damage": 0, "effect": effect}
-    sheet.setdefault("cyberware", []).append(item)
+    _section(sheet).setdefault("cyberware", []).append(item)
     return [f"{name} installed in the {item['zone']}"]
 
 
@@ -177,7 +186,7 @@ def remove(sheet: Dict[str, Any], name: str) -> List[str]:
     if item is None:
         raise BodyError(f"No armor or cyberware called '{name}'.")
     section = "armor" if "zones" in item else "cyberware"
-    sheet[section].remove(item)
+    _section(sheet)[section].remove(item)
     return [f"{item['name']} removed"]
 
 
@@ -196,13 +205,13 @@ def cell(sheet: Dict[str, Any], zone: str) -> str:
     A filled symbol always means hit."""
     parts = [LABELS[zone]]
     armor = "".join(_boxes(item["zones"][zone]["damage"], item["zones"][zone]["boxes"], "▮", "▯")
-                    for item in sheet.get("armor", []) if zone in item["zones"])
+                    for item in _items(sheet, "armor") if zone in item["zones"])
     if armor:
         parts.append(armor)
     wounds = body(sheet)[zone]["wounds"]
     parts.append("✖" if wounds >= FLESH_BOXES else _boxes(wounds, FLESH_BOXES - 1, "●", "○"))
     chrome = "".join(_boxes(item["damage"], item["boxes"], "◆", "◇")
-                     for item in sheet.get("cyberware", []) if item["zone"] == zone)
+                     for item in _items(sheet, "cyberware") if item["zone"] == zone)
     if chrome:
         parts.append(chrome)
     return " ".join(parts)
@@ -222,11 +231,11 @@ def picture(sheet: Dict[str, Any]) -> str:
 def details(sheet: Dict[str, Any]) -> List[str]:
     """Everything the picture leaves out: notes, and what each item is."""
     lines = [f"{zone}: {part['note']}" for zone, part in body(sheet).items() if part.get("note")]
-    for item in sheet.get("armor", []):
+    for item in _items(sheet, "armor"):
         rows = ", ".join(f"{zone} {_left(row)}/{row['boxes']}" for zone, row in item["zones"].items())
         dr = f", DR {item['dr']}" if item.get("dr") else ""
         lines.append(f"armor: {item['name']} ({rows}{dr})")
-    for item in sheet.get("cyberware", []):
+    for item in _items(sheet, "cyberware"):
         state = "working" if _left(item) else "broken"
         effect = f", {item['effect']}" if item.get("effect") else ""
         lines.append(f"cyberware: {item['name']} ({item['zone']}, {_left(item)}/{item['boxes']}, "
@@ -239,10 +248,10 @@ def summary(sheet: Dict[str, Any]) -> str:
     short = {1: "bruised", 2: "injured", 3: "nearly unusable", 4: "destroyed"}
     parts = []
     for zone in ZONES:
-        wounds = (sheet.get("body") or {}).get(zone, {}).get("wounds", 0)
+        wounds = ((sheet.get("body") or {}).get("zones") or {}).get(zone, {}).get("wounds", 0)
         if wounds:
             parts.append(f"{LABELS[zone]} {short[wounds]}")
-    parts += [f"{item['name']} broken" for item in sheet.get("cyberware", []) if not _left(item)]
+    parts += [f"{item['name']} broken" for item in _items(sheet, "cyberware") if not _left(item)]
     return ", ".join(parts) or "unhurt"
 
 

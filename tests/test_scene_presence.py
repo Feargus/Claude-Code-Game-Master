@@ -51,7 +51,7 @@ def test_refusals_change_nothing(dcc_world):
     assert set(sm.present()) == PARTY
     npcs_file = _cdir(dcc_world) / "npcs.json"
     npcs = json.loads(npcs_file.read_text(encoding="utf-8"))
-    npcs["Imani"]["status"] = "dead"
+    npcs["Imani"]["status"] = {"state": "dead"}
     npcs_file.write_text(json.dumps(npcs))
     with pytest.raises(ValueError, match="dead"):
         sm.enter(["Imani"])
@@ -86,7 +86,7 @@ def test_tags_are_a_hint_not_presence(dcc_world):
     sm = SceneManager(dcc_world)
     npcs_file = _cdir(dcc_world) / "npcs.json"
     npcs = json.loads(npcs_file.read_text(encoding="utf-8"))
-    npcs["Mordecai"]["tags"]["locations"].append(sm.location())
+    npcs["Mordecai"]["places"]["usual"].append(sm.location())
     npcs_file.write_text(json.dumps(npcs))
     assert "Mordecai" not in sm.present()
     assert sm.usually_here() == ["Mordecai"]
@@ -140,15 +140,16 @@ def test_create_with_places_or_nowhere(dcc_world, capsys):
     assert "gm-scene.sh enter \"Vex\"" in capsys.readouterr().out
     assert nm.create_npc("The Voice", "lives on a chip", "neutral", nowhere=True)
     npcs = json.loads((_cdir(dcc_world) / "npcs.json").read_text(encoding="utf-8"))
-    assert npcs["Vex"]["tags"]["locations"] == ["Bone Garden", "Floor 1 Stairs"]
-    assert npcs["The Voice"]["tags"]["locations"] == [] and npcs["The Voice"]["no_usual_place"]
+    assert npcs["Vex"]["places"]["usual"] == ["Bone Garden", "Floor 1 Stairs"]
+    assert npcs["The Voice"]["places"]["usual"] == []
+    assert npcs["Vex"]["identity"] == {"name": "Vex", "role": "a fixer"}
     assert "Vex" not in SceneManager(dcc_world).present()   # created is not entered
 
 
 # ---------- changing usual places ----------
 
 def _tags(world, npc):
-    return json.loads((_cdir(world) / "npcs.json").read_text(encoding="utf-8"))[npc]["tags"]["locations"]
+    return json.loads((_cdir(world) / "npcs.json").read_text(encoding="utf-8"))[npc]["places"]["usual"]
 
 
 def test_tag_location_checks_names_and_keeps_order(dcc_world, capsys):
@@ -165,13 +166,13 @@ def test_tag_location_checks_names_and_keeps_order(dcc_world, capsys):
     assert "did you mean: npc:Mordecai" in capsys.readouterr().out
 
 
-def test_a_usual_place_clears_nowhere(dcc_world):
+def test_a_usual_place_after_nowhere(dcc_world):
     from lib.npc_manager import NPCManager
     nm = NPCManager(dcc_world)
     nm.create_npc("The Voice", "lives on a chip", "neutral", nowhere=True)
     nm.tag_location("The Voice", "Bone Garden")
     npc = json.loads((_cdir(dcc_world) / "npcs.json").read_text(encoding="utf-8"))["The Voice"]
-    assert "no_usual_place" not in npc and npc["tags"]["locations"] == ["Bone Garden"]
+    assert npc["places"]["usual"] == ["Bone Garden"]
 
 
 def test_untag_location_matches_old_tags_loosely(dcc_world, capsys):

@@ -53,7 +53,7 @@ FLESH = AlwaysFlesh()
 
 
 def _wounds(sheet, zone):
-    return sheet["body"][zone]["wounds"]
+    return sheet["body"]["zones"][zone]["wounds"]
 
 
 # --- Flesh ---
@@ -61,7 +61,7 @@ def _wounds(sheet, zone):
 def test_a_new_sheet_gets_every_zone():
     sheet = {}
     hit(sheet, "head", 1, FLESH)
-    assert set(sheet["body"]) == {"head", "chest", "groin", "left_arm", "right_arm",
+    assert set(sheet["body"]["zones"]) == {"head", "chest", "groin", "left_arm", "right_arm",
                                   "left_leg", "right_leg"}
 
 
@@ -114,9 +114,9 @@ def test_a_destroyed_zone_never_heals():
 def test_notes_are_set_and_cleared():
     sheet = {}
     note(sheet, "left_arm", "lost at the elbow")
-    assert sheet["body"]["left_arm"]["note"] == "lost at the elbow"
+    assert sheet["body"]["zones"]["left_arm"]["note"] == "lost at the elbow"
     note(sheet, "left_arm", "")
-    assert "note" not in sheet["body"]["left_arm"]
+    assert "note" not in sheet["body"]["zones"]["left_arm"]
 
 
 # --- Armor ---
@@ -125,7 +125,7 @@ def test_armor_absorbs_first_and_is_used_up():
     sheet = {}
     add_armor(sheet, "Long coat", ["chest:2"])
     hit(sheet, "chest", 3, FLESH)
-    assert sheet["armor"][0]["zones"]["chest"] == {"boxes": 2, "damage": 2}
+    assert sheet["body"]["armor"][0]["zones"]["chest"] == {"boxes": 2, "damage": 2}
     assert _wounds(sheet, "chest") == 1
 
 
@@ -141,7 +141,7 @@ def test_newest_armor_is_the_outer_layer():
     add_armor(sheet, "Vest", ["chest:1"])
     add_armor(sheet, "Coat", ["chest:1"])
     hit(sheet, "chest", 1, FLESH)
-    coat, vest = sheet["armor"]
+    coat, vest = sheet["body"]["armor"]
     assert coat["zones"]["chest"]["damage"] == 1 and vest["zones"]["chest"]["damage"] == 0
 
 
@@ -150,7 +150,7 @@ def test_dr_stops_wounds_without_damaging_the_armor():
     add_armor(sheet, "Riot plate", ["chest:3"], dr=1)
     assert hit(sheet, "chest", 1, FLESH) == ["DR stopped 1 wound"]
     hit(sheet, "chest", 2, FLESH)
-    assert sheet["armor"][0]["zones"]["chest"]["damage"] == 1
+    assert sheet["body"]["armor"][0]["zones"]["chest"]["damage"] == 1
 
 
 def test_repair_restores_every_box():
@@ -158,7 +158,7 @@ def test_repair_restores_every_box():
     add_armor(sheet, "Coat", ["chest:2", "left_arm:1"])
     hit(sheet, "chest", 2, FLESH)
     repair(sheet, "coat")
-    assert sheet["armor"][0]["zones"]["chest"]["damage"] == 0
+    assert sheet["body"]["armor"][0]["zones"]["chest"]["damage"] == 0
 
 
 def test_armor_needs_zone_and_boxes():
@@ -206,7 +206,7 @@ def test_the_fourth_flesh_wound_destroys_however_much_chrome_is_left():
     add_cyberware(sheet, "Chrome arm", "left_arm", 3)
     hit(sheet, "left_arm", 4, FLESH)
     assert _wounds(sheet, "left_arm") == 4
-    assert sheet["cyberware"][0]["damage"] == 0
+    assert sheet["body"]["cyberware"][0]["damage"] == 0
 
 
 def test_names_are_unique_and_remove_works_for_both_kinds():
@@ -217,7 +217,7 @@ def test_names_are_unique_and_remove_works_for_both_kinds():
     add_cyberware(sheet, "Cybereye", "head", 1)
     remove(sheet, "Coat")
     remove(sheet, "Cybereye")
-    assert sheet["armor"] == [] and sheet["cyberware"] == []
+    assert sheet["body"]["armor"] == [] and sheet["body"]["cyberware"] == []
     with pytest.raises(BodyError, match="No armor or cyberware"):
         remove(sheet, "Coat")
 
@@ -280,7 +280,7 @@ def test_wrapper_saves_to_the_sheet(campaign):
     result = _run("hit", "chest", "1")
     assert "Long coat absorbed a wound on the chest, 1 left there" in result.stdout
     sheet = json.loads((campaign / "character.json").read_text())
-    assert sheet["armor"][0]["zones"]["chest"]["damage"] == 1
+    assert sheet["body"]["armor"][0]["zones"]["chest"]["damage"] == 1
     assert sheet["name"] == "Fearghas"
 
 

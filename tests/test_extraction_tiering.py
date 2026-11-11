@@ -256,21 +256,6 @@ def test_background_entities_are_out_of_scope_for_batch_enhancement(book):
     assert not (listed & background)
 
 
-def test_promoting_a_party_member_clears_the_background_tier(tmp_path):
-    world = tmp_path / "world-state"
-    (world / "campaigns" / "camp").mkdir(parents=True)
-    (world / "active-campaign.txt").write_text("camp")
-    (world / "campaigns" / "camp" / "npcs.json").write_text(
-        json.dumps({"Mordecai": {"name": "Mordecai", "background": True}})
-    )
-    mgr = NPCManager(world_state_dir=str(world))
-    assert mgr.promote_to_party_member("Mordecai") is True
-
-    npcs = json.loads((world / "campaigns" / "camp" / "npcs.json").read_text())
-    assert "background" not in npcs["Mordecai"]        # active by definition
-    assert npcs["Mordecai"]["is_party_member"] is True
-
-
 def _world_with_plots(tmp_path, plots):
     world = tmp_path / "world-state"
     (world / "campaigns" / "camp").mkdir(parents=True)
@@ -319,10 +304,10 @@ def test_tag_gate_decides_presence_not_the_tier(tmp_path):
     (world / "campaigns" / "camp").mkdir(parents=True)
     (world / "active-campaign.txt").write_text("camp")
     (world / "campaigns" / "camp" / "npcs.json").write_text(json.dumps({
-        "Tagged Walkon": {"background": True, "tags": {"locations": ["The Hub"]}},
-        "Untagged Walkon": {"background": True, "tags": {"locations": []}},
-        "Tagged Lead": {"tags": {"locations": ["The Hub"]}},
-        "Elsewhere Lead": {"tags": {"locations": ["Far Shore"]}},
+        "Tagged Walkon": {"places": {"usual": ["The Hub"]}},
+        "Untagged Walkon": {"places": {"usual": []}},
+        "Tagged Lead": {"places": {"usual": ["The Hub"]}},
+        "Elsewhere Lead": {"places": {"usual": ["Far Shore"]}},
     }))
     present = WorldSearcher(str(world)).search_npcs_by_tag("locations", "The Hub")
 

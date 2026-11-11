@@ -1,120 +1,181 @@
 {
-  "id": "tandy",
-  "name": "Tandy",
-  "race": "Sasquatch",
-  "class": "Living Siege Weapon",
-  "level": 5,
-  "hp": {
-    "current": 72,
-    "max": 80
+  "identity": {
+    "name": "Tandy",
+    "race": "Sasquatch",
+    "role": "Living Siege Weapon",
+    "background": "Outlander"
   },
-  "ac": 15,
+  "personality": {
+    "values": "Chaotic Neutral; Glory - I must earn fame in battle.; My clan was destroyed. I will find those responsible.",
+    "fears": "Violence is my answer to almost any challenge."
+  },
   "stats": {
-    "STR": 20,
-    "AGI": 12,
-    "DFT": 10,
-    "VIG": 20,
-    "LOG": 4,
-    "ITU": 10,
-    "NRV": 12,
-    "PRS": 8,
-    "EMP": 8
+    "attributes": {
+      "STR": 20,
+      "AGI": 12,
+      "DFT": 10,
+      "VIG": 20,
+      "LOG": 4,
+      "ITU": 10,
+      "NRV": 12,
+      "PRS": 8,
+      "EMP": 8
+    },
+    "skills": {
+      "athletics": 10,
+      "intimidation": 1,
+      "perception": 3,
+      "survival": 3,
+      "smush": 10,
+      "bash": 10,
+      "grapple": 3
+    },
+    "traits": {
+      "Rage (3/day)": "",
+      "Unarmored Defense": "",
+      "Reckless Attack": "",
+      "Danger Sense": "",
+      "Path of the Berserker": "",
+      "Frenzy (bonus action attack while raging, exhaustion after)": "",
+      "Sasquatch Physique (+6 STR, +6 CON, +2 DEX)": "",
+      "Smush Mastery (can train Smush to level 20)": "",
+      "Bash Mastery (+3 Bash skill)": "",
+      "Massive Frame (9ft tall, size Large)": "",
+      "LIVING SIEGE WEAPON CLASS:": "",
+      "- Human Shield (use grabbed enemies as armor)": "",
+      "- Fastball Special (throw allies safely at enemies)": "",
+      "- Rampage (charge through enemies, knocking aside)": "",
+      "- Siege Engine (thrown enemies deal damage on impact)": ""
+    },
+    "counters": {
+      "pronouns": "he/him"
+    }
   },
-  "saves": {
-    "str": 10,
-    "dex": 1,
-    "con": 11,
-    "int": -5,
-    "wis": 1,
-    "cha": -1
+  "body": {
+    "zones": {},
+    "armor": [],
+    "cyberware": []
   },
-  "skills": {
-    "athletics": 10,
-    "intimidation": 1,
-    "perception": 3,
-    "survival": 3,
-    "smush": 10,
-    "bash": 10,
-    "grapple": 3
+  "items": {
+    "gear": [
+      {
+        "name": "Maul"
+      },
+      {
+        "name": "Javelin (3)"
+      },
+      {
+        "name": "Explorer's Pack"
+      },
+      {
+        "name": "Staff"
+      },
+      {
+        "name": "Hunting Trap"
+      },
+      {
+        "name": "Animal Trophy"
+      },
+      {
+        "name": "Cricket Mandible"
+      },
+      {
+        "name": "Tutorial Map"
+      },
+      {
+        "name": "Cracked Glowstone"
+      },
+      {
+        "name": "Crawler Badge [Floor 1 Boss]"
+      },
+      {
+        "name": "Stalker Claw"
+      },
+      {
+        "name": "Paralytic Venom (3 doses)"
+      },
+      {
+        "name": "Uncut Amethyst (25gp)"
+      },
+      {
+        "name": "Chitin-Reinforced Armor (+1 AC)"
+      },
+      {
+        "name": "Hive Mother Chitin (x3)"
+      },
+      {
+        "name": "Royal Jelly Flask (heals 2d8+2)"
+      },
+      {
+        "name": "Minor Potion of Strength (+2 STR, 1hr)"
+      },
+      {
+        "name": "Throwing Knives (x20)"
+      },
+      {
+        "name": "Butcher Knives (x3, sellable)"
+      },
+      {
+        "name": "Circus Tickets (x3)"
+      },
+      {
+        "name": "Human Skull Masks (x2)"
+      },
+      {
+        "name": "Lemur Pelts (x7)"
+      },
+      {
+        "name": "Clown Wigs (x2)"
+      },
+      {
+        "name": "Stilt-Leg Bones (x4)"
+      },
+      {
+        "name": "Ringmaster's Cane of Command"
+      },
+      {
+        "name": "Grimaldi's Greasepaint (3 uses)"
+      },
+      {
+        "name": "The Family Portrait"
+      },
+      {
+        "name": "Potion of Fire Resistance x2"
+      },
+      {
+        "name": "Bag of Infinite Popcorn"
+      },
+      {
+        "name": "Boots of the Underdog"
+      },
+      {
+        "name": "Trickster's Token"
+      },
+      {
+        "name": "Second Chance Coin"
+      },
+      {
+        "name": "Pus (Remote Detonator - spent)"
+      },
+      {
+        "name": "The Crowd Pleaser (+1 Greataxe - glowing audience-rating counter in haft)"
+      },
+      {
+        "name": "Crawler Biscuit of Supreme Healing (8d4+8 HP) x2"
+      },
+      {
+        "name": "Potion of Healing"
+      }
+    ]
   },
-  "equipment": [
-    "Maul",
-    "Javelin (3)",
-    "Explorer's Pack",
-    "Staff",
-    "Hunting Trap",
-    "Animal Trophy",
-    "Cricket Mandible",
-    "Tutorial Map",
-    "Cracked Glowstone",
-    "Crawler Badge [Floor 1 Boss]",
-    "Stalker Claw",
-    "Paralytic Venom (3 doses)",
-    "Uncut Amethyst (25gp)",
-    "Chitin-Reinforced Armor (+1 AC)",
-    "Hive Mother Chitin (x3)",
-    "Royal Jelly Flask (heals 2d8+2)",
-    "Minor Potion of Strength (+2 STR, 1hr)",
-    "Throwing Knives (x20)",
-    "Butcher Knives (x3, sellable)",
-    "Circus Tickets (x3)",
-    "Human Skull Masks (x2)",
-    "Lemur Pelts (x7)",
-    "Clown Wigs (x2)",
-    "Stilt-Leg Bones (x4)",
-    "Ringmaster's Cane of Command",
-    "Grimaldi's Greasepaint (3 uses)",
-    "The Family Portrait",
-    "Potion of Fire Resistance x2",
-    "Bag of Infinite Popcorn",
-    "Boots of the Underdog",
-    "Trickster's Token",
-    "Second Chance Coin",
-    "Pus (Remote Detonator - spent)",
-    "The Crowd Pleaser (+1 Greataxe - glowing audience-rating counter in haft)",
-    "Crawler Biscuit of Supreme Healing (8d4+8 HP) x2",
-    "Potion of Healing"
-  ],
-  "features": [
-    "Rage (3/day)",
-    "Unarmored Defense",
-    "Reckless Attack",
-    "Danger Sense",
-    "Path of the Berserker",
-    "Frenzy (bonus action attack while raging, exhaustion after)",
-    "Sasquatch Physique (+6 STR, +6 CON, +2 DEX)",
-    "Smush Mastery (can train Smush to level 20)",
-    "Bash Mastery (+3 Bash skill)",
-    "Massive Frame (9ft tall, size Large)",
-    "LIVING SIEGE WEAPON CLASS:",
-    "- Human Shield (use grabbed enemies as armor)",
-    "- Fastball Special (throw allies safely at enemies)",
-    "- Rampage (charge through enemies, knocking aside)",
-    "- Siege Engine (thrown enemies deal damage on impact)"
-  ],
-  "background": "Outlander",
-  "alignment": "Chaotic Neutral",
-  "bonds": "My clan was destroyed. I will find those responsible.",
-  "flaws": "Violence is my answer to almost any challenge.",
-  "ideals": "Glory - I must earn fame in battle.",
-  "traits": "I laugh in the face of danger. Literally. Loudly.",
-  "notes": [
-    "Battle cry: THE MOUNTAIN REMEMBERS",
-    "Battle cry: FACE DEATH ITSELF",
-    "Tandy is male (he/him)",
-    "PARTY: Joined Carl and Princess Donut on Floor 2",
-    "PARTY ROLE: Primary melee damage dealer, siege weapon, ally-thrower",
-    "Travels with Carl (human tank), Donut (cat caster), Mongo (dinosaur pet), and Mordecai (manager)",
-    "RACE CHANGE: Transformed from Mountain Dwarf to Sasquatch on Floor 3",
-    "CLASS CHANGE: Became Living Siege Weapon on Floor 3",
-    "Now 9ft tall, extremely dense muscle, fur, massive feet, fangs",
-    "INT of 1 means very simple thoughts - instinct over intellect"
-  ],
-  "credits": 9095,
-  "xp": {
-    "current": 7315,
-    "next_level": 14000
+  "possessions": {
+    "credits": 9095
   },
-  "pronouns": "he/him",
-  "current_location": "Warehouse Street Level"
+  "progress": {
+    "level": 5,
+    "xp": 7315
+  },
+  "status": {
+    "state": "alive"
+  }
 }

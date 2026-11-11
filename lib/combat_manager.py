@@ -55,7 +55,7 @@ class CombatManager(EntityManager):
                 raise ValueError(str(error))
             if found.get('is_player'):
                 raise ValueError("The player's wounds live on the sheet (gm-body.sh), not here.")
-            wounds = found.get('wounds')
+            wounds = (found.get('body') or {}).get('wounds')
             if not isinstance(wounds, int) or wounds < 1:
                 raise ValueError(f"'{sheet}' has no wounds on its sheet; set them with "
                                  f"gm-npc.sh stats / gm-mob.sh stats --wounds N.")

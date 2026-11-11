@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Stat blocks for NPCs and mobs: what the dice script rolls for anyone but the player.
 
-One format, read by skill_contest.py and the combat tracker:
+The stat parts of a sheet (sheet.py), read by skill_contest.py and the combat
+tracker:
 
-    "attributes": {"STR": 12, "AGI": 11, "default": 10},   die sizes; default = the rest
-    "skills":     {"Handguns": 4, "Guard": 3, "default": 0}, default = every skill not listed
-    "wounds":     3,                                       how many take them out
-    "note":       "one line"                               mobs only
+    "stats":    {"attributes": {"STR": 12, "AGI": 11, "default": 10},  default = the rest
+                 "skills": {"Handguns": 4, "Guard": 3, "default": 0}}  default = not listed
+    "body":     {"wounds": 3}                       how many take them out
+    "identity": {"background": "one line"}          a mob's note
 
 A skill not listed counts the block's `default` if it has one, else 0 for the
 common skills (the Common column of the gm-skills index) and −3 for the rest
@@ -32,6 +33,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent))
+
+from sheet import SheetError, check as sheet_check
 
 ATTRIBUTES = ("STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP")
 SKILLS_FILE = Path(__file__).parent.parent / ".claude" / "skills" / "gm-skills" / "SKILL.md"
@@ -110,7 +113,7 @@ def _skill_key(name: str, known: List[str]) -> str:
 def check(block: Dict[str, Any], campaign_dir: Optional[Path] = None) -> List[str]:
     """Warnings for a block that is valid but unusual. Raises StatError if invalid."""
     warnings = []
-    attributes = block.get("attributes") or {}
+    attributes = (block.get("stats") or {}).get("attributes") or {}
     for key, size in attributes.items():
         if not isinstance(size, int) or size < 2:
             raise StatError(f"{key}: a die size is a whole number of at least 2, not {size!r}.")
@@ -119,7 +122,7 @@ def check(block: Dict[str, Any], campaign_dir: Optional[Path] = None) -> List[st
                             f"(fine if meant).")
     known = canon_skills()
     improvised = _improvised(campaign_dir).lower()
-    for name, value in (block.get("skills") or {}).items():
+    for name, value in ((block.get("stats") or {}).get("skills") or {}).items():
         if not isinstance(value, int):
             raise StatError(f"{name}: a skill value is a whole number, not {value!r}.")
         if name == "default" or name in known:
@@ -130,7 +133,7 @@ def check(block: Dict[str, Any], campaign_dir: Optional[Path] = None) -> List[st
         hint = f" Did you mean {close[0]}?" if close else ""
         warnings.append(f"'{name}' is not a canon skill.{hint} If it is improvised, add it to "
                         f"the campaign's {IMPROVISED_FILE} (gm-skills, Improvised skills).")
-    wounds = block.get("wounds")
+    wounds = (block.get("body") or {}).get("wounds")
     if wounds is not None and (not isinstance(wounds, int) or wounds < 1):
         raise StatError(f"wounds: at least 1, not {wounds!r}.")
     return warnings
@@ -138,21 +141,14 @@ def check(block: Dict[str, Any], campaign_dir: Optional[Path] = None) -> List[st
 
 def merged(entry: Dict[str, Any], attrs=None, skills=None, remove_skills=None,
            wounds: Optional[int] = None, note: Optional[str] = None) -> Dict[str, Any]:
-    """A copy of `entry` with the changes merged in. Raises StatError."""
+    """A copy of the sheet `entry` with the changes merged in. Raises StatError."""
     known = canon_skills()
     out = json.loads(json.dumps(entry or {}))
-    # Older entries kept die sizes under "stats", next to upstream's D&D numbers
-    # (hp, str, ...): carry over only real attributes, leave the rest alone.
-    stats = out.get("stats") if isinstance(out.get("stats"), dict) else {}
-    carried = {k: v for k, v in stats.items() if k in ATTRIBUTES or k == "default"}
-    for k in carried:
-        del stats[k]
-    if "stats" in out and not stats:
-        del out["stats"]
-    block_attrs = {**carried, **(out.get("attributes") or {})}
+    stats = out.setdefault("stats", {})
+    block_attrs = dict(stats.get("attributes") or {})
     for name, size in (attrs or {}).items():
         block_attrs[_attribute_key(name)] = size
-    block_skills = dict(out.get("skills") or {})
+    block_skills = dict(stats.get("skills") or {})
     for name in remove_skills or []:
         key = next((k for k in block_skills if k.lower() == name.strip().lower()), None)
         if key is None:
@@ -165,31 +161,35 @@ def merged(entry: Dict[str, Any], attrs=None, skills=None, remove_skills=None,
             del block_skills[old]
         block_skills[key] = value
     if block_attrs:
-        out["attributes"] = block_attrs
-    if block_skills or "skills" in out:
-        out["skills"] = block_skills
+        stats["attributes"] = block_attrs
+    if block_skills or "skills" in stats:
+        stats["skills"] = block_skills
+    if not stats:
+        del out["stats"]
     if wounds is not None:
-        out["wounds"] = wounds
+        out.setdefault("body", {})["wounds"] = wounds
     if note is not None:
-        out["note"] = note
+        out.setdefault("identity", {})["background"] = note
     return out
 
 
 def describe(name: str, entry: Dict[str, Any]) -> str:
     """One readable block."""
-    attrs = entry.get("attributes") or entry.get("stats") or {}
+    stats = entry.get("stats") or {}
+    attrs = stats.get("attributes") or {}
     order = [a for a in ATTRIBUTES if a in attrs] + (["default"] if "default" in attrs else [])
-    skills = entry.get("skills") or {}
+    skills = stats.get("skills") or {}
     lines = [f"{name}:"]
-    if entry.get("note"):
-        lines.append(f"  {entry['note']}")
+    note = (entry.get("identity") or {}).get("background")
+    if note:
+        lines.append(f"  {note}")
     lines.append("  attributes: " + (", ".join(f"{a} d{attrs[a]}" for a in order) or "(none: can't roll)"))
     lines.append("  skills: " + (", ".join(f"{k} {v}" for k, v in skills.items()) or "(none listed)"))
     if "default" in skills:
         lines.append(f"  not listed: {skills['default']} (the default, common skills included)")
     else:
         lines.append(f"  not listed: common skills {COMMON_VALUE}, the rest untrained −3")
-    lines.append(f"  wounds: {entry.get('wounds', '(not set)')}")
+    lines.append(f"  wounds: {(entry.get('body') or {}).get('wounds', '(not set)')}")
     return "\n".join(lines)
 
 
@@ -249,13 +249,18 @@ class Mobs:
                                 f"they are. Add a campaign version: gm-mob.sh add.")
             raise StatError(f"No mob '{name}' in this campaign. Add it: gm-mob.sh add.")
         warnings = self._refuse_taken(name) if create else []
-        if create and not str(entry.get("note") or "").strip():
+        if create and not str((entry.get("identity") or {}).get("background") or "").strip():
             raise StatError("A new mob needs --note: one line on what it is.")
-        if create and not entry.get("attributes"):
+        if create and not (entry.get("stats") or {}).get("attributes"):
             raise StatError("A new mob needs attributes (--attr STR=12 ..., or --attr default=10).")
-        if create and entry.get("wounds") is None:
+        if create and (entry.get("body") or {}).get("wounds") is None:
             raise StatError("A new mob needs --wounds: how many wounds take one out.")
         warnings += check(entry, self.campaign_dir)
+        entry.setdefault("identity", {})["name"] = key or name.strip()
+        try:
+            sheet_check(entry, "mob")
+        except SheetError as error:
+            raise StatError(str(error))
         mobs[key or name.strip()] = entry
         self.json_ops.save_json("mobs.json", mobs)
         return warnings

@@ -38,21 +38,6 @@ def test_pending_consequences_dict_and_list():
     assert H(1, {}, {}, [{"id": 1}]) == ["Pending consequences: 1 waiting on a trigger"]
 
 
-def test_stale_npcs_term():
-    lines = H(1, {}, {}, {}, stale_npcs={"Astreus": 5, "Bram": 3})
-    assert lines == ['Canon drift: 2 NPC(s) need re-grounding (worst "Astreus", 5 beats) — gm-npc.sh stale']
-
-
-def test_drift_map():
-    from npc_manager import NPCManager
-    npcs = {
-        "Astreus": {"events": [1, 2, 3, 4, 5], "canon_checked_at": 1},  # drift 4
-        "Bram":    {"events": [1, 2], "canon_checked_at": 2},           # drift 0, omit
-        "Cid":     {"events": [1, 2, 3]},                               # no watermark -> drift 3
-    }
-    assert NPCManager._drift_map(npcs) == {"Astreus": 4, "Cid": 3}
-
-
 if __name__ == "__main__":
     test_all_quiet()
     test_threads_stalest_and_filters()

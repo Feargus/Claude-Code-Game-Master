@@ -26,8 +26,9 @@ def camp(isolated_world_state):
         "campaign-overview.json": {"campaign_name": "C", "game_time": "2189-11-09T23:40",
                                    "player_position": {"current_location": "The Pens"},
                                    "scene": {"location": "The Pens", "present": ["Tod"]}},
-        "npcs.json": {"Tod Brask": {"aliases": ["Tod"], "tags": {"locations": ["The Pens"]}},
-                      "Benno": {"tags": {"locations": []}}},
+        "npcs.json": {"Tod Brask": {"identity": {"name": "Tod Brask", "aliases": ["Tod"]},
+                                    "places": {"usual": ["The Pens"]}},
+                      "Benno": {"identity": {"name": "Benno"}}},
         "locations.json": {"The Pens": {}},
     }
     files["campaign-overview.json"]["scene"]["present"] = ["Tod Brask"]
@@ -47,7 +48,7 @@ def _consequences(directory):
 
 def test_a_canon_character_takes_what_the_npc_knew(camp):
     ws, directory = camp
-    assert CharacterCreator().create({"name": "Lullaby"})["success"]
+    assert CharacterCreator().create({"identity": {"name": "Lullaby"}})["success"]
     notes = NoteManager(str(ws))
     seen = notes.add_fact("session_events", "Lullaby hummed; Tod Brask listened.")
     secret = notes.add_fact("plot_local", "Tod Brask keeps a key in his boot.",
@@ -60,7 +61,7 @@ def test_a_canon_character_takes_what_the_npc_knew(camp):
     ], "resolved": []}))
 
     # Lullaby dies; Tod takes over.
-    result = CharacterCreator().create({"name": "x"}, canon="tod", replace=True)
+    result = CharacterCreator().create({}, canon="tod", replace=True)
     assert result["success"]
     facts = _facts(directory)
     assert facts[seen]["holders"] == ["npc:Lullaby", "player"]
@@ -73,8 +74,10 @@ def test_a_canon_character_takes_what_the_npc_knew(camp):
     assert any("c1 waited for npc:Tod Brask" in n for n in result["warnings"])
 
     npcs = json.loads((directory / "npcs.json").read_text())
-    assert npcs["Tod Brask"]["is_player_character"] is True
-    assert npcs["Lullaby"]["former_player_character"] is True
+    assert "Tod Brask" not in npcs                         # his sheet is character.json now
+    assert npcs["Lullaby"]["status"]["former_player_character"] is True
+    sheet = json.loads((directory / "character.json").read_text())
+    assert sheet["identity"]["name"] == "Tod Brask" and sheet["identity"]["aliases"] == ["Tod"]
     overview = json.loads((directory / "campaign-overview.json").read_text())
     assert overview["scene"]["present"] == []
 
@@ -88,10 +91,10 @@ def test_a_canon_character_takes_what_the_npc_knew(camp):
 
 def test_a_new_character_after_a_death_starts_knowing_nothing(camp):
     ws, directory = camp
-    CharacterCreator().create({"name": "Lullaby"})
+    CharacterCreator().create({"identity": {"name": "Lullaby"}})
     fact = NoteManager(str(ws)).add_fact("session_events", "Lullaby lost its leg.",
                                          holders=["player"])
-    assert CharacterCreator().create({"name": "Vex"}, replace=True)["success"]
+    assert CharacterCreator().create({"identity": {"name": "Vex"}}, replace=True)["success"]
     assert _facts(directory)[fact]["holders"] == ["npc:Lullaby"]
     assert _facts(directory)[fact]["about"] == ["npc:Lullaby"]
 
@@ -102,5 +105,5 @@ def test_the_interview_example_saves(camp):
     data = json.loads(re.search(r"gm-player.sh create '(\{.*\})'", text).group(1))
     result = CharacterCreator().create(data)
     assert result["success"], result
-    skills = result["character"]["skills"]
+    skills = result["character"]["stats"]["skills"]
     assert "Brawling" not in skills and skills["Guard"] == 0 and skills["Piloting"] == 4

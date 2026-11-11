@@ -252,7 +252,7 @@ class NoteManager:
         fact is only about them, which is fine."""
         npcs = self.json_ops.load_json("npcs.json") or {}
         absent = [i[4:] for i in about_ids if i.startswith("npc:") and i not in holder_ids
-                  and (npcs.get(i[4:]) or {}).get("status") != "dead"]
+                  and ((npcs.get(i[4:]) or {}).get("status") or {}).get("state") != "dead"]
         if absent:
             names = " ".join(f'"{n}"' for n in absent)
             print(f"  Named but not in the scene: {', '.join(absent)}. If they're here: "

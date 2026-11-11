@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from campaign_manager import CampaignManager
 from json_ops import JsonOperations
+import sheet as sheet_mod
 from stat_block import COMMON_VALUE, common_skills
 
 ATTRIBUTES = ("STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP")
@@ -133,7 +134,7 @@ def find_sheet(campaign_dir: Path, name: str) -> Dict[str, Any]:
     ops = JsonOperations(str(campaign_dir))
 
     character = ops.load_json("character.json") or {}
-    if character.get("name", "").lower() == name.lower():
+    if sheet_mod.name(character).lower() == name.lower():
         return {**character, "is_player": True}
 
     for table in (ops.load_json("npcs.json"),
@@ -148,9 +149,7 @@ def find_sheet(campaign_dir: Path, name: str) -> Dict[str, Any]:
 
 def dice_sizes(sheet: Dict[str, Any], name: str, attributes: List[str]) -> Dict[str, int]:
     """The die size of each attribute. Mobs may set a `default` for the rest."""
-    # NPCs and mobs keep die sizes under "attributes" (gm-npc.sh stats, gm-mob.sh);
-    # the player's sheet and older entries under "stats".
-    table = sheet.get("attributes") or sheet.get("stats")
+    table = sheet_mod.attributes(sheet)
     if not table:
         raise ContestError(f"{name} has no stats yet. Add them, then roll again.")
 
@@ -165,22 +164,21 @@ def dice_sizes(sheet: Dict[str, Any], name: str, attributes: List[str]) -> Dict[
 
 def skill_value(sheet: Dict[str, Any], skill: str) -> Optional[int]:
     """The sheet's value for a skill, or None if the sheet doesn't list it."""
-    skills = sheet.get("skills") or {}
-    return None if skill.lower() == "default" else _find(skills, skill)
+    return None if skill.lower() == "default" else _find(sheet_mod.skills(sheet), skill)
 
 
 def _common_by_rule(sheet: Dict[str, Any], skill: str) -> bool:
     """An NPC or mob without a skill default, and a common skill (gm-skills index):
     it counts COMMON_VALUE without being listed. The player's common skills are on
     the sheet; one missing there is untrained."""
-    return (not sheet.get("is_player") and "default" not in (sheet.get("skills") or {})
+    return (not sheet.get("is_player") and "default" not in sheet_mod.skills(sheet)
             and skill.lower() in {c.lower() for c in common_skills()})
 
 
 def untrained_value(sheet: Dict[str, Any], skill: str = "") -> int:
     """A skill the sheet doesn't list: the sheet's `default` (mobs and NPCs) if it
     sets one, else 0 for an NPC's or mob's common skill, else untrained."""
-    skills = sheet.get("skills") or {}
+    skills = sheet_mod.skills(sheet)
     if "default" in skills:
         return skills["default"]
     return COMMON_VALUE if _common_by_rule(sheet, skill) else UNTRAINED
@@ -238,7 +236,7 @@ def _whole_number(text: str) -> int:
 def spend_luck(campaign_dir: Path) -> None:
     ops = JsonOperations(str(campaign_dir))
     character = ops.load_json("character.json")
-    character["luck"]["current"] -= 1
+    character["stats"]["luck"]["current"] -= 1
     ops.save_json("character.json", character)
 
 
@@ -283,7 +281,7 @@ def run_contest(args: argparse.Namespace, rng=random) -> Dict[str, Any]:
     luck = 0
     if active.get("is_player") or reactive.get("is_player"):
         character = JsonOperations(str(campaign_dir)).load_json("character.json")
-        luck = (character.get("luck") or {}).get("current", 0)
+        luck = (sheet_mod.get(character, "stats", "luck") or {}).get("current", 0)
 
     result = resolve_contest(rng, active, reactive, mods, luck)
     if result["lucky"]:

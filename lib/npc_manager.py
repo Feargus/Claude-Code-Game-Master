@@ -1,84 +1,56 @@
 #!/usr/bin/env python3
-"""
-NPC management module for GM tools
-Handles NPC creation, updates, and tagging operations
+"""NPCs: their sheets in npcs.json (sheet.py's format, keyed by name).
+
+Create them, fill in fields when play needs them, give them stats, usual places,
+aliases and items, take them into the party, kill them. What an NPC knows, feels
+about the player, remembers or hides is not on the sheet: it is facts they hold
+(`gm-note.sh ... --holders npc:<name>`), and `show` lists them.
 """
 
-import copy
 import sys
-from typing import Dict, List, Optional, Any
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-# Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from entity_manager import EntityManager
-import visual_appearance as va_mod
-
-
-# Default character sheet for new party members
-PARTY_MEMBER_DEFAULTS = {
-    "race": "Unknown",
-    "class": "Commoner",
-    "level": 1,
-    "hp": {"current": 10, "max": 10},
-    "ac": 10,
-    "stats": {"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10},
-    "saves": {"str": 0, "dex": 0, "con": 0, "int": 0, "wis": 0, "cha": 0},
-    "skills": {},
-    "attack_bonus": 2,
-    "damage": "1d6",
-    "equipment": [],
-    "features": [],
-    "conditions": [],
-    "xp": 0
-}
-
-
-def _positive_int(value):
-    if isinstance(value, bool) or value is None:
-        return None
-    try:
-        n = int(value)
-    except (TypeError, ValueError):
-        return None
-    return n if n > 0 else None
-
-
-def _party_sheet_for_npc(npc: dict):
-    """First-time party sheet + source label. Copies hp/ac from npc.stats when real."""
-    sheet = copy.deepcopy(PARTY_MEMBER_DEFAULTS)
-    stats = npc.get("stats") if isinstance(npc.get("stats"), dict) else {}
-    hp = _positive_int(stats.get("hp"))
-    ac = _positive_int(stats.get("ac"))
-    if stats.get("statless") or (hp is None and ac is None):
-        return sheet, "defaults (NPC has no stats)"
-    if hp is not None:
-        sheet["hp"] = {"current": hp, "max": hp}
-    if ac is not None:
-        sheet["ac"] = ac
-    difficulty = stats.get("difficulty")
-    if difficulty:
-        source = f"from npc.stats (difficulty {difficulty})"
-    else:
-        source = "from npc.stats"
-    return sheet, source
-
+import sheet as sheet_mod
+from entity_manager import EntityManager, is_dead, is_party_member, usual_places
 
 # Category of the fact `kill` records. Provisional: categories are due for rework
 # (design-notes.md, "World state").
 DEATH_FACT_CATEGORY = "session_events"
+# Category of how an NPC regards the player (the attitude given at creation).
+FEELING_CATEGORY = "relations"
 
 
 class NPCManager(EntityManager):
-    """Manage NPC operations. Inherits from EntityManager for common functionality."""
+    """The active campaign's NPCs."""
 
     def __init__(self, world_state_dir: str = None):
         super().__init__(world_state_dir)
         self.npcs_file = "npcs.json"
 
+    # ---------- helpers ----------
+
+    def _npcs(self) -> Dict[str, Any]:
+        return self._load_entities(self.npcs_file)
+
+    def _save(self, npcs: Dict[str, Any]) -> bool:
+        return self._save_entities(self.npcs_file, npcs)
+
+    def _npc_key(self, name: str) -> str:
+        """The NPC's key through the shared resolver, or '' (error printed)."""
+        from world_ids import WorldIds
+        raw = str(name).strip()
+        cid, error = WorldIds(self.json_ops).resolve(
+            raw if raw.lower().startswith("npc:") else f"npc:{raw}")
+        if error:
+            print(f"[ERROR] {error}")
+            return ""
+        return cid[4:]
+
     def _usual_places(self, locations) -> tuple:
-        """(location keys, errors) for where a new NPC is usually found."""
+        """(location keys, errors) for where an NPC is usually found."""
         from world_ids import WorldIds
         ids = WorldIds(self.json_ops)
         keys, errors = [], []
@@ -91,23 +63,27 @@ class NPCManager(EntityManager):
                 keys.append(cid[9:])
         return keys, errors
 
-    def create_npc(self, name: str, description: str, attitude: str,
-                   locations=None, nowhere: bool = False, aliases=None) -> bool:
-        """
-        Create a new NPC. Returns True on success, False on failure.
+    def get_sheet(self, name: str) -> Optional[Dict[str, Any]]:
+        key = self._npc_key(name)
+        return self._npcs().get(key) if key else None
 
-        `locations`: where the NPC is usually found (location tags; known places
-        only). Required, unless `nowhere`: an NPC with no usual place (a voice on a
-        chip, a drifter), stored as `no_usual_place`. Without a usual place the
-        brief can never suggest them for a scene.
+    # ---------- creating ----------
 
-        `aliases`: shorter names the story will use ("Ishbel" for "Ishbel Rue"),
-        so the name check in facts finds them too; each is checked (see
-        world_ids.check_alias).
+    def create_npc(self, name: str, role: str = "", attitude: Optional[str] = None,
+                   locations=None, nowhere: bool = False, aliases=None,
+                   fields: Optional[Dict[str, str]] = None) -> bool:
+        """Create an NPC sheet. Returns True on success, False on failure (printed).
+
+        `role`: who they are in a few words. `attitude`: how they regard the player
+        at first ("wary", "owes her a favour"); it becomes a fact they hold about
+        the player, not a field, so later feelings are facts too. `locations`:
+        where they are usually found (known places), required unless `nowhere`.
+        `aliases`: shorter names the story will use, each checked. `fields`: any
+        further text fields by flag name (sheet.TEXT_FIELDS), e.g. look, Big Five.
         """
         from world_ids import WorldIds, alias_hint
         places, errors = self._usual_places(locations)
-        aliases = [a.strip() for a in aliases or []]
+        aliases = [a.strip() for a in aliases or [] if a.strip()]
         ids = WorldIds(self.json_ops)
         errors += [e for a in aliases if (e := ids.check_alias(a, f"npc:{name}"))]
         if nowhere and places:
@@ -118,59 +94,47 @@ class NPCManager(EntityManager):
             hint = f' (here: --location "{here}")' if here else ""
             errors.append(f"Where is {name} usually found? Give --location <place>, "
                           f"repeatable{hint}, or --nowhere for someone with no usual place.")
+        valid, error = self.validators.validate_name(name)
+        if not valid:
+            errors.append(error)
+        if self._entity_exists(self.npcs_file, name):
+            errors.append(f"NPC {name} already exists")
+        sheet = sheet_mod.blank("npc", name)
+        try:
+            sheet_mod.set_fields(sheet, dict(fields or {}, **({"role": role} if role else {})))
+            if aliases:
+                sheet["identity"]["aliases"] = list(dict.fromkeys(aliases))
+            sheet["places"] = {"usual": places}
+            sheet_mod.check(sheet, "npc")
+        except sheet_mod.SheetError as problem:
+            errors.append(str(problem))
         if errors:
             for error in errors:
                 print(f"[ERROR] {error}")
             return False
-        # Validate inputs
-        valid, error = self.validators.validate_name(name)
-        if not valid:
-            print(f"[ERROR] {error}")
+        if not self._add_entity(self.npcs_file, name, sheet):
             return False
 
-        # Coerce an unrecognized attitude to 'neutral' rather than aborting:
-        # creation must succeed so downstream set-inner/mood calls don't fail
-        # with "not found". Mirrors the batch-create path below.
-        valid, error = self.validators.validate_attitude(attitude)
-        if not valid:
-            print(f"[WARNING] {error}")
-            print(f"[WARNING] Defaulting attitude to 'neutral' for {name}")
-            attitude = 'neutral'
-
-        # Check if NPC already exists
-        if self._entity_exists(self.npcs_file, name):
-            print(f"[ERROR] NPC {name} already exists")
-            return False
-
-        # Create NPC data
-        npc_data = {
-            'description': description,
-            'attitude': attitude.lower(),
-            'created': self.get_timestamp(),
-            'events': [],
-            'visual_appearance': va_mod.empty_template(),
-            'tags': {
-                'locations': places,
-                'quests': []
-            }
-        }
-        if nowhere:
-            npc_data['no_usual_place'] = True
+        where = ', '.join(places) if places else 'no usual place'
+        print(f"[SUCCESS] Created NPC: {name}" + (f" - {role}" if role else "")
+              + f"; usually found: {where}")
         if aliases:
-            npc_data['aliases'] = list(dict.fromkeys(aliases))
+            print(f"  Also called: {', '.join(sheet['identity']['aliases'])}")
+        elif alias_hint("npc", name):
+            print(alias_hint("npc", name))
+        if attitude and str(attitude).strip():
+            self._first_feeling(name, str(attitude).strip())
+        print(f"  Not in the scene yet: bash tools/gm-scene.sh enter \"{name}\" if they're here.")
+        self._witness_hint(name)
+        return True
 
-        # Save to file
-        if self._add_entity(self.npcs_file, name, npc_data):
-            where = ', '.join(places) if places else 'no usual place'
-            print(f"[SUCCESS] Created NPC: {name} - {description} ({attitude}); usually found: {where}")
-            if aliases:
-                print(f"  Also called: {', '.join(npc_data['aliases'])}")
-            elif alias_hint("npc", name):
-                print(alias_hint("npc", name))
-            print(f"  Not in the scene yet: bash tools/gm-scene.sh enter \"{name}\" if they're here.")
-            self._witness_hint(name)
-            return True
-        return False
+    def _first_feeling(self, name: str, attitude: str) -> None:
+        """How the NPC regards the player at first, as a fact only they hold."""
+        from note_manager import NoteManager
+        player = sheet_mod.name(self.json_ops.load_json("character.json") or {}) or "the player"
+        NoteManager(self.base_dir).add_fact(
+            FEELING_CATEGORY, f"{name} is {attitude} toward {player}.", list_waiting=False,
+            about=[f"npc:{name}", "player"], holders=[f"npc:{name}"], nowhere=True)
 
     def _witness_hint(self, name: str) -> None:
         """A new NPC may have seen what happened here before they had a name (Lord
@@ -188,284 +152,46 @@ class NPCManager(EntityManager):
                   f"{place[9:]})? bash tools/gm-note.sh witness \"{name}\" [--from \"YYYY-MM-DD HH:MM\"] "
                   f"(--dry-run to see what they would learn)")
 
-    def kill_npc(self, name: str, cause: Optional[str] = None) -> Dict[str, Any]:
-        """Mark an NPC dead, record the death as a fact, and fire the on_death
-        consequences waiting for it.
+    # ---------- changing ----------
 
-        Sets `status: dead`, `cause`, `died_at` (real time) and `died_game_time`
-        (in-game time, when the campaign has one). A dead NPC is no longer present
-        anywhere. Refuses an NPC who is already dead, so on_death fires only once.
-        """
-        key = self._find_entity_name(self.npcs_file, name)
+    def set_fields(self, name: str, values: Dict[str, str]) -> bool:
+        key = self._npc_key(name)
         if not key:
-            print(f"[ERROR] NPC {name} not found")
-            return {'success': False, 'error': f"NPC {name} not found"}
-        npc = self._get_entity(self.npcs_file, key)
-        if npc.get('status') == 'dead':
-            print(f"[ERROR] {key} is already dead")
-            return {'success': False, 'error': f"{key} is already dead"}
-
-        updates = {'status': 'dead', 'died_at': self.get_timestamp()}
-        game_time = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
-        if game_time:
-            updates['died_game_time'] = game_time
-        if cause:
-            updates['cause'] = cause
-        if not self._update_entity(self.npcs_file, key, updates):
-            return {'success': False, 'error': 'failed to save'}
-        from scene_manager import SceneManager
-        SceneManager(self.base_dir).leave([key], strict=False)
-
-        from note_manager import NoteManager
-        fact_id = NoteManager(self.base_dir).add_fact(
-            DEATH_FACT_CATEGORY, f"{key} died" + (f": {cause}" if cause else "."))
-
-        from consequence_manager import ConsequenceManager
-        fired = ConsequenceManager(self.base_dir).fire_event(
-            'on_death', f"npc:{key}", f"{key} died" + (f" ({cause})" if cause else ""))
-        return {'success': True, 'name': key, 'status': 'dead', 'cause': cause,
-                'fact': fact_id, 'fired': fired}
-
-    def update_npc(self, name: str, event: str) -> bool:
-        """
-        Add an event to NPC's history
-        """
-        # Validate name
-        valid, error = self.validators.validate_name(name)
-        if not valid:
+            return False
+        if not values:
+            print(f"[ERROR] Give at least one field (fields: {', '.join(sheet_mod.TEXT_FIELDS)}).")
+            return False
+        npcs = self._npcs()
+        try:
+            changed = sheet_mod.set_fields(npcs[key], values)
+            sheet_mod.check(npcs[key], "npc")
+        except sheet_mod.SheetError as error:
             print(f"[ERROR] {error}")
             return False
-
-        # Check if NPC exists
-        if not self._entity_exists(self.npcs_file, name):
-            print(f"[ERROR] NPC {name} not found")
+        if not self._save(npcs):
             return False
-
-        # Add event
-        event_data = {
-            'event': event,
-            'timestamp': self.get_timestamp()
-        }
-
-        if self.json_ops.append_to_list(self.npcs_file, event_data, [name, 'events']):
-            print(f"[SUCCESS] Updated {name}: {event}")
-            return True
-        return False
-
-    @staticmethod
-    def _drift_map(npcs) -> Dict[str, int]:
-        """Per-NPC count of improvised beats piled up since the last canon check.
-
-        drift = len(events) - canon_checked_at. A materialized NPC is grounded
-        at birth (0 events); every gm-npc update is an improvised beat that has
-        NOT been re-verified against the source. Returns {name: drift} for
-        drift > 0, worst first. Pure over a loaded dict (unit-testable).
-        """
-        drift = {}
-        if isinstance(npcs, dict):
-            for name, data in npcs.items():
-                if not isinstance(data, dict):
-                    continue
-                events = data.get('events', [])
-                n = len(events) if isinstance(events, list) else 0
-                checked = data.get('canon_checked_at', 0)
-                if not isinstance(checked, int):
-                    checked = 0
-                d = n - checked
-                if d > 0:
-                    drift[name] = d
-        return dict(sorted(drift.items(), key=lambda kv: kv[1], reverse=True))
-
-    def canon_drift(self) -> Dict[str, int]:
-        """{name: drift} for NPCs improvised-on since their last re-grounding."""
-        return self._drift_map(self.json_ops.load_json(self.npcs_file) or {})
-
-    def stale_npcs(self, threshold: int = 3) -> Dict[str, int]:
-        """The re-grounding worklist: NPCs whose canon drift >= threshold."""
-        return {n: d for n, d in self.canon_drift().items() if d >= threshold}
-
-    def mark_canon_checked(self, name: str) -> bool:
-        """Stamp an NPC re-grounded: watermark = current event count, so only
-        future improvisation counts as fresh drift. Call after verifying the
-        NPC's journal against the source (RAG)."""
-        valid, error = self.validators.validate_name(name)
-        if not valid:
-            print(f"[ERROR] {error}")
-            return False
-        npcs = self.json_ops.load_json(self.npcs_file) or {}
-        if not isinstance(npcs.get(name), dict):
-            print(f"[ERROR] NPC {name} not found")
-            return False
-        events = npcs[name].get('events', [])
-        n = len(events) if isinstance(events, list) else 0
-        npcs[name]['canon_checked_at'] = n
-        self.json_ops.save_json(self.npcs_file, npcs)
-        print(f"[SUCCESS] {name} re-grounded — canon check stamped at {n} beat(s)")
+        print(f"[SUCCESS] {key}: set {', '.join(changed)}")
         return True
 
     def set_stats(self, name: str, attrs=None, skills=None, remove_skills=None,
                   wounds: Optional[int] = None) -> Dict[str, Any]:
-        """Set or update an NPC's stat block (attributes, skills, wounds), checked
+        """Set or update an NPC's stats (attributes, skills, wounds), checked
         (stat_block.py). Merges into what is there. Returns {"name", "entry",
         "warnings"}; raises stat_block.StatError, or ValueError for an unknown NPC."""
         from stat_block import check, merged
         key = self._find_entity_name(self.npcs_file, name)
         if not key:
             raise ValueError(f"NPC '{name}' not found")
-        npcs = self._load_entities(self.npcs_file)
+        npcs = self._npcs()
         entry = merged(npcs[key], attrs, skills, remove_skills, wounds)
         warnings = check(entry, self.campaign_dir)
         if attrs or skills or remove_skills or wounds is not None:
             npcs[key] = entry
-            self._save_entities(self.npcs_file, npcs)
+            self._save(npcs)
         return {"name": key, "entry": entry, "warnings": warnings}
 
-    def get_npc_status(self, name: str) -> Optional[Dict[str, Any]]:
-        """
-        Get NPC status and information
-        """
-        # Validate name
-        valid, error = self.validators.validate_name(name)
-        if not valid:
-            print(f"[ERROR] {error}")
-            return None
-
-        npc = self._get_entity(self.npcs_file, name)
-        if not npc:
-            print(f"[ERROR] NPC {name} not found")
-            return None
-
-        return npc
-
-    def format_npc_status(self, name: str) -> Optional[str]:
-        """
-        Format NPC status for display, with enhanced output for party members.
-        """
-        npc = self.get_npc_status(name)
-        if not npc:
-            return None
-
-        lines = [f"=== {name} ===", ""]
-
-        # Basic info
-        lines.append(f"Description: {npc.get('description', 'No description')}")
-        if npc.get('aliases'):
-            lines.append(f"Also called: {', '.join(npc['aliases'])}")
-        lines.append(f"Attitude: {npc.get('attitude', 'unknown')}")
-
-        # Visual appearance (for consistent image generation)
-        va_line = va_mod.format_line(name, npc.get('visual_appearance'))
-        if va_line:
-            lines.append(f"Appearance: {va_line}")
-
-        # Party member status
-        if npc.get('is_party_member'):
-            lines.append("")
-            lines.append("--- PARTY MEMBER ---")
-            sheet = npc.get('character_sheet', {})
-
-            # Core stats
-            hp = sheet.get('hp', {'current': 10, 'max': 10})
-            lines.append(f"HP: {hp['current']}/{hp['max']} | AC: {sheet.get('ac', 10)}")
-            lines.append(f"Level {sheet.get('level', 1)} {sheet.get('race', 'Unknown')} {sheet.get('class', 'Commoner')}")
-            lines.append(f"Attack: +{sheet.get('attack_bonus', 2)} | Damage: {sheet.get('damage', '1d6')}")
-            lines.append(f"XP: {sheet.get('xp', 0)}")
-
-            # Ability scores
-            stats = sheet.get('stats', {})
-            if stats:
-                stat_line = " | ".join([f"{k.upper()}: {v}" for k, v in stats.items()])
-                lines.append(f"Stats: {stat_line}")
-
-            # Equipment
-            equipment = sheet.get('equipment', [])
-            if equipment:
-                lines.append(f"Equipment: {', '.join(equipment)}")
-            else:
-                lines.append("Equipment: None")
-
-            # Features
-            features = sheet.get('features', [])
-            if features:
-                lines.append(f"Features: {', '.join(features)}")
-
-            # Conditions
-            conditions = sheet.get('conditions', [])
-            if conditions:
-                lines.append(f"Conditions: {', '.join(conditions)}")
-
-        # Tags
-        tags = npc.get('tags', {})
-        if isinstance(tags, list):
-            # Simple string tags from extraction
-            if tags:
-                lines.append("")
-                lines.append("--- TAGS ---")
-                lines.append(', '.join(tags))
-        elif isinstance(tags, dict):
-            if tags.get('locations') or tags.get('quests'):
-                lines.append("")
-                lines.append("--- TAGS ---")
-                if tags.get('locations'):
-                    lines.append(f"Locations: {', '.join(tags['locations'])}")
-                if tags.get('quests'):
-                    lines.append(f"Quests: {', '.join(tags['quests'])}")
-
-        # Recent events
-        events = npc.get('events', [])
-        if events:
-            lines.append("")
-            lines.append("--- RECENT EVENTS ---")
-            for event in events[-5:]:  # Show last 5 events
-                if isinstance(event, dict):
-                    lines.append(f"  • {event.get('event', '')}")
-                else:
-                    lines.append(f"  • {event}")
-
-        return "\n".join(lines)
-
-    def enhance_npc(self, name: str, enhanced_description: str) -> bool:
-        """
-        Enhance NPC description
-        """
-        # Validate name
-        valid, error = self.validators.validate_name(name)
-        if not valid:
-            print(f"[ERROR] {error}")
-            return False
-
-        # Check if NPC exists
-        if not self._entity_exists(self.npcs_file, name):
-            print(f"[ERROR] NPC {name} not found")
-            return False
-
-        # Update description
-        updates = {'description': enhanced_description}
-        if self._update_entity(self.npcs_file, name, updates):
-            print(f"[SUCCESS] Enhanced description for {name}")
-            return True
-        return False
-
-    def _npc_key(self, name: str) -> str:
-        """The NPC's key through the shared resolver, or '' (error printed)."""
-        from world_ids import WorldIds
-        raw = str(name).strip()
-        cid, error = WorldIds(self.json_ops).resolve(
-            raw if raw.lower().startswith("npc:") else f"npc:{raw}")
-        if error:
-            print(f"[ERROR] {error}")
-            return ""
-        return cid[4:]
-
-    def _location_tags(self, npcs: dict, key: str) -> list:
-        tags = npcs[key].get('tags')
-        if not isinstance(tags, dict):
-            tags = npcs[key]['tags'] = {'locations': [], 'quests': []}
-        return tags.setdefault('locations', [])
-
     def tag_location(self, name: str, *locations: str) -> bool:
-        """Add usual places (known locations only, close matches suggested).
-        Order is kept; a usual place clears `no_usual_place`."""
+        """Add usual places (known locations only, close matches suggested)."""
         key = self._npc_key(name)
         if not key:
             return False
@@ -474,808 +200,239 @@ class NPCManager(EntityManager):
             for error in errors or ["Give at least one place."]:
                 print(f"[ERROR] {error}")
             return False
-        npcs = self._load_entities(self.npcs_file)
-        tags = self._location_tags(npcs, key)
-        added = [p for p in places if p.lower() not in {t.lower() for t in tags}]
-        tags.extend(added)
-        npcs[key].pop('no_usual_place', None)
-        if not self._save_entities(self.npcs_file, npcs):
+        npcs = self._npcs()
+        usual = sheet_mod.section(npcs[key], "places").setdefault("usual", [])
+        added = [p for p in places if p.lower() not in {t.lower() for t in usual}]
+        usual.extend(added)
+        if not self._save(npcs):
             return False
-        print(f"[SUCCESS] {key} usually found: {', '.join(tags)}"
-              + ("" if added else " (no change)"))
+        print(f"[SUCCESS] {key} usually found: {', '.join(usual)}" + ("" if added else " (no change)"))
         return True
 
     def untag_location(self, name: str, *locations: str) -> bool:
-        """Remove usual places. Matches the stored tags loosely (case, punctuation,
-        titles), so old tags that aren't known places can be removed too."""
+        """Remove usual places (matched loosely: case, punctuation, titles)."""
         from entity_aliases import normalize_entity_name
         key = self._npc_key(name)
         if not key:
             return False
-        npcs = self._load_entities(self.npcs_file)
-        tags = self._location_tags(npcs, key)
+        npcs = self._npcs()
+        usual = sheet_mod.section(npcs[key], "places").setdefault("usual", [])
 
         def same(a, b):
             return a.lower() == b.lower() or (
                 normalize_entity_name(a) and normalize_entity_name(a) == normalize_entity_name(b))
 
-        missing = [raw for raw in locations if not any(same(raw, t) for t in tags)]
+        missing = [raw for raw in locations if not any(same(raw, t) for t in usual)]
         if missing:
             print(f"[ERROR] {key} has no usual place {', '.join(repr(m) for m in missing)}; "
-                  f"usually found: {', '.join(tags) or 'nowhere yet'}")
+                  f"usually found: {', '.join(usual) or 'nowhere yet'}")
             return False
-        npcs[key]['tags']['locations'] = [t for t in tags
-                                          if not any(same(raw, t) for raw in locations)]
-        if not self._save_entities(self.npcs_file, npcs):
+        npcs[key]["places"]["usual"] = [t for t in usual if not any(same(r, t) for r in locations)]
+        if not self._save(npcs):
             return False
-        left = npcs[key]['tags']['locations']
+        left = npcs[key]["places"]["usual"]
         print(f"[SUCCESS] {key} usually found: {', '.join(left) or 'nowhere (no usual place left)'}")
         return True
 
-    def tag_quest(self, name: str, *quests: str) -> bool:
-        """
-        Add quest tags to NPC
-        """
-        return self._manage_tags(name, 'quests', quests, 'add')
-
-    def untag_quest(self, name: str, *quests: str) -> bool:
-        """
-        Remove quest tags from NPC
-        """
-        return self._manage_tags(name, 'quests', quests, 'remove')
-
-    def get_tags(self, name: str) -> Optional[Dict[str, List[str]]]:
-        """
-        Get all tags for an NPC
-        """
-        npc = self.get_npc_status(name)
-        if npc:
-            tags = npc.get('tags', {'locations': [], 'quests': []})
-            if isinstance(tags, list):
-                return {'locations': [], 'quests': []}
-            return tags
-        return None
-
-    def get_voice(self, name: str) -> Optional[List[str]]:
-        """Return an NPC's canonical voice lines (verbatim source dialogue).
-
-        Returns None if the NPC does not exist, [] if it has no voice yet.
-        Read-only: never mutates the stored `context` field.
-        """
-        npc = self.get_npc_status(name)
-        if npc is None:
-            return None
-        context = npc.get('context', [])
-        if isinstance(context, list):
-            return [str(line) for line in context if line]
-        if isinstance(context, str) and context.strip():
-            return [context.strip()]
-        return []
-
-    # NPC inner life (additive; defaults so legacy NPCs load unchanged). What an
-    # NPC hides is a fact they hold (gm-note.sh ... --holders npc:<name>), not a field.
-    INNER_LIFE_FIELDS = ('goal', 'current_mood', 'voice', 'bonds')
-
-    def get_inner_life(self, name: str) -> Optional[Dict[str, Any]]:
-        """Return an NPC's inner life with safe defaults, or None if not found."""
-        npc = self.get_npc_status(name)
-        if npc is None:
-            return None
-        return {
-            'goal': npc.get('goal', ''),
-            'current_mood': npc.get('current_mood', 'neutral'),
-            'voice': npc.get('voice', ''),
-            'bonds': npc.get('bonds', {}),
-        }
-
-    def set_inner_life(self, name: str, **fields) -> bool:
-        """Set any of goal/current_mood/voice/bonds (additive)."""
-        updates = {k: v for k, v in fields.items()
-                   if k in self.INNER_LIFE_FIELDS and v is not None}
-        if not updates:
+    def item(self, name: str, action: str, place: Optional[str] = None,
+             item_name: Optional[str] = None, concealed: bool = False, note: str = "") -> bool:
+        key = self._npc_key(name)
+        if not key:
             return False
-        return self._update_entity(self.npcs_file, name, updates)
-
-    def shift_mood(self, name: str, mood: str) -> bool:
-        """Update an NPC's current_mood (persists across sessions)."""
-        return self._update_entity(self.npcs_file, name, {'current_mood': mood})
-
-    def get_visual_appearance(self, name: str) -> Optional[Dict[str, Any]]:
-        """Return an NPC's canonical visual_appearance block, or None if not found."""
-        npc = self.get_npc_status(name)
-        if npc is None:
-            return None
-        return va_mod.normalize(npc.get('visual_appearance'))
-
-    def set_visual_appearance(self, name: str, **fields) -> bool:
-        """Merge-update an NPC's visual_appearance (only non-empty fields change)."""
-        npc = self.get_npc_status(name)
-        if npc is None:
-            return False
-        merged = va_mod.merge(npc.get('visual_appearance'), fields)
-        return self._update_entity(self.npcs_file, name, {'visual_appearance': merged})
-
-    def _manage_tags(self, name: str, tag_type: str, tags: tuple, action: str) -> bool:
-        """
-        Internal method to manage tags
-        """
-        # Validate name
-        valid, error = self.validators.validate_name(name)
-        if not valid:
+        npcs = self._npcs()
+        try:
+            if action == "add":
+                entry = sheet_mod.add_item(npcs[key], place, item_name, concealed, note)
+                message = f"[SUCCESS] {key} {place}: {sheet_mod._item_text(entry)}"
+            elif action == "remove":
+                entry = sheet_mod.remove_item(npcs[key], item_name)
+                message = f"[SUCCESS] {key} no longer has {entry['name']}"
+            else:
+                print(f"[ERROR] item add|remove, not {action}")
+                return False
+        except sheet_mod.SheetError as error:
             print(f"[ERROR] {error}")
             return False
-
-        # Get current NPC data
-        npcs = self._load_entities(self.npcs_file)
-        if name not in npcs:
-            print(f"[ERROR] NPC {name} not found")
+        if not self._save(npcs):
             return False
+        print(message)
+        return True
 
-        # Ensure tags structure exists as dict (migrate from list if needed)
-        if 'tags' not in npcs[name] or isinstance(npcs[name]['tags'], list):
-            npcs[name]['tags'] = {'locations': [], 'quests': []}
-        if tag_type not in npcs[name]['tags']:
-            npcs[name]['tags'][tag_type] = []
+    def kill_npc(self, name: str, cause: Optional[str] = None) -> Dict[str, Any]:
+        """Mark an NPC dead, record the death as a fact, and fire the on_death
+        consequences waiting for it. Refuses an NPC who is already dead, so
+        on_death fires only once. A dead NPC is no longer present anywhere."""
+        key = self._find_entity_name(self.npcs_file, name)
+        if not key:
+            print(f"[ERROR] NPC {name} not found")
+            return {'success': False, 'error': f"NPC {name} not found"}
+        npcs = self._npcs()
+        if is_dead(npcs[key]):
+            print(f"[ERROR] {key} is already dead")
+            return {'success': False, 'error': f"{key} is already dead"}
+        status = sheet_mod.section(npcs[key], "status")
+        status.update({'state': 'dead', 'died_at': self.get_timestamp()})
+        game_time = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
+        if game_time:
+            status['died_game_time'] = game_time
+        if cause:
+            status['cause'] = cause
+        status.pop('party_member', None)
+        if not self._save(npcs):
+            return {'success': False, 'error': 'failed to save'}
+        from scene_manager import SceneManager
+        SceneManager(self.base_dir).leave([key], strict=False)
 
-        current_tags = list(npcs[name]['tags'][tag_type])
+        from note_manager import NoteManager
+        fact_id = NoteManager(self.base_dir).add_fact(
+            DEATH_FACT_CATEGORY, f"{key} died" + (f": {cause}" if cause else "."))
+        from consequence_manager import ConsequenceManager
+        fired = ConsequenceManager(self.base_dir).fire_event(
+            'on_death', f"npc:{key}", f"{key} died" + (f" ({cause})" if cause else ""))
+        return {'success': True, 'name': key, 'status': 'dead', 'cause': cause,
+                'fact': fact_id, 'fired': fired}
 
-        if action == 'add':
-            current_tags += [t for t in tags if t not in current_tags]
-            action_word = 'Added'
-        else:  # remove
-            current_tags = [t for t in current_tags if t not in tags]
-            action_word = 'Removed'
+    # ---------- the party ----------
 
-        npcs[name]['tags'][tag_type] = current_tags
-
-        if self._save_entities(self.npcs_file, npcs):
-            print(f"[SUCCESS] {action_word} {tag_type} tags for {name}: {', '.join(tags)}")
+    def set_party(self, name: str, member: bool) -> bool:
+        key = self._npc_key(name)
+        if not key:
+            return False
+        npcs = self._npcs()
+        if member and is_dead(npcs[key]):
+            print(f"[ERROR] {key} is dead")
+            return False
+        status = sheet_mod.section(npcs[key], "status")
+        if bool(status.get("party_member")) == member:
+            print(f"[INFO] {key} is {'already' if member else 'not'} a party member")
             return True
-        return False
-
-    # ==========================================
-    # Party Member Methods
-    # ==========================================
-
-    def _load_party_member(self, name: str):
-        """Load and validate an NPC as a party member.
-        Returns (npcs_dict, name) on success, or (None, None) on failure (with error printed).
-        """
-        valid, error = self.validators.validate_name(name)
-        if not valid:
-            print(f"[ERROR] {error}")
-            return None, None
-
-        npcs = self._load_entities(self.npcs_file)
-        if name not in npcs:
-            print(f"[ERROR] NPC {name} not found")
-            return None, None
-
-        if not npcs[name].get('is_party_member'):
-            print(f"[ERROR] {name} is not a party member. Use 'gm-npc.sh promote \"{name}\"' first.")
-            return None, None
-
-        return npcs, name
-
-    def promote_to_party_member(self, name: str) -> bool:
-        """
-        Promote an NPC to party member status with a character sheet.
-        First-time promote copies existing npc.stats HP/AC when present;
-        genuinely statless NPCs get PARTY_MEMBER_DEFAULTS (disclosed in output).
-        If NPC was previously a party member (demoted), restores existing stats.
-        """
-        valid, error = self.validators.validate_name(name)
-        if not valid:
-            print(f"[ERROR] {error}")
-            return False
-
-        npcs = self._load_entities(self.npcs_file)
-        if name not in npcs:
-            print(f"[ERROR] NPC {name} not found")
-            return False
-
-        if npcs[name].get('is_party_member'):
-            print(f"[INFO] {name} is already a party member")
-            return True
-
-        # Check if NPC already has a character sheet (was previously a party member)
-        existing_sheet = npcs[name].get('character_sheet')
-
-        npcs[name]['is_party_member'] = True
-        # A party member is active by definition. Clearing the import's background
-        # tier also puts them back in scope for `gm-enhance.sh batch`, which skips
-        # background entities.
-        npcs[name].pop('background', None)
-
-        if existing_sheet:
-            # Restore existing character sheet (NPC was previously demoted)
-            hp = existing_sheet.get('hp', {'current': 10, 'max': 10})
-            ac = existing_sheet.get('ac', 10)
-            if self._save_entities(self.npcs_file, npcs):
-                print(f"[SUCCESS] {name} rejoined the party (HP: {hp['current']}/{hp['max']}, AC: {ac})")
-                return True
+        if member:
+            status["party_member"] = True
         else:
-            sheet, source = _party_sheet_for_npc(npcs[name])
-            npcs[name]['character_sheet'] = sheet
-            if self._save_entities(self.npcs_file, npcs):
-                hp = sheet['hp']
-                print(
-                    f"[SUCCESS] {name} is now a party member "
-                    f"(HP: {hp['current']}/{hp['max']}, AC: {sheet['ac']}) — {source}"
-                )
-                return True
-
-        return False
-
-    def demote_from_party_member(self, name: str) -> bool:
-        """
-        Remove party member status from an NPC (keeps character_sheet for history).
-        """
-        valid, error = self.validators.validate_name(name)
-        if not valid:
-            print(f"[ERROR] {error}")
+            status.pop("party_member", None)
+        if not self._save(npcs):
             return False
-
-        npcs = self._load_entities(self.npcs_file)
-        if name not in npcs:
-            print(f"[ERROR] NPC {name} not found")
-            return False
-
-        if not npcs[name].get('is_party_member'):
-            print(f"[INFO] {name} is not a party member")
-            return True
-
-        npcs[name]['is_party_member'] = False
-
-        if self._save_entities(self.npcs_file, npcs):
-            print(f"[SUCCESS] {name} is no longer a party member")
-            return True
-        return False
+        print(f"[SUCCESS] {key} " + ("joined the party: present wherever the player is"
+                                     if member else "left the party"))
+        return True
 
     def get_party_members(self) -> Dict[str, Dict]:
-        """
-        Get all NPCs who are party members.
-        """
-        npcs = self._load_entities(self.npcs_file)
-        return {name: data for name, data in npcs.items()
-                if data.get('is_party_member')}
+        return {k: v for k, v in self._npcs().items() if is_party_member(v)}
 
-    def update_npc_hp(self, name: str, amount: int) -> bool:
-        """
-        Update an NPC's HP (party members only).
-        Positive amount heals, negative amount damages.
-        """
-        npcs, name = self._load_party_member(name)
-        if npcs is None:
-            return False
+    # ---------- showing ----------
 
-        sheet = npcs[name].get('character_sheet', {})
-        hp = sheet.get('hp', {'current': 10, 'max': 10})
-
-        old_hp = hp['current']
-        hp['current'] = max(0, min(hp['max'], hp['current'] + amount))
-        npcs[name]['character_sheet']['hp'] = hp
-
-        if self._save_entities(self.npcs_file, npcs):
-            action = "healed" if amount > 0 else "damaged"
-            print(f"[SUCCESS] {name} {action}: {old_hp} → {hp['current']}/{hp['max']} HP")
-            if hp['current'] == 0:
-                print(f"[WARNING] {name} is at 0 HP!")
-            return True
-        return False
-
-    def update_npc_xp(self, name: str, amount: int) -> bool:
-        """
-        Update an NPC's XP (party members only).
-        """
-        npcs, name = self._load_party_member(name)
-        if npcs is None:
-            return False
-
-        sheet = npcs[name].get('character_sheet', {})
-        old_xp = sheet.get('xp', 0)
-        new_xp = max(0, old_xp + amount)
-        npcs[name]['character_sheet']['xp'] = new_xp
-
-        if self._save_entities(self.npcs_file, npcs):
-            print(f"[SUCCESS] {name} XP: {old_xp} → {new_xp}")
-            return True
-        return False
-
-    def set_npc_stat(self, name: str, field: str, value: Any) -> bool:
-        """
-        Set a character sheet field for a party member NPC.
-        Supported fields: ac, level, class, race, attack_bonus, damage, hp_max
-        """
-        npcs, name = self._load_party_member(name)
-        if npcs is None:
-            return False
-
-        sheet = npcs[name].get('character_sheet', {})
-
-        # Handle special fields - sanitize numeric values first
-        def parse_int(val, field_name):
-            """Parse integer value with defensive handling."""
-            try:
-                # Strip whitespace and convert
-                cleaned = str(val).strip()
-                return int(cleaned)
-            except ValueError:
-                print(f"[ERROR] Invalid integer value for {field_name}: '{val}'")
-                return None
-
-        if field == 'hp_max':
-            parsed = parse_int(value, 'hp_max')
-            if parsed is None:
-                return False
-            sheet['hp']['max'] = parsed
-            # Also heal to new max if current > new max
-            if sheet['hp']['current'] > sheet['hp']['max']:
-                sheet['hp']['current'] = sheet['hp']['max']
-        elif field == 'attack':
-            parsed = parse_int(value, 'attack')
-            if parsed is None:
-                return False
-            sheet['attack_bonus'] = parsed
-        elif field in ['ac', 'level', 'xp']:
-            parsed = parse_int(value, field)
-            if parsed is None:
-                return False
-            sheet[field] = parsed
-        elif field in ['class', 'race', 'damage']:
-            sheet[field] = str(value)
-        else:
-            print(f"[ERROR] Unknown field: {field}")
-            print("Valid fields: ac, level, class, race, attack, damage, hp_max")
-            return False
-
-        npcs[name]['character_sheet'] = sheet
-
-        if self._save_entities(self.npcs_file, npcs):
-            print(f"[SUCCESS] {name} {field} set to {value}")
-            return True
-        return False
-
-    def update_npc_equipment(self, name: str, action: str, item: str) -> bool:
-        """
-        Add or remove equipment from a party member NPC.
-        """
-        npcs, name = self._load_party_member(name)
-        if npcs is None:
-            return False
-
-        sheet = npcs[name].get('character_sheet', {})
-        equipment = sheet.get('equipment', [])
-
-        if action == 'add':
-            if item in equipment:
-                print(f"[INFO] {name} already has {item}")
-                return True
-            equipment.append(item)
-            action_word = "equipped"
-        elif action == 'remove':
-            if item not in equipment:
-                print(f"[INFO] {name} doesn't have {item}")
-                return True
-            equipment.remove(item)
-            action_word = "unequipped"
-        else:
-            print(f"[ERROR] Unknown action: {action}. Use 'add' or 'remove'.")
-            return False
-
-        npcs[name]['character_sheet']['equipment'] = equipment
-
-        if self._save_entities(self.npcs_file, npcs):
-            print(f"[SUCCESS] {name} {action_word}: {item}")
-            return True
-        return False
-
-    def update_npc_condition(self, name: str, action: str, condition: str) -> bool:
-        """
-        Add or remove a condition from a party member NPC.
-        """
-        npcs, name = self._load_party_member(name)
-        if npcs is None:
-            return False
-
-        sheet = npcs[name].get('character_sheet', {})
-        conditions = sheet.get('conditions', [])
-
-        if action == 'add':
-            if condition in conditions:
-                print(f"[INFO] {name} already has condition: {condition}")
-                return True
-            conditions.append(condition)
-            action_word = "now has"
-        elif action == 'remove':
-            if condition not in conditions:
-                print(f"[INFO] {name} doesn't have condition: {condition}")
-                return True
-            conditions.remove(condition)
-            action_word = "no longer has"
-        else:
-            print(f"[ERROR] Unknown action: {action}. Use 'add' or 'remove'.")
-            return False
-
-        npcs[name]['character_sheet']['conditions'] = conditions
-
-        if self._save_entities(self.npcs_file, npcs):
-            print(f"[SUCCESS] {name} {action_word} {condition}")
-            return True
-        return False
-
-    def update_npc_feature(self, name: str, action: str, feature: str) -> bool:
-        """
-        Add or remove a feature from a party member NPC.
-        """
-        npcs, name = self._load_party_member(name)
-        if npcs is None:
-            return False
-
-        sheet = npcs[name].get('character_sheet', {})
-        features = sheet.get('features', [])
-
-        if action == 'add':
-            if feature in features:
-                print(f"[INFO] {name} already has feature: {feature}")
-                return True
-            features.append(feature)
-            action_word = "gained"
-        elif action == 'remove':
-            if feature not in features:
-                print(f"[INFO] {name} doesn't have feature: {feature}")
-                return True
-            features.remove(feature)
-            action_word = "lost"
-        else:
-            print(f"[ERROR] Unknown action: {action}. Use 'add' or 'remove'.")
-            return False
-
-        npcs[name]['character_sheet']['features'] = features
-
-        if self._save_entities(self.npcs_file, npcs):
-            print(f"[SUCCESS] {name} {action_word} feature: {feature}")
-            return True
-        return False
-
-    def format_party_status(self) -> str:
-        """
-        Format a summary of all party members with their combat stats.
-        """
-        party = self.get_party_members()
-        if not party:
-            return "No party members. Use 'gm-npc.sh promote \"Name\"' to add NPCs to the party."
-
-        lines = ["=== PARTY MEMBERS ===", ""]
-        for name, data in party.items():
-            sheet = data.get('character_sheet', {})
-            hp = sheet.get('hp', {'current': 10, 'max': 10})
-            ac = sheet.get('ac', 10)
-            level = sheet.get('level', 1)
-            char_class = sheet.get('class', 'Commoner')
-            conditions = sheet.get('conditions', [])
-
-            # Status line
-            status = f"{name} - Lvl {level} {char_class}"
-            hp_str = f"HP: {hp['current']}/{hp['max']}"
-            ac_str = f"AC: {ac}"
-
-            # Warning for low HP
-            if hp['current'] == 0:
-                hp_str += " [DOWN!]"
-            elif hp['current'] <= hp['max'] // 4:
-                hp_str += " [CRITICAL]"
-
-            # Conditions
-            cond_str = ""
-            if conditions:
-                cond_str = f" [{', '.join(conditions)}]"
-
-            lines.append(f"  {status}")
-            lines.append(f"    {hp_str} | {ac_str}{cond_str}")
-            lines.append("")
-
+    def show(self, name: str) -> Optional[str]:
+        """The whole sheet, readable, plus what they know and feel about the player."""
+        key = self._npc_key(name)
+        if not key:
+            return None
+        npc = self._npcs()[key]
+        lines = [f"=== {key} ==="]
+        if sheet_mod.aliases(npc):
+            lines.append(f"also called: {', '.join(sheet_mod.aliases(npc))}")
+        lines += sheet_mod.describe(npc)
+        if is_party_member(npc):
+            lines.append("party member")
+        try:
+            from note_manager import NoteManager, fact_line
+            known = NoteManager(self.base_dir).find(held_by=[f"npc:{key}"], about=["player"])
+        except (RuntimeError, ValueError):
+            known = []
+        if known:
+            lines.append("what they know and feel about the player (newest first):")
+            lines += [f"  {fact_line(f)}" for f in known[:8]]
         return "\n".join(lines)
 
-    def list_npcs(self, filter_attitude: Optional[str] = None,
-                  filter_location: Optional[str] = None,
-                  filter_quest: Optional[str] = None) -> Dict[str, Dict]:
-        """
-        List all NPCs with optional filtering
-        """
-        npcs = self._load_entities(self.npcs_file)
-        filtered = {}
-
-        for name, data in npcs.items():
-            # Apply filters
-            if filter_attitude and data.get('attitude') != filter_attitude.lower():
-                continue
-
-            tags = data.get('tags', {})
-            if filter_location and filter_location not in tags.get('locations', []):
-                continue
-            if filter_quest and filter_quest not in tags.get('quests', []):
-                continue
-
-            filtered[name] = data
-
-        return filtered
-
-    def create_batch(self, npcs_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Create multiple NPCs in batch
-
-        Args:
-            npcs_data: List of NPC dictionaries with name, description, attitude, etc.
-
-        Returns:
-            List of results for each NPC with success/error status
-        """
-        results = []
-        npcs = self._load_entities(self.npcs_file)
-
-        for npc_data in npcs_data:
-            result = {'name': npc_data.get('name', 'Unknown')}
-
-            # Validate required fields
-            if not npc_data.get('name'):
-                result['success'] = False
-                result['error'] = 'Missing NPC name'
-                results.append(result)
-                continue
-
-            name = npc_data['name']
-
-            # Check for duplicates
-            if name in npcs:
-                result['success'] = False
-                result['error'] = f'NPC {name} already exists'
-                results.append(result)
-                continue
-
-            # Validate attitude
-            attitude = npc_data.get('attitude', 'neutral')
-            valid, error = self.validators.validate_attitude(attitude)
-            if not valid:
-                attitude = 'neutral'  # Default to neutral if invalid
-
-            # Create NPC entry
-            npc_entry = {
-                'description': npc_data.get('description', 'No description provided'),
-                'attitude': attitude.lower(),
-                'created': self.get_timestamp(),
-                'events': npc_data.get('events', []),
-                'visual_appearance': va_mod.normalize(npc_data.get('visual_appearance')),
-                'tags': {
-                    'locations': npc_data.get('location_tags', []),
-                    'quests': npc_data.get('quest_tags', [])
-                }
-            }
-
-            # Add source if provided
-            if npc_data.get('source'):
-                npc_entry['source'] = npc_data['source']
-
-            # Add to NPCs dictionary (pending save)
-            npcs[name] = npc_entry
-            result['_pending'] = True
-            results.append(result)
-
-        # Save all NPCs at once, then mark success/failure
-        pending = [r for r in results if r.get('_pending')]
-        if pending:
-            saved = self._save_entities(self.npcs_file, npcs)
-            for result in pending:
-                del result['_pending']
-                if saved:
-                    result['success'] = True
-                else:
-                    result['success'] = False
-                    result['error'] = 'Failed to save to file'
-
-        return results
+    def list_npcs(self, filter_location: Optional[str] = None) -> Dict[str, Dict]:
+        npcs = self._npcs()
+        if not filter_location:
+            return npcs
+        wanted = filter_location.lower()
+        return {k: v for k, v in npcs.items() if wanted in [p.lower() for p in usual_places(v)]}
 
 
 def main():
-    """CLI interface for NPC management"""
     import argparse
-
-    parser = argparse.ArgumentParser(description='NPC management')
-    subparsers = parser.add_subparsers(dest='action', help='Action to perform')
-
-    # Create NPC
-    create_parser = subparsers.add_parser('create', help='Create new NPC')
-    create_parser.add_argument('name', help='NPC name')
-    create_parser.add_argument('description', help='NPC description')
-    create_parser.add_argument('attitude', help='NPC attitude')
-    create_parser.add_argument('--location', action='append', dest='locations',
-                               help='where the NPC is usually found (repeatable)')
-    create_parser.add_argument('--nowhere', action='store_true',
-                               help='the NPC has no usual place')
-    create_parser.add_argument('--alias', action='append', dest='aliases',
-                               help='a shorter name the story will use (repeatable)')
-
-    # Stats
-    stats_parser = subparsers.add_parser('stats', help="Show or set an NPC's stat block")
-    stats_parser.add_argument('name', help='NPC name')
-    stats_parser.add_argument('--attr', action='append', default=[],
-                              help='ATTR=DIE, e.g. STR=12; default=10 for the rest')
-    stats_parser.add_argument('--skill', action='append', default=[],
-                              help='Skill=VALUE, e.g. Handguns=4; default=0 for untrained')
-    stats_parser.add_argument('--remove-skill', dest='remove_skill', action='append', default=[])
-    stats_parser.add_argument('--wounds', type=int, help='how many wounds take them out')
-
-    # Aliases
-    alias_parser = subparsers.add_parser('alias', help="Add or remove an NPC's aliases")
-    alias_parser.add_argument('name', help='NPC name')
-    alias_parser.add_argument('aliases', nargs='*', help='aliases to add')
-    alias_parser.add_argument('--remove', action='append', default=[], help='an alias to remove')
-
-    # Update NPC
-    update_parser = subparsers.add_parser('update', help='Add event to NPC')
-    update_parser.add_argument('name', help='NPC name')
-    update_parser.add_argument('event', help='Event description')
-
-    # Status
-    status_parser = subparsers.add_parser('status', help='Get NPC status')
-    status_parser.add_argument('name', help='NPC name')
-
-    # Enhance
-    enhance_parser = subparsers.add_parser('enhance', help='Enhance NPC description')
-    enhance_parser.add_argument('name', help='NPC name')
-    enhance_parser.add_argument('description', help='Enhanced description')
-
-    # Tag location
-    tag_loc_parser = subparsers.add_parser('tag-location', help='Add location tags')
-    tag_loc_parser.add_argument('name', help='NPC name')
-    tag_loc_parser.add_argument('locations', nargs='+', help='Location tags')
-
-    # Untag location
-    untag_loc_parser = subparsers.add_parser('untag-location', help='Remove location tags')
-    untag_loc_parser.add_argument('name', help='NPC name')
-    untag_loc_parser.add_argument('locations', nargs='+', help='Location tags')
-
-    # Tag quest
-    tag_quest_parser = subparsers.add_parser('tag-quest', help='Add quest tags')
-    tag_quest_parser.add_argument('name', help='NPC name')
-    tag_quest_parser.add_argument('quests', nargs='+', help='Quest tags')
-
-    # Untag quest
-    untag_quest_parser = subparsers.add_parser('untag-quest', help='Remove quest tags')
-    untag_quest_parser.add_argument('name', help='NPC name')
-    untag_quest_parser.add_argument('quests', nargs='+', help='Quest tags')
-
-    # Get tags
-    tags_parser = subparsers.add_parser('tags', help='Get NPC tags')
-    tags_parser.add_argument('name', help='NPC name')
-
-    # Voice (canonical dialogue lines)
-    voice_parser = subparsers.add_parser('voice', help='Get NPC canonical voice lines')
-    voice_parser.add_argument('name', help='NPC name')
-
-    # Inner life (goal/mood/voice/bonds)
-    inner_parser = subparsers.add_parser('inner-life', help='Get NPC inner life')
-    inner_parser.add_argument('name', help='NPC name')
-    setinner_parser = subparsers.add_parser('set-inner', help='Set NPC inner life fields')
-    setinner_parser.add_argument('name', help='NPC name')
-    setinner_parser.add_argument('--goal')
-    setinner_parser.add_argument('--mood')
-    setinner_parser.add_argument('--voice')
-    kill_parser = subparsers.add_parser('kill', help='Mark an NPC dead; fires its on_death consequences')
-    kill_parser.add_argument('name', help='NPC name')
-    kill_parser.add_argument('--cause', help='How they died')
-
-    mood_parser = subparsers.add_parser('mood', help='Shift NPC current mood')
-    mood_parser.add_argument('name', help='NPC name')
-    mood_parser.add_argument('mood', help='New mood')
-
-    # Visual appearance (canonical look for consistent image generation)
-    appearance_parser = subparsers.add_parser('appearance', help='Get NPC visual_appearance')
-    appearance_parser.add_argument('name', help='NPC name')
-    setappear_parser = subparsers.add_parser('set-appearance', help='Set NPC visual_appearance fields')
-    setappear_parser.add_argument('name', help='NPC name')
-    for _f in va_mod.VISUAL_FIELDS:
-        setappear_parser.add_argument(f'--{_f}')
-
-    # Canon re-grounding (truth-drift worklist)
-    stale_parser = subparsers.add_parser('stale',
-                                         help='List NPCs that have drifted from canon and need re-grounding')
-    stale_parser.add_argument('--threshold', type=int, default=3,
-                              help='Min improvised beats since last check (default 3)')
-    checked_parser = subparsers.add_parser('checked',
-                                           help='Mark an NPC re-grounded (run after verifying vs source)')
-    checked_parser.add_argument('name', help='NPC name')
-
-    # List NPCs
-    list_parser = subparsers.add_parser('list', help='List NPCs')
-    list_parser.add_argument('--attitude', help='Filter by attitude')
-    list_parser.add_argument('--location', help='Filter by location tag')
-    list_parser.add_argument('--quest', help='Filter by quest tag')
-
-    # Party member commands
-    promote_parser = subparsers.add_parser('promote', help='Promote NPC to party member')
-    promote_parser.add_argument('name', help='NPC name')
-
-    demote_parser = subparsers.add_parser('demote', help='Remove party member status')
-    demote_parser.add_argument('name', help='NPC name')
-
-    party_parser = subparsers.add_parser('party', help='List all party members')
-
-    subparsers.add_parser('unify-tags',
-                          help='Migrate legacy location_tags into tags.locations (one-time per campaign)')
-
-    hp_parser = subparsers.add_parser('hp', help='Update party member HP')
-    hp_parser.add_argument('name', help='NPC name')
-    hp_parser.add_argument('amount', help='HP change (+5 or -3)')
-
-    xp_parser = subparsers.add_parser('xp', help='Update party member XP')
-    xp_parser.add_argument('name', help='NPC name')
-    xp_parser.add_argument('amount', help='XP change (+100)')
-
-    set_parser = subparsers.add_parser('set', help='Set character sheet field')
-    set_parser.add_argument('name', help='NPC name')
-    set_parser.add_argument('field', help='Field (ac, level, class, race, attack, damage, hp_max)')
-    set_parser.add_argument('value', help='New value')
-
-    equip_parser = subparsers.add_parser('equip', help='Add equipment')
-    equip_parser.add_argument('name', help='NPC name')
-    equip_parser.add_argument('item', help='Item to equip')
-
-    unequip_parser = subparsers.add_parser('unequip', help='Remove equipment')
-    unequip_parser.add_argument('name', help='NPC name')
-    unequip_parser.add_argument('item', help='Item to remove')
-
-    condition_parser = subparsers.add_parser('condition', help='Manage conditions')
-    condition_parser.add_argument('name', help='NPC name')
-    condition_parser.add_argument('sub_action', choices=['add', 'remove'], help='Add or remove')
-    condition_parser.add_argument('condition', help='Condition name')
-
-    feature_parser = subparsers.add_parser('feature', help='Manage features')
-    feature_parser.add_argument('name', help='NPC name')
-    feature_parser.add_argument('sub_action', choices=['add', 'remove'], help='Add or remove')
-    feature_parser.add_argument('feature', help='Feature name')
-
     from cli_output import wants_json, strip_json_flag, emit, emit_error
+
+    parser = argparse.ArgumentParser(description='NPC sheets')
+    sub = parser.add_subparsers(dest='action')
+
+    p = sub.add_parser('create', help='Create an NPC')
+    p.add_argument('name')
+    p.add_argument('role', help='who they are, in a few words')
+    p.add_argument('attitude', nargs='?', help='how they regard the player at first (becomes a fact)')
+    p.add_argument('--location', action='append', dest='locations',
+                   help='where they are usually found (repeatable)')
+    p.add_argument('--nowhere', action='store_true', help='no usual place')
+    p.add_argument('--alias', action='append', dest='aliases', help='a shorter name (repeatable)')
+    sheet_mod.add_field_flags(p)
+
+    p = sub.add_parser('set', help='Text fields: identity, look, personality, goal')
+    p.add_argument('name')
+    sheet_mod.add_field_flags(p)
+
+    for action in ('show', 'status'):
+        sub.add_parser(action, help='The whole sheet').add_argument('name')
+
+    p = sub.add_parser('stats', help="Show or set an NPC's stats")
+    p.add_argument('name')
+    p.add_argument('--attr', action='append', default=[], help='ATTR=DIE, e.g. STR=12; default=10 for the rest')
+    p.add_argument('--skill', action='append', default=[], help='Skill=VALUE, e.g. Handguns=4; default=N for the rest')
+    p.add_argument('--remove-skill', dest='remove_skill', action='append', default=[])
+    p.add_argument('--wounds', type=int, help='how many wounds take them out')
+
+    p = sub.add_parser('alias', help="Add or remove an NPC's aliases")
+    p.add_argument('name')
+    p.add_argument('aliases', nargs='*')
+    p.add_argument('--remove', action='append', default=[])
+
+    for action in ('tag-location', 'untag-location'):
+        p = sub.add_parser(action, help='Add or remove usual places')
+        p.add_argument('name')
+        p.add_argument('locations', nargs='+')
+
+    p = sub.add_parser('item', help='Items: add gear|inventory "<item>", remove "<item>"')
+    p.add_argument('name')
+    p.add_argument('item_action', choices=['add', 'remove'])
+    p.add_argument('words', nargs='+')
+    p.add_argument('--concealed', action='store_true')
+    p.add_argument('--note', default='')
+
+    p = sub.add_parser('kill', help='Mark an NPC dead; fires its on_death consequences')
+    p.add_argument('name')
+    p.add_argument('--cause')
+
+    p = sub.add_parser('list', help='List NPCs')
+    p.add_argument('--location')
+    for action in ('promote', 'demote'):
+        sub.add_parser(action, help='Into or out of the party').add_argument('name')
+    sub.add_parser('party', help='The party members')
+
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
-
     if not args.action:
         parser.print_help()
         sys.exit(1)
-
     manager = NPCManager()
 
-    if json_mode and args.action == 'status':
-        npc = manager.get_npc_status(args.name)
-        if npc is not None:
-            emit(npc, json_mode=True)
-        else:
-            sys.exit(emit_error("NPC not found", json_mode=True))
-        return
-    if json_mode and args.action == 'voice':
-        voice = manager.get_voice(args.name)
-        if voice is not None:
-            emit({"voice": voice}, json_mode=True)
-        else:
-            sys.exit(emit_error("NPC not found", json_mode=True))
-        return
-    if json_mode and args.action == 'update':
-        import contextlib
-        import io
-        with contextlib.redirect_stdout(io.StringIO()):
-            ok = manager.update_npc(args.name, args.event)
-        if ok:
-            emit({"updated": args.name}, json_mode=True)
-        else:
-            sys.exit(emit_error("NPC update failed", json_mode=True))
-        return
-
-    if args.action == 'create':
-        if not manager.create_npc(args.name, args.description, args.attitude,
-                                  locations=args.locations, nowhere=args.nowhere,
-                                  aliases=args.aliases):
+    if args.action in ('show', 'status'):
+        if json_mode:
+            npc = manager.get_sheet(args.name)
+            sys.exit(emit_error("NPC not found", json_mode=True)) if npc is None else emit(npc, json_mode=True)
+            return
+        text = manager.show(args.name)
+        if text is None:
             sys.exit(1)
-
+        print(text)
+    elif args.action == 'create':
+        if not manager.create_npc(args.name, args.role, args.attitude, locations=args.locations,
+                                  nowhere=args.nowhere, aliases=args.aliases,
+                                  fields=sheet_mod.fields_from_args(args)):
+            sys.exit(1)
+    elif args.action == 'set':
+        if not manager.set_fields(args.name, sheet_mod.fields_from_args(args)):
+            sys.exit(1)
     elif args.action == 'stats':
         from stat_block import StatError, describe, parse_pairs
         try:
@@ -1288,7 +445,6 @@ def main():
         print(describe(result['name'], result['entry']))
         for warning in result['warnings']:
             print(f"  [WARNING] {warning}")
-
     elif args.action == 'alias':
         from world_ids import change_aliases
         try:
@@ -1298,77 +454,23 @@ def main():
             print(f"[ERROR] {error}")
             sys.exit(1)
         print(f"{key}: also called {', '.join(aliases)}" if aliases else f"{key}: no aliases")
-
-    elif args.action == 'update':
-        if not manager.update_npc(args.name, args.event):
-            sys.exit(1)
-
-    elif args.action == 'status':
-        formatted = manager.format_npc_status(args.name)
-        if formatted:
-            print(formatted)
-        else:
-            sys.exit(1)
-
-    elif args.action == 'enhance':
-        if not manager.enhance_npc(args.name, args.description):
-            sys.exit(1)
-
     elif args.action == 'tag-location':
         if not manager.tag_location(args.name, *args.locations):
             sys.exit(1)
-
     elif args.action == 'untag-location':
         if not manager.untag_location(args.name, *args.locations):
             sys.exit(1)
-
-    elif args.action == 'tag-quest':
-        if not manager.tag_quest(args.name, *args.quests):
-            sys.exit(1)
-
-    elif args.action == 'untag-quest':
-        if not manager.untag_quest(args.name, *args.quests):
-            sys.exit(1)
-
-    elif args.action == 'unify-tags':
-        from tag_unify import unify_location_tags
-        npcs = manager.json_ops.load_json(manager.npcs_file) or {}
-        report = unify_location_tags(npcs)
-        if report['migrated']:
-            manager.json_ops.save_json(manager.npcs_file, npcs)
-            print(f"[SUCCESS] Unified location_tags -> tags.locations for "
-                  f"{len(report['migrated'])} NPC(s), {report['tags_added']} tag(s) merged: "
-                  f"{', '.join(report['migrated'])}")
+    elif args.action == 'item':
+        words = args.words
+        if args.item_action == 'add':
+            if len(words) != 2 or words[0] not in sheet_mod.ITEM_PLACES:
+                print('[ERROR] item "<npc>" add gear|inventory "<item>" [--concealed]')
+                sys.exit(1)
+            ok = manager.item(args.name, 'add', words[0], words[1], args.concealed, args.note)
         else:
-            print("No legacy location_tags found — already unified.")
-
-    elif args.action == 'tags':
-        tags = manager.get_tags(args.name)
-        if tags:
-            import json
-            print(json.dumps(tags, indent=2))
-        else:
+            ok = manager.item(args.name, 'remove', None, " ".join(words))
+        if not ok:
             sys.exit(1)
-
-    elif args.action == 'voice':
-        voice = manager.get_voice(args.name)
-        if voice is None:
-            sys.exit(1)
-        import json
-        print(json.dumps(voice, indent=2))
-
-    elif args.action == 'inner-life':
-        il = manager.get_inner_life(args.name)
-        if il is None:
-            sys.exit(1)
-        import json
-        print(json.dumps(il, indent=2))
-
-    elif args.action == 'set-inner':
-        if not manager.set_inner_life(args.name, goal=args.goal,
-                                      current_mood=args.mood, voice=args.voice):
-            sys.exit(1)
-
     elif args.action == 'kill':
         if json_mode:
             import contextlib
@@ -1378,107 +480,29 @@ def main():
             if not result.get('success'):
                 sys.exit(emit_error(result.get('error', 'kill failed'), json_mode=True))
             emit(result, json_mode=True)
-        else:
-            result = manager.kill_npc(args.name, args.cause)
-            if not result.get('success'):
-                sys.exit(1)
-            print(f"DEATH {result['name']} has died." + (f" Cause: {args.cause}" if args.cause else ""))
-            from consequence_manager import print_fired
-            print_fired(result.get('fired'))
-
-    elif args.action == 'mood':
-        if not manager.shift_mood(args.name, args.mood):
+            return
+        result = manager.kill_npc(args.name, args.cause)
+        if not result.get('success'):
             sys.exit(1)
-
-    elif args.action == 'stale':
-        worklist = manager.stale_npcs(args.threshold)
-        if json_mode:
-            emit({"stale": worklist}, json_mode=True)
-        elif worklist:
-            print(f"=== NPCs DRIFTED FROM CANON (>= {args.threshold} improvised beats) ===")
-            for name, d in worklist.items():
-                print(f"  {name}: {d} improvised beat(s) since last canon check")
-            print("Re-ground each: pull source via RAG, reconcile, then gm-npc.sh checked \"<name>\".")
-        else:
-            print(f"No NPCs past the drift threshold ({args.threshold}). All grounded.")
-
-    elif args.action == 'checked':
-        if not manager.mark_canon_checked(args.name):
-            sys.exit(1)
-
-    elif args.action == 'appearance':
-        va = manager.get_visual_appearance(args.name)
-        if va is None:
-            sys.exit(1)
-        import json
-        if json_mode:
-            print(json.dumps(va))
-        else:
-            line = va_mod.format_line(args.name, va)
-            print(line if line else "(no visual_appearance set yet)")
-
-    elif args.action == 'set-appearance':
-        fields = {f: getattr(args, f) for f in va_mod.VISUAL_FIELDS}
-        if not manager.set_visual_appearance(args.name, **fields):
-            sys.exit(1)
-        print(f"[SUCCESS] Updated visual_appearance for {args.name}")
-
+        print(f"DEATH {result['name']} has died." + (f" Cause: {args.cause}" if args.cause else ""))
+        from consequence_manager import print_fired
+        print_fired(result.get('fired'))
     elif args.action == 'list':
-        npcs = manager.list_npcs(args.attitude, args.location, args.quest)
-        import json
-        print(json.dumps(npcs, indent=2))
-
-    elif args.action == 'promote':
-        if not manager.promote_to_party_member(args.name):
+        npcs = manager.list_npcs(args.location)
+        if json_mode:
+            emit(npcs, json_mode=True)
+            return
+        for key, npc in npcs.items():
+            role = sheet_mod.get(npc, "identity", "role", "")
+            dead = " (dead)" if is_dead(npc) else ""
+            party = " [party]" if is_party_member(npc) else ""
+            print(f"{key}{dead}{party}" + (f" - {role}" if role else ""))
+    elif args.action in ('promote', 'demote'):
+        if not manager.set_party(args.name, args.action == 'promote'):
             sys.exit(1)
-
-    elif args.action == 'demote':
-        if not manager.demote_from_party_member(args.name):
-            sys.exit(1)
-
     elif args.action == 'party':
-        print(manager.format_party_status())
-
-    elif args.action == 'hp':
-        # Parse amount like "+5" or "-3"
-        amount_str = args.amount
-        if amount_str.startswith('+'):
-            amount = int(amount_str[1:])
-        elif amount_str.startswith('-'):
-            amount = -int(amount_str[1:])
-        else:
-            amount = int(amount_str)
-        if not manager.update_npc_hp(args.name, amount):
-            sys.exit(1)
-
-    elif args.action == 'xp':
-        amount_str = args.amount
-        if amount_str.startswith('+'):
-            amount = int(amount_str[1:])
-        else:
-            amount = int(amount_str)
-        if not manager.update_npc_xp(args.name, amount):
-            sys.exit(1)
-
-    elif args.action == 'set':
-        if not manager.set_npc_stat(args.name, args.field, args.value):
-            sys.exit(1)
-
-    elif args.action == 'equip':
-        if not manager.update_npc_equipment(args.name, 'add', args.item):
-            sys.exit(1)
-
-    elif args.action == 'unequip':
-        if not manager.update_npc_equipment(args.name, 'remove', args.item):
-            sys.exit(1)
-
-    elif args.action == 'condition':
-        if not manager.update_npc_condition(args.name, args.sub_action, args.condition):
-            sys.exit(1)
-
-    elif args.action == 'feature':
-        if not manager.update_npc_feature(args.name, args.sub_action, args.feature):
-            sys.exit(1)
+        party = manager.get_party_members()
+        print(", ".join(party) if party else "No party members.")
 
 
 if __name__ == "__main__":

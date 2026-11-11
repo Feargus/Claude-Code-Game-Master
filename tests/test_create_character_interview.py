@@ -11,8 +11,6 @@ from tests.test_kit_vitals import HYBORIAN_RULESET, _make_world, _save, _sheet
 
 ROOT = Path(__file__).resolve().parent.parent
 COMMAND = ROOT / ".claude" / "commands" / "create-character.md"
-VA_KEYS = ("sex", "age", "race", "species", "hair", "face", "eyes",
-           "clothing", "gear", "demeanor", "size")
 
 
 def _cmd():
@@ -60,8 +58,10 @@ def test_the_save_example_is_a_valid_new_sheet():
     assert blobs, "expected a create example"
     for blob in blobs:
         assert "hp" not in blob and "ac" not in blob
-        assert set(blob["attributes"]) == {"STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP"}
-        assert all(key in blob["visual_appearance"] for key in VA_KEYS)
+        assert set(blob["stats"]["attributes"]) == {"STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP"}
+        assert set(blob["look"]) == {"physique", "style", "presence"}
+        assert set(blob) - {"untrained"} <= {"identity", "look", "personality", "stats", "body",
+                                             "items", "possessions"}
 
 
 def test_claude_md_death_protocol_routes_new_characters_to_the_interview():
@@ -80,7 +80,8 @@ def test_gm_player_banner_is_kit_neutral():
 
 def test_a_sheet_without_race_or_class_saves_and_validates(tmp_path):
     world = _make_world(tmp_path, "conan-live", {k: v for k, v in HYBORIAN_RULESET.items() if k != "kit"})
-    r = _save(world, {"name": "Nameless", "attributes": {"STR": 14, "AGI": 11, "VIG": 13}})
+    r = _save(world, {"identity": {"name": "Nameless"},
+                      "stats": {"attributes": {"STR": 14, "AGI": 11, "VIG": 13}}})
     assert r.returncode == 0, r.stdout + r.stderr
     ok, errs = validate_character(_sheet(world))
     assert ok, errs
