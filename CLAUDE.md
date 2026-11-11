@@ -57,9 +57,7 @@ SWAP (make the chosen character the active PC):
 | Growth due (the brief or a command says so), at a quiet moment | Growth | `gm-growth` |
 | Narrate / voice an NPC | Narration craft | `gm-craft` |
 
-If a skill fails to load, fall back to the matching section in the archived full
-ruleset (`docs/` / git history). Conditions and the progression models live in
-`lib/game_core.py`.
+If a skill fails to load, read its file directly: `.claude/skills/<skill>/SKILL.md`.
 
 ## Dice
 **ROLL FOR ANYTHING THAT CAN FAIL.** If an action has a variable or failable
