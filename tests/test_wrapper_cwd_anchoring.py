@@ -27,8 +27,11 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from importlib.util import find_spec
 
 PROJECT_ROOT = Path(__file__).parent.parent
+# gm-extract.sh prepare stops before resolving the path without these (the rag extra).
+HAS_RAG = all(find_spec(m) is not None for m in ("sentence_transformers", "chromadb"))
 LIVE_ACTIVE_FILE = PROJECT_ROOT / "world-state" / "active-campaign.txt"
 FIXTURE_CAMPAIGN = Path(__file__).parent / "fixtures" / "world-state" / "campaigns" / "dungeon-crawler-carl"
 
@@ -242,6 +245,8 @@ def test_extract_prepare_finds_a_project_root_relative_document(
         assert (isolated_world_state / "campaigns" / "cwd-anchoring-canon").is_dir()
 
 
+@pytest.mark.skipif(not HAS_RAG, reason="needs the rag extra: gm-extract.sh prepare "
+                                        "checks for it before it resolves the path")
 def test_extract_prepare_prefers_the_callers_copy_when_both_anchors_have_one(
     isolated_world_state, foreign_cwd, project_root_scratch, live_world_state_untouched
 ):
