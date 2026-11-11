@@ -22,6 +22,8 @@ from entity_manager import EntityManager
 from note_manager import fact_text
 
 _CANON_CATEGORIES = {"plot_world", "world_building"}
+# Keyword recall breaks ties by tier: arcs, then session summaries, then facts.
+_TIE_ORDER = {"arc": 0, "recent": 1, "archive": 2}
 
 
 class CampaignMemory(EntityManager):
@@ -166,19 +168,23 @@ class CampaignMemory(EntityManager):
 
     @staticmethod
     def _recall_keyword(query, entries, top_k, provenance):
+        """Entries sharing the most words with the query. On a tie, the GM's arc
+        entries come first (they sum up the raw history), then session summaries,
+        then facts; within each, the order gathered (oldest first). Without this,
+        a tie always went to the oldest entry, so an arc never surfaced."""
         if provenance:
             entries = [e for e in entries if e.get("provenance") == provenance]
         q = set(re.findall(r"\w+", query.lower()))
         if not q:
             return []
         scored = []
-        for e in entries:
+        for i, e in enumerate(entries):
             tw = set(re.findall(r"\w+", e["text"].lower()))
             s = len(q & tw)
             if s > 0:
-                scored.append((s, e))
-        scored.sort(key=lambda t: t[0], reverse=True)
-        return [e for _, e in scored[:top_k]]
+                scored.append((-s, _TIE_ORDER.get(e.get("tier"), len(_TIE_ORDER)), i, e))
+        scored.sort(key=lambda t: t[:3])
+        return [t[3] for t in scored[:top_k]]
 
     def memoir(self) -> Dict[str, Any]:
         """Tiered, bounded memoir: real arc entries first, raw history behind."""
