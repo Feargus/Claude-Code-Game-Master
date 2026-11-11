@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from campaign_manager import CampaignManager
 from json_ops import JsonOperations
+from stat_block import COMMON_VALUE, common_skills
 
 ATTRIBUTES = ("STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP")
 DICE_PER_ROLL = 3
@@ -168,9 +169,21 @@ def skill_value(sheet: Dict[str, Any], skill: str) -> Optional[int]:
     return None if skill.lower() == "default" else _find(skills, skill)
 
 
-def untrained_value(sheet: Dict[str, Any]) -> int:
-    """A skill the sheet doesn't list. Mobs and NPCs may set a `default`."""
-    return (sheet.get("skills") or {}).get("default", UNTRAINED)
+def _common_by_rule(sheet: Dict[str, Any], skill: str) -> bool:
+    """An NPC or mob without a skill default, and a common skill (gm-skills index):
+    it counts COMMON_VALUE without being listed. The player's common skills are on
+    the sheet; one missing there is untrained."""
+    return (not sheet.get("is_player") and "default" not in (sheet.get("skills") or {})
+            and skill.lower() in {c.lower() for c in common_skills()})
+
+
+def untrained_value(sheet: Dict[str, Any], skill: str = "") -> int:
+    """A skill the sheet doesn't list: the sheet's `default` (mobs and NPCs) if it
+    sets one, else 0 for an NPC's or mob's common skill, else untrained."""
+    skills = sheet.get("skills") or {}
+    if "default" in skills:
+        return skills["default"]
+    return COMMON_VALUE if _common_by_rule(sheet, skill) else UNTRAINED
 
 
 def _edges(name: str, attributes: List[str], pairs: Optional[List[List[str]]]) -> List[Dict[str, str]]:
@@ -201,8 +214,8 @@ def build_side(campaign_dir: Path, spec: List[str], advantages: Optional[List[Li
     return {
         "name": name,
         "skill": skill,
-        "skill_value": untrained_value(sheet) if value is None else value,
-        "untrained": value is None,
+        "skill_value": untrained_value(sheet, skill) if value is None else value,
+        "untrained": value is None and not _common_by_rule(sheet, skill),
         "attributes": attributes,
         "advantages": advantages,
         "disadvantages": disadvantages,

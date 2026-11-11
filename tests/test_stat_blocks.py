@@ -13,7 +13,7 @@ import pytest
 from lib.combat_manager import CombatManager
 from lib.npc_manager import NPCManager
 from lib.skill_contest import build_side
-from lib.stat_block import Mobs, canon_skills, common_skills, merged
+from lib.stat_block import Mobs, canon_skills, common_skills, describe, merged
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -45,14 +45,23 @@ def test_canon_skills_come_from_the_gm_skills_index():
     assert len(common) == 14 and "Guard" in common and "Handguns" not in common
 
 
-def test_the_example_mobs_have_the_common_skills():
-    """Like a starting character (2026-11-11): every common skill at 0 or more, so the
-    scale doesn't make a thug worse at noticing things than anyone else (untrained −3)."""
-    mobs = json.loads((ROOT / ".claude" / "skills" / "gm-skills" / "mobs.json").read_text())
-    for name, mob in mobs.items():
-        for skill in common_skills():
-            assert mob["skills"].get(skill, -1) >= 0, (name, skill)
-    assert mobs["combat merc"]["skills"]["Guard"] == 5 and mobs["rat"]["skills"]["Persuasion"] == 0
+def test_a_skill_not_listed_counts_default_then_common_then_untrained():
+    """The lookup for NPCs and mobs (2026-11-11): what is listed counts; otherwise the
+    block's skill default; otherwise 0 for a common skill and −3 for the rest. The
+    player's common skills live on the sheet, so one missing there is untrained."""
+    from lib.skill_contest import untrained_value
+    thug = {"skills": {"Brawling": 2, "Composure": -2}}
+    boss = {"skills": {"default": 4}}
+    vermin = {"skills": {"default": -5}}
+    player = {"skills": {"Guard": 0}, "is_player": True}
+    assert untrained_value(thug, "awareness") == 0
+    assert untrained_value(thug, "Netrunning") == -3
+    assert untrained_value(boss, "Awareness") == 4 and untrained_value(boss, "Tech") == 4
+    assert untrained_value(vermin, "Persuasion") == -5
+    assert untrained_value(player, "Brawling") == -3
+    shown = describe("street thug", thug)
+    assert "Composure -2" in shown and "not listed: common skills 0, the rest untrained −3" in shown
+    assert "not listed: 4 (the default, common skills included)" in describe("boss", boss)
 
 
 def test_npc_stats_are_set_merged_and_rolled(world):

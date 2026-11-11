@@ -58,7 +58,12 @@ Pass the names of the skill and attributes to the script. It looks up all the nu
 
 ## Untrained
 
-Anyone can try any skill. A skill missing from the sheet is untrained and counts as −3; the script does this itself, so just write the skill's real name. A skill on the sheet is trained, even at 0: every new character starts with the **common** skills of the [index](#index) (everyday fighting, defense, moving, noticing and talking) at 0 or more. The rest (weapon training, vehicles, tradecraft, knowledge) is untrained until learned. A sheet never holds a negative skill. A mob or NPC can set its own value with `"default"` in its skills, for example a boss who is competent at everything, or vermin hopeless at anything they weren't built for. Improvised skills are untrained for everyone until someone learns them.
+Anyone can try any skill; the script works out the value, so just write the skill's real name.
+
+- **The player:** a skill on the sheet is trained, even at 0; a skill missing from it is untrained and counts −3. Every new character starts with the **common** skills of the [index](#index) (everyday fighting, defense, moving, noticing and talking) on the sheet at 0 or more; the rest (weapon training, vehicles, tradecraft, knowledge) is untrained until learned. The player's sheet never holds a negative skill.
+- **NPCs and mobs:** a skill on their stat block counts as listed. One not listed counts the block's `"default"` if it has one (a boss competent at everything, vermin hopeless at anything they weren't built for), else 0 for a common skill and −3 for the rest. So list only what differs: their trained skills, and a weakness in a common skill (a coward's Composure −2), at any value.
+
+Improvised skills are untrained for everyone until someone learns them.
 
 ## Advantage or modifier
 
@@ -186,7 +191,7 @@ Framework: (1) What did they try? (2) What was the intent? (3) What goes sideway
 
 ## Index
 
-**Common:** every character starts with it at 0 or more (see [Untrained](#untrained)).
+**Common:** everyone has it at 0 or more unless their sheet says otherwise (see [Untrained](#untrained)).
 
 | Skill | Category | Anchor | Common | In short |
 | --- | --- | --- | --- | --- |

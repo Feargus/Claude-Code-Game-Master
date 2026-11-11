@@ -250,6 +250,16 @@ def test_a_missing_skill_counts_minus_three_and_is_logged_as_untrained(campaign)
     assert entry["active"]["untrained"] is True
 
 
+def test_a_mob_has_its_common_skills_at_zero_without_listing_them(campaign):
+    """The street thug (repo mob) lists no Awareness and no Netrunning: common 0, untrained −3."""
+    for skill, value, untrained in (("Awareness", 0, False), ("Netrunning", -3, True)):
+        args = _args("--active", "street thug", skill, "ITU", "ITU", "ITU",
+                     "--reactive-dc", "10", "noise")
+        result = run_contest(args, ScriptedDice(5, 5, 5))
+        assert result["active_total"] == 15 + value
+        assert _log_blocks(campaign)[-1]["active"]["untrained"] is untrained
+
+
 def test_a_listed_skill_is_logged_as_trained(campaign):
     run_contest(_args(*SHOOT, "--reactive-dc", "10", "door"), ScriptedDice(5, 5, 5))
     assert _log_blocks(campaign)[0]["active"]["untrained"] is False

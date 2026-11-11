@@ -4,9 +4,15 @@
 One format, read by skill_contest.py and the combat tracker:
 
     "attributes": {"STR": 12, "AGI": 11, "default": 10},   die sizes; default = the rest
-    "skills":     {"Handguns": 4, "Guard": 3, "default": 0}, default = untrained (else -3)
+    "skills":     {"Handguns": 4, "Guard": 3, "default": 0}, default = every skill not listed
     "wounds":     3,                                       how many take them out
     "note":       "one line"                               mobs only
+
+A skill not listed counts the block's `default` if it has one, else 0 for the
+common skills (the Common column of the gm-skills index) and −3 for the rest
+(skill_contest.untrained_value). A weakness in a common skill is listed
+explicitly, at any value. Player sheets are different: their common skills are
+written onto the sheet at creation (new_character.py).
 
 `gm-npc.sh stats` writes it onto an NPC in npcs.json, `gm-mob.sh` onto a mob in the
 campaign's mobs.json (the repo's mobs.json in gm-skills is the scale, read-only).
@@ -31,6 +37,7 @@ ATTRIBUTES = ("STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP")
 SKILLS_FILE = Path(__file__).parent.parent / ".claude" / "skills" / "gm-skills" / "SKILL.md"
 REPO_MOBS = Path(__file__).parent.parent / ".claude" / "skills" / "gm-skills" / "mobs.json"
 IMPROVISED_FILE = "improvised-skills.md"
+COMMON_VALUE = 0   # a common skill an NPC or mob doesn't list, unless it has a default
 USUAL_DIE = (4, 24)  # outside: a warning, not a refusal (power creep is fine)
 
 
@@ -177,7 +184,11 @@ def describe(name: str, entry: Dict[str, Any]) -> str:
     if entry.get("note"):
         lines.append(f"  {entry['note']}")
     lines.append("  attributes: " + (", ".join(f"{a} d{attrs[a]}" for a in order) or "(none: can't roll)"))
-    lines.append("  skills: " + (", ".join(f"{k} {v}" for k, v in skills.items()) or "(none: untrained −3)"))
+    lines.append("  skills: " + (", ".join(f"{k} {v}" for k, v in skills.items()) or "(none listed)"))
+    if "default" in skills:
+        lines.append(f"  not listed: {skills['default']} (the default, common skills included)")
+    else:
+        lines.append(f"  not listed: common skills {COMMON_VALUE}, the rest untrained −3")
     lines.append(f"  wounds: {entry.get('wounds', '(not set)')}")
     return "\n".join(lines)
 
