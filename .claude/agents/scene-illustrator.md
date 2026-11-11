@@ -25,8 +25,9 @@ bash tools/gm-image.sh appearance "<name>" # one per character in frame
   calls for a deliberate break (see Generate). If none is set, stop
   and tell the GM to lock one (`gm-image.sh chronicler --style`); don't improvise.
 - For each character in frame, read their appearance line and reproduce it (sex,
-  race, build, hair, signature gear are binding). If one has no `visual_appearance`
-  yet, author it first: `gm-player.sh set-appearance` (PC) / `gm-npc.sh set-appearance` (NPC).
+  race, build, hair, signature gear are binding). If one has no look yet, write it
+  first: `gm-player.sh set --physique ... --style ... --presence ...` (PC) /
+  `gm-npc.sh set "<npc>" --physique ...` (NPC).
 
 ## Generate
 

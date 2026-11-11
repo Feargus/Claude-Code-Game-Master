@@ -120,9 +120,9 @@ What good expansion tends to include:
 - Look for related NPCs, locations they might frequent, or factions they could belong to
 
 ```bash
-./tools/gm-npc.sh create "[Name]" "[description]" "[attitude]" --location "[where they're usually found]"   # or --nowhere
-./tools/gm-npc.sh update "[Name]" "[event]"
-./tools/gm-npc.sh status "[Name]"
+./tools/gm-npc.sh create "[Name]" "[role]" "[how they regard the player]" --location "[where they're usually found]"   # or --nowhere
+./tools/gm-npc.sh set "[Name]" --physique "..." --big-five "O0 C1 E-1 A0 N1" --voice "..."
+./tools/gm-npc.sh show "[Name]"
 ```
 
 
@@ -139,7 +139,7 @@ What good expansion tends to include:
 ## Error Recovery
 
 Common issues and solutions:
-1. **NPC Creation**: Include attitude as third parameter
+1. **NPC Creation**: name, role, and a usual place (or --nowhere); the attitude is optional and becomes a fact
 2. **Path Errors**: Always use `uv run python` prefix
 3. **Missing Locations**: Verify existence before connecting
 

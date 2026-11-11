@@ -126,7 +126,7 @@ Write only what tonight needs:
    `gm-session.sh opening`, once the character exists and the player has said where
    and when to start, so it fits them. Until then nothing of it is stored. Sketch:
    - **the place** you stand in (a street, a room, a deck), with 2–5 **exits** you can see;
-   - **2–4 people** there: who they are, their attitude, the short names the story
+   - **2–4 people** there: who they are, how they regard the player, their look and personality, the short names the story
      will use (aliases), and where each is usually found;
    - **the plot**: every campaign starts with at least one. Its **hook** is the
      problem that won't wait, and becomes its first beat. Its `npcs` and `locations`
@@ -142,7 +142,7 @@ Write only what tonight needs:
 4. Optional thin binder: a short `authored-canon.md` of *this street only*, then
    `gm-extract.sh prepare` so RAG has something to pull. Do not author the continent.
 
-When a new name walks on in play: `gm-npc.sh create "<name>" "<who>" "<attitude>" --location "<place>"` or `gm-location.sh add` (with a binder, search it first: `gm-search.sh "<name>" --rag-only`).
+When a new name walks on in play: `gm-npc.sh create "<name>" "<role>" "<attitude>" --location "<place>"` or `gm-location.sh add` (with a binder, search it first: `gm-search.sh "<name>" --rag-only`).
 
 ---
 
@@ -191,8 +191,9 @@ bash tools/gm-session.sh opening '{
   "time": "<YYYY-MM-DD HH:MM>",
   "place": {"name": "<the place>", "position": "<where it is>", "description": "<…>"},
   "exits": [{"name": "<what you can see>", "aliases": ["<short name>"]}],
-  "npcs": [{"name": "<Name>", "who": "<who they are>", "attitude": "<attitude>",
-            "aliases": ["<short name>"]}],
+  "npcs": [{"name": "<Name>", "who": "<who they are>", "attitude": "<how they regard the player>",
+            "aliases": ["<short name>"], "physique": "<…>", "style": "<…>",
+            "presence": "<…>", "big_five": "<O1 C0 E2 A-1 N1>", "voice": "<…>"}],
   "plot": {"name": "<the thread>", "type": "main", "description": "<what it is about>",
            "hook": "<the problem that will not wait>",
            "npcs": ["<who it involves, on stage or on the horizon>"],
@@ -205,16 +206,13 @@ bash tools/gm-session.sh opening '{
 }'
 ```
 
-**Author a `visual_appearance` block for every NPC on the stage** (the PC gets one at
-`/create-character`). It is the locked look every future image renders, with
-EXACTLY these 11 keys: `sex, age, race, species, hair, face, eyes, clothing,
-gear, demeanor, size`. Ground each field in the bible; leave unknowns "". Author
-only the people on this stage — the rest get a block when they walk on:
-```bash
-bash tools/gm-npc.sh set-appearance "<NPC name>" \
-  --sex "..." --age "..." --race "..." --species "..." --hair "..." \
-  --face "..." --eyes "..." --clothing "..." --gear "..." --demeanor "..." --size "..."
-```
+**Give every NPC on the stage a look and a personality** in the opening (the PC gets
+theirs at `/create-character`): `physique` (sex, age, ethnicity, build, distinguishing
+features), `style` (outfit, aesthetic, scent), `presence` (how they carry themselves),
+`big_five` (the Big Five in OCEAN order, each −3 to +3, 0 the average person) and
+`voice`; `tells`, `want` and `fears` too if you know them. Ground them in the bible.
+Only the people on this stage: the rest get theirs when they walk on
+(`gm-npc.sh set "<NPC>" --physique "..." ...`).
 
 Then open the scene from what `opening` printed: the place, who is here, the hook.
 

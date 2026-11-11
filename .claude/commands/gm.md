@@ -162,7 +162,7 @@ enter them: `bash tools/gm-scene.sh enter "<name>"...`.
 
 Pull full NPC detail when the summary isn't enough:
 ```bash
-bash tools/gm-npc.sh status "[name]"
+bash tools/gm-npc.sh show "[name]"
 ```
 
 ---
@@ -284,9 +284,9 @@ bash tools/gm-session.sh end "[brief summary of key events]"
 ### 2. Verify State Updates
 Ensure all changes from the session are persisted:
 - Wounds, armor, cyberware → `gm-body.sh`
-- Inventory changes → `gm-player.sh inventory`
+- Items → `gm-player.sh item` / `loot`
 - Credits changes → `gm-player.sh credits`
-- NPC updates → `gm-npc.sh update`
+- What NPCs now know and feel about the player → facts they hold (`gm-note.sh ... --holders npc:<name>`)
 - Location changes → `gm-session.sh move`
 - Consequences → `gm-consequence.sh add`
 - Facts → `gm-note.sh`

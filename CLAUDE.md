@@ -97,8 +97,8 @@ outcome is genuinely certain (trivial, or literally impossible).
 
 ## Scene context (read at session start + each beat)
 `bash tools/gm-session.sh context` assembles: PREVIOUSLY ON (recent summaries +
-cliffhanger + open threads), STORY THREADS, KEY FACTS, NPC VOICES (present NPCs: the party and the scene list +
-goal/mood + canonical lines), THREAT CLOCKS, PENDING CONSEQUENCES, and YOUR
+cliffhanger + open threads), STORY THREADS, KEY FACTS, PEOPLE HERE (present NPCs: the party and the scene list, from
+their sheets: role, Big Five, look, voice, tells, wants, what they know), THREAT CLOCKS, PENDING CONSEQUENCES, and YOUR
 WORLD'S RULES (full, never truncated). `bash tools/gm-context.sh ["loc"]` adds
 grounded source passages.
 
@@ -120,18 +120,18 @@ later facts), ask the player out of character before narrating or noting it.
 ## State Persistence — if it happened, persist it FIRST
 | Change | Command |
 |---|---|
-| Credits/inventory (PC) | `gm-player.sh` |
+| Credits (PC) | `gm-player.sh credits <name> +N\|-N`; loot: `gm-player.sh loot <name> --credits N --items "A" "B"` (into the inventory) |
+| Items (PC or NPC) | `gm-player.sh item add gear\|inventory "<item>" [--concealed]` / `item remove\|move "<item>"`; NPC: `gm-npc.sh item "<npc>" add gear "<item>"`. **gear** is worn or within reach (holstered, in pockets, slung on the back): others see it unless it is concealed. **inventory** is in bags and packs: hidden. Who knows about a hidden item is a fact |
 | A campaign counter (PC) | `gm-player.sh vital <name> +N\|-N\|set N` (the counters this campaign declares; the brief's SIGNATURE SYSTEMS names which they are, and their thresholds) |
 | Wounds, armor, cyberware (PC) | `gm-body.sh` (`hit`, `heal`, `repair`, `show`; rules in `gm-combat`) |
 | XP for an achievement (an obstacle surmounted, a goal reached, a problem solved, power gained) | `gm-player.sh award --size small\|medium\|large --reason "..."`; skills and fights pay XP by themselves (`gm-growth`) |
-| Party NPC stats | `gm-npc.sh` |
+| A companion joins or leaves | `gm-npc.sh promote "<npc>"` / `demote` (party members are present wherever the player is) |
 | NPC or mob stats (attributes, skills, wounds) | `gm-npc.sh stats "<npc>" --attr STR=12 --skill Handguns=4 --wounds 3` / `gm-mob.sh add "<mob>" --note "…" …` (checked; never edit the JSON by hand; `gm-mob.sh list` shows the scale; see `gm-skills` → Rolling) |
-| New NPC | `gm-npc.sh create "<name>" "<who>" "<attitude>" --location "<where they're usually found>"` (repeatable; must exist; `--nowhere` for someone with no usual place) `--alias "<short name>"` (repeatable; see Aliases). Creating doesn't put them in the scene: `gm-scene.sh enter` if they're here |
+| New NPC | `gm-npc.sh create "<name>" "<role>" ["<attitude>"] --location "<where they're usually found>"` (repeatable; must exist; `--nowhere` for someone with no usual place) `--alias "<short name>"` (repeatable; see Aliases). The attitude (how they regard the player: "wary", "owes her a favour") becomes a fact they hold. Only name, role and place are needed: give a look and a personality when they matter (`--physique --style --presence --big-five --voice --tells --want --fears`, see the next row), the rest when play needs it. Creating doesn't put them in the scene: `gm-scene.sh enter` if they're here |
+| An NPC's or the player's sheet fields | `gm-npc.sh set "<npc>" --<field> "..."` / `gm-player.sh set --<field> "..."` (`""` clears one). Identity: `--race --role --background --affiliation`. Look: `--physique` (sex, age, ethnicity, build, distinguishing features), `--style` (outfit, aesthetic, scent), `--presence` (how they carry themselves). Personality: `--big-five "O1 C-2 E3 A-1 N2"` (the Big Five in OCEAN order, each −3 to +3, 0 the average person; N+ anxious, N− calm under pressure), `--demeanor`, `--voice` (vocabulary, accent, dialect, tics), `--tells` (gestures, habits), `--want`, `--need`, `--values`, `--fears`. `--goal`: what they're after right now. `gm-npc.sh show "<npc>"` shows the whole sheet |
 | Aliases (NPC or place) | the shorter names the story will use: a first name, the name without its title (`Ishbel` for Ishbel Rue, `Erasure` for Brother Erasure, `the Yard` for Old Iron's Yard). Never a family, house or company name others share (`Vey`), nor a common word (`Old`). Give them at creation, or later: `gm-npc.sh alias "<npc>" "<alias>"...` / `gm-location.sh alias "<place>" "<alias>"...` (`--remove <alias>`). The name check in facts finds aliases like full names; one that already names something else is refused |
 | An NPC's usual place changes (moves in, gets a job, is evicted) | `gm-npc.sh tag-location "<npc>" "<place>"...` / `untag-location` (known places only). Where someone *usually* is, not who is in the scene now (that's `gm-scene.sh`) |
-| NPC mood/goal/voice | `gm-npc.sh set-inner` / `mood` (what they hide is a fact they alone hold: `gm-note.sh ... --holders npc:<name>`) |
-| **What an NPC now remembers about the player** (a slight, a kindness, a debt, a lie they caught) | `gm-npc.sh update "<name>" "<event>"` — surfaces back under them in scene context next time they're present |
-| Character look (PC/NPC) | `gm-player.sh set-appearance` / `gm-npc.sh set-appearance` (the 11-field `visual_appearance` — author at creation, update when the look changes) |
+| **How an NPC feels about the player, what they remember, owe or hide** (a slight, a kindness, a debt, a lie they caught, a grudge) | a fact they hold: `gm-note.sh relations "<what>" --holders npc:<name> --about player` (when a feeling changes, record the new one; the newest counts). There are no mood or attitude fields: the brief shows what they know under them |
 | Condition (PC) | `gm-condition.sh` |
 | PC death | `gm-player.sh kill` (status dead + log) — then run Death Protocol |
 | NPC death | `gm-npc.sh kill "<name>" --cause "<how>"` (status dead, no longer present anywhere, records the death as a fact, fires its `on_death` consequences) |

@@ -6,7 +6,7 @@ The rules behind the numbers are in `.claude/skills/gm-skills/SKILL.md` (attribu
 
 Ask who they want to be:
 - **Their own character:** a one-line concept ("a courier who owes the wrong people").
-- **Someone from this world (canon):** a person already in the campaign. Offer this whenever the world has people: from the book, from the world you built together, or from the one you built from a sentence. Name a few. If the person has no NPC record yet, create it first (`gm-npc.sh create`, from what the world says about them). Then read what is known: `bash tools/gm-npc.sh status "<name>"`, `bash tools/gm-npc.sh stats "<name>"` and `bash tools/gm-image.sh appearance "<name>"`. Their stats, if they have any, are your first suggestion, whatever their size; fill in the rest of the character as below.
+- **Someone from this world (canon):** a person already in the campaign. Offer this whenever the world has people: from the book, from the world you built together, or from the one you built from a sentence. Name a few. If the person has no NPC record yet, create it first (`gm-npc.sh create`, from what the world says about them). Then read their sheet: `bash tools/gm-npc.sh show "<name>"`. It is the base of the character: what they have (stats, look, personality, items) is your first suggestion, whatever its size, and anything you leave out of the JSON is taken from it. Fill in the rest as below.
 
 Then ask **fast or slow**, unless the player already said:
 - **Fast (the default):** you propose one complete character, with the options for traits and gear in it. The player picks and changes whatever they like.

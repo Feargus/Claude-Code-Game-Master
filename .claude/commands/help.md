@@ -49,7 +49,7 @@ Display all available commands and tools.
   gm-location.sh    Add and connect locations
   gm-overview.sh    Quick world summary
   Character
-  gm-player.sh      XP, credits, inventory, counters, level-ups
+  gm-player.sh      The player's sheet: fields, items, credits, counters, XP and growth
   gm-body.sh        Wounds, armor and cyberware
   gm-condition.sh   Conditions
   Rolls and fights
@@ -57,7 +57,7 @@ Display all available commands and tools.
   gm-combat.sh      Enemies' wounds in a fight
   gm-mob.sh         Mobs: interchangeable enemies with stats
   People and story
-  gm-npc.sh         Create and update NPCs, their stats
+  gm-npc.sh         NPC sheets: create, set fields, stats, items, places, party
   gm-note.sh        Facts: what happened, who knows it
   gm-consequence.sh What happens later, and what triggers it
   gm-clock.sh       Threat clocks

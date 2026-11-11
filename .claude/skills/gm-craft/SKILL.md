@@ -28,8 +28,9 @@ chair; pull a page when the beat needs it. Never make them wait through a census
 - **Imitate the sample passages' cadence**, don't quote them. Borrow sentence
   length, word choice, and the kind of imagery they use — not their literal text.
 - **World voice ≠ NPC voice.** The NARRATIVE VOICE governs YOUR prose (description,
-  action, scene-setting). NPC *dialogue* still comes from each NPC's own canonical
-  lines (NPC VOICES) — a Howard-voiced narrator can still voice a timid clerk.
+  action, scene-setting). NPC *dialogue* still comes from each NPC's own voice
+  (PEOPLE HERE: their `voice`, `tells`, Big Five) — a Howard-voiced narrator can
+  still voice a timid clerk.
 - **A world with a voice never sounds interchangeable.** If a beat could belong to
   any game — flat, modern, generic-narrator — it isn't this one. The Style line is
   where the beat gets its accent back.
@@ -49,7 +50,7 @@ chair; pull a page when the beat needs it. Never make them wait through a census
 - **Don't over-share.** Secrets revealed slowly are 10x more interesting. What an NPC hides is a fact only they hold (the brief marks it `[HIDDEN FROM PLAYER]`): let it show through behaviour, and give it up only when the fiction earns it.
 - **Give NPCs contradictions.** The gentle priest who collects weapons.
 - **NPCs can say no, lie, or give bad advice.**
-- **Reactions compound.** Insult the merchant last session, he remembers. Use `gm-npc.sh mood` + `update`.
+- **Reactions compound.** Insult the merchant last session, he remembers: record how he feels now as a fact he holds (`gm-note.sh relations ... --holders npc:<name> --about player`).
 
 ## Pacing
 - **End sessions on the open situation.** The cliffhanger is the situation as it stands: what's unresolved, who's waiting, what's at stake. Don't invent new events for it; that's only for `/gm cliffhanger`, and then the new event is persisted as a fact, consequence or plot too. Record it: `gm-session.sh end "<summary>" --cliffhanger "..." --open-thread "..."`.

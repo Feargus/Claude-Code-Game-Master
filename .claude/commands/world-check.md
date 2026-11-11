@@ -69,36 +69,23 @@ for name, data in locations.items():
 ```
 
 ### Step 3: NPC Analysis
+Every NPC is a sheet (`lib/sheet.py`); the check validates each one and shows what is filled in:
 ```bash
 CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 uv run python -c "
-import json
-import sys
-
-campaign_dir = sys.argv[1]
-with open(f'{campaign_dir}/npcs.json', 'r') as f:
-    npcs = json.load(f)
-
+import json, sys
+sys.path.insert(0, 'lib')
+from schemas import validate_npc
+npcs = json.load(open(f'{sys.argv[1]}/npcs.json'))
 print(f'🎭 NPCS: {len(npcs)} total')
-
 for name, data in npcs.items():
-    desc_len = len(data.get('description', ''))
-    tags = data.get('tags', {})
-
-    # Check description length
-    desc_status = '✅' if desc_len > 80 else '⚠️'
-
-    # Check tags
-    location_tags = tags.get('locations', [])
-    quest_tags = tags.get('quests', [])
-
-    print(f'{desc_status} {name}:')
-    print(f'   Description: {desc_len} chars')
-    print(f'   Attitude: {data.get(\"attitude\", \"unknown\")}')
-    if location_tags:
-        print(f'   📍 Locations: {location_tags}')
-    if quest_tags:
-        print(f'   📜 Quests: {quest_tags}')
+    ok, errors = validate_npc(name, data)
+    filled = [s for s in ('look', 'personality', 'stats') if data.get(s)]
+    places = (data.get('places') or {}).get('usual') or []
+    print(f\"{'✅' if ok else '❌'} {name}: {(data.get('identity') or {}).get('role', '(no role)')}\")
+    print(f\"   filled in: {', '.join(filled) or 'nothing yet'}; usually at: {', '.join(places) or 'nowhere'}\")
+    for error in errors:
+        print(f'   {error}')
 " "$CAMPAIGN_DIR"
 ```
 
@@ -332,7 +319,7 @@ Your world is ready when:
 - ✅ Starting location defined
 - ✅ 4+ locations with descriptions
 - ✅ All locations connected
-- ✅ 4+ NPCs with descriptions and attitudes
+- ✅ Every NPC sheet valid, with a role
 - ✅ Three-tier plot structure
 - ✅ 2+ active consequences
 - ✅ Session log initialized
