@@ -1,7 +1,7 @@
 ---
 type: Module
 title: The player character sheet
-description: Why the sheet has two shapes, which one is canonical, and how XP, death, and the spectacle award are persisted.
+description: Why the sheet has two shapes, which one is canonical, and how XP, death, and growth are persisted.
 sources:
   - { resource: /lib/new_character.py }
   - { resource: /lib/player_manager.py }
@@ -24,38 +24,17 @@ Stats other than the nine attributes (`skill_contest.ATTRIBUTES`, the same in ev
 campaign) are reported. Only `name` and `level` are required (level 0 counts) —
 `race`/`class` are optional flavor.
 
-## XP delegates to the kit, then falls back
+## Growth: XP, levels, skills that learn (2026-11-11)
 
-`_xp_thresholds` asks the kit's built `progression` object — not `ruleset.json` — and uses
-its thresholds **only when the model is `xp-levels` (or its `level` alias) and thresholds
-are present**. Anything else — milestone kits, resource-axis kits, an `xp-levels` kit that
-forgot its table — silently uses `DEFAULT_XP_THRESHOLDS`. So a milestone world still
-accrues levels if something calls `award_xp`. Going through the kit is what keeps every
-ruleset shorthand it accepts (a bare `"progression": "milestone"`, the `level` alias) from
-raising here.
-
-That table also sets the ceiling: `_max_level` is its length, so `MAX` and
-`ready_to_level` come from the kit. A world declaring eleven thresholds tops out at level
-12; 20 is only where the *default* table ends, not a rule of the engine.
-
-**Reads never write.** `_xp_view` returns `{current, next_level}` off the sheet — honoring
-both the legacy plain-integer XP and the canonical object — and creates nothing. A
-milestone or resource-axis sheet that has never tracked XP therefore does not sprout an
-`xp` object from a status check, a spectacle beat, or an HP change. `award_xp` is the only
-thing that writes the object, because that call is an explicit grant.
-
-`award_xp` prints the literal token `LEVEL_UP` on a level gain, and `get_xp_status` prints
-`READY_TO_LEVEL_UP`. Those strings are the interface: the GM watches for them to trigger
-the level-up ceremony. Changing their wording breaks the routing described in
-[lean core and skill routing](../conventions/lean-core-and-skill-routing.md).
-
-## Spectacle awards route back through `award_xp`
-
-`award_spectacle` computes amounts via `game_core.spectacle_award`, then — for XP-based
-kits — applies them **through `award_xp`** rather than writing XP directly, specifically
-so `LEVEL_UP` detection still fires. A spectacle beat can therefore level the character,
-which is the point: non-kill achievements advance the same axis kills do. See
-[game core and World Kit](game-core-and-world-kit.md).
+One system for every campaign, in `lib/growth.py`; the GM's side is the `gm-growth`
+skill. The player's skills learn from close contests in the dice script, a skill
+point gained pays 10 × its value in XP, a defeated enemy wounds² × 10 (in
+`gm-combat.sh end`), an achievement 20/50/100 % of the current level
+(`gm-player.sh award --size`). Level N needs 100 × N² XP. XP only makes growth due
+(`GROWTH_DUE`, and "Growth due" in the brief); `gm-player.sh grow` applies one level at
+a quiet moment and checks the choice (one attribute, two skills, one perk). Every award
+goes into the campaign's `xp.log`. The progression models (milestone, resource-axis) and
+the spectacle tiers are gone.
 
 ## Death is a state, not a deletion
 

@@ -36,12 +36,9 @@ def test_draft_ruleset_from_bible_is_valid_kit():
         (Path(__file__).resolve().parent / "fixtures" / "world-state" / "campaigns"
          / "dungeon-crawler-carl" / "world-bible.json").read_text(encoding="utf-8")
     )
-    ruleset = book_bible.draft_ruleset_from_bible(
-        bible, progression_model="resource-axis", resource="viewers", tiers=[1000000])
+    ruleset = book_bible.draft_ruleset_from_bible(bible)
     assert ruleset["name"] == "Dungeon Crawler Carl"
-    assert "resolution" not in ruleset
-    assert ruleset["progression"]["model"] == "resource-axis"
-    assert ruleset["progression"]["resource"] == "viewers"
+    assert "resolution" not in ruleset and "progression" not in ruleset
 
 
 def test_bible_to_campaign_rules_carries_signature_systems():

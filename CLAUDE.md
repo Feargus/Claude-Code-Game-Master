@@ -54,7 +54,7 @@ SWAP (make the chosen character the active PC):
 | "I try to..." | Skill contest | `gm-skills` |
 | A run, a job or a dungeon | Site | `gm-sites` |
 | Apply a condition | Conditions | `gm-conditions` |
-| LEVEL_UP | Level-up | `gm-levelup` |
+| Growth due (the brief or a command says so), at a quiet moment | Growth | `gm-growth` |
 | Narrate / voice an NPC | Narration craft | `gm-craft` |
 
 If a skill fails to load, fall back to the matching section in the archived full
@@ -120,10 +120,10 @@ later facts), ask the player out of character before narrating or noting it.
 ## State Persistence — if it happened, persist it FIRST
 | Change | Command |
 |---|---|
-| XP/credits/inventory (PC) | `gm-player.sh` |
+| Credits/inventory (PC) | `gm-player.sh` |
 | A campaign counter (PC) | `gm-player.sh vital <name> +N\|-N\|set N` (the counters this campaign declares; the brief's SIGNATURE SYSTEMS names which they are, and their thresholds) |
 | Wounds, armor, cyberware (PC) | `gm-body.sh` (`hit`, `heal`, `repair`, `show`; rules in `gm-combat`) |
-| Spectacle XP (clever/effective/unique/punishing non-kill beat) | `gm-player.sh award [name] --tier minor\|major\|legendary --reason "..."` (level-scaled) |
+| XP for an achievement (an obstacle surmounted, a goal reached, a problem solved, power gained) | `gm-player.sh award --size small\|medium\|large --reason "..."`; skills and fights pay XP by themselves (`gm-growth`) |
 | Party NPC stats | `gm-npc.sh` |
 | NPC or mob stats (attributes, skills, wounds) | `gm-npc.sh stats "<npc>" --attr STR=12 --skill Handguns=4 --wounds 3` / `gm-mob.sh add "<mob>" --note "…" …` (checked; never edit the JSON by hand; `gm-mob.sh list` shows the scale; see `gm-skills` → Rolling) |
 | New NPC | `gm-npc.sh create "<name>" "<who>" "<attitude>" --location "<where they're usually found>"` (repeatable; must exist; `--nowhere` for someone with no usual place) `--alias "<short name>"` (repeatable; see Aliases). Creating doesn't put them in the scene: `gm-scene.sh enter` if they're here |

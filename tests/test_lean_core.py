@@ -6,7 +6,7 @@ CLAUDE.md was swapped to the lean core (the 1227-line original is in git history
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ALL_SKILLS = ["gm-combat", "gm-conditions", "gm-levelup",
+ALL_SKILLS = ["gm-combat", "gm-conditions", "gm-growth",
               "gm-sites", "gm-images", "gm-craft", "gm-skills", "gm-social"]
 
 
@@ -91,4 +91,4 @@ def test_world_kit_info_runs():
                        capture_output=True, text=True, cwd=str(ROOT))
     assert r.returncode == 0, r.stderr
     data = json.loads(r.stdout)["data"]
-    assert "kit" not in data and "progression_model" in data
+    assert "kit" not in data and "progression_model" not in data

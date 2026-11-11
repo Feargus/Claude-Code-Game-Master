@@ -100,7 +100,7 @@ and sketch the opening (Phase C). The bible stays `confirmed: false` until they 
 
 Write only what tonight needs:
 
-1. Draft the kit: `gm-extract.sh draft-ruleset --progression-model xp-levels`. Attributes and rolls are always the ones in `gm-skills`; the world adds its signature systems.
+1. Draft the kit: `gm-extract.sh draft-ruleset`. Attributes, rolls and growth are always the repo's (`gm-skills`, `gm-growth`); the world adds its signature systems.
 2. Write a short `rules.md` if the world has signature systems.
 2b. **Make the signature systems executable — dice, not vibes.** Instantiate 1–3
    `game_core` primitives (**named_track** meter with threshold beats / **price_roll**
@@ -222,7 +222,7 @@ Then open the scene from what `opening` printed: the place, who is here, the hoo
 ## COMPLETION CHECKLIST (play tonight)
 - [ ] `world-seed.json` (premise, voice, art style)
 - [ ] `world-bible.json` approved and confirmed (voice + signature systems, not a planet)
-- [ ] `ruleset.json` drafted with the nine attributes and `xp-levels`, plus the world's signature systems
+- [ ] `ruleset.json` drafted, with the world's signature systems
 - [ ] chronicler locked (`gm-image.sh chronicler`)
 - [ ] handed off to the one question and the `/create-character` interview (`gm-player.sh create`)
 - [ ] the opening written with `gm-session.sh opening` (one place, exits, the people there,

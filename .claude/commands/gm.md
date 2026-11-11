@@ -221,7 +221,7 @@ Now you're playing. For every player action, follow the workflows in CLAUDE.md:
 3. **Persist** - Save all state changes
 4. **Narrate Result** - Describe what happens
 5. **Enforce Campaign Rules** - Apply any campaign-specific rules from campaign-overview.json's `campaign_rules` section
-6. **Check for XP** - After significant scenes
+6. **Growth** - An achievement just happened? Award it (`gm-growth`). Growth due and a quiet moment? Run it (`gm-growth`)
 7. **Ask** - "What do you do?"
 
 Repeat.

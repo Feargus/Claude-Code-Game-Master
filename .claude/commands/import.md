@@ -122,12 +122,11 @@ places). Nodes with no edges are a cast list, not a world; a couple of real
 relationships (the villain's faction vs the player's, the caravan vs the hunt)
 pay off in every scene. Do not build a full relationship map.
 
-Attributes are always the nine from `gm-skills`; rolls are always skill contests.
+Attributes are always the nine from `gm-skills`, actions are skill contests, and growth is `gm-growth`'s.
 
 ```bash
 CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
-[ -f "$CAMPAIGN_DIR/ruleset.json" ] || bash tools/gm-extract.sh draft-ruleset \
-  --progression-model "xp-levels"
+[ -f "$CAMPAIGN_DIR/ruleset.json" ] || bash tools/gm-extract.sh draft-ruleset
 ```
 
 ```bash

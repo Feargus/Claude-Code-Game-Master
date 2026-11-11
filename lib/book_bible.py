@@ -73,21 +73,17 @@ def bible_to_campaign_rules(bible: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def draft_ruleset_from_bible(bible: Dict[str, Any], progression_model: str = "xp-levels",
-                             **progression_config) -> Dict[str, Any]:
+def draft_ruleset_from_bible(bible: Dict[str, Any]) -> Dict[str, Any]:
     """Auto-draft a World Kit ruleset.json from a world-bible.
 
-    progression_model is chosen by the importer / human (default xp-levels, as in
-    the standard rules). No vitals: those are the world's own counters, added
-    with its signature systems; wounds come with every character.
+    No vitals: those are the world's own counters, added with its signature
+    systems; wounds come with every character. No progression: XP and levels
+    are the same for every campaign (growth.py).
     """
-    progression = {"model": progression_model}
-    progression.update(progression_config)
     agents = ["npc-builder"]
     return {
         "name": bible.get("name", "Imported World"),
         "stat_schema": {"vitals": []},
-        "progression": progression,
         "active_agents": agents,
         "rules_doc": "rules.md",
     }
@@ -203,15 +199,12 @@ def draft_bible(campaign_dir, name: str = None, voice: Dict[str, Any] = None,
     return bible
 
 
-def write_ruleset(campaign_dir, progression_model: str = "milestone",
-                  force: bool = False,
-                  **progression_config) -> Dict[str, Any]:
+def write_ruleset(campaign_dir, force: bool = False) -> Dict[str, Any]:
     """Draft the World Kit from the bible and write it to ruleset.json."""
     path = Path(campaign_dir) / "ruleset.json"
     if path.exists() and not force:
         raise FileExistsError(f"{path} already exists — pass --force to redraft it")
-    ruleset = draft_ruleset_from_bible(load_bible(campaign_dir), progression_model=progression_model,
-                                       **progression_config)
+    ruleset = draft_ruleset_from_bible(load_bible(campaign_dir))
     path.write_text(json.dumps(ruleset, indent=2, ensure_ascii=False), encoding="utf-8")
     return ruleset
 
@@ -296,9 +289,6 @@ def main():
 
     p_kit = sub.add_parser("draft-ruleset", help="draft ruleset.json from the bible")
     p_kit.add_argument("campaign_dir")
-    p_kit.add_argument("--progression-model", default="milestone",
-                       choices=["milestone", "xp-levels", "resource-axis"])
-    p_kit.add_argument("--progression-json", help="extra progression config (e.g. resource/tiers)")
     p_kit.add_argument("--force", action="store_true", help="overwrite an existing ruleset.json")
 
     p_rules = sub.add_parser("campaign-rules", help="write campaign_rules into campaign-overview.json")
@@ -333,12 +323,7 @@ def main():
                   f"(index: {idx_counts}; "
                   f"{len(bible['voice']['sample_passages'])} verbatim passages, confirmed=False)")
         elif args.action == "draft-ruleset":
-            ruleset = write_ruleset(
-                args.campaign_dir,
-                progression_model=args.progression_model,
-                force=args.force,
-                **(json.loads(args.progression_json) if args.progression_json else {}),
-            )
+            ruleset = write_ruleset(args.campaign_dir, force=args.force)
             print(f"ruleset.json drafted: {ruleset['name']} "
                   f"| agents: {ruleset['active_agents']}")
         elif args.action == "write-index":

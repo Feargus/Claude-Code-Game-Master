@@ -49,8 +49,8 @@ Decide before rolling what refusal COSTS (never tell the player). On a failed so
 - **Whatever was on the table is spent.** If the player was bargaining for lives, cargo, passage, or mercy, the failure is where that thing is lost — not deferred. The NPC responds from their own goals and power; sometimes that's ugly.
 - **Persist the shift** so refusals compound like wins do: `bash tools/gm-npc.sh mood "[name]" "[new mood]"` + `gm-npc.sh set-inner` (goal/attitude), and `gm-npc.sh update "[name]" "[what happened]"`.
 
-## Reward a social win (award spectacle XP)
-A real social victory — a hard persuasion landed, a daring bluff, turning a hostile NPC, talking your way past a threat — EARNS progress like a kill. Persist it before the payoff: `bash tools/gm-player.sh award --tier minor|major|legendary --reason "..."` (level-scaled). See `gm-craft → Reward the spectacle`.
+## Reward a social win
+A real social victory (turning a hostile NPC, winning an ally or a favour, talking your way past a threat) is an achievement: XP for an achievement (an obstacle surmounted, a goal reached, a problem solved, power gained): `gm-growth`.
 
 ## Craft (see gm-craft)
 NPCs have agendas, not quests. Don't over-share — secrets revealed slowly are 10x better. NPCs can say no, lie, or give bad advice. End with a conversation-ender if they're done.

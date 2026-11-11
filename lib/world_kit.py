@@ -2,11 +2,10 @@
 """
 World Kit: the per-campaign ruleset that sits on top of the generic game core.
 
-A campaign's `ruleset.json` declares HOW that world plays — its stat schema, its
-progression model, and which specialist agents are active —
-without baking D&D 5e into the engine. The WorldKit loads it and drives play
-through `game_core`, so a Dune kit and a Dungeon Crawler Carl kit run the same
-core with entirely different rules. Signature systems on the kit are the
+A campaign's `ruleset.json` declares what that world adds on top of the standard
+rules: its own counters (vitals), its signature systems, its rules prose and
+which specialist agents are active. Rolls, wounds and growth (XP, levels, skills
+that improve with use) are the same for every campaign. Signature systems on the kit are the
 play-time rules surface (rendered in scene context). campaign-overview's
 `campaign_rules` is the legacy fallback when the kit has none.
 
@@ -14,8 +13,6 @@ ruleset.json shape:
 {
   "name": "Dungeon Crawler Carl",
   "stat_schema": { "vitals": ["hp"] },   # attributes are fixed: the nine in skill_contest
-  "progression": { "model": "resource-axis", "resource": "viewers",
-                   "tiers": [1000000, 1000000000] },
   "active_agents": ["npc-builder"],
   "skills": ["might", "guile"],  # optional; absent → []
   "signature_systems": [ { "name": "...", "summary": "...", "rules": "..." } ],
@@ -31,27 +28,24 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from json_ops import JsonOperations
 from campaign_manager import CampaignManager
-from game_core import make_progression
 
 
 # The standard rules: what a campaign without its own ruleset.json plays by (a
 # one-shot, a new world before its kit is drafted). The rolls, attributes,
 # skills and wounds are the repo's (gm-skills, gm-combat); a campaign's
-# ruleset only adds on top: its own counters (vitals), signature systems,
-# a different progression. Vitals are those extra counters, so none here.
+# ruleset only adds on top: its own counters (vitals), signature systems.
+# Vitals are those extra counters, so none here.
 STANDARD_NAME = "Standard rules"
-DEFAULT_PROGRESSION = "xp-levels"
 DEFAULT_RULESET = {
     "name": STANDARD_NAME,
     "stat_schema": {"vitals": []},
-    "progression": {"model": DEFAULT_PROGRESSION},
     "active_agents": [],
     "rules_doc": None,
 }
 
 
 class WorldKit:
-    """Loads a campaign's ruleset.json and drives play through the generic core."""
+    """Loads a campaign's ruleset.json: what its world adds to the standard rules."""
 
     def __init__(self, world_state_dir: str = None):
         base = world_state_dir or "world-state"
@@ -59,13 +53,6 @@ class WorldKit:
         self.campaign_dir = cm.get_active_campaign_dir()
         self.json_ops = JsonOperations(str(self.campaign_dir))
         self.ruleset = self.json_ops.load_json("ruleset.json") or dict(DEFAULT_RULESET)
-        prog = self.ruleset.get("progression", {}) or {}
-        if isinstance(prog, str):          # shorthand: "progression": "milestone"
-            prog = {"model": prog}
-        self.progression = make_progression(
-            prog.get("model", DEFAULT_PROGRESSION),
-            **{k: v for k, v in prog.items() if k != "model"},
-        )
 
     # --- declared configuration ---
     def name(self) -> str:
@@ -80,12 +67,6 @@ class WorldKit:
         it, and every character has a body (gm-body.sh)."""
         declared = (self.stat_schema() or {}).get("vitals") or []
         return [v for v in declared if str(v).lower() != "hp"]
-
-    def progression_model(self) -> str:
-        prog = self.ruleset.get("progression") or {}
-        if isinstance(prog, str):
-            return prog
-        return prog.get("model", DEFAULT_PROGRESSION)
 
     def active_agents(self) -> List[str]:
         return self.ruleset.get("active_agents", [])
@@ -146,13 +127,6 @@ class WorldKit:
         return [s for s in raw
                 if isinstance(s, dict) and s.get("primitive") and s.get("name")]
 
-    # --- play, driven through the generic core ---
-    def advance_progression(self, state: Dict[str, Any], **kw) -> Dict[str, Any]:
-        return self.progression.advance(state, **kw)
-
-    def level(self, state: Dict[str, Any]) -> int:
-        return self.progression.level(state)
-
 
 def _normalize_signature_systems(raw: Any) -> List[Dict[str, str]]:
     if not raw:
@@ -203,7 +177,6 @@ def main():
     info = {
         "name": kit.name(),
         "stat_schema": kit.stat_schema(),
-        "progression_model": kit.progression_model(),
         "active_agents": kit.active_agents(),
         "rules_doc": str(kit.rules_doc_path()) if kit.rules_doc_path() else None,
     }

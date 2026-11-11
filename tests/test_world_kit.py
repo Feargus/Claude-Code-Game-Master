@@ -6,17 +6,9 @@ from lib.world_kit import WorldKit
 def test_loads_dcc_ruleset(dcc_world):
     k = WorldKit(dcc_world)
     assert k.name() == "Dungeon Crawler Carl"
-    assert k.progression_model() == "resource-axis"
     assert "npc-builder" in k.active_agents()
 
 
-def test_progression_is_resource_axis_not_5e_xp(dcc_world):
-    k = WorldKit(dcc_world)
-    s = k.advance_progression({}, amount=2_000_000)  # viewers
-    assert k.level(s) >= 1
-    # advancing "xp" does nothing here (this kit isn't xp-leveled)
-    s2 = k.advance_progression({}, xp=999999)
-    assert k.level(s2) == 0
 
 
 def test_campaign_rules_preserved_and_consumed(dcc_world):

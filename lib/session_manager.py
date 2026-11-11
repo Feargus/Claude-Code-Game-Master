@@ -633,7 +633,6 @@ class SessionManager(EntityManager):
             lines.append("")
             lines.append("--- KIT ---")
             lines.append(f"name: {kit.name()}")
-            lines.append(f"progression: {kit.progression_model()}")
             lines.append(f"vitals: {', '.join(vitals) if vitals else '(none)'}")
             lines.append(f"skills: {', '.join(skills) if skills else 'the standard list (gm-skills)'}")
 

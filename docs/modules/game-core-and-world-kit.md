@@ -38,52 +38,24 @@ never got systems onto the kit (DCC's fixture is this case). Adding a system to
 while the book's systems lived in prose inside a plot description — that path still
 feeds the fallback. See [scene-context](scene-context.md).
 
-## Ruleset syntax is normalized before the core sees it
-
-`progression` accepts a string shorthand (`"progression": "milestone"`). `level` is an accepted alias for `xp-levels` in both
-`make_progression` and `spectacle_award`.
-
-Nothing outside `WorldKit` may re-parse `ruleset.json` for these fields. `player_manager`
-asks the kit — vitals from `vitals()`, thresholds off the built `progression` object — so a
-syntax the kit accepts can never crash a sheet operation, and there is exactly one place a
-new shorthand has to be taught.
-
-## Failure modes: two silent, one now audible
+## Failure modes
 
 The engine prefers degrading to erroring — a half-authored kit should still be playable —
 but it means kit bugs surface as *bland play*, not as a stack trace. Both fallbacks that
 would silently swap out a world's math now say so.
 
-1. **Unrecognized model name → a warning, then the default.** `make_progression` falls
-   through to `MilestoneProgression`, but prints a one-line `[WARNING]` naming the
-   offending value. A typo in `ruleset.json`
-   (`"xp-level"` for `"xp-levels"`) still costs the campaign its XP math, but it no longer
-   does it invisibly. The warnings go to **stderr**, never stdout, so `--json` output on
-   the tool wrappers stays parseable.
-2. **Missing ruleset → the standard rules.** `WorldKit.__init__` falls back to
-   `DEFAULT_RULESET`: "Standard rules", `xp-levels` progression, no vitals, and the canon
-   skills of `gm-skills` (2026-11-08; before, "Generic Adventure" with milestone
-   progression and `hp`, which left one-shots at level 0 with zero experience awards).
+1. **Missing ruleset → the standard rules.** `WorldKit.__init__` falls back to
+   `DEFAULT_RULESET`: "Standard rules", no vitals, and the canon skills of `gm-skills`
+   (2026-11-08; before, "Generic Adventure" with `hp`). Growth (XP, levels) is no longer
+   a kit setting at all (2026-11-11): it is the same for every campaign (`lib/growth.py`).
    Vitals are a world's own counters on top of the standard rules, never `hp`: wounds
    replaced it, and every character has a body.
-3. **Dangling `rules_doc` → `None`.** `rules_doc_path()` returns `None` when the declared
+2. **Dangling `rules_doc` → `None`.** `rules_doc_path()` returns `None` when the declared
    file is absent, so a kit copied from a sibling campaign quietly loses its rules prose.
    `overview_seed.py` nulls the dangling pointer at import time rather than repairing it.
 
 To check a live campaign rather than trusting any of this: `bash tools/gm-campaign.sh path`
 then read its `ruleset.json`, or run `uv run python lib/world_kit.py info --json`.
-
-## `spectacle_award` is a calculator, not a transaction
-
-`spectacle_award` (`lib/game_core.py`) computes amounts and returns them. It reads no
-files and writes none. Persistence, level-up detection, and the DCC follower co-award are
-the caller's job — `gm-player.sh award` → `player_manager`. Calling the core function
-directly awards nothing.
-
-Its XP is scaled to the gap to the next level rather than being a flat table, so one tier
-stays meaningful at level 1 and level 12. The `followers` amount is only applied when the
-kit declares a secondary follower currency, which is why the same tier pays differently in
-a Dungeon Crawler Carl campaign than in a swords-and-sorcery one.
 
 ## Signature-system primitives are calculators, too
 
@@ -101,7 +73,7 @@ argument, none of it is book-specific:
 - **`guarded_payoff(config, rng=None)`** — rolled before a marked treasure is
   taken; returns `clean` / `guardian_wakes` / `curse_attaches`.
 
-Like `spectacle_award`, all four **compute and return a plain dict — they read no
+All four **compute and return a plain dict — they read no
 files and write none**; persistence is the caller's job. Rolls are seedable via
 `rng` for deterministic tests, and reuse the module dice roller when it is
 omitted. `uv run python lib/game_core.py` runs their edge-case self-check.
@@ -112,7 +84,7 @@ dice-pool resolution models and the HP lethality classifier were removed.
 
 ## No mechanics Skill is D&D-only any more
 
-`gm-levelup` and `gm-conditions` were 5e and deferred to the KIT block. Both are now
+`gm-levelup` (now `gm-growth`) and `gm-conditions` were 5e and deferred to the KIT block. Both are now
 written for this fork's system (attributes as die sizes, skill contests, wounds), so no
 skill checks the kit any more.
 

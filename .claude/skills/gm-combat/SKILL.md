@@ -86,4 +86,4 @@ The fourth wound in head, chest or groin kills. There is no dying state and no r
 bash tools/gm-combat.sh end
 ```
 
-A fight is won by any means, not only by killing: driving the enemy off, an escape, a trick. Rewards work as in [Reward a great success](../gm-skills/SKILL.md#reward-a-great-success).
+A fight is won by any means, not only by killing: driving the enemy off, an escape, a trick. `end` pays XP for every enemy taken out by itself; driving them off or escaping is an achievement (`gm-growth`).

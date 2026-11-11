@@ -163,9 +163,9 @@ The script prints one line, such as `quality: 7`. Quality 0 or more means the **
 
 Whenever a failure creates ongoing fallout: `bash tools/gm-consequence.sh add "[what happens]" "[when]" [--trigger-type ...]`. Persist the cost (mood, wounds, inventory, death) BEFORE narrating it.
 
-## Reward a great success
+## Growth
 
-A clever, effective or unique solve EARNS progress, not just a kill. On a strong success (quality above 10, or an inventive approach), grant spectacle XP before narrating: `bash tools/gm-player.sh award --tier minor|major|legendary --reason "..."`. See `gm-craft → Reward the spectacle`.
+The player's skill learns from every contest by itself (see `gm-growth`); don't narrate it. XP for an achievement (an obstacle surmounted, a goal reached, a problem solved, power gained): `gm-growth`.
 
 ## Fail forward (critical)
 

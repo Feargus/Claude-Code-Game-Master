@@ -31,6 +31,6 @@ Enter → describe the entrance and the visible ways on → explore → fights a
 
 When the site changes (a guard down, a door blown, an alarm raised), persist it: `bash tools/gm-location.sh describe` for the area, or a consequence or clock for what follows.
 
-## Reward a site win (award spectacle XP)
+## Reward a site win
 
-A breakthrough earns progress like a fight: getting past the security, finding the hidden way, a daring escape, crossing a punishing hazard. Persist before narrating: `bash tools/gm-player.sh award --tier minor|major|legendary --reason "..."`. See `gm-craft → Reward the spectacle`.
+A breakthrough (getting past the security, finding the hidden way, a daring escape, crossing a punishing hazard) is an achievement: XP for an achievement (an obstacle surmounted, a goal reached, a problem solved, power gained): `gm-growth`.

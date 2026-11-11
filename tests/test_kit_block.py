@@ -27,11 +27,11 @@ def _kit_section(ctx: str) -> str:
 
 # --- scene context -----------------------------------------------------------
 
-def test_dcc_context_kit_block_names_resource_axis(dcc_world):
+def test_dcc_context_kit_block(dcc_world):
     ctx = SessionManager(dcc_world).get_full_context()
     kit = _kit_section(ctx)
     assert "kit:" not in kit
-    assert "progression: resource-axis" in kit
+    assert "progression" not in kit      # growth is the same for every campaign
     assert "vitals: (none)" in kit  # hp is never a vital: wounds replaced it
 
 
@@ -101,7 +101,6 @@ def test_kit_block_skipped_when_worldkit_fails(dcc_world, monkeypatch):
 
 def test_worldkit_accepts_dcc_world_dir(dcc_world):
     kit = WorldKit(dcc_world)
-    assert kit.progression_model() == "resource-axis"
     assert kit.skills() == []
     assert kit.signature_systems() == []
 
@@ -148,8 +147,7 @@ def test_skills_from_list_or_empty(tmp_path):
 
 
 def test_a_campaign_without_a_ruleset_plays_the_standard_rules(tmp_path):
-    """A one-shot has no ruleset.json: it gets xp-levels, no extra counters and the
-    canon skills, so experience awards count (under milestone they were zero)."""
+    """A one-shot has no ruleset.json: it gets no extra counters and the canon skills."""
     ws = tmp_path / "world-state"
     camp = ws / "campaigns" / "solo"
     camp.mkdir(parents=True)
@@ -157,9 +155,9 @@ def test_a_campaign_without_a_ruleset_plays_the_standard_rules(tmp_path):
     (camp / "campaign-overview.json").write_text('{"campaign_name": "Solo"}')
     from lib.world_kit import WorldKit
     kit = WorldKit(str(ws))
-    assert (kit.name(), kit.progression_model(), kit.vitals()) == ("Standard rules", "xp-levels", [])
+    assert (kit.name(), kit.vitals()) == ("Standard rules", [])
     block = _kit_section(SessionManager(str(ws)).get_full_context())
-    assert "progression: xp-levels" in block and "vitals: (none)" in block
+    assert "vitals: (none)" in block
     assert "skills: the standard list (gm-skills)" in block
 
 

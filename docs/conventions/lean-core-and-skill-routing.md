@@ -49,7 +49,7 @@ untested.
 
 ## No skill is D&D-only any more
 
-`gm-combat`, `gm-levelup` and `gm-conditions` used to be 5e and opened with a STEP 0 that
+`gm-combat`, `gm-levelup` (now `gm-growth`) and `gm-conditions` used to be 5e and opened with a STEP 0 that
 deferred to the scene-context KIT block. All three are now written for this fork's
 system, so the guard and its test are gone, and so is the `kit` field itself.
 

@@ -96,16 +96,14 @@ def test_draft_bible_without_source_text_fails_loudly(tmp_path):
 
 def test_ruleset_is_drafted_from_the_bible(campaign):
     book_bible.draft_bible(campaign, name="The Iron Tangle")
-    ruleset = book_bible.write_ruleset(
-        campaign, progression_model="resource-axis",
-        resource="viewers")
+    ruleset = book_bible.write_ruleset(campaign)
 
     assert json.loads((campaign / "ruleset.json").read_text(encoding="utf-8")) == ruleset
     assert "kit" not in ruleset
     assert ruleset["name"] == "The Iron Tangle"
     assert ruleset["active_agents"] == ["npc-builder"]
     assert ruleset["stat_schema"] == {"vitals": []}
-    assert ruleset["progression"] == {"model": "resource-axis", "resource": "viewers"}
+    assert "progression" not in ruleset   # growth is the same for every campaign
 
 
 def test_ruleset_will_not_clobber_a_sibling_kit(campaign):

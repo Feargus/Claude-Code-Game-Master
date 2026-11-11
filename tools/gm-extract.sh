@@ -98,7 +98,7 @@ Commands:
                             current-document.txt (chapter map + verbatim-filtered
                             voice + skeleton keys). Idempotent; refuses a
                             confirmed bible. Run BEFORE draft-ruleset.
-  draft-ruleset [campaign] [--progression-model M] [--progression-json J]
+  draft-ruleset [campaign]
                             [--force]
                             Draft the World Kit (ruleset.json) from the bible
   campaign-rules [campaign] Write the bible's signature systems into
