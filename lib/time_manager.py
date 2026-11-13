@@ -21,6 +21,7 @@ from typing import Dict, Optional
 sys.path.insert(0, str(Path(__file__).parent))
 
 from campaign_manager import CampaignManager
+from game_time import STORED_FORMAT, current_time
 from json_ops import JsonOperations
 from threat_clocks import ThreatClockManager
 
@@ -53,8 +54,6 @@ MINUTES_PER_UNIT = {
     "w": 10080, "week": 10080, "weeks": 10080,
 }
 _DURATION_PART = re.compile(r"(\d+)\s*([a-z]+)")
-
-STORED_FORMAT = "%Y-%m-%dT%H:%M"
 
 
 class TimeError(Exception):
@@ -131,8 +130,7 @@ class TimeManager:
         self.json_ops = JsonOperations(str(self.campaign_dir))
 
     def get_game_time(self) -> Optional[datetime]:
-        stored = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
-        return datetime.strptime(stored, STORED_FORMAT) if stored else None
+        return current_time(self.json_ops)
 
     def _write(self, moment: datetime) -> None:
         data = self.json_ops.load_json("campaign-overview.json") or {}

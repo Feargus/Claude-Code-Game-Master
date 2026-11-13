@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import sheet as sheet_mod
 from entity_manager import EntityManager, is_dead, is_party_member, usual_places
+from game_time import stored_time
 
 # Category of the fact `kill` records. Provisional: categories are due for rework
 # (design-notes.md, "World state").
@@ -294,7 +295,7 @@ class NPCManager(EntityManager):
             return {'success': False, 'error': f"{key} is already dead"}
         status = sheet_mod.section(npcs[key], "status")
         status.update({'state': 'dead', 'died_at': self.get_timestamp()})
-        game_time = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
+        game_time = stored_time(self.json_ops)
         if game_time:
             status['died_game_time'] = game_time
         if cause:

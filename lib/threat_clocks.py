@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
+from game_time import STORED_FORMAT, current_time
 
 # A clock is named by a short key ("Tracker", "Slow scrub"): triggers, commands
 # and the brief use it, so it must stay as it is. What the clock is about goes
@@ -63,12 +64,6 @@ class ThreatClockManager(EntityManager):
         from world_ids import WorldIds
         return WorldIds(self.json_ops).resolve_as(raw, ("clock",))[1] or f"No clock '{raw}'."
 
-    def _game_time(self) -> Optional[datetime]:
-        # Imported here: time_manager imports this module.
-        from time_manager import STORED_FORMAT
-        stored = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
-        return datetime.strptime(stored, STORED_FORMAT) if stored else None
-
     @staticmethod
     def _schedule(clock: Dict[str, Any], now: datetime) -> None:
         """Give a time clock its start and due time if it lacks them.
@@ -77,7 +72,6 @@ class ThreatClockManager(EntityManager):
         the wall clock, gets one day per segment: it counts as started one day per
         filled segment ago, and is due one day per empty segment from now.
         """
-        from time_manager import STORED_FORMAT
         cur, mx = int(clock.get("current", 0)), int(clock.get("max", 1))
         clock.setdefault("starts_at", (now - timedelta(days=cur)).strftime(STORED_FORMAT))
         clock.setdefault("due_at", (now + timedelta(days=mx - cur)).strftime(STORED_FORMAT))
@@ -90,7 +84,6 @@ class ThreatClockManager(EntityManager):
         about. A time clock is due at `due_at`, or `due_in_minutes` from now, or
         by default one day per segment from now."""
         name = check_name(name)
-        from time_manager import STORED_FORMAT
         if int(segments) < 1:
             raise ValueError(f"A clock needs at least 1 segment, not {segments}.")
         if advance_on not in ("time", "event"):
@@ -111,7 +104,7 @@ class ThreatClockManager(EntityManager):
         if linked_plot:
             entry["linked_plot"] = linked_plot
         if advance_on == "time":
-            now = self._game_time()
+            now = current_time(self.json_ops)
             if due_in_minutes is not None:
                 if now is None:
                     raise ValueError("The campaign has no game time yet, so a clock can't "
@@ -209,7 +202,6 @@ class ThreatClockManager(EntityManager):
         and waits for time to catch up, since clocks never empty. Returns the clock
         with the on_clock consequences it fired under `fired` (not saved).
         """
-        from time_manager import STORED_FORMAT
         if sum(x is not None for x in (due_at, due_in_minutes, shift_minutes)) != 1:
             raise ValueError("Give exactly one of --earlier, --later, --due-in or --due.")
         data = self._load()
@@ -222,7 +214,7 @@ class ThreatClockManager(EntityManager):
                              f"Advance it by hand instead.")
         if int(c.get("current", 0)) >= int(c.get("max", 1)):
             raise ValueError(f"'{name}' is already full.")
-        now = self._game_time()
+        now = current_time(self.json_ops)
         if now is None and due_at is None:
             raise ValueError("The campaign has no game time yet. Set it first, or use --due.")
         if now is not None:
@@ -250,7 +242,6 @@ class ThreatClockManager(EntityManager):
         by hand. Returns {name: clock} for the clocks that moved; each lists the
         on_clock consequences it fired under `fired` (not saved).
         """
-        from time_manager import STORED_FORMAT
         data = self._load()
         moved = {}
         changed = False
@@ -323,7 +314,7 @@ class ThreatClockManager(EntityManager):
         """', due <time and date>' for a time clock that has a due time, else ''."""
         if clock.get("advance_on", "time") != "time" or not clock.get("due_at"):
             return ""
-        from time_manager import STORED_FORMAT, derive_date
+        from time_manager import derive_date  # here: time_manager imports this module
         due = datetime.strptime(clock["due_at"], STORED_FORMAT)
         return f", due {due:%H:%M}, {derive_date(due)}"
 

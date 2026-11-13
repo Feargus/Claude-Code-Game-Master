@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from campaign_manager import CampaignManager
+from game_time import STORED_FORMAT, stored_time
 from json_ops import JsonOperations
 
 
@@ -195,7 +196,7 @@ class NoteManager:
             entry['version_of'] = version_of
         if where:
             entry['at'] = where
-        game_time = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
+        game_time = stored_time(self.json_ops)
         if game_time:
             entry['game_time'] = game_time
         entry['timestamp'] = datetime.now(timezone.utc).isoformat()
@@ -475,7 +476,7 @@ class NoteManager:
         "suggested"} as lists of facts; with `dry_run` nothing is changed.
         Raises ValueError.
         """
-        from time_manager import STORED_FORMAT, parse_time
+        from time_manager import parse_time
         from world_ids import WorldIds
         cid, error = WorldIds(self.json_ops).resolve_as(who, ("npc",))
         if error:

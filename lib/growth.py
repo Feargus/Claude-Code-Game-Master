@@ -82,12 +82,10 @@ def _log(campaign_dir: Path, lines: List[str]) -> None:
 
 
 def _game_time(campaign_dir: Path) -> str:
-    import json
-    path = Path(campaign_dir) / "campaign-overview.json"
-    try:
-        stored = json.loads(path.read_text(encoding="utf-8")).get("game_time") or ""
-    except (OSError, ValueError):
-        stored = ""
+    """The game time for a log line: "2187-10-26 04:30", or "no game time"."""
+    from game_time import stored_time
+    from json_ops import JsonOperations
+    stored = stored_time(JsonOperations(str(campaign_dir)))
     return stored.replace("T", " ") if stored else "no game time"
 
 

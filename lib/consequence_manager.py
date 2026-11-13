@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager, npcs_present
+from game_time import STORED_FORMAT
 
 
 class ConsequenceManager(EntityManager):
@@ -405,7 +406,7 @@ class ConsequenceManager(EntityManager):
         """The time-of-day word now: derived from the game time when there is one
         (never from words written elsewhere), else the stored word."""
         from datetime import datetime
-        from time_manager import STORED_FORMAT, derive_time_of_day
+        from time_manager import derive_time_of_day
         stored = world_state.get('game_time')
         if stored:
             try:

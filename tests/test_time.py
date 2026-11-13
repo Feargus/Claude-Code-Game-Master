@@ -198,3 +198,36 @@ def test_a_bad_travel_time_stops_the_move(dcc_world, bridge):
     assert result.returncode != 0
     assert "Can't read the duration" in result.stderr
     assert _overview(dcc_world)["player_position"]["current_location"] == before
+
+
+def test_the_game_time_is_read_in_one_place():
+    """Five scripts each loaded campaign-overview.json and took `game_time` by
+    themselves (growth.py with plain json, past the damaged-file check), and
+    threat_clocks.py imported the storage format inside seven functions because
+    it and time_manager.py import each other. lib/game_time.py is the one reader."""
+    lib = Path(__file__).resolve().parent.parent / "lib"
+    for module in lib.glob("*.py"):
+        text = module.read_text(encoding="utf-8")
+        if module.name != "game_time.py":
+            assert '.get("game_time")' not in text.replace("overview.get", ""), module.name
+            assert "STORED_FORMAT =" not in text, module.name
+    clocks = (lib / "threat_clocks.py").read_text(encoding="utf-8")
+    assert "import STORED_FORMAT\n        " not in clocks and "    from time_manager import STORED_FORMAT" not in clocks
+    import lib.game_time as game_time
+    source = (lib / "game_time.py").read_text(encoding="utf-8")
+    assert not [ln for ln in source.splitlines()
+                if ln.startswith(("import ", "from ")) and "datetime" not in ln and "typing" not in ln]
+    assert game_time.STORED_FORMAT == "%Y-%m-%dT%H:%M"
+
+
+def test_reading_the_game_time(dcc_world):
+    from lib.game_time import current_time, stored_time
+    from lib.json_ops import JsonOperations
+    ops = JsonOperations(str(Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"))
+    overview = ops.load_json("campaign-overview.json")
+    overview.pop("game_time", None)
+    ops.save_json("campaign-overview.json", overview)
+    assert stored_time(ops) == "" and current_time(ops) is None
+    TimeManager(dcc_world).set_time(parse_time("2187-10-26 04:30"))
+    assert stored_time(ops) == "2187-10-26T04:30"
+    assert current_time(ops) == datetime(2187, 10, 26, 4, 30)
