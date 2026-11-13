@@ -5,7 +5,7 @@ Provides common initialization and CRUD patterns.
 """
 
 import sys
-from typing import Dict, Optional, Any
+from typing import Optional
 from pathlib import Path
 
 # Add lib directory to path for imports
@@ -167,23 +167,6 @@ class EntityManager:
             return False
 
         entities[name].update(updates)
-        return self._save_entities(filename, entities)
-
-    def _delete_entity(self, filename: str, name: str) -> bool:
-        """Delete an entity.
-
-        Args:
-            filename: Name of the JSON file
-            name: Entity name/key to delete
-
-        Returns:
-            True on success, False on failure.
-        """
-        entities = self._load_entities(filename)
-        if name not in entities:
-            return False
-
-        del entities[name]
         return self._save_entities(filename, entities)
 
     def _get_entity(self, filename: str, name: str) -> Optional[dict]:

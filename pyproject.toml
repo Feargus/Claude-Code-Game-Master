@@ -1,7 +1,7 @@
 [project]
 name = "gm-claude"
 version = "0.2.0"
-description = "AI-powered D&D Game Master assistant for running campaigns with Claude Code"
+description = "AI Game Master for running tabletop-style campaigns with Claude Code"
 authors = [
     { name = "Sean Stobo" }
 ]

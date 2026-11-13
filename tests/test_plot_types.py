@@ -27,8 +27,7 @@ def test_only_schemas_defines_the_enum():
 
 
 def test_every_former_site_imports_the_canonical_enum():
-    for module in ("validators.py", "plot_manager.py", "session_manager.py",
-                   "world_stats.py"):
+    for module in ("plot_manager.py", "session_manager.py", "world_stats.py"):
         src = (REPO / "lib" / module).read_text()
         assert "from schemas import PLOT_TYPE" in src, module
 

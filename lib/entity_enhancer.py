@@ -69,7 +69,7 @@ def _is_site(name: str, locations: Dict[str, Any]) -> bool:
 
 class EntityEnhancer:
     """
-    RAG-based entity enhancement for D&D campaign entities.
+    RAG-based entity enhancement for campaign entities.
 
     Searches the campaign's vector store for passages related to an entity,
     then provides suggested enhancements based on the source material.

@@ -22,7 +22,7 @@ from consequence_manager import describe_effects
 
 
 class SessionManager(EntityManager):
-    """Manage D&D session operations. Inherits from EntityManager for common functionality."""
+    """Manage session operations. Inherits from EntityManager for common functionality."""
 
     # Per-campaign play-style defaults. `action_menu` controls whether the GM ends
     # each beat with exactly three numbered choices (on) or an open prompt (off). Stored

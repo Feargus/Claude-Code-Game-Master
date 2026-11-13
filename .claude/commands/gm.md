@@ -54,7 +54,7 @@ bash tools/gm-campaign.sh list
 
 ### Display Campaign Menu
 
-Show a numbered list of saved campaigns (name, character, race/class/level, session count, last location), mark the active one, and always end with NEW ADVENTURE. Wait for a number. No fenced boxes; phone-friendly.
+Show a numbered list of saved campaigns (name, character, race/role/level, session count, last location), mark the active one, and always end with NEW ADVENTURE. Wait for a number. No fenced boxes; phone-friendly.
 
 ### Menu Logic
 
@@ -62,7 +62,7 @@ Show a numbered list of saved campaigns (name, character, race/class/level, sess
 2. **Always include** `[N] NEW ADVENTURE` as the final option
 3. **Show for each campaign:**
    - Campaign name
-   - Character name, race, class, level
+   - Character name, race, role, level
    - Session count
    - Last known location
 4. **Mark active campaign** with `*` or `►` indicator
@@ -315,7 +315,7 @@ bash tools/gm-body.sh show
 
 ### 2. Display Character Sheet
 
-Present the finished sheet clearly, phone-friendly: name, level, race, class, background, attributes (as die sizes), skills, luck, traits, perks, the campaign's own counters, the body picture with its notes, armor and cyberware, features, credits, and inventory. No fenced boxes.
+Present the finished sheet clearly, phone-friendly: name, level, race, role, background, attributes (as die sizes), skills, luck, traits, perks, the campaign's own counters, the body picture with its notes, armor and cyberware, features, credits, and inventory. No fenced boxes.
 
 If no active character: don't print a sheet — ask the one question (see ENTERING A WORLD)
 and run the `/create-character` interview.

@@ -34,7 +34,7 @@ def resolve_world_state_base(world_state_dir):
 
 
 class CampaignManager:
-    """Manage multiple D&D campaigns"""
+    """Manage multiple campaigns"""
 
     def __init__(self, world_state_dir: str = DEFAULT_WORLD_STATE):
         self.world_state_dir = Path(resolve_world_state_base(world_state_dir))

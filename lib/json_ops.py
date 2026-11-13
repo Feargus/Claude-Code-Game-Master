@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
 JSON operations module for GM tools
-Provides safe JSON read/write/update operations with proper error handling
+Provides safe JSON read/write/update operations with proper error handling.
+Import-only: the tools reach campaign files through the managers.
 """
 
 import json
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any
 from datetime import datetime, timezone
 
 
@@ -118,38 +119,6 @@ class JsonOperations:
 
         return self.save_json(filename, data)
 
-    def append_to_list(self, filename: str, item: Any, path: List[str] = None) -> bool:
-        """
-        Append item to a list in JSON file
-        If path is provided, appends to list at that path
-        """
-        data = self.load_json(filename)
-
-        if path:
-            # Navigate to nested path
-            current = data
-            for key in path[:-1]:
-                if key not in current:
-                    current[key] = {}
-                current = current[key]
-
-            # Ensure target is a list
-            if path[-1] not in current:
-                current[path[-1]] = []
-            if not isinstance(current[path[-1]], list):
-                print(f"[ERROR] Target at {'.'.join(path)} is not a list")
-                return False
-
-            current[path[-1]].append(item)
-        else:
-            # Root must be a list
-            if not isinstance(data, list):
-                print(f"[ERROR] Root of {filename} is not a list")
-                return False
-            data.append(item)
-
-        return self.save_json(filename, data)
-
     def check_exists(self, filename: str, key: str, path: List[str] = None) -> bool:
         """
         Check if a key exists in JSON file
@@ -169,57 +138,6 @@ class JsonOperations:
         else:
             return isinstance(data, dict) and key in data
 
-    def get_value(self, filename: str, key: str = None, path: List[str] = None) -> Any:
-        """
-        Get value from JSON file
-        If path is provided, gets value at that nested path
-        If key is provided, gets that specific key
-        """
-        data = self.load_json(filename)
-
-        if path:
-            # Navigate to nested path
-            current = data
-            for p in path:
-                if not isinstance(current, dict) or p not in current:
-                    return None
-                current = current[p]
-            data = current
-
-        if key:
-            if isinstance(data, dict):
-                return data.get(key)
-            return None
-
-        return data
-
-    def delete_key(self, filename: str, key: str, path: List[str] = None) -> bool:
-        """
-        Delete a key from JSON file
-        If path is provided, deletes from that nested path
-        """
-        data = self.load_json(filename)
-
-        if path:
-            # Navigate to nested path
-            current = data
-            for p in path[:-1]:
-                if not isinstance(current, dict) or p not in current:
-                    return False
-                current = current[p]
-
-            if isinstance(current.get(path[-1]), dict) and key in current[path[-1]]:
-                del current[path[-1]][key]
-            else:
-                return False
-        else:
-            if isinstance(data, dict) and key in data:
-                del data[key]
-            else:
-                return False
-
-        return self.save_json(filename, data)
-
     def _resolve_path(self, filename: str) -> Path:
         """Resolve file path relative to world state directory"""
         if os.path.isabs(filename):
@@ -230,81 +148,3 @@ class JsonOperations:
     def get_timestamp() -> str:
         """Get ISO format timestamp"""
         return datetime.now(timezone.utc).isoformat()
-
-
-# Convenience functions for command-line usage
-def main():
-    """CLI interface for JSON operations"""
-    import sys
-    import argparse
-
-    parser = argparse.ArgumentParser(description='JSON file operations')
-    parser.add_argument('action', choices=['get', 'set', 'update', 'append', 'exists', 'delete'])
-    parser.add_argument('filename', help='JSON file name')
-    parser.add_argument('--key', help='Key to operate on')
-    parser.add_argument('--value', help='Value to set (JSON string)')
-    parser.add_argument('--path', help='Nested path (dot-separated)')
-    parser.add_argument('--world-state-dir', default='world-state', help='World state directory')
-
-    args = parser.parse_args()
-
-    ops = JsonOperations(args.world_state_dir)
-    path = args.path.split('.') if args.path else None
-
-    if args.action == 'get':
-        result = ops.get_value(args.filename, args.key, path)
-        print(json.dumps(result, indent=2))
-
-    elif args.action == 'set' or args.action == 'update':
-        if not args.value:
-            print("[ERROR] --value required for set/update")
-            sys.exit(1)
-        try:
-            value = json.loads(args.value)
-        except json.JSONDecodeError:
-            value = args.value  # Treat as string if not valid JSON
-
-        if args.key:
-            updates = {args.key: value}
-        else:
-            updates = value
-
-        if ops.update_json(args.filename, updates, path):
-            print("[SUCCESS] Updated")
-        else:
-            sys.exit(1)
-
-    elif args.action == 'append':
-        if not args.value:
-            print("[ERROR] --value required for append")
-            sys.exit(1)
-        try:
-            value = json.loads(args.value)
-        except json.JSONDecodeError:
-            value = args.value
-
-        if ops.append_to_list(args.filename, value, path):
-            print("[SUCCESS] Appended")
-        else:
-            sys.exit(1)
-
-    elif args.action == 'exists':
-        if not args.key:
-            print("[ERROR] --key required for exists check")
-            sys.exit(1)
-        exists = ops.check_exists(args.filename, args.key, path)
-        print("true" if exists else "false")
-        sys.exit(0 if exists else 1)
-
-    elif args.action == 'delete':
-        if not args.key:
-            print("[ERROR] --key required for delete")
-            sys.exit(1)
-        if ops.delete_key(args.filename, args.key, path):
-            print("[SUCCESS] Deleted")
-        else:
-            sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
