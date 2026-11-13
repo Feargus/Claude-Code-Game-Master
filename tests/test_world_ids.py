@@ -72,3 +72,22 @@ def test_all_ids_lists_everything(ids):
     every = ids.all_ids()
     assert every[0] == "player" and every[-2:] == ["street", "public"]
     assert "npc:Carl" in every and "location:Bone Garden" in every
+
+
+def test_a_clock_resolves_only_where_a_clock_is_asked_for(ids, dcc_world):
+    """clock:<key> goes through the same resolver, but a fact is never about or
+    held by a clock, so the general lookups refuse it."""
+    from lib.threat_clocks import ThreatClockManager
+    assert "no clocks yet" in ids.resolve_as("Tracker", ("clock",))[1]
+    tcm = ThreatClockManager(dcc_world)
+    tcm.add_clock("Tracker", 3, advance_on="event", text="The tracker closes in")
+    tcm.add_clock("Slow scrub", 4, advance_on="event")
+    for raw in ("Tracker", "tracker", "clock:TRACKER", "the tracker closes in"):
+        assert ids.resolve_as(raw, ("clock",)) == ("clock:Tracker", "")
+    assert ids.resolve_as("Trakcer", ("clock",)) == ("", "No clock 'Trakcer'; did you mean: Tracker?")
+    assert ids.resolve_as("scrub", ("clock",))[1] == "No clock 'scrub'; did you mean: Slow scrub?"
+    assert ids.resolve_as("Doom", ("clock",))[1] == "No clock 'Doom'. Clocks: Tracker, Slow scrub."
+    assert ids.resolve("clock:Tracker")[0] == ""
+    assert ids.resolve("Tracker")[0] == ""
+    assert ids.resolve_holder("clock:Tracker")[0] == ""
+    assert "clock:Tracker" in ids.all_ids()

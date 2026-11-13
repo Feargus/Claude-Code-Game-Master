@@ -5,6 +5,9 @@
     npc:<key>               an NPC, by its key in npcs.json
     location:<key>          a location, by its key in locations.json
     street, public          rungs of the knowledge ladder
+    clock:<key>             a threat clock, by its short name in threat-clocks.json;
+                            only where a clock is asked for (on_clock triggers,
+                            gm-clock.sh): a fact is never about or held by one
 
 Faction and item ids come with those systems. The stored id uses the exact
 existing key ("npc:Auntie Ro"), so there is no separate table to keep in sync.
@@ -28,6 +31,25 @@ KINDS = ("npc", "location")
 LATER = {"faction": "factions", "item": "items with ids"}
 TABLE_FILES = {"npc": "npcs.json", "location": "locations.json"}
 RESERVED = ("player", "anyone") + RUNGS  # words ids and triggers use
+CLOCKS_FILE = "threat-clocks.json"
+
+
+def find_clock(clocks: Dict[str, Any], raw) -> str:
+    """The key of the clock `raw` names, or '': its short name (case ignored,
+    with or without a leading "clock:"), or failing that its whole text."""
+    wanted = " ".join(str(raw or "").split())
+    if wanted.lower().startswith("clock:"):
+        wanted = wanted[6:].strip()
+    low = wanted.lower()
+    if not low:
+        return ""
+    for key in clocks:
+        if key.lower() == low:
+            return key
+    for key, clock in clocks.items():
+        if isinstance(clock, dict) and str(clock.get("text") or "").strip().lower() == low:
+            return key
+    return ""
 
 
 class WorldIds:
@@ -61,7 +83,32 @@ class WorldIds:
         """Every id that exists now, in a fixed order."""
         tables = self._load()
         return (["player"] + [f"{kind}:{key}" for kind in KINDS for key in tables[kind]]
-                + list(RUNGS))
+                + list(RUNGS) + [f"clock:{key}" for key in self._clocks()])
+
+    def _clocks(self) -> Dict[str, Any]:
+        """The clocks as they are now (not kept: commands add and remove them)."""
+        clocks = self.json_ops.load_json(CLOCKS_FILE) or {}
+        return clocks if isinstance(clocks, dict) else {}
+
+    def resolve_clock(self, raw: str) -> Tuple[str, str]:
+        """("clock:<key>", '') or ('', why not, with close matches)."""
+        clocks = self._clocks()
+        key = find_clock(clocks, raw)
+        if key:
+            return f"clock:{key}", ""
+        text = " ".join(str(raw or "").split())
+        if text.lower().startswith("clock:"):
+            text = text[6:].strip()
+        if not text:
+            return "", "An empty clock name."
+        if not clocks:
+            return "", f"No clock '{text}': there are no clocks yet (gm-clock.sh add)."
+        by_low = {key.lower(): key for key in clocks}
+        close = difflib.get_close_matches(text.lower(), list(by_low), n=3, cutoff=0.6)
+        close += [k for k in by_low if text.lower() in k.split() and k not in close]
+        if close:
+            return "", f"No clock '{text}'; did you mean: {', '.join(by_low[k] for k in close[:3])}?"
+        return "", f"No clock '{text}'. Clocks: {', '.join(clocks)}."
 
     def _is_player(self, text: str) -> bool:
         name = self.player_name()
@@ -98,6 +145,9 @@ class WorldIds:
         rest = rest.strip()
         if kind in LATER:
             return "", f"'{text}': {kind} ids come once there are {LATER[kind]}."
+        if kind == "clock":
+            return "", (f"'{text}' is a clock: a fact is about or known to people and "
+                        f"places. A clock is named in on_clock triggers and gm-clock.sh.")
         if kind not in KINDS:
             return "", (f"'{text}': unknown kind '{kind}'. Use player, "
                         f"{', '.join(k + ':<name>' for k in KINDS)}, street or public.")
@@ -170,7 +220,9 @@ class WorldIds:
         and an id of another kind is refused."""
         text = str(raw or "").strip()
         wanted = " or ".join({"player": "the player", "npc": "an NPC",
-                              "location": "a place"}.get(k, k) for k in kinds)
+                              "location": "a place", "clock": "a clock"}.get(k, k) for k in kinds)
+        if "clock" in kinds and (text.lower().startswith("clock:") or tuple(kinds) == ("clock",)):
+            return self.resolve_clock(text)
         if ":" in text:
             cid, error = self.resolve(text)
         elif "player" in kinds and self._is_player(text):

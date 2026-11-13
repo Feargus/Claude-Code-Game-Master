@@ -55,19 +55,13 @@ class ThreatClockManager(EntityManager):
     def _find(data: Dict[str, Any], raw) -> Optional[str]:
         """The key of the clock `raw` names: its short name (case ignored, with or
         without a leading "clock:"), or failing that its whole text. None if none."""
-        wanted = " ".join(str(raw or "").split())
-        if wanted.lower().startswith("clock:"):
-            wanted = wanted[6:].strip()
-        low = wanted.lower()
-        if not low:
-            return None
-        for key in data:
-            if key.lower() == low:
-                return key
-        for key, clock in data.items():
-            if str((clock or {}).get("text") or "").strip().lower() == low:
-                return key
-        return None
+        from world_ids import find_clock  # the one lookup, shared with on_clock triggers
+        return find_clock(data, raw) or None
+
+    def _missing(self, raw) -> str:
+        """Why `raw` names no clock, with close matches (the shared resolver's words)."""
+        from world_ids import WorldIds
+        return WorldIds(self.json_ops).resolve_as(raw, ("clock",))[1] or f"No clock '{raw}'."
 
     def _game_time(self) -> Optional[datetime]:
         # Imported here: time_manager imports this module.
@@ -220,7 +214,7 @@ class ThreatClockManager(EntityManager):
         data = self._load()
         key = self._find(data, name)
         if key is None:
-            raise ValueError(f"No clock '{name}'.")
+            raise ValueError(self._missing(name))
         name, c = key, data[key]
         if c.get("advance_on", "time") != "time":
             raise ValueError(f"'{name}' is an event clock: it has no due time. "
@@ -293,7 +287,7 @@ class ThreatClockManager(EntityManager):
         data = self._load()
         key = self._find(data, name)
         if key is None:
-            raise ValueError(f"No clock '{name}'.")
+            raise ValueError(self._missing(name))
         rest = {k: v for k, v in data[key].items() if k != "text"}
         data[key] = {"text": text.strip(), **rest} if str(text or "").strip() else rest
         self.json_ops.save_json(self.clocks_file, data)
@@ -422,7 +416,7 @@ def main():
             print(f"Error: {error}", file=sys.stderr)
             sys.exit(1)
         if out is None:
-            print(f"Error: no clock '{args.name}'", file=sys.stderr)
+            print(f"Error: {m._missing(args.name)}", file=sys.stderr)
             sys.exit(1)
     elif args.action == "due":
         from time_manager import TimeError, parse_duration, parse_time
