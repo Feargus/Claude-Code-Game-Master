@@ -219,8 +219,10 @@ of doom.
 ```bash
 bash tools/gm-session.sh opening '{
   "time": "<YYYY-MM-DD HH:MM>",
-  "place": {"name": "<this room, not a kingdom>", "position": "<where it is>"},
-  "exits": [{"name": "<what you can see from here>"}],
+  "place": {"name": "<this room, not a kingdom>", "position": "<where it is>",
+            "description": "<what it is like, from the book>"},
+  "exits": [{"name": "<what you can see from here>",
+             "description": "<what it is like, a sentence or two>"}],
   "npcs": [{"name": "<Name>", "who": "<who they are, in the book>", "attitude": "<how they regard the player>",
             "aliases": ["<short name the story uses>"], "physique": "<…>", "style": "<…>",
             "presence": "<…>", "big_five": "<O1 C0 E2 A-1 N1>", "voice": "<…>"}],

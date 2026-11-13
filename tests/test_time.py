@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from lib.location_manager import LocationManager
 from lib.threat_clocks import ThreatClockManager
 from lib.time_manager import (
     TIMES_OF_DAY,
@@ -166,7 +167,15 @@ def _overview(dcc_world):
                        / "campaign-overview.json").read_text())
 
 
-def test_move_takes_time_then_moves_and_checks_consequences_once(dcc_world):
+@pytest.fixture
+def bridge(dcc_world):
+    """A recorded, described place to move to."""
+    assert LocationManager(dcc_world).add_location(
+        "The Old Spine Bridge", "over the warehouse district", "A cracked span of old rebar.")
+    return "The Old Spine Bridge"
+
+
+def test_move_takes_time_then_moves_and_checks_consequences_once(dcc_world, bridge):
     _gm_time(dcc_world, "set", "2187-10-26 22:00")
     result = _move(dcc_world, "The Old Spine Bridge", "--takes", "1h 30m")
     assert result.returncode == 0, result.stdout + result.stderr
@@ -176,13 +185,13 @@ def test_move_takes_time_then_moves_and_checks_consequences_once(dcc_world):
     assert result.stdout.count("[REACTIVITY]") == 1
 
 
-def test_move_without_takes_lets_no_time_pass(dcc_world):
+def test_move_without_takes_lets_no_time_pass(dcc_world, bridge):
     _gm_time(dcc_world, "set", "2187-10-26 22:00")
     assert _move(dcc_world, "The Old Spine Bridge").returncode == 0
     assert _overview(dcc_world)["game_time"] == "2187-10-26T22:00"
 
 
-def test_a_bad_travel_time_stops_the_move(dcc_world):
+def test_a_bad_travel_time_stops_the_move(dcc_world, bridge):
     _gm_time(dcc_world, "set", "2187-10-26 22:00")
     before = _overview(dcc_world)["player_position"]["current_location"]
     result = _move(dcc_world, "The Old Spine Bridge", "--takes", "a while")

@@ -21,13 +21,21 @@ class LocationManager(EntityManager):
         super().__init__(world_state_dir)
         self.locations_file = "locations.json"
 
-    def add_location(self, name: str, position: str, aliases=None) -> bool:
+    def add_location(self, name: str, position: str, description: str, aliases=None) -> bool:
         """
-        Add a new location. `aliases`: shorter names the story will use ("the
-        Yard" for "Old Iron's Yard"), each checked (world_ids.check_alias).
+        Add a new location. `position`: where it is ("two streets down from
+        Lantern Row"); `description`: what it is like, a sentence or two, required,
+        so the place is on disk before it is narrated (set_description makes it
+        fuller later). `aliases`: shorter names the story will use ("the Yard"
+        for "Old Iron's Yard"), each checked (world_ids.check_alias).
         Returns True on success, False on failure
         """
         from world_ids import WorldIds, alias_hint
+        description = str(description or "").strip()
+        if not description:
+            print(f"[ERROR] '{name}' needs a description: what it is like, a sentence or two, "
+                  f"written before it is narrated")
+            return False
         aliases = [a.strip() for a in aliases or []]
         ids = WorldIds(self.json_ops)
         errors = [e for a in aliases if (e := ids.check_alias(a, f"location:{name}"))]
@@ -50,7 +58,7 @@ class LocationManager(EntityManager):
         location_data = {
             'position': position,
             'connections': [],
-            'description': '',
+            'description': description,
             'discovered': self.get_timestamp()
         }
         if aliases:
@@ -116,22 +124,25 @@ class LocationManager(EntityManager):
 
     def set_description(self, name: str, description: str) -> bool:
         """
-        Set or update location description
+        Replace a location's description with a fuller one (a later visit, or
+        someone talking about the place), written before it is narrated. The
+        old text is printed, so nothing said before is lost by accident.
         """
-        # Validate name
-        valid, error = self.validators.validate_name(name)
-        if not valid:
+        from world_ids import WorldIds
+        description = str(description or "").strip()
+        if not description:
+            print("[ERROR] An empty description: write what the place is like")
+            return False
+        cid, error = WorldIds(self.json_ops).resolve_as(name, ("location",))
+        if error:
             print(f"[ERROR] {error}")
             return False
-
-        # Check if location exists
-        if not self._entity_exists(self.locations_file, name):
-            print(f"[ERROR] Location '{name}' not found")
-            return False
-
-        # Update description
-        if self._update_entity(self.locations_file, name, {'description': description}):
-            print(f"[SUCCESS] Updated description for {name}")
+        key = cid.partition(":")[2]
+        old = (self._get_entity(self.locations_file, key) or {}).get('description') or ''
+        if self._update_entity(self.locations_file, key, {'description': description}):
+            print(f"[SUCCESS] Updated description for {key}")
+            if old:
+                print(f"  It was: {old}")
             return True
         return False
 
@@ -255,6 +266,7 @@ def main():
     add_parser = subparsers.add_parser('add', help='Add new location')
     add_parser.add_argument('name', help='Location name')
     add_parser.add_argument('position', help='Relative position')
+    add_parser.add_argument('description', help='What it is like, a sentence or two')
     add_parser.add_argument('--alias', action='append', dest='aliases',
                             help='a shorter name the story will use (repeatable)')
 
@@ -295,7 +307,8 @@ def main():
     manager = LocationManager()
 
     if args.action == 'add':
-        if not manager.add_location(args.name, args.position, aliases=args.aliases):
+        if not manager.add_location(args.name, args.position, args.description,
+                                    aliases=args.aliases):
             sys.exit(1)
 
     elif args.action == 'alias':

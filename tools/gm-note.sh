@@ -4,7 +4,7 @@
 source "$(dirname "$0")/common.sh"
 
 usage() {
-    echo "Usage: gm-note.sh <category> <fact> [--about <id>]... [--not-about <id>]..."
+    echo "Usage: gm-note.sh [add] <category> <fact> [--about <id>]... [--not-about <id>]..."
     echo "                  [--also <id>]... | [--holders <id>]... | [--secret]"
     echo "                  [--truth wrong|partial] [--version-of <fact id>]"
     echo "                  [--at <place> | --nowhere]   where it happened (default: here)"
@@ -42,6 +42,12 @@ if [ "$#" -lt 1 ]; then
 fi
 
 require_active_campaign
+
+# "gm-note.sh add <category> <fact>" is the same as "gm-note.sh <category> <fact>"
+# (an easy guess; without this, "add" became the category and the fact an extra argument).
+if [ "$1" = "add" ]; then
+    shift
+fi
 
 case "$1" in
     tell|about|truth|get|categories|show|find|recent|beat|witness)

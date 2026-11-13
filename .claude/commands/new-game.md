@@ -126,6 +126,7 @@ Write only what tonight needs:
    `gm-session.sh opening`, once the character exists and the player has said where
    and when to start, so it fits them. Until then nothing of it is stored. Sketch:
    - **the place** you stand in (a street, a room, a deck), with 2–5 **exits** you can see;
+     each with a sentence or two of what it is like (written before it is narrated);
    - **2–4 people** there: who they are, how they regard the player, their look and personality, the short names the story
      will use (aliases), and where each is usually found;
    - **the plot**: every campaign starts with at least one. Its **hook** is the
@@ -142,7 +143,7 @@ Write only what tonight needs:
 4. Optional thin binder: a short `authored-canon.md` of *this street only*, then
    `gm-extract.sh prepare` so RAG has something to pull. Do not author the continent.
 
-When a new name walks on in play: `gm-npc.sh create "<name>" "<role>" "<attitude>" --location "<place>"` or `gm-location.sh add` (with a binder, search it first: `gm-search.sh "<name>" --rag-only`).
+When a new name walks on in play: `gm-npc.sh create "<name>" "<role>" "<attitude>" --location "<place>"` or `gm-location.sh add "<place>" "<where>" "<what it is like>"` (with a binder, search it first: `gm-search.sh "<name>" --rag-only`).
 
 ---
 
@@ -189,8 +190,9 @@ everything through the normal tools, and keeps nothing if any part is refused:
 ```bash
 bash tools/gm-session.sh opening '{
   "time": "<YYYY-MM-DD HH:MM>",
-  "place": {"name": "<the place>", "position": "<where it is>", "description": "<…>"},
-  "exits": [{"name": "<what you can see>", "aliases": ["<short name>"]}],
+  "place": {"name": "<the place>", "position": "<where it is>", "description": "<what it is like>"},
+  "exits": [{"name": "<what you can see>", "position": "<where it is>",
+             "description": "<what it is like, a sentence or two>", "aliases": ["<short name>"]}],
   "npcs": [{"name": "<Name>", "who": "<who they are>", "attitude": "<how they regard the player>",
             "aliases": ["<short name>"], "physique": "<…>", "style": "<…>",
             "presence": "<…>", "big_five": "<O1 C0 E2 A-1 N1>", "voice": "<…>"}],

@@ -300,23 +300,33 @@ class SessionManager(EntityManager):
                 changed = True  # drop None/other junk
         return fixed, changed
 
+    def check_destination(self, location: str) -> str:
+        """The key of a place the party may move to. Raises ValueError for a place
+        that isn't recorded, or has no description: a place is written to disk
+        before it is narrated (gm-location.sh add / describe)."""
+        from world_ids import WorldIds
+        name = str(location or "").strip()
+        cid, error = WorldIds(self.json_ops).resolve_as(name, ("location",))
+        if error:
+            raise ValueError(
+                f"{error.rstrip('.')}. A new place is added before the party goes there: "
+                f"bash tools/gm-location.sh add \"{name}\" \"<where it is>\" "
+                f"\"<what it is like, a sentence or two>\", then move.")
+        key = cid.partition(":")[2]
+        place = (self.json_ops.load_json("locations.json") or {}).get(key) or {}
+        if not str(place.get("description") or "").strip():
+            raise ValueError(
+                f"{key} has no description yet. Write what it is like before narrating it: "
+                f"bash tools/gm-location.sh describe \"{key}\" \"<a sentence or two>\", then move.")
+        return key
+
     def _ensure_location_and_connection(self, old_location: str, new_location: str) -> None:
         """
-        Auto-create destination location if missing and add bidirectional
-        connection between old and new location if one doesn't exist.
+        Add a bidirectional connection between the old and the new location if
+        one doesn't exist (the new one is recorded already: check_destination).
         """
         locations = self.json_ops.load_json("locations.json") or {}
         changed = False
-
-        # Create destination if it doesn't exist
-        if new_location not in locations:
-            locations[new_location] = {
-                "position": "unknown",
-                "connections": [],
-                "description": "",
-                "discovered": self.get_timestamp()
-            }
-            changed = True
 
         # Add bidirectional connection if old location is valid and known
         if old_location and old_location != "Unknown" and old_location in locations:
@@ -350,9 +360,11 @@ class SessionManager(EntityManager):
 
     def move_party(self, location: str) -> Dict[str, str]:
         """
-        Move party to new location
-        Returns dict with previous and current location
+        Move party to new location (a recorded place with a description, by its
+        name or an alias). Returns dict with previous and current location.
+        Raises ValueError (check_destination).
         """
+        location = self.check_destination(location)
         campaign = self.json_ops.load_json(self.campaign_file)
 
         if 'player_position' not in campaign:
@@ -360,7 +372,7 @@ class SessionManager(EntityManager):
 
         old_location = campaign['player_position'].get('current_location', 'Unknown')
 
-        # Auto-create location and connections
+        # Connect the two places if they weren't yet
         self._ensure_location_and_connection(old_location, location)
 
         campaign['player_position']['previous_location'] = old_location
@@ -592,6 +604,22 @@ class SessionManager(EntityManager):
             return None
         return f"+{hidden} more {noun} — {hint}"
 
+    def _place_lines(self, location: str) -> List[str]:
+        """The current place as recorded, narrated from: its description and its
+        exits. A place with no description says how to write one first."""
+        place = (self.json_ops.load_json("locations.json") or {}).get(location)
+        if not isinstance(place, dict):
+            return []
+        description = str(place.get("description") or "").strip()
+        lines = [f"Here: {description}" if description else
+                 f"Here: (no description yet: write one before narrating the place, "
+                 f"bash tools/gm-location.sh describe \"{location}\" \"...\")"]
+        exits, _ = self._normalize_connection_list(place.get("connections", []))
+        if exits:
+            lines.append("Exits: " + "; ".join(
+                f"{c['to']} ({c['path']})" if c.get("path") else c["to"] for c in exits))
+        return lines
+
     def get_full_context(self, full: bool = False) -> str:
         """
         Aggregate all session state into a single readable output.
@@ -614,6 +642,7 @@ class SessionManager(EntityManager):
         lines.append("=== SESSION CONTEXT ===")
         lines.append(f"Campaign: {campaign_name} | Session #{session_num}")
         lines.append(f"Location: {location} | Time: {time_str}")
+        lines.extend(self._place_lines(location))
 
         # --- KIT (ambient; skills defer here instead of calling world_kit.py info) ---
         kit = None
@@ -1483,6 +1512,8 @@ def main():
     # Move party
     move_parser = subparsers.add_parser('move', help='Move party to location')
     move_parser.add_argument('location', nargs='+', help='Location name')
+    move_parser.add_argument('--check', action='store_true',
+                             help='Only check that the place can be moved to (before travel time passes)')
 
     # Save
     save_parser = subparsers.add_parser('save', help='Create save point')
@@ -1527,8 +1558,20 @@ def main():
     if json_mode and args.action == 'context':
         emit({"context": manager.get_full_context(full=getattr(args, 'full', False))}, json_mode=True)
         return
-    if json_mode and args.action == 'move':
-        emit(manager.move_party(' '.join(args.location)), json_mode=True)
+    if args.action == 'move':
+        location = ' '.join(args.location)
+        try:
+            if args.check:
+                manager.check_destination(location)
+                return
+            result = manager.move_party(location)
+        except ValueError as error:
+            print(f"[ERROR] {error}", file=sys.stderr)
+            sys.exit(1)
+        if json_mode:
+            emit(result, json_mode=True)
+        else:
+            print(json.dumps(result, indent=2))
         return
 
     if args.action == 'start':
@@ -1544,11 +1587,6 @@ def main():
     elif args.action == 'status':
         status = manager.get_status()
         print(json.dumps(status, indent=2))
-
-    elif args.action == 'move':
-        location = ' '.join(args.location)
-        result = manager.move_party(location)
-        print(json.dumps(result, indent=2))
 
     elif args.action == 'save':
         name = ' '.join(args.name)

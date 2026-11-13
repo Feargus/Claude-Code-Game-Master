@@ -18,8 +18,10 @@ SPEC = {
     "time": "2187-10-25 19:00",
     "place": {"name": "Lanternside", "position": "Level 40 of the Spine",
               "description": "A night market under failing holo-ads."},
-    "exits": [{"name": "The Lantern noodle stall", "aliases": ["the Lantern"]},
+    "exits": [{"name": "The Lantern noodle stall", "aliases": ["the Lantern"],
+               "description": "Six stools and a steaming pot under a tarp."},
               {"name": "The Mercy Line stairwells", "position": "down into the Rust",
+               "description": "Wet concrete stairs that smell of rust.",
                "path": "a rusted door"}],
     "npcs": [{"name": "Auntie Ro", "who": "runs the noodle stall", "attitude": "friendly",
               "aliases": ["Ro"], "location": "The Lantern noodle stall"},
@@ -91,8 +93,8 @@ def test_the_opening_makes_ordinary_records(world):
         SPEC["developments"][0]["fact"]: ["street", "npc:Auntie Ro"],
         SPEC["developments"][1]["fact"]: ["npc:Auntie Ro"],
         # an attitude becomes a fact the NPC holds about the player
-        "Auntie Ro is friendly toward Fearghas.": ["npc:Auntie Ro"],
-        "Dekker is hostile toward Fearghas.": ["npc:Dekker"]}
+        "How Auntie Ro regards Fearghas: friendly.": ["npc:Auntie Ro"],
+        "How Dekker regards Fearghas: hostile.": ["npc:Dekker"]}
     triggers = _load(camp, "consequences.json")["active"][0]["triggers"]
     assert triggers == [{"type": "on_location", "match": "location:The Lantern noodle stall"}]
 
@@ -130,6 +132,10 @@ def test_refusals(world):
                         ({"place": "X", "plot": "P", "hook": "h", "room": "Y"}, "Unknown field")]:
         with pytest.raises(OpeningError, match=why):
             Opening(ws).apply(broken)
+    bare_exit = json.loads(json.dumps(SPEC))
+    del bare_exit["exits"][0]["description"]
+    with pytest.raises(OpeningError, match="'The Lantern noodle stall' needs a \"description\""):
+        Opening(ws).apply(bare_exit)
     Opening(ws).apply(json.loads(json.dumps(SPEC)))
     with pytest.raises(OpeningError, match="set up already"):
         Opening(ws).apply(json.loads(json.dumps(SPEC)))
@@ -153,9 +159,13 @@ def test_existing_places_npcs_and_plot_are_used_as_they_are(world):
         {"Dekker": npc("Dekker", places=[], identity={"name": "Dekker", "role": "imported"})}))
     (camp / "plots.json").write_text(json.dumps(
         {"The Writ": {"type": "main", "status": "available", "events": []}}))
-    Opening(ws).apply({"place": "Lanternside", "npcs": ["Dekker"],
-                       "plot": "The Writ", "hook": "The crew walks in."})
-    assert _load(camp, "locations.json")["Lanternside"] == {"position": "imported"}
+    with pytest.raises(OpeningError, match="'Lanternside' has no description yet"):
+        Opening(ws).apply({"place": "Lanternside", "npcs": ["Dekker"],
+                           "plot": "The Writ", "hook": "The crew walks in."})
+    Opening(ws).apply({"place": {"name": "Lanternside", "description": "A night market."},
+                       "npcs": ["Dekker"], "plot": "The Writ", "hook": "The crew walks in."})
+    assert _load(camp, "locations.json")["Lanternside"] == {"position": "imported",
+                                                             "description": "A night market."}
     assert _load(camp, "npcs.json")["Dekker"]["identity"]["role"] == "imported"
     assert _load(camp, "campaign-overview.json")["scene"]["present"] == ["Dekker"]
     plot = _load(camp, "plots.json")["The Writ"]

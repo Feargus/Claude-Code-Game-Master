@@ -133,7 +133,8 @@ class NPCManager(EntityManager):
         from note_manager import NoteManager
         player = sheet_mod.name(self.json_ops.load_json("character.json") or {}) or "the player"
         NoteManager(self.base_dir).add_fact(
-            FEELING_CATEGORY, f"{name} is {attitude} toward {player}.", list_waiting=False,
+            FEELING_CATEGORY, f"How {name} regards {player}: {attitude.strip().rstrip('.')}.",
+            list_waiting=False,
             about=[f"npc:{name}", "player"], holders=[f"npc:{name}"], nowhere=True)
 
     def _witness_hint(self, name: str) -> None:

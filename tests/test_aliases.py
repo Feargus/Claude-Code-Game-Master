@@ -94,10 +94,10 @@ def test_places_get_aliases_too(world, capsys):
     ops = JsonOperations(str(camp))
     change_aliases(ops, "location", "Old Iron's Yard", add=["the Yard"])
     assert _ids(camp).mentioned("Priests came to the Yard at dawn.") == ["location:Old Iron's Yard"]
-    assert LocationManager(ws).add_location("The Mercy Line stairwells", "down from Lanternside",
+    assert LocationManager(ws).add_location("The Mercy Line stairwells", "down from Lanternside", "Wet stairs.",
                                             aliases=["the Mercy Line"])
     assert "Also called: the Mercy Line" in capsys.readouterr().out
-    assert not LocationManager(ws).add_location("Yard Two", "nearby", aliases=["the Yard"])
+    assert not LocationManager(ws).add_location("Yard Two", "nearby", "A yard.", aliases=["the Yard"])
     assert "already names location:Old Iron's Yard" in capsys.readouterr().out
 
 
@@ -121,6 +121,6 @@ def test_an_alias_the_name_check_already_finds_is_explained(world, capsys):
     """In play the GM gave 'Saint Ayo's' the alias "Ayo's" and was told it was the
     place's 'own name', which made no sense; titles are ignored, so it is found."""
     ws, camp = world
-    assert not LocationManager(ws).add_location("Saint Ayo's", "a clinic", aliases=["Ayo's"])
+    assert not LocationManager(ws).add_location("Saint Ayo's", "a clinic", "A clinic.", aliases=["Ayo's"])
     out = capsys.readouterr().out
     assert "needs no alias: the name check already finds it as 'Saint Ayo's'" in out

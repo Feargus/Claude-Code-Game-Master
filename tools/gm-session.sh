@@ -11,7 +11,8 @@ show_usage() {
     echo "  end <summary>            - End session with summary"
     echo "  status                   - Show current campaign status"
     echo "  move <location> [--takes <duration>]"
-    echo "                           - Move party; --takes 20m lets that much time pass first"
+    echo "                           - Move party to a recorded, described place (gm-location.sh add);"
+    echo "                             --takes 20m lets that much time pass first"
     echo "  context                  - Full session context (character, party, consequences, rules)"
     echo "  choices [on|off|toggle]  - Toggle the [A]-[E] action menu (no arg: show state)"
     echo "  opening '<json>'         - Set up a new campaign's first scene in one go: place, exits,"
@@ -181,6 +182,8 @@ case "$ACTION" in
             echo "Usage: gm-session.sh move <location> [--takes <duration>]"
             exit 1
         fi
+        # A place not recorded or not described is refused before any time passes.
+        $PYTHON_CMD "$LIB_DIR/session_manager.py" move --check "$@" || exit 1
         # The journey's time passes first, so clocks fill and the time is right on
         # arrival. time_manager.py is called directly, not gm-time.sh, so the
         # consequence check below runs once, at the destination.

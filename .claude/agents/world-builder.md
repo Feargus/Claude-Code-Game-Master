@@ -110,8 +110,7 @@ What good expansion tends to include:
 
 ### Locations:
 ```bash
-./tools/gm-location.sh add "[Name]" "[brief position]"
-./tools/gm-location.sh describe "[Name]" "[description]"
+./tools/gm-location.sh add "[Name]" "[brief position]" "[description]"
 ./tools/gm-location.sh connect "[From]" "[To]" "[connection description]"
 ```
 

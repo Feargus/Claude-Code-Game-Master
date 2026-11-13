@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from lib.consequence_manager import ConsequenceManager
+from lib.location_manager import LocationManager
 from lib.scene_manager import SceneManager
 from lib.session_manager import SessionManager
 
@@ -61,6 +62,7 @@ def test_refusals_change_nothing(dcc_world):
 
 def test_a_move_resets_the_scene_to_the_party(dcc_world):
     SceneManager(dcc_world).enter(["Mordecai"])
+    LocationManager(dcc_world).set_description("Bone Garden", "Ribcages grown over with moss.")
     SessionManager(dcc_world).move_party("Bone Garden")
     scene = _overview(dcc_world)["scene"]
     assert scene == {"location": "Bone Garden", "present": []}
@@ -70,6 +72,7 @@ def test_a_move_resets_the_scene_to_the_party(dcc_world):
 def test_moving_to_the_same_place_keeps_the_scene(dcc_world):
     sm = SceneManager(dcc_world)
     sm.enter(["Mordecai"])
+    LocationManager(dcc_world).set_description(sm.location(), "A street of shuttered warehouses.")
     SessionManager(dcc_world).move_party(sm.location())
     assert "Mordecai" in sm.present()
 

@@ -11,7 +11,8 @@ after the character exists and the player has said where and when to start.
    "place": {"name": "Lanternside", "position": "Level 40 of the Spine",
              "description": "...", "aliases": ["..."]},
    "exits": [{"name": "The Lantern noodle stall", "position": "...",
-              "path": "visible from here", "aliases": ["the Lantern"]}],
+              "description": "...", "path": "visible from here",
+              "aliases": ["the Lantern"]}],
    "npcs": [{"name": "Auntie Ro", "who": "...", "attitude": "friendly",
              "aliases": ["Ro"], "location": ["The Lantern noodle stall"],
              "present": true, "physique": "...", "big_five": "O0 C2 E1 A1 N-1",
@@ -22,9 +23,11 @@ after the character exists and the player has said where and when to start.
    "developments": [...]}
 
 - A place or NPC that already exists (an import made it) is given by its name
-  alone and used as it is. A new place needs a `position` (an exit's defaults to
-  "next to <the place>"); a new NPC needs `who`, and is usually found in the
-  place unless `location` or `"nowhere": true` says otherwise. NPCs are in the
+  alone and used as it is; a place with no description yet needs one given. A new place, exits included, needs a `description`
+  (what it is like, a sentence or two: on disk before it is narrated) and a
+  `position` (an exit's defaults to "next to <the place>"). A new NPC needs
+  `who`, and is usually found in the place unless `location` or
+  `"nowhere": true` says otherwise. NPCs are in the
   scene unless `"present": false`. Any sheet text field can be given too
   (sheet.TEXT_FIELDS: physique, style, presence, big_five, voice, tells, want,
   fears, ...). `attitude`, how they regard the player, becomes a fact they hold.
@@ -172,16 +175,25 @@ class Opening:
         entry = _entry(raw)
         name = str(entry["name"]).strip()
         key = self._resolve(name, "location")
+        description = str(entry.get("description") or "").strip()
         if key:
+            stored = (self.json_ops.load_json("locations.json") or {}).get(key) or {}
+            if not str(stored.get("description") or "").strip():
+                if not description:
+                    raise OpeningError(f"'{key}' has no description yet: give one, "
+                                       f"{{\"name\": \"{key}\", \"description\": \"...\"}}.")
+                LocationManager(self.wsd).set_description(key, description)
             return key, False
         position = entry.get("position") or (f"next to {near}" if near else "")
         if not position:
             raise OpeningError(f"The new place '{name}' needs a \"position\": where it is.")
+        if not description:
+            raise OpeningError(f"The new place '{name}' needs a \"description\": what it is "
+                               f"like, a sentence or two.")
         locations = LocationManager(self.wsd)
-        if not locations.add_location(name, position, aliases=_as_list(entry.get("aliases"))):
+        if not locations.add_location(name, position, description,
+                                      aliases=_as_list(entry.get("aliases"))):
             raise OpeningError(f"The place '{name}' was refused")
-        if entry.get("description"):
-            locations.set_description(name, entry["description"])
         return name, True
 
     def _connect(self, a: str, b: str, path: str) -> None:
