@@ -112,3 +112,13 @@ def test_gm_md_holds_no_rules_for_the_middle_of_play():
     assert "gm-session.sh choices" in gm          # /gm choices is still routed
     claude = _claude_md()
     assert "choices on|off|toggle" in claude and "CONTEXT → DECIDE → EXECUTE → PERSIST → NARRATE" in claude
+
+
+def test_there_is_no_gm_save():
+    """/gm save ended the session (a poorer /gm end: no cliffhanger, no arc
+    entry) and saved nothing: every command writes to disk as it runs."""
+    commands = ROOT / ".claude" / "commands"
+    for name in ("gm.md", "help.md"):
+        text = (commands / name).read_text(encoding="utf-8")
+        assert "/gm save" not in text and "SAVE SESSION" not in text, name
+    assert "| save |" not in (commands / "gm.md").read_text(encoding="utf-8")

@@ -13,7 +13,6 @@ When user invokes `/gm <subcommand>`, route to the appropriate section:
 | Subcommand | Action |
 |------------|--------|
 | (none) | Continue to STEP 0: CAMPAIGN SELECTION below |
-| save | Jump to SAVE SESSION section |
 | character | Jump to CHARACTER DISPLAY section |
 | overview | Jump to CAMPAIGN OVERVIEW section |
 | status | Run `bash tools/gm-overview.sh` and display results |
@@ -222,39 +221,6 @@ bash tools/gm-session.sh world-tick '[
 - `clock` (optional): `name` (a short key of one to three words, which triggers and commands use: `on_clock` `"Tracker:2"`), `text` (what it is about), `segments`, and `due_in` (`3d`) or `due` (`"YYYY-MM-DD HH:MM"`) for a time clock, or `"on": "event"` for one you advance by hand; `consequence` fires when it fills.
 
 It applies all of them (warns if more than 3). If any part is invalid, nothing from the tick is kept: fix it and send the whole list again. Afterwards it lists the consequences waiting on an event: if a development fulfils one, fire it (`gm-consequence.sh fire <id> --by <fact id>`). `gm-session.sh world-tick-rollback` undoes the last tick: its facts, consequences and clocks. Tell the player only what the character could know, or nothing, and let the rest surface in play. `/gm world` does not end the session; with `cliffhanger` as well, end the session on a cliffhanger afterwards.
-
----
-
-## SAVE SESSION
-
-**Invoked via:** `/gm save`
-
-Execute comprehensive save workflow:
-
-### 1. End Session with Summary
-```bash
-bash tools/gm-session.sh end "[brief summary of key events]"
-```
-
-### 2. Verify State Updates
-Ensure all changes from the session are persisted:
-- Wounds, armor, cyberware → `gm-body.sh`
-- Items → `gm-player.sh item` / `loot`
-- Credits changes → `gm-player.sh credits`
-- What NPCs now know and feel about the player → facts they hold (`gm-note.sh ... --holders npc:<name>`)
-- Location changes → `gm-session.sh move`
-- Consequences → `gm-consequence.sh add`
-- Facts → `gm-note.sh`
-
-### 3. Run Verification
-```bash
-bash tools/gm-session.sh status
-bash tools/gm-consequence.sh check
-```
-
-### 4. Display Confirmation
-
-Confirm the save: who rests where, and that NPCs, locations, consequences, and the session log were updated. No fenced boxes; phone-friendly.
 
 ---
 

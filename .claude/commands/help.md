@@ -14,7 +14,6 @@ Display all available commands and tools.
   CORE GAMEPLAY
   --------------------------------------------------------
   /gm              Play the game (handles everything)
-  /gm save         End the session and check everything was saved
   /gm end          End the session, recording only what is
   /gm cliffhanger  End the session on a cliffhanger
   /gm world        Let the world move off-screen (no ending)
