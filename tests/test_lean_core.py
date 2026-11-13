@@ -101,3 +101,14 @@ def test_world_kit_info_runs():
     assert r.returncode == 0, r.stderr
     data = json.loads(r.stdout)["data"]
     assert "kit" not in data and "progression_model" not in data
+
+
+def test_gm_md_holds_no_rules_for_the_middle_of_play():
+    """/gm is put into the conversation once, when it is typed. Its action-menu
+    and gameplay-loop sections repeated CLAUDE.md and the brief, a second copy
+    to keep in step."""
+    gm = (ROOT / ".claude" / "commands" / "gm.md").read_text(encoding="utf-8")
+    assert "## ACTION MENU" not in gm and "## GAMEPLAY LOOP" not in gm
+    assert "gm-session.sh choices" in gm          # /gm choices is still routed
+    claude = _claude_md()
+    assert "choices on|off|toggle" in claude and "CONTEXT → DECIDE → EXECUTE → PERSIST → NARRATE" in claude

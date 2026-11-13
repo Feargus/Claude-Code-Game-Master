@@ -25,25 +25,6 @@ When user invokes `/gm <subcommand>`, route to the appropriate section:
 
 ---
 
-## ACTION MENU (PLAY STYLE)
-
-The GM can end each beat with exactly three numbered action options followed by a
-final "Or something else..." line (so the player always knows they can act freely),
-or with an open prompt and no menu. This is a per-campaign, player-togglable preference
-(`preferences.action_menu`, default ON) surfaced in `gm-session.sh context`.
-Beat shape and pacing live in CLAUDE.md and the session brief — do not duplicate
-them here.
-
-- Toggle explicitly: `bash tools/gm-session.sh choices on|off|toggle` (no arg shows state).
-- Toggle by asking mid-play ("stop giving me choices", "give me options again"):
-  detect the intent, run the command to persist it, then continue the scene in
-  the new style without re-narrating.
-
-When OFF, still resolve actions and prompt the player — just close with an open
-question instead of a numbered list.
-
----
-
 ## STEP 0: CAMPAIGN SELECTION
 
 **ALWAYS display the campaign selection menu first.**
@@ -190,19 +171,10 @@ During a fight, convey who is acting, each enemy's state (wounded, disabled part
 
 ---
 
-## GAMEPLAY LOOP
+## PLAY
 
-Now you're playing. For every player action, follow the workflows in CLAUDE.md:
-
-1. **Understand Intent** - What workflow applies?
-2. **Execute** - Use tools invisibly
-3. **Persist** - Save all state changes
-4. **Narrate Result** - Describe what happens
-5. **Enforce Campaign Rules** - Apply any campaign-specific rules from campaign-overview.json's `campaign_rules` section
-6. **Growth** - An achievement just happened? Award it (`gm-growth`). Growth due and a quiet moment? Run it (`gm-growth`)
-7. **Ask** - "What do you do?"
-
-Repeat.
+From here on, every turn follows `CLAUDE.md`: the core loop, the dice, persistence and
+the play style the brief reports.
 
 ---
 
