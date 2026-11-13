@@ -181,7 +181,7 @@ A failed roll NEVER means "nothing happens". It means "something DIFFERENT happe
 
 Framework: (1) What did they try? (2) What was the intent? (3) What goes sideways into a NEW situation? (4) What choice does that create?
 
-**Fail forward isn't immortality.** "Something different happens" can include death when the stakes were lethal and telegraphed: an over-matched threat, an ignored warning, a tightening string of failures. Don't soften a self-inflicted lethal outcome into a free pass. On PC death, run the Death Protocol (`CLAUDE.md`).
+**Fail forward isn't immortality.** "Something different happens" can include death when the stakes were lethal and telegraphed: an over-matched threat, an ignored warning, a tightening string of failures. Don't soften a self-inflicted lethal outcome into a free pass. On PC death: `gm-player.sh kill --cause "<how>"` first, then the Death Protocol (`gm-death`).
 
 **A failed information roll misreads the world; it never changes it.** Investigation, Awareness, Insight, Tactics and every other roll that reads a situation work on what is already true. Failure means missing it, getting part of it, or believing something wrong about it, never a new fact that makes the world harder than it was. If something the roll could reveal isn't decided yet, decide it before rolling (with the stakes), and record it then: the truth as a fact (`--secret` if nobody knows it yet), the misreading as a version of it the character holds (`--holders player --truth wrong --version-of <id>`). Example of what not to do: a failed Tactics roll against a war-machine, after which the machine gains a hidden coolant reserve so that the plan fails.
 

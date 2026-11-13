@@ -6,7 +6,7 @@ CLAUDE.md was swapped to the lean core (the 1227-line original is in git history
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ALL_SKILLS = ["gm-combat", "gm-conditions", "gm-growth",
+ALL_SKILLS = ["gm-combat", "gm-conditions", "gm-death", "gm-growth",
               "gm-sites", "gm-images", "gm-craft", "gm-skills", "gm-social"]
 
 
@@ -42,15 +42,24 @@ def test_lean_core_drops_beat_mandates():
     assert "Test before sending" not in text
 
 
-def test_gm_md_death_handoff_has_no_verbatim_menu():
-    text = (ROOT / ".claude" / "commands" / "gm.md").read_text(encoding="utf-8")
-    start = text.index("## CHARACTER DEATH")
-    end = text.index("## SAVE SESSION", start)
-    death = text[start:end]
-    assert "Present exactly" not in death
-    assert "1. Take over a PARTY MEMBER" not in death
-    assert "2. Roll a NEW character" not in death
-    assert "3. Step in as a CANON" not in death
+def test_the_death_protocol_is_a_skill_stated_once():
+    """It was written out in CLAUDE.md (every turn) and again in gm.md (loaded at
+    session start, long before anyone dies). It is the gm-death skill; CLAUDE.md
+    keeps the one step that can't be repaired afterwards: persist the death, with
+    its cause, before anything else."""
+    claude, gm = _claude_md(), (ROOT / ".claude" / "commands" / "gm.md").read_text(encoding="utf-8")
+    skill = (ROOT / ".claude" / "skills" / "gm-death" / "SKILL.md").read_text(encoding="utf-8")
+    assert "## Death Protocol" not in claude and "CHARACTER DEATH" not in gm
+    assert "--replace" not in claude and "fallen/" not in claude      # the swap rules moved
+    for part in ("gm-player.sh kill --cause", "hand-off", "--canon", "--replace", "fallen/",
+                 "gm-note.sh witness"):
+        assert part in skill, part
+    for line in claude.splitlines():
+        if "gm-death" in line:
+            assert "gm-player.sh kill --cause" in line, line
+            assert line.index("gm-player.sh kill --cause") < line.index("gm-death"), line
+    assert sum("gm-death" in line for line in claude.splitlines()) == 3
+    assert "Stakes & Death" in claude                                   # the rules before a death stay
 
 
 def test_lean_core_keeps_load_bearing_sections():

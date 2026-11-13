@@ -45,7 +45,7 @@ case "$ACTION" in
         echo "  award --size small|medium|large --reason \"...\" - XP for an achievement"
         echo "  grow --attribute A --skill S --skill T --perk \"Name\" \"Effect\" - growth that is due (gm-growth)"
         echo "  level-check                  - XP, level, growth due"
-        echo "  kill [--cause ...]           - the PC dies (then the Death Protocol)"
+        echo "  kill [--cause ...]           - the PC dies (then the Death Protocol: gm-death)"
         echo "  xp +N [--reason ...]         - correction: XP by hand (logged)"
         echo "  raise attribute|skill <x>    - correction: +1"
         echo "  perk \"<name>\" \"<effect>\"     - correction: add or rewrite a perk"

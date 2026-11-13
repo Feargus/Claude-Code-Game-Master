@@ -64,10 +64,9 @@ def test_the_save_example_is_a_valid_new_sheet():
                                              "items", "possessions"}
 
 
-def test_claude_md_death_protocol_routes_new_characters_to_the_interview():
-    text = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
-    start = text.index("SWAP")
-    swap = text[start:text.index("## Action Router", start)]
+def test_the_death_protocol_routes_new_characters_to_the_interview():
+    text = (ROOT / ".claude" / "skills" / "gm-death" / "SKILL.md").read_text(encoding="utf-8")
+    swap = text[text.index("Swap in the new character"):]
     assert "/create-character" in swap and "create '<json>' --replace" in swap
     assert "--canon" in swap
 

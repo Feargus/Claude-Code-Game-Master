@@ -78,7 +78,7 @@ A wound is the character's own state, so it's always a disadvantage, never a mod
 
 ## Death
 
-The fourth wound in head, chest or groin kills. There is no dying state and no rescue roll; the earlier wounds and armor damage were the warning. When the player dies, run the Death Protocol in `CLAUDE.md`.
+The fourth wound in head, chest or groin kills. There is no dying state and no rescue roll; the earlier wounds and armor damage were the warning. When the player dies: `bash tools/gm-player.sh kill --cause "<how>"` first, then load `gm-death` (the Death Protocol).
 
 ## End
 

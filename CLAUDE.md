@@ -31,25 +31,13 @@ The PC CAN die. This is not a guaranteed power-fantasy. Fail-forward does NOT me
 - **Some plot armor is fine, lethal stakes are mandatory.** Never kill on one unlucky roll in a trivial moment. DO let death land from: reckless play against over-leveled threats, ignored warnings, or a string of bad outcomes that has visibly tightened.
 - **Telegraph lethality.** Before a beat can kill, the danger must be readable — name the threat's weight ("this is far beyond you"), let bad odds show, give an out. Death is earned, never ambush-by-GM-fiat.
 - **Wounds, not HP.** The fourth wound in head, chest or groin kills, with no dying state in between; the rules are in `gm-combat`. Death also comes when the fiction makes survival absurd (fall into lava, executed while helpless).
-- **When the PC dies → run the Death Protocol** (below). Do not just end the session.
-
-## Death Protocol (PC dies)
-PERSIST FIRST, then narrate, then offer the hand-off.
-1. Persist the death: `bash tools/gm-player.sh kill --cause "<how>"` (sets status dead, stamps died_at, records the death as a fact, fires `on_death player` consequences). Record any further consequence the death triggers (`gm-consequence.sh add ...`).
-2. Narrate the death with weight — earn the moment, match prose to the beat. No menu yet.
-3. Offer the hand-off (the show goes on, not GAME OVER). The three routes — take over a party member already in the scene, roll a new character, or step in as a canon figure from the source — framed however the moment calls for. (If solo with no party and no fitting canon figure, offer the last two only.)
-4. On choice, switch the active PC (see SWAP), bridge the fiction (how/why control passes), update location/scene, then resume play.
-5. The dead hero stays in the world's memory: referenced, mourned, looted, avenged. Threads and clocks persist.
-
-SWAP (make the chosen character the active PC):
-- New character → run the `/create-character` interview and save with `gm-player.sh create '<json>' --replace`.
-- A party member or a canon figure → the same interview, a canon character with that NPC's data as the first suggestion, saved with `gm-player.sh create '<json>' --canon "<NPC>" --replace`.
-- Either way the fallen PC's sheet goes to `fallen/`, and they become an NPC with what they knew; the new character knows only what they witnessed or were told (`gm-note.sh witness` / `tell`), and a canon character keeps what the NPC knew.
+- **When the PC dies:** persist it before anything else, `bash tools/gm-player.sh kill --cause "<how>"` (it fires the `on_death player` consequences), then load `gm-death` and follow it: narrate, offer the hand-off, swap. Do not just end the session.
 
 ## Action Router — load the matching Skill on demand
 | Player says | Workflow | Skill |
 |---|---|---|
 | "I attack..." | Fight | `gm-combat` |
+| The PC dies | The Death Protocol | first `gm-player.sh kill --cause "<how>"`, then `gm-death` |
 | "I talk to..." / "I ask..." | Social/NPC | `gm-social` |
 | "I try to..." | Skill contest | `gm-skills` |
 | A run, a job or a dungeon | Site | `gm-sites` |
@@ -131,7 +119,7 @@ later facts), ask the player out of character before narrating or noting it.
 | An NPC's usual place changes (moves in, gets a job, is evicted) | `gm-npc.sh tag-location "<npc>" "<place>"...` / `untag-location` (known places only). Where someone *usually* is, not who is in the scene now (that's `gm-scene.sh`) |
 | **How an NPC feels about the player, what they remember, owe or hide** (a slight, a kindness, a debt, a lie they caught, a grudge) | a fact they hold: `gm-note.sh npc_relations "<what>" --holders npc:<name> --about player` (when their attitude changes, record the new one the same way as at creation, adjectives only: "How <name> regards <player>: hostile."; the newest counts, and what caused the change is the event's own fact). There are no mood or attitude fields: the brief shows what they know under them |
 | Condition (PC) | `gm-condition.sh add\|remove "<condition>"` (`check` lists them) |
-| PC death | `gm-player.sh kill` (status dead + log) — then run Death Protocol |
+| PC death | `gm-player.sh kill --cause "<how>"` (status dead, the death as a fact, fires `on_death player`), then load `gm-death` |
 | NPC death | `gm-npc.sh kill "<name>" --cause "<how>"` (status dead, no longer present anywhere, records the death as a fact, fires its `on_death` consequences) |
 | The opening (a new campaign's first scene, once, after the character exists) | `gm-session.sh opening '<json>'`: place, exits, people, the plot and its hook, facts, clocks, all or nothing (the fields: `lib/opening.py`) |
 | A new place (gone to, or only talked about) | `gm-location.sh add "<name>" "<where it is>" "<what it is like>"` before it is narrated, the description a sentence or two. When play shows more of it (a visit, someone talking about it), write the fuller description first, keeping what was said: `gm-location.sh describe "<place>" "<all of it>"` (replaces; prints the old text). The brief shows the current place's description: narrate from it |
