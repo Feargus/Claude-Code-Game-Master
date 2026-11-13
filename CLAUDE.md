@@ -175,6 +175,7 @@ only for operational lessons that fit nowhere else.
 ## Technical Notes
 - **Python:** always `uv run python` (never bare `python`/`python3`).
 - **Saves:** JSON snapshots in each campaign's `saves/`.
+- **Backup:** when the campaigns folder is in a git repository of its own, `gm-session.sh end` and the end of the Claude session commit and push it (`tools/gm-backup.sh`), new campaigns included. Never run git on it yourself.
 - **Multi-campaign:** tools read `world-state/active-campaign.txt`.
 - **Architecture:** bash wrappers (`tools/`) → Python managers (`lib/`) → per-campaign `world-state/campaigns/<name>/*.json`. The generic core is `game_core.py`; the per-book ruleset is `world_kit.py` (`ruleset.json`).
 
