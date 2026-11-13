@@ -62,16 +62,16 @@ def test_the_ladder_climbs_by_itself(dcc_world):
     """A clock runs out -> the witness tells -> on_learn -> a hunt clock starts."""
     fid = _secret(dcc_world)
     tcm = ThreatClockManager(dcc_world)
-    tcm.add_clock("The witness gets away", 1, advance_on="event")
+    tcm.add_clock("Witness", 1, advance_on="event")
     cm = ConsequenceManager(dcc_world)
     cm.add_consequence("The witness reaches Mordecai", "y",
-                       trigger_type="on_clock", match="The witness gets away",
+                       trigger_type="on_clock", match="Witness",
                        effects=[{"type": "tell", "fact": fid, "holders": ["Mordecai"]}])
     hunt = cm.add_consequence("Mordecai hunts Tandy", "y",
                               trigger_type="on_learn", match="Mordecai learns about player",
                               effects=[{"type": "start_clock", "name": "The hunt", "segments": 3,
                                         "on": "event"}])
-    fired = tcm.advance("The witness gets away")["fired"]
+    fired = tcm.advance("Witness")["fired"]
     lines = fired[0]["effects_done"]
     assert lines[0] == f"npc:Mordecai now know(s) {fid}"
     assert lines[1] == f"that fired [{hunt}] Mordecai hunts Tandy"

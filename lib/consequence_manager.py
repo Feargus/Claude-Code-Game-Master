@@ -209,8 +209,11 @@ class ConsequenceManager(EntityManager):
     @staticmethod
     def _check_start_clock(effect: Dict[str, Any]) -> str:
         from time_manager import TimeError, parse_duration, parse_time
-        if not str(effect.get('name', '')).strip():
-            return "start_clock needs the clock's name."
+        from threat_clocks import check_name
+        try:
+            effect['name'] = check_name(effect.get('name'))
+        except ValueError as error:
+            return f"start_clock: {error}"
         try:
             effect['segments'] = int(effect.get('segments', 1))
         except (TypeError, ValueError):
@@ -278,7 +281,7 @@ class ConsequenceManager(EntityManager):
         try:
             clock = tcm.add_clock(
                 name, e.get('segments', 1), advance_on=e.get('on', 'time'),
-                consequence=e.get('consequence'),
+                consequence=e.get('consequence'), text=e.get('text'),
                 due_at=parse_time(e['due']) if e.get('due') else None,
                 due_in_minutes=parse_duration(e['due_in']) if e.get('due_in') else None)
         except ValueError as error:
@@ -693,7 +696,8 @@ def describe_effects(effects) -> str:
                 when = f"full at {e['due']}"
             else:  # a time clock without a due time: one day per segment
                 when = f"full {n} day{'s' if n != 1 else ''} after it fires"
-            text = f"starts clock '{e.get('name')}' ({size}, {when})"
+            text = (f"starts clock '{e.get('name')}'" + (f" ({e['text']})" if e.get('text') else "")
+                    + f" ({size}, {when})")
             if e.get('consequence'):
                 text += f", and when it is full: {e['consequence']}"
             parts.append(text)
@@ -769,6 +773,8 @@ def main():
                             help='Who learns the --tells fact (repeatable)')
     add_parser.add_argument('--starts-clock', dest='starts_clock', metavar='NAME',
                             help='When it fires, start this clock (unless it already exists)')
+    add_parser.add_argument('--clock-text', dest='clock_text',
+                            help='What the started clock is about')
     add_parser.add_argument('--clock-segments', dest='clock_segments', type=int, default=1)
     add_parser.add_argument('--clock-on', dest='clock_on', default='time', choices=['time', 'event'])
     add_parser.add_argument('--clock-due-in', dest='clock_due_in',
@@ -818,7 +824,7 @@ def main():
                                 f"give exactly one --match per --trigger-type, in the same order",
                                 json_mode=json_mode))
         triggers = [{'type': t, 'match': m} for t, m in zip(types, matches)]
-        clock_flags = [args.clock_due_in, args.clock_due, args.clock_consequence]
+        clock_flags = [args.clock_due_in, args.clock_due, args.clock_consequence, args.clock_text]
         if any(clock_flags) and not args.starts_clock:
             sys.exit(emit_error("--clock-... options describe the clock that --starts-clock starts; "
                                 "give --starts-clock \"<name>\" too", json_mode=json_mode))
@@ -832,7 +838,7 @@ def main():
             effect = {'type': 'start_clock', 'name': args.starts_clock,
                       'segments': args.clock_segments, 'on': args.clock_on}
             for key, value in (('due_in', args.clock_due_in), ('due', args.clock_due),
-                               ('consequence', args.clock_consequence)):
+                               ('consequence', args.clock_consequence), ('text', args.clock_text)):
                 if value:
                     effect[key] = value
             effects.append(effect)

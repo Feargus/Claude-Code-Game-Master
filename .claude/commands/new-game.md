@@ -203,7 +203,8 @@ bash tools/gm-session.sh opening '{
   "developments": [
     {"fact": "<the premise, or a secret>", "holders": ["<who knows it>"]},
     {"fact": "<what the antagonist is doing>", "holders": [],
-     "clock": {"name": "<the antagonist'"'"'s aim>", "segments": 4, "due_in": "<3d>",
+     "clock": {"name": "<short name, one to three words>", "text": "<the antagonist'"'"'s aim>",
+               "segments": 4, "due_in": "<3d>",
                "consequence": "<what happens in the world when it fills>"}}]
 }'
 ```

@@ -191,3 +191,41 @@ def test_adding_a_clock_twice_is_refused_and_keeps_its_progress(dcc_world):
     with pytest.raises(ValueError, match="exists already"):
         m.add_clock("hunt", 6, advance_on="event")
     assert m.get_clocks() == {"Hunt": {"current": 3, "max": 4, "advance_on": "event"}}
+
+
+def test_a_clock_has_a_short_name_and_a_text(dcc_world):
+    """The name is the key triggers and commands use; what the clock is about is
+    its text. A description as the name is refused, and says where it goes."""
+    m = ThreatClockManager(dcc_world)
+    with pytest.raises(ValueError, match="short key"):
+        m.add_clock("Slow scrub (stops if the flush needle is removed)", 4)
+    with pytest.raises(ValueError, match="short key"):
+        m.add_clock("Hunt:2", 4)
+    m.add_clock("Slow  scrub", 4, advance_on="event",
+                text="Stops if the flush needle is removed with fine tools")
+    clock = m.get_clocks()["Slow scrub"]
+    assert clock["text"] == "Stops if the flush needle is removed with fine tools"
+    assert "Slow scrub: [○○○○] 0/4 (on event) — Stops if the flush" in m.render(m.get_clocks())
+
+
+def test_a_clock_is_found_by_its_name_in_any_case_or_by_its_text(dcc_world):
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Tracker", 3, advance_on="event", text="The tracker closes in")
+    assert m.advance("tracker")["current"] == 1
+    assert m.advance("clock:Tracker")["current"] == 2
+    assert m.advance("The tracker closes in")["current"] == 3
+    assert m.is_full("TRACKER")
+    assert m.advance("Trakcer") is None
+
+
+def test_rewording_a_clock_keeps_its_name_and_its_progress(dcc_world):
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Tracker", 3, advance_on="event", text="The tracker closes in")
+    m.advance("Tracker")
+    m.set_text("tracker", "The tracker has the scent")
+    assert m.get_clocks() == {"Tracker": {"text": "The tracker has the scent", "current": 1,
+                                          "max": 3, "advance_on": "event"}}
+    m.set_text("Tracker", "")
+    assert "text" not in m.get_clocks()["Tracker"]
+    with pytest.raises(ValueError):
+        m.set_text("Nobody", "x")

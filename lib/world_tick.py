@@ -17,7 +17,8 @@ A development (JSON object):
    "truth": "wrong", "version_of": "f12",   optional: a cover story, a planted lie
    "consequence": {"text": "The tracker finds Fearghas",              optional
                    "triggers": [{"type": "on_location", "match": "Old Iron's Yard"}]},
-   "clock": {"name": "The tracker closes in", "segments": 3,          optional
+   "clock": {"name": "Tracker", "text": "The tracker closes in",      optional; the name
+             "segments": 3,                                           is a short key
              "due_in": "3d", "consequence": "The tracker finds Fearghas",
              "linked_plot": "The Vey Inheritance"}}                  optional
 
@@ -72,6 +73,12 @@ class WorldTick:
         if clock is not None:
             if not isinstance(clock, dict) or not str(clock.get("name", "")).strip():
                 raise WorldTickError(f"{where}: \"clock\" needs a \"name\"")
+            from threat_clocks import check_name
+            try:
+                check_name(clock["name"])
+            except ValueError as error:
+                raise WorldTickError(f"{where}: clock: {error} In a development: "
+                                     f"{{\"name\": \"<short name>\", \"text\": \"...\"}}.")
             try:
                 if int(clock.get("segments", 0)) < 1:
                     raise ValueError
@@ -193,16 +200,13 @@ class WorldTick:
                 clock = d.get("clock")
                 if clock:
                     tcm = ThreatClockManager(self.world_state_dir)
-                    name = clock["name"].strip()
-                    if name in tcm.get_clocks():
-                        raise WorldTickError(f"development {i + 1}: a clock named "
-                                             f"'{name}' already exists")
+                    name = " ".join(clock["name"].split())
                     try:
                         tcm.add_clock(
                             name, int(clock["segments"]),
                             advance_on=clock.get("on", "time"),
                             consequence=clock.get("consequence"),
-                            linked_plot=clock.get("linked_plot"),
+                            linked_plot=clock.get("linked_plot"), text=clock.get("text"),
                             due_at=parse_time(clock["due"]) if clock.get("due") else None,
                             due_in_minutes=(parse_duration(clock["due_in"])
                                             if clock.get("due_in") else None))

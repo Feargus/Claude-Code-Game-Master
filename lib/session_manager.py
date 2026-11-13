@@ -872,7 +872,8 @@ class SessionManager(EntityManager):
                 bar = "●" * cur + "○" * max(0, mx - cur)
                 flag = "  ⚠ FULL — a beat is due" if cur >= mx else ""
                 due = "" if flag else ThreatClockManager.due_text(c)
-                lines.append(f"{clock_name}: [{bar}] {cur}/{mx}{due}{flag}")
+                about = f" — {c['text']}" if c.get('text') else ""
+                lines.append(f"{clock_name}: [{bar}] {cur}/{mx}{due}{flag}{about}")
 
         # --- Character ---
         lines.append("")

@@ -36,7 +36,7 @@ DEVS = [
     {"fact": "Dekker has hired a tracker who hunts the grey sleeve.",
      "consequence": {"text": "The tracker finds Fearghas",
                      "triggers": [{"type": "on_location", "match": "Floor 2 Junction"}]},
-     "clock": {"name": "The tracker closes in", "segments": 3, "on": "event",
+     "clock": {"name": "Tracker", "text": "The tracker closes in", "segments": 3, "on": "event",
                "consequence": "The tracker finds Fearghas"}},
     {"fact": "Auntie Ro kept her stall shut for a day.", "category": "npc_relations"},
 ]
@@ -56,8 +56,8 @@ def test_follow_ups_are_set_up(dcc_world):
     tracker = applied[1]
     con = next(c for c in _active(dcc_world) if c["id"] == tracker["consequence"])
     assert con["triggers"] == [{"type": "on_location", "match": "location:Floor 2 Junction"}]
-    assert tracker["clock"] == "The tracker closes in"
-    assert "The tracker closes in" in _load(dcc_world, "threat-clocks.json")
+    assert tracker["clock"] == "Tracker"
+    assert "Tracker" in _load(dcc_world, "threat-clocks.json")
     assert "consequence" not in applied[0] and "clock" not in applied[0]
 
 
@@ -84,7 +84,7 @@ def test_a_refused_trigger_undoes_the_whole_tick(dcc_world):
     with pytest.raises(WorldTickError):
         WorldTick(dcc_world).apply(bad)
     assert _fact_texts(dcc_world) == before_facts
-    assert "The tracker closes in" not in _load(dcc_world, "threat-clocks.json")
+    assert "Tracker" not in _load(dcc_world, "threat-clocks.json")
 
 
 def test_cap_is_advisory(dcc_world, capsys):
@@ -112,7 +112,7 @@ def test_rollback_removes_facts_consequences_and_clocks(dcc_world):
     assert wt.rollback_last() is True
     assert _fact_texts(dcc_world) == before_facts
     assert len(_active(dcc_world)) == before_active
-    assert "The tracker closes in" not in _load(dcc_world, "threat-clocks.json")
+    assert "Tracker" not in _load(dcc_world, "threat-clocks.json")
 
 
 def test_rollback_without_a_tick_is_safe(dcc_world):

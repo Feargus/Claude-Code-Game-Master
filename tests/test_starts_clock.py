@@ -121,3 +121,15 @@ def test_cli_starts_clock_flags(dcc_world):
     stored = next(c for c in ConsequenceManager(dcc_world).check_pending() if c["id"] == cid)
     assert stored["effects"] == [{"type": "start_clock", "name": "Vendetta",
                                   "segments": 3, "on": "event"}]
+
+
+def test_a_started_clock_takes_a_short_name_and_a_text(dcc_world):
+    cm = ConsequenceManager(dcc_world)
+    assert cm.add_consequence("x", "y", trigger_type="on_event", match="y", effects=[
+        {"type": "start_clock", "name": "A vendetta against the whole crew begins"}]) == ""
+    cid = cm.add_consequence("The job goes loud", "the alarm", trigger_type="on_event",
+                             match="the alarm", effects=[
+        {"type": "start_clock", "name": "Feud", "text": "The Iron Wolves want blood",
+         "segments": 3, "on": "event"}])
+    cm.fire(cid, reason="the alarm rang")
+    assert ThreatClockManager(dcc_world).get_clocks()["Feud"]["text"] == "The Iron Wolves want blood"

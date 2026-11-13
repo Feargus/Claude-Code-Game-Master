@@ -34,12 +34,12 @@ add:
                                                           midnight 23-01; not a date)
     --trigger-type on_death    --match "<NPC>" | player
   Places and NPCs are stored as ids (location:<name>, npc:<name>); add new ones first.
-    --trigger-type on_clock    --match "<clock>" | "<clock>:<segment>"
+    --trigger-type on_clock    --match "<clock's short name>" | "<short name>:<segment>"
     --trigger-type on_learn    --match "<who> learns <fact id>" | "<who> learns about <id>"
     --trigger-type on_event    --match "<the event, in words>"
   A time limit ("in 2 days") is a clock (gm-clock.sh add), not a trigger.
   Effects, carried out when it fires:
-    --starts-clock "<name>" [--clock-segments N] [--clock-on time|event]
+    --starts-clock "<short name>" [--clock-text "<what it is about>"] [--clock-segments N] [--clock-on time|event]
                    [--clock-due-in 3d | --clock-due "YYYY-MM-DD HH:MM"] [--clock-consequence "..."]
     --tells <fact id> --to <holder> [--to <holder>...]
 

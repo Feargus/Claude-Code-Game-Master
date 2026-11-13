@@ -20,6 +20,27 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
 
+# A clock is named by a short key ("Tracker", "Slow scrub"): triggers, commands
+# and the brief use it, so it must stay as it is. What the clock is about goes
+# into its `text`, which can be reworded freely.
+MAX_NAME_WORDS = 3
+MAX_NAME_CHARS = 30
+
+
+def check_name(raw) -> str:
+    """A new clock's short name, tidied (single spaces), or ValueError."""
+    name = " ".join(str(raw or "").split())
+    if not name:
+        raise ValueError("A clock needs a short name, e.g. \"Tracker\".")
+    if ":" in name or len(name.split()) > MAX_NAME_WORDS or len(name) > MAX_NAME_CHARS:
+        raise ValueError(
+            f"A clock's name is a short key, one to {MAX_NAME_WORDS} words and at most "
+            f"{MAX_NAME_CHARS} characters, without a colon (\"Tracker\", \"Slow scrub\"): "
+            f"triggers and commands use it, so it has to stay the same. Put what the clock "
+            f"is about into its text (gm-clock.sh add \"<short name>\" N --text \"...\"); "
+            f"got '{name}'.")
+    return name
+
 
 class ThreatClockManager(EntityManager):
     def __init__(self, world_state_dir: str = None):
@@ -29,6 +50,24 @@ class ThreatClockManager(EntityManager):
 
     def _load(self) -> Dict[str, Any]:
         return self.json_ops.load_json(self.clocks_file) or {}
+
+    @staticmethod
+    def _find(data: Dict[str, Any], raw) -> Optional[str]:
+        """The key of the clock `raw` names: its short name (case ignored, with or
+        without a leading "clock:"), or failing that its whole text. None if none."""
+        wanted = " ".join(str(raw or "").split())
+        if wanted.lower().startswith("clock:"):
+            wanted = wanted[6:].strip()
+        low = wanted.lower()
+        if not low:
+            return None
+        for key in data:
+            if key.lower() == low:
+                return key
+        for key, clock in data.items():
+            if str((clock or {}).get("text") or "").strip().lower() == low:
+                return key
+        return None
 
     def _game_time(self) -> Optional[datetime]:
         # Imported here: time_manager imports this module.
@@ -51,16 +90,19 @@ class ThreatClockManager(EntityManager):
 
     def add_clock(self, name: str, segments: int, advance_on: str = "time",
                   consequence: str = None, linked_plot: str = None,
-                  due_at: datetime = None, due_in_minutes: int = None) -> Dict[str, Any]:
-        """Add a clock. A time clock is due at `due_at`, or `due_in_minutes` from
-        now, or by default one day per segment from now."""
+                  due_at: datetime = None, due_in_minutes: int = None,
+                  text: str = None) -> Dict[str, Any]:
+        """Add a clock. `name` is its short key (check_name), `text` what it is
+        about. A time clock is due at `due_at`, or `due_in_minutes` from now, or
+        by default one day per segment from now."""
+        name = check_name(name)
         from time_manager import STORED_FORMAT
         if int(segments) < 1:
             raise ValueError(f"A clock needs at least 1 segment, not {segments}.")
         if advance_on not in ("time", "event"):
             raise ValueError(f"A clock advances on time or event, not {advance_on!r}.")
         data = self._load()
-        taken = next((k for k in data if k.lower() == str(name).strip().lower()), None)
+        taken = self._find(data, name)
         if taken is not None:
             c = data[taken]
             raise ValueError(
@@ -68,6 +110,8 @@ class ThreatClockManager(EntityManager):
                 f"adding it again would reset it. Advance it or move its due time "
                 f"(gm-clock.sh advance / due), or remove it first (gm-clock.sh remove).")
         entry = {"current": 0, "max": int(segments), "advance_on": advance_on}
+        if str(text or "").strip():
+            entry = {"text": str(text).strip(), **entry}
         if consequence:
             entry["consequence"] = consequence
         if linked_plot:
@@ -143,9 +187,10 @@ class ThreatClockManager(EntityManager):
         only stall it until time caught up, full at the same moment as before.
         """
         data = self._load()
-        c = data.get(name)
-        if not c:
+        name = self._find(data, name)
+        if name is None:
             return None
+        c = data[name]
         if c.get("advance_on", "time") == "time":
             raise ValueError(f"'{name}' is a time clock: it fills as game time passes "
                              f"(gm-time.sh), not by hand.")
@@ -173,9 +218,10 @@ class ThreatClockManager(EntityManager):
         if sum(x is not None for x in (due_at, due_in_minutes, shift_minutes)) != 1:
             raise ValueError("Give exactly one of --earlier, --later, --due-in or --due.")
         data = self._load()
-        c = data.get(name)
-        if c is None:
+        key = self._find(data, name)
+        if key is None:
             raise ValueError(f"No clock '{name}'.")
+        name, c = key, data[key]
         if c.get("advance_on", "time") != "time":
             raise ValueError(f"'{name}' is an event clock: it has no due time. "
                              f"Advance it by hand instead.")
@@ -241,9 +287,22 @@ class ThreatClockManager(EntityManager):
         return {name: dict(c, fired=self._fire_on_clock(name, before, c))
                 for name, (before, c) in moved.items()}
 
+    def set_text(self, name: str, text: str) -> Dict[str, Any]:
+        """Reword what a clock is about; its short name, which triggers use,
+        stays. An empty text removes it. Returns the clock; raises ValueError."""
+        data = self._load()
+        key = self._find(data, name)
+        if key is None:
+            raise ValueError(f"No clock '{name}'.")
+        rest = {k: v for k, v in data[key].items() if k != "text"}
+        data[key] = {"text": text.strip(), **rest} if str(text or "").strip() else rest
+        self.json_ops.save_json(self.clocks_file, data)
+        return data[key]
+
     def remove_clock(self, name: str) -> bool:
         data = self._load()
-        if name in data:
+        name = self._find(data, name)
+        if name is not None:
             del data[name]
             self.json_ops.save_json(self.clocks_file, data)
             return True
@@ -253,7 +312,8 @@ class ThreatClockManager(EntityManager):
         return self._load()
 
     def is_full(self, name: str) -> bool:
-        c = self._load().get(name)
+        data = self._load()
+        c = data.get(self._find(data, name) or "")
         return bool(c and c.get("current", 0) >= c.get("max", 1))
 
     def full_clocks(self) -> Dict[str, Any]:
@@ -297,7 +357,9 @@ class ThreatClockManager(EntityManager):
             bar = "●" * cur + "○" * max(0, mx - cur)
             flag = "  ⚠ FULL" if cur >= mx else ""
             due = ThreatClockManager.due_text(c)
-            lines.append(f"{name}: [{bar}] {cur}/{mx} (on {c.get('advance_on', 'time')}{due}){flag}")
+            about = f" — {c['text']}" if c.get("text") else ""
+            lines.append(f"{name}: [{bar}] {cur}/{mx} (on {c.get('advance_on', 'time')}{due})"
+                         f"{flag}{about}")
         return "\n".join(lines)
 
 
@@ -308,7 +370,10 @@ def main():
 
     parser = argparse.ArgumentParser(description="Threat clocks")
     sub = parser.add_subparsers(dest="action")
-    p = sub.add_parser("add"); p.add_argument("name"); p.add_argument("segments", type=int)
+    p = sub.add_parser("add")
+    p.add_argument("name", help='the short key triggers and commands use, e.g. "Tracker"')
+    p.add_argument("segments", type=int)
+    p.add_argument("--text", help="what the clock is about (can be reworded later)")
     p.add_argument("--on", default="time")
     p.add_argument("--consequence", help="what happens when it fills (fired into the world)")
     p.add_argument("--linked-plot", dest="linked_plot")
@@ -320,6 +385,7 @@ def main():
     p.add_argument("--later", help="due this much later")
     p.add_argument("--due-in", dest="due_in", help="due this long from now")
     p.add_argument("--due", help='due at "YYYY-MM-DD HH:MM"')
+    p = sub.add_parser("text"); p.add_argument("name"); p.add_argument("text")
     p = sub.add_parser("remove"); p.add_argument("name")
     sub.add_parser("list")
     sub.add_parser("beats")  # filled clocks = beats due
@@ -330,11 +396,20 @@ def main():
         parser.print_help(); sys.exit(1)
 
     m = ThreatClockManager()
-    if args.action == "add":
+    # The clock's own short name, however it was typed (case, "clock:", its text).
+    shown = m._find(m.get_clocks(), getattr(args, "name", "")) or getattr(args, "name", "")
+    if args.action == "text":
+        try:
+            out = m.set_text(args.name, args.text)
+        except ValueError as error:
+            print(f"Error: {error}", file=sys.stderr)
+            sys.exit(1)
+    elif args.action == "add":
         from time_manager import TimeError, parse_duration, parse_time
         try:
             out = m.add_clock(args.name, args.segments, advance_on=args.on,
                               consequence=args.consequence, linked_plot=args.linked_plot,
+                              text=args.text,
                               due_at=parse_time(args.due) if args.due else None,
                               due_in_minutes=parse_duration(args.due_in) if args.due_in else None)
         except (TimeError, ValueError) as error:
@@ -375,8 +450,8 @@ def main():
         print(json.dumps(out, indent=2))
         if args.action == "list":
             print(m.render(out))
-        if args.action == "due":
-            print(m.render({args.name: out}))
+        if args.action in ("due", "text"):
+            print(m.render({shown: out}))
         if args.action in ("advance", "due") and out:
             from consequence_manager import print_fired
             print_fired(out.get("fired", []))
