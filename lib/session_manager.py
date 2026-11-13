@@ -878,14 +878,9 @@ class SessionManager(EntityManager):
         # --- Character ---
         lines.append("")
         lines.append("--- CHARACTER ---")
-        char = None
-        if self.character_file.exists():
-            import json as _json
-            try:
-                with open(self.character_file, 'r', encoding='utf-8') as f:
-                    char = _json.load(f)
-            except (ValueError, IOError):
-                pass
+        # A damaged character.json stops the brief (JsonFileError), like any other
+        # file: "No character found" would send the GM off to create a new one.
+        char = self.json_ops.load_json("character.json") or None
 
         if char:
             import sheet as sheet_mod
