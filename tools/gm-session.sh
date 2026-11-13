@@ -133,9 +133,6 @@ case "$ACTION" in
         echo "    \"who_matters\": [\"...\"], \"open_debts\": [\"...\"]}'"
         echo ""
         echo "Off-screen developments: only when the player asks (/gm world), never on your own."
-        echo ""
-        # The campaigns' own repository is the backup: commit what the session changed.
-        bash "$TOOLS_DIR/gm-backup.sh" "session ended"
         ;;
 
     opening)
