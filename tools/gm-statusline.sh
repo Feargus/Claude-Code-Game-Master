@@ -70,7 +70,8 @@ if [ ! -f "$CHAR" ]; then
 fi
 
 # --- Character fields -------------------------------------------------------
-# The sheet's format: lib/sheet.py. Level N needs 100 × N² XP (lib/growth.py).
+# The sheet's format: lib/sheet.py. Level N needs 100 × N² XP: the same formula as
+# lib/growth.py, repeated here to stay in shell (tests/test_growth.py keeps them in step).
 IFS=$'\t' read -r NAME RACE CLASS LEVEL CREDITS XP_CUR XP_NEXT < <(
     jq -r '
       ((.progress.level // 0)) as $level

@@ -50,3 +50,28 @@ def test_xp_makes_growth_due_but_does_not_level(tmp_path):
     assert character["progress"]["level"] == 0 and growth.growth_due(character) == 2
     entry = (tmp_path / growth.LOG_FILE).read_text()
     assert "+400 XP  fight: defeated Mastiff (6 wounds)\ntotal 450 · level 0 · growth due: 2 levels" in entry
+
+
+def test_the_status_line_computes_the_next_level_like_growth_does():
+    """tools/gm-statusline.sh is shell and jq, to stay fast, so it repeats the
+    XP formula instead of asking growth.py. This keeps the two in step: change
+    the formula in one, and this says to change the other."""
+    import re
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    import pytest
+
+    from lib.growth import xp_for_level
+    script = (Path(__file__).resolve().parent.parent / "tools" / "gm-statusline.sh").read_text(
+        encoding="utf-8")
+    found = re.search(r"\(\.progress\.xp // 0\),\s*\(([^\n]*\$level[^\n]*)\)\s*\]", script)
+    assert found, "the status line's XP-for-the-next-level expression was not found"
+    if not shutil.which("jq"):
+        pytest.skip("jq is not installed")
+    for level in (0, 1, 2, 5, 12):
+        out = subprocess.run(["jq", "-n", "--argjson", "level", str(level), found.group(1)],
+                             capture_output=True, text=True)
+        assert out.returncode == 0, out.stderr
+        assert int(out.stdout) == xp_for_level(level + 1), level
