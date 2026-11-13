@@ -29,7 +29,7 @@ from sheet import aliases as sheet_aliases, name as sheet_name
 RUNGS = ("street", "public")
 KINDS = ("npc", "location")
 LATER = {"faction": "factions", "item": "items with ids"}
-TABLE_FILES = {"npc": "npcs.json", "location": "locations.json"}
+TABLE_FILES = {"npc": "npcs.json", "location": "locations.json", "player": "character.json"}
 RESERVED = ("player", "anyone") + RUNGS  # words ids and triggers use
 CLOCKS_FILE = "threat-clocks.json"
 
@@ -55,10 +55,12 @@ def find_clock(clocks: Dict[str, Any], raw) -> str:
 class WorldIds:
     """Resolve ids against one campaign's files (a JsonOperations on its folder)."""
 
-    def __init__(self, json_ops):
+    def __init__(self, json_ops, player: Dict[str, Any] = None):
+        """`player`: a sheet to take as the player's instead of character.json
+        (a character that is being created and isn't saved yet)."""
         self.json_ops = json_ops
         self._tables = None
-        self._pc = None
+        self._pc = player
 
     def _load(self) -> Dict[str, dict]:
         if self._tables is None:
@@ -247,8 +249,8 @@ class WorldIds:
         return cid, ""
 
     def check_alias(self, alias: str, owner: str) -> str:
-        """Why `alias` can't be a short name of `owner` (npc:<key> or
-        location:<key>; it needn't exist yet), or '' if it can.
+        """Why `alias` can't be a short name of `owner` (`player`, npc:<key> or
+        location:<key>; an NPC or place needn't exist yet), or '' if it can.
 
         The name check finds aliases in a fact's text as it finds names, so an
         alias must point at one thing only: not the name or alias of another NPC
@@ -259,7 +261,7 @@ class WorldIds:
             return f"'{text}' is not a name."
         if text.lower() in RESERVED or norm in RESERVED:
             return f"'{text}' is a word ids use ({', '.join(RESERVED)})."
-        own = owner.partition(":")[2]
+        own = self.player_name() if owner == "player" else owner.partition(":")[2]
         if norm == normalize_entity_name(own):
             if text.lower() == own.lower():
                 return f"'{text}' is {owner}'s own name; an alias is another name for it."
@@ -312,18 +314,51 @@ def alias_hint(kind: str, name: str) -> str:
             f"one: bash tools/{tool} alias \"{name}\" \"<short name>\"")
 
 
+def check_player_aliases(json_ops, character: Dict[str, Any], given: bool,
+                         canon: str = None) -> List[str]:
+    """The aliases of a player character that is being created, tidied, or
+    ValueError. A name of several words needs them: the story will say "Dogen",
+    not "Dogen Mabuchi", and facts, triggers and rolls find the character only by
+    a name they know. `given` says whether the interview gave any (an empty list
+    is an answer: there is no shorter name). `canon` is the NPC who becomes this
+    character: their own names don't count as taken."""
+    name = sheet_name(character)
+    aliases = list(dict.fromkeys(str(a).strip() for a in sheet_aliases(character) if str(a).strip()))
+    if not given and len(normalize_entity_name(name).split()) > 1:
+        first = name.split()[0]
+        raise ValueError(
+            f"'{name}' needs \"aliases\" under identity: the shorter names the story will use "
+            f"(e.g. [\"{first}\"]), since facts, triggers and rolls find the character only by "
+            f"a name they know. Never a family name others share. If there is none: [].")
+    ids = WorldIds(json_ops, player=dict(character, identity=dict(character.get("identity") or {},
+                                                                  aliases=[])))
+    if canon:
+        ids._load()["npc"].pop(canon, None)   # this NPC is the character from now on
+    errors = [e for a in aliases if (e := ids.check_alias(a, "player"))]
+    if errors:
+        raise ValueError(" ".join(errors))
+    return aliases
+
+
 def change_aliases(json_ops, kind: str, name: str, add=(), remove=()) -> Tuple[str, List[str]]:
-    """Add aliases to an NPC or a place (kind "npc" or "location"), or remove
-    them, and save. Returns (key, aliases); raises ValueError for an unknown
-    name, an alias it doesn't have, or a refused alias (see check_alias)."""
+    """Add aliases to an NPC, a place or the player (kind "npc", "location" or
+    "player"; the player needs no `name`), or remove them, and save. Returns
+    (key, aliases); raises ValueError for an unknown name, an alias it doesn't
+    have, or a refused alias (see check_alias)."""
     ids = WorldIds(json_ops)
-    cid, error = ids.resolve_as(name, (kind,))
-    if error:
-        raise ValueError(error)
-    key = cid.partition(":")[2]
-    table = json_ops.load_json(TABLE_FILES[kind]) or {}
-    entry = table[key]
-    holder = entry.setdefault("identity", {}) if kind == "npc" else entry
+    if kind == "player":
+        table = json_ops.load_json(TABLE_FILES[kind]) or {}
+        if not table:
+            raise ValueError("No character yet.")
+        cid, key, entry = "player", ids.player_name(), table
+    else:
+        cid, error = ids.resolve_as(name, (kind,))
+        if error:
+            raise ValueError(error)
+        key = cid.partition(":")[2]
+        table = json_ops.load_json(TABLE_FILES[kind]) or {}
+        entry = table[key]
+    holder = entry if kind == "location" else entry.setdefault("identity", {})
     have = {a.lower() for a in holder.get("aliases") or []}
     gone = {r.strip().lower() for r in remove}
     errors = [f"{key} has no alias '{r}'." for r in remove if r.strip().lower() not in have]

@@ -7,6 +7,8 @@ the player may choose whatever they like. This module fills in what the intervie
 left out with the defaults, checks only what other scripts rely on (attribute names
 and die sizes, zone names), writes the whole sheet, and wires the new character in:
 
+- a name of several words needs its aliases (the shorter names the story will
+  use), each checked like an NPC's (world_ids.check_player_aliases);
 - it refuses to overwrite an existing character unless `replace` is set, and then
   archives the outgoing sheet to fallen/ first;
 - it records the character on the campaign overview;
@@ -208,7 +210,14 @@ class CharacterCreator(EntityManager):
         try:
             character, warnings = build_character(
                 data, WorldKit(str(self.campaign_mgr.world_state_dir)))
-        except CharacterError as error:
+            from world_ids import check_player_aliases
+            aliases = check_player_aliases(
+                self.json_ops, character, "aliases" in (data.get("identity") or {}),
+                resolved if canon else None)
+            character["identity"].pop("aliases", None)
+            if aliases:
+                character["identity"]["aliases"] = aliases
+        except (CharacterError, ValueError) as error:
             return {"success": False, "error": str(error)}
 
         archived = self._archive(existing) if existing else None

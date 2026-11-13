@@ -21,7 +21,7 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/new_character.py" "$@"
         ;;
 
-    "show"|"get"|"set"|"xp"|"award"|"grow"|"level-check"|"raise"|"perk"|"vital"|"kill"|"credits"|"item"|"loot"|"condition")
+    "show"|"get"|"set"|"alias"|"xp"|"award"|"grow"|"level-check"|"raise"|"perk"|"vital"|"kill"|"credits"|"item"|"loot"|"condition")
         $PYTHON_CMD "$LIB_DIR/player_manager.py" "$ACTION" "$@"
         ;;
 
@@ -35,6 +35,7 @@ case "$ACTION" in
         echo "                                 (--race --role --background --affiliation --physique --style"
         echo "                                  --presence --big-five --demeanor --voice --tells --want --need"
         echo "                                  --values --fears --goal; \"\" clears one)"
+        echo "  alias \"<short name>\"... [--remove <alias>] - shorter names the story uses (given at creation)"
         echo "  item add gear|inventory \"<item>\" [--concealed] [--note \"...\"]"
         echo "  item remove|move \"<item>\" [--to gear|inventory]   item list"
         echo "  loot --credits X --items \"A\" \"B\"  - into the inventory, plus credits"

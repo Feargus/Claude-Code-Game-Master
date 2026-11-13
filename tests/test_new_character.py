@@ -210,3 +210,57 @@ def test_creating_a_character_moves_nothing(isolated_world_state):
     ov = json.loads((cdir / "campaign-overview.json").read_text())
     assert ov["player_position"] == {"current_location": "The Tigress"}
     assert "opening_hook" not in ov
+
+
+# ---------- aliases: the shorter names the story uses ----------
+
+def _npcs(campaign, **npcs):
+    (campaign / "npcs.json").write_text(json.dumps(
+        {name: {"identity": dict({"name": name}, **identity)} for name, identity in npcs.items()}))
+
+
+def test_a_name_of_several_words_needs_its_aliases(campaign):
+    """"Dogen" for Dogen Mabuchi was unknown to facts, triggers and rolls: the
+    player's aliases can only be given at creation, and nothing asked for them."""
+    refused = CharacterCreator().create(_named("Dogen Mabuchi"))
+    assert not refused["success"] and '"aliases"' in refused["error"] and '["Dogen"]' in refused["error"]
+    assert not (campaign / "character.json").exists()
+
+    made = CharacterCreator().create(_named("Dogen Mabuchi", identity={"aliases": ["Dogen", " Dogen "]}))
+    assert made["success"] and made["character"]["identity"]["aliases"] == ["Dogen"]
+
+
+def test_no_shorter_name_is_an_answer_and_one_word_needs_none(campaign):
+    made = CharacterCreator().create(_named("Old Iron", identity={"aliases": []}))
+    assert made["success"] and "aliases" not in made["character"]["identity"]
+    assert CharacterCreator().create(_named("Tandy"), replace=True)["success"]
+
+
+def test_an_alias_that_names_someone_else_is_refused(campaign):
+    _npcs(campaign, **{"Mama Seo": {"aliases": ["Seo"]}})
+    for alias, why in [("Seo", "already names npc:Mama Seo"), ("player", "a word ids use"),
+                       ("Dogen Mabuchi", "own name")]:
+        refused = CharacterCreator().create(_named("Dogen Mabuchi", identity={"aliases": [alias]}))
+        assert not refused["success"] and why in refused["error"], (alias, refused["error"])
+
+
+def test_a_canon_character_keeps_the_npcs_aliases(campaign):
+    _npcs(campaign, **{"Mama Seo": {"aliases": ["Seo"]}, "Tomas Reyes": {}})
+    made = CharacterCreator().create({}, canon="Mama Seo")
+    assert made["success"] and made["character"]["identity"]["aliases"] == ["Seo"]
+    refused = CharacterCreator().create({}, canon="Tomas Reyes", replace=True)
+    assert not refused["success"] and '["Tomas"]' in refused["error"]
+
+
+def test_aliases_are_corrected_with_the_alias_command(campaign):
+    from lib.player_manager import PlayerManager
+    from lib.world_ids import WorldIds
+    _npcs(campaign, **{"Mama Seo": {"aliases": ["Seo"]}})
+    CharacterCreator().create(_named("Dogen Mabuchi", identity={"aliases": []}))
+    manager = PlayerManager()
+    assert manager.change_aliases(["Dogen", "the Dog"], [])["aliases"] == ["Dogen", "the Dog"]
+    assert not manager.change_aliases(["Seo"], [])["success"]
+    assert manager.change_aliases([], ["the dog"])["aliases"] == ["Dogen"]
+    ids = WorldIds(manager.json_ops)
+    assert ids.resolve("dogen") == ("player", "")
+    assert ids.mentioned("Juniper told Dogen about the key.") == ["player"]

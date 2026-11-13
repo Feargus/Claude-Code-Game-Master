@@ -99,6 +99,20 @@ class PlayerManager(EntityManager):
         print(f"[SUCCESS] {sheet_mod.name(char)}: set {', '.join(changed)}")
         return {'success': True, 'changed': changed}
 
+    def change_aliases(self, add: List[str], remove: List[str]) -> Dict[str, Any]:
+        """Add or remove the shorter names the story uses for the character, checked
+        like an NPC's (world_ids.change_aliases). Without any, show them."""
+        from world_ids import change_aliases
+        char = self._sheet()
+        if not char:
+            return {'success': False}
+        try:
+            name, aliases = change_aliases(self.json_ops, "player", "", add, remove)
+        except ValueError as error:
+            return self._refuse(str(error))
+        print(f"{name}: also called {', '.join(aliases)}" if aliases else f"{name}: no aliases")
+        return {'success': True, 'aliases': aliases}
+
     # ---------- XP and growth ----------
 
     def award_xp(self, amount: int, source: str = "correction",
@@ -494,6 +508,10 @@ def main():
     p = sub.add_parser('set', help='Text fields: identity, look, personality')
     sheet_mod.add_field_flags(p)
 
+    p = sub.add_parser('alias', help='Add or remove a shorter name the story uses')
+    p.add_argument('aliases', nargs='*')
+    p.add_argument('--remove', action='append', default=[])
+
     p = sub.add_parser('xp', help='Correct XP by hand (logged)')
     p.add_argument('amount')
     p.add_argument('--reason', default='')
@@ -578,6 +596,8 @@ def main():
         return
     if args.action == 'set':
         result = manager.set_fields(sheet_mod.fields_from_args(args))
+    elif args.action == 'alias':
+        result = manager.change_aliases(args.aliases, args.remove)
     elif args.action == 'xp':
         result = manager.award_xp(_int(args.amount, "XP amount"), "correction", args.reason)
     elif args.action == 'award':
