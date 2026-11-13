@@ -7,6 +7,7 @@ about the player, remembers or hides is not on the sheet: it is facts they hold
 (`gm-note.sh ... --holders npc:<name>`), and `show` lists them.
 """
 
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -21,6 +22,22 @@ from entity_manager import EntityManager, is_dead, is_party_member, usual_places
 DEATH_FACT_CATEGORY = "session_events"
 # Category of how an NPC regards the player (the attitude given at creation).
 FEELING_CATEGORY = "relations"
+
+
+def check_attitude(raw) -> tuple:
+    """(attitude, '') or ('', why it was refused). An attitude is one or more
+    adjectives, comma separated ("wary", "fond, exasperated"), never a sentence:
+    in the Tidewater playtest the GM wrote whole relationships into it ("a regular
+    at Seo's, polite; does not know Dogen beyond sight"), which hid plain facts
+    from the player. Empty is fine: not everyone has an attitude."""
+    words = [w.strip() for w in str(raw or "").strip().rstrip(".").split(",")]
+    words = [w for w in words if w]
+    if any(re.search(r"[.;:!?]", w) or len(w.split()) > 2 for w in words):
+        return "", (f"The attitude is one or more adjectives, comma separated (\"wary\", "
+                    f"\"fond, exasperated\"), not a sentence: '{raw}'. Leave it out for someone "
+                    f"with no attitude towards the player; what they know, remember or do is "
+                    f"its own fact (gm-note.sh).")
+    return ", ".join(words), ""
 
 
 class NPCManager(EntityManager):
@@ -74,9 +91,10 @@ class NPCManager(EntityManager):
                    fields: Optional[Dict[str, str]] = None) -> bool:
         """Create an NPC sheet. Returns True on success, False on failure (printed).
 
-        `role`: who they are in a few words. `attitude`: how they regard the player
-        at first ("wary", "owes her a favour"); it becomes a fact they hold about
-        the player, not a field, so later feelings are facts too. `locations`:
+        `role`: who they are in a few words. `attitude`: their attitude towards
+        the player at first, as one or more adjectives ("wary", "fond,
+        exasperated"), or nothing for someone who has none; it becomes a fact
+        they hold about the player, not a field (check_attitude). `locations`:
         where they are usually found (known places), required unless `nowhere`.
         `aliases`: shorter names the story will use, each checked. `fields`: any
         further text fields by flag name (sheet.TEXT_FIELDS), e.g. look, Big Five.
@@ -99,6 +117,9 @@ class NPCManager(EntityManager):
             errors.append(error)
         if self._entity_exists(self.npcs_file, name):
             errors.append(f"NPC {name} already exists")
+        attitude, error = check_attitude(attitude)
+        if error:
+            errors.append(error)
         sheet = sheet_mod.blank("npc", name)
         try:
             sheet_mod.set_fields(sheet, dict(fields or {}, **({"role": role} if role else {})))
@@ -122,8 +143,8 @@ class NPCManager(EntityManager):
             print(f"  Also called: {', '.join(sheet['identity']['aliases'])}")
         elif alias_hint("npc", name):
             print(alias_hint("npc", name))
-        if attitude and str(attitude).strip():
-            self._first_feeling(name, str(attitude).strip())
+        if attitude:
+            self._first_feeling(name, attitude)
         print(f"  Not in the scene yet: bash tools/gm-scene.sh enter \"{name}\" if they're here.")
         self._witness_hint(name)
         return True
@@ -133,7 +154,7 @@ class NPCManager(EntityManager):
         from note_manager import NoteManager
         player = sheet_mod.name(self.json_ops.load_json("character.json") or {}) or "the player"
         NoteManager(self.base_dir).add_fact(
-            FEELING_CATEGORY, f"How {name} regards {player}: {attitude.strip().rstrip('.')}.",
+            FEELING_CATEGORY, f"How {name} regards {player}: {attitude}.",
             list_waiting=False,
             about=[f"npc:{name}", "player"], holders=[f"npc:{name}"], nowhere=True)
 
@@ -362,7 +383,7 @@ def main():
     p = sub.add_parser('create', help='Create an NPC')
     p.add_argument('name')
     p.add_argument('role', help='who they are, in a few words')
-    p.add_argument('attitude', nargs='?', help='how they regard the player at first (becomes a fact)')
+    p.add_argument('attitude', nargs='?', help='attitude towards the player: one or more adjectives, comma separated (becomes a fact); optional')
     p.add_argument('--location', action='append', dest='locations',
                    help='where they are usually found (repeatable)')
     p.add_argument('--nowhere', action='store_true', help='no usual place')

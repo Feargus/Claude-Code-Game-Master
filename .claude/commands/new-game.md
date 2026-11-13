@@ -127,7 +127,7 @@ Write only what tonight needs:
    and when to start, so it fits them. Until then nothing of it is stored. Sketch:
    - **the place** you stand in (a street, a room, a deck), with 2–5 **exits** you can see;
      each with a sentence or two of what it is like (written before it is narrated);
-   - **2–4 people** there: who they are, how they regard the player, their look and personality, the short names the story
+   - **2–4 people** there: who they are, their attitude towards the player if they have one (adjectives only), their look and personality, the short names the story
      will use (aliases), and where each is usually found;
    - **the plot**: every campaign starts with at least one. Its **hook** is the
      problem that won't wait, and becomes its first beat. Its `npcs` and `locations`
@@ -143,7 +143,7 @@ Write only what tonight needs:
 4. Optional thin binder: a short `authored-canon.md` of *this street only*, then
    `gm-extract.sh prepare` so RAG has something to pull. Do not author the continent.
 
-When a new name walks on in play: `gm-npc.sh create "<name>" "<role>" "<attitude>" --location "<place>"` or `gm-location.sh add "<place>" "<where>" "<what it is like>"` (with a binder, search it first: `gm-search.sh "<name>" --rag-only`).
+When a new name walks on in play: `gm-npc.sh create "<name>" "<role>" ["<attitude: adjectives>"] --location "<place>"` or `gm-location.sh add "<place>" "<where>" "<what it is like>"` (with a binder, search it first: `gm-search.sh "<name>" --rag-only`).
 
 ---
 
@@ -193,7 +193,7 @@ bash tools/gm-session.sh opening '{
   "place": {"name": "<the place>", "position": "<where it is>", "description": "<what it is like>"},
   "exits": [{"name": "<what you can see>", "position": "<where it is>",
              "description": "<what it is like, a sentence or two>", "aliases": ["<short name>"]}],
-  "npcs": [{"name": "<Name>", "who": "<who they are>", "attitude": "<how they regard the player>",
+  "npcs": [{"name": "<Name>", "who": "<who they are>", "attitude": "<attitude towards the player: one or more adjectives, comma separated; leave out if none>",
             "aliases": ["<short name>"], "physique": "<…>", "style": "<…>",
             "presence": "<…>", "big_five": "<O1 C0 E2 A-1 N1>", "voice": "<…>"}],
   "plot": {"name": "<the thread>", "type": "main", "description": "<what it is about>",

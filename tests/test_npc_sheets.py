@@ -54,6 +54,11 @@ def test_create_needs_little_and_the_attitude_becomes_a_fact(world, capsys):
     assert [f["fact"] for f in feeling] == ["How Tod Brask regards Lullaby: wary."]
     assert feeling[0]["holders"] == ["npc:Tod Brask"] and "at" not in feeling[0]
     assert NPCManager(ws).create_npc("Benno", "a handler", locations=["The Pens"])  # no attitude
+    assert not NPCManager(ws).create_npc(
+        "Seo", "a cook", "fond of him; feeds him for free and tells him so", locations=["The Pens"])
+    assert "one or more adjectives" in capsys.readouterr().out
+    assert NPCManager(ws).create_npc("Seo", "a cook", "Fond,  exasperated.", locations=["The Pens"])
+    assert "How Seo regards Lullaby: Fond, exasperated." in capsys.readouterr().out
     assert NoteManager(ws).find(held_by=["npc:Benno"]) == []
     assert not NPCManager(ws).create_npc("Bad", "x", nowhere=True, fields={"big-five": "ENTJ"})
     assert "Big Five" in capsys.readouterr().out

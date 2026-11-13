@@ -30,7 +30,9 @@ after the character exists and the player has said where and when to start.
   `"nowhere": true` says otherwise. NPCs are in the
   scene unless `"present": false`. Any sheet text field can be given too
   (sheet.TEXT_FIELDS: physique, style, presence, big_five, voice, tells, want,
-  fears, ...). `attitude`, how they regard the player, becomes a fact they hold.
+  fears, ...). `attitude`, their attitude towards the player as one or more adjectives
+  ("wary", "fond, exasperated"; leave it out if they have none), becomes a fact
+  they hold.
 - The plot is required: every campaign starts with at least one. Its `hook`, the
   problem that won't wait, becomes its first beat, so STORY THREADS carries it
   on from there. Its `npcs` and `locations` that have no record yet are the

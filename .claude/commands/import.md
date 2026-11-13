@@ -223,7 +223,7 @@ bash tools/gm-session.sh opening '{
             "description": "<what it is like, from the book>"},
   "exits": [{"name": "<what you can see from here>",
              "description": "<what it is like, a sentence or two>"}],
-  "npcs": [{"name": "<Name>", "who": "<who they are, in the book>", "attitude": "<how they regard the player>",
+  "npcs": [{"name": "<Name>", "who": "<who they are, in the book>", "attitude": "<attitude towards the player: one or more adjectives, comma separated; leave out if none>",
             "aliases": ["<short name the story uses>"], "physique": "<…>", "style": "<…>",
             "presence": "<…>", "big_five": "<O1 C0 E2 A-1 N1>", "voice": "<…>"}],
   "plot": {"name": "<the thread>", "type": "main", "description": "<what it is about>",

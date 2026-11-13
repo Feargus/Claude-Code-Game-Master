@@ -138,7 +138,7 @@ What good expansion tends to include:
 ## Error Recovery
 
 Common issues and solutions:
-1. **NPC Creation**: name, role, and a usual place (or --nowhere); the attitude is optional and becomes a fact
+1. **NPC Creation**: name, role, and a usual place (or --nowhere); the attitude towards the player is optional, one or more adjectives ("wary", "fond, exasperated"), and becomes a fact
 2. **Path Errors**: Always use `uv run python` prefix
 3. **Missing Locations**: Verify existence before connecting
 
