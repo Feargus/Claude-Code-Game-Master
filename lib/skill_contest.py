@@ -21,6 +21,7 @@ happens silently; the output stays the quality alone.
 """
 
 import argparse
+import difflib
 import json
 import random
 import sys
@@ -129,29 +130,43 @@ def _find(table: Dict[str, Any], name: str) -> Optional[Any]:
 
 
 def find_sheet(campaign_dir: Path, name: str) -> Dict[str, Any]:
-    """Find who a name refers to: the player, a named NPC, then a mob. A mob in the
-    campaign's mobs.json wins over one of the same name in the repo's."""
+    """Find who a name refers to: the player, a named NPC, then a mob.
+
+    The player and NPCs go through the shared resolver (world_ids.py), so an
+    alias, a first name without its title, or another case finds them, as in
+    every other command. A mob is found by its name, case ignored; one in the
+    campaign's mobs.json wins over one of the same name in the repo's.
+    """
+    from world_ids import WorldIds
     ops = JsonOperations(str(campaign_dir))
+    ids = WorldIds(ops)
 
-    character = ops.load_json("character.json") or {}
-    if sheet_mod.name(character).lower() == name.lower():
-        return {**character, "is_player": True}
+    cid, error = ids.resolve_as(name, ("player", "npc"))
+    if cid == "player":
+        return {**(ops.load_json("character.json") or {}), "is_player": True}
+    if cid:
+        return (ops.load_json("npcs.json") or {})[cid.partition(":")[2]]
 
-    for table in (ops.load_json("npcs.json"),
-                  ops.load_json("mobs.json"),
-                  json.loads(REPO_MOBS.read_text(encoding="utf-8"))):
-        sheet = _find(table or {}, name)
-        if sheet is not None:
-            return sheet
+    mobs = {**json.loads(REPO_MOBS.read_text(encoding="utf-8")), **(ops.load_json("mobs.json") or {})}
+    sheet = _find(mobs, name.strip())
+    if sheet is not None:
+        return sheet
 
-    raise ContestError(f"Unknown name '{name}'. Add it to npcs.json or mobs.json, then roll again.")
+    close = difflib.get_close_matches(name.strip().lower(), [k.lower() for k in mobs], n=3, cutoff=0.75)
+    mob_hint = f" Mobs like it: {', '.join(k for k in mobs if k.lower() in close)}." if close else ""
+    player = f" The player is '{ids.player_name()}' (or just: player)." if ids.player_name() else ""
+    raise ContestError(
+        f"Unknown name '{name}'. {error}{mob_hint}{player} Use the name of the player, an NPC "
+        f"or a mob (gm-mob.sh list); someone new gets a sheet first (gm-npc.sh create, or gm-mob.sh add "
+        f"for interchangeable enemies), then roll again.")
 
 
 def dice_sizes(sheet: Dict[str, Any], name: str, attributes: List[str]) -> Dict[str, int]:
     """The die size of each attribute. Mobs may set a `default` for the rest."""
     table = sheet_mod.attributes(sheet)
     if not table:
-        raise ContestError(f"{name} has no stats yet. Add them, then roll again.")
+        raise ContestError(f"{name} has no stats yet. Give them some (gm-npc.sh stats \"{name}\" "
+                           f"--attr STR=12 ... or gm-mob.sh stats), then roll again.")
 
     sizes = {}
     for attribute in attributes:
@@ -207,6 +222,7 @@ def build_side(campaign_dir: Path, spec: List[str], advantages: Optional[List[Li
     disadvantages = _edges(name, attributes, disadvantages)
 
     sheet = find_sheet(campaign_dir, name)
+    name = sheet_mod.name(sheet) or name   # the sheet's own name, however it was typed
     sizes = dice_sizes(sheet, name, attributes)
     value = skill_value(sheet, skill)
     return {

@@ -363,3 +363,49 @@ def test_enough_learnings_raise_the_skill_and_grant_xp(campaign):
     sheet = json.loads((campaign / "character.json").read_text())
     assert sheet["stats"]["skills"]["Long guns"] == 3 and sheet["progress"]["xp"] == 30
     assert "+30 XP  skill: Long guns rose to 3" in (campaign / "xp.log").read_text()
+
+
+def test_an_alias_or_a_first_name_finds_the_player_and_npcs(campaign):
+    """Every other command resolves names through world_ids.py; the contest only
+    took the exact key, so "Ro" and "Dek" were unknown."""
+    path = campaign / "npcs.json"
+    npcs = json.loads(path.read_text())
+    npcs["Dekker"]["identity"]["aliases"] = ["Dek"]
+    npcs["Captain Ilse Varga"] = {"identity": {"name": "Captain Ilse Varga"},
+                               "stats": {"attributes": {"default": 8}}}
+    path.write_text(json.dumps(npcs))
+    character = json.loads((campaign / "character.json").read_text())
+    character["identity"]["aliases"] = ["Grey"]
+    (campaign / "character.json").write_text(json.dumps(character))
+
+    args = _args("--active", "grey", "Long guns", "DFT", "AGI", "ITU",
+                 "--reactive", "dek", "Evasion", "AGI", "ITU", "NRV")
+    run_contest(args, ScriptedDice(5, 5, 5, 4, 4, 4))
+    block = _log_blocks(campaign)[-1]
+    assert block["active"]["name"] == "Fearghas" and block["active"]["is_player"]
+    assert block["reactive"]["name"] == "Dekker"      # the log names the sheet
+
+    args = _args(*SHOOT, "--reactive", "ilse varga", "Evasion", "AGI", "ITU", "NRV")   # no title
+    run_contest(args, ScriptedDice(5, 5, 5, 4, 4, 4))
+    assert _log_blocks(campaign)[-1]["reactive"]["name"] == "Captain Ilse Varga"
+
+
+def test_an_unknown_name_gets_close_matches_and_the_commands(campaign):
+    with pytest.raises(ContestError) as refused:
+        run_contest(_args(*SHOOT, "--reactive", "Dekkar", "Evasion", "AGI", "ITU", "NRV"),
+                    ScriptedDice(5, 5, 5))
+    message = str(refused.value)
+    assert "did you mean: npc:Dekker" in message
+    assert "gm-npc.sh create" in message and "npcs.json" not in message
+    with pytest.raises(ContestError, match="Mobs like it: cockroach"):
+        run_contest(_args(*SHOOT, "--reactive", "cockroch", "Evasion", "AGI", "ITU", "NRV"),
+                    ScriptedDice(5, 5, 5))
+
+
+def test_the_player_can_be_called_player(campaign):
+    run_contest(_args("--active", "player", "Long guns", "DFT", "AGI", "ITU",
+                      "--reactive-dc", "10", "door"), ScriptedDice(5, 5, 5))
+    assert _log_blocks(campaign)[-1]["active"]["name"] == "Fearghas"
+    with pytest.raises(ContestError, match=r"The player is 'Fearghas' \(or just: player\)"):
+        run_contest(_args("--active", "Fergus", "Long guns", "DFT", "AGI", "ITU",
+                          "--reactive-dc", "10", "door"), ScriptedDice(5, 5, 5))

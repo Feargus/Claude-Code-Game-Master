@@ -128,7 +128,7 @@ bash tools/gm-skill-contest.sh --active Fearghas Larceny DFT DFT LOG --reactive-
 bash tools/gm-skill-contest.sh --active-dc 20 "nerve toxin" --reactive Fearghas Endurance VIG VIG ITU
 ```
 
-- **Names:** the player, an NPC from `npcs.json`, or a mob from `mobs.json`. Mobs have no personality, and their instances are interchangeable. Mobs you invent belong to the campaign.
+- **Names:** the player (by name, or just `player`), an NPC, or a mob (`gm-mob.sh list`). The player and NPCs are found by their aliases too, like everywhere else. Mobs have no personality, and their instances are interchangeable. Mobs you invent belong to the campaign.
 - **Unknown name or no stats:** the script refuses. Give them stats, then roll again; never edit the JSON by hand. `gm-mob.sh list` shows the repo's example mobs: they are the scale.
   ```
   bash tools/gm-npc.sh stats "Rook" --attr STR=12 --attr AGI=11 --attr default=10 \
