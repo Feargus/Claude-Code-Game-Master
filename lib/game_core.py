@@ -20,9 +20,9 @@ from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from dice import DiceRoller
+import random
 
-_roller = DiceRoller()
+from dice import roll
 
 
 
@@ -54,16 +54,12 @@ def remove_condition(conditions: List[str], condition: str) -> List[str]:
 
 
 def _roll_total(notation: str, rng: Any = None) -> int:
-    """Total of a simple 'NdM' roll. `rng` (e.g. random.Random) makes it
-    deterministic; without one, reuse the module DiceRoller (global RNG).
+    """Total of a roll (dice.py). `rng` (e.g. random.Random) makes it
+    deterministic; without one, the global RNG.
 
     Config dice here are bare 'NdM' (1d20, 2d6); the modifier travels separately.
     """
-    if rng is None:
-        return _roller.roll(notation)['total']
-    count_s, _, sides_s = (notation or '').strip().lower().partition('d')
-    count, sides = int(count_s or 1), int(sides_s)
-    return sum(rng.randint(1, sides) for _ in range(count))
+    return roll(notation, rng if rng is not None else random)
 
 
 def _rung_for(rungs: List[Dict[str, Any]], value: int, key: str) -> Optional[Dict[str, Any]]:

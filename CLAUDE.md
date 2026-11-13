@@ -80,8 +80,8 @@ outcome is genuinely certain (trivial, or literally impossible).
   behind it (no skill names, qualities, margins or "nat 20"; `skill-contest.log`
   already keeps every roll). The HUD line and `gm-body.sh show` are the exceptions.
 - **Other dice:** a campaign rule that names its own dice (the Invoice, a Black
-  Cache) rolls them with `uv run python lib/dice.py "1d20"`. Use a single die size
-  per command.
+  Cache) rolls them with `uv run python lib/dice.py "1d20+5"` (also `2d6`,
+  `2d6+1d4-1`). It prints the sum and nothing else.
 - **Things nobody does:** a skill contest is for an action someone takes. A process
   that just runs its course (water seeping into a cracked seal, a fire spreading,
   a cheap part failing) or pure chance (a coin toss, a die rolled in the story)
