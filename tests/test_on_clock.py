@@ -31,9 +31,9 @@ def test_match_is_checked_and_made_canonical(dcc_world):
     assert cm.add_consequence("x", "y", trigger_type="on_clock", match="Tracker:5") == ""
     assert cm.add_consequence("x", "y", trigger_type="on_clock", match="Tracker:0") == ""
     full = cm.add_consequence("x", "y", trigger_type="on_clock", match="tracker")
-    assert _stored(dcc_world, full)["triggers"] == [{"type": "on_clock", "match": "Tracker:4"}]
+    assert _stored(dcc_world, full)["triggers"] == [{"type": "on_clock", "match": "clock:Tracker:4"}]
     part = cm.add_consequence("x", "y", trigger_type="on_clock", match="TRACKER : 2")
-    assert _stored(dcc_world, part)["triggers"] == [{"type": "on_clock", "match": "Tracker:2"}]
+    assert _stored(dcc_world, part)["triggers"] == [{"type": "on_clock", "match": "clock:Tracker:2"}]
 
 
 def test_advancing_fires_each_crossed_segment_once(dcc_world):
@@ -78,7 +78,7 @@ def test_time_passing_fires_a_time_clock(dcc_world):
 def test_on_clock_never_fires_on_the_scene_check(dcc_world):
     cm = ConsequenceManager(dcc_world)
     c = {"id": "x", "consequence": "c", "trigger": "t",
-         "triggers": [{"type": "on_clock", "match": "Tracker:2"}]}
+         "triggers": [{"type": "on_clock", "match": "clock:Tracker:2"}]}
     assert cm._matches_now(c, {"location": "Tracker:2"}) == ""
 
 
@@ -88,4 +88,31 @@ def test_a_clock_a_consequence_will_start_can_be_matched(dcc_world):
         {"type": "start_clock", "name": "Vendetta", "segments": 3, "on": "event"}])
     assert cm.add_consequence("x", "y", trigger_type="on_clock", match="Vendetta:4") == ""
     cid = cm.add_consequence("Dead rat on the door", "y", trigger_type="on_clock", match="vendetta:1")
-    assert _stored(dcc_world, cid)["triggers"] == [{"type": "on_clock", "match": "Vendetta:1"}]
+    assert _stored(dcc_world, cid)["triggers"] == [{"type": "on_clock", "match": "clock:Vendetta:1"}]
+
+
+def test_rewording_a_clock_leaves_its_triggers_working(dcc_world):
+    """The trigger holds the clock's id, not its description."""
+    tcm = ThreatClockManager(dcc_world)
+    tcm.add_clock("Tracker", 2, advance_on="event", text="The tracker closes in")
+    cm = ConsequenceManager(dcc_world)
+    cid = cm.add_consequence("Footprints at the door", "halfway", trigger_type="on_clock",
+                             match="The tracker closes in:1")   # found by its text, too
+    assert _stored(dcc_world, cid)["triggers"] == [{"type": "on_clock", "match": "clock:Tracker:1"}]
+    tcm.set_text("Tracker", "The tracker has the scent")
+    assert [c["id"] for c in tcm.advance("tracker")["fired"]] == [cid]
+
+
+def test_a_trigger_stored_before_clocks_had_ids_still_fires(dcc_world):
+    tcm = ThreatClockManager(dcc_world)
+    tcm.add_clock("Tracker", 2, advance_on="event")
+    cm = ConsequenceManager(dcc_world)
+    cid = cm.add_consequence("Footprints at the door", "halfway", trigger_type="on_clock",
+                             match="Tracker:1")
+    path = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "consequences.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    for c in data["active"]:
+        if c["id"] == cid:
+            c["triggers"][0]["match"] = "Tracker:1"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    assert [c["id"] for c in tcm.advance("Tracker")["fired"]] == [cid]

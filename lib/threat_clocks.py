@@ -169,7 +169,8 @@ class ThreatClockManager(EntityManager):
         mx = int(clock.get("max", 1))
         fired = []
         for segment in range(before + 1, int(clock.get("current", 0)) + 1):
-            fired += cm.fire_event("on_clock", f"{name}:{segment}",
+            # The id, and the bare form consequences stored before clocks had ids.
+            fired += cm.fire_event("on_clock", [f"clock:{name}:{segment}", f"{name}:{segment}"],
                                    f"clock {name} reached {segment}/{mx}")
         return fired
 

@@ -323,37 +323,43 @@ class ConsequenceManager(EntityManager):
         return f"{who} learns {what}", ""
 
     def _clock_target(self, raw: str):
-        """The canonical on_clock match for `raw`: ("<clock name>:<segment>", "").
+        """The canonical on_clock match for `raw`: ("clock:<key>:<segment>", "").
 
-        `raw` is a clock's name, which means "when it is full", or "<name>:<segment>"
-        for a grim portent partway. The clock must exist, or be one a waiting
-        consequence starts when it fires, and the segment must be on it.
+        `raw` is a clock's short name, which means "when it is full", or
+        "<name>:<segment>" for a grim portent partway. The clock is looked up by
+        the shared resolver (world_ids.py); one that doesn't exist yet counts if a
+        waiting consequence starts it when it fires. The segment must be on it.
         Returns ("", error) if not.
         """
+        from world_ids import WorldIds, find_clock
         raw = str(raw).strip()
         name, segment = raw, None
         head, sep, tail = raw.rpartition(':')
         if sep and tail.strip().isdigit():
             name, segment = head.strip(), int(tail)
-        # Existing clocks, then clocks a waiting consequence will start when it fires.
-        sizes = {k: int(c.get('max', 1))
-                 for k, c in (self.json_ops.load_json("threat-clocks.json") or {}).items()}
-        for c in (self.json_ops.load_json(self.consequences_file) or {}).get('active', []):
-            for e in c.get('effects') or []:
-                if e.get('type') == 'start_clock':
-                    sizes.setdefault(e['name'], int(e.get('segments', 1)))
-        key = next((k for k in sizes if k.lower() == name.lower()), None)
-        if key is None:
-            known = ', '.join(sizes) or 'none yet'
-            return "", (f"on_clock matches a clock's name, or \"<name>:<segment>\"; no clock "
-                        f"'{name}' exists or is waiting to start (clocks: {known}). "
-                        f"Create it first (gm-clock.sh add).")
-        mx = sizes[key]
+        cid, error = WorldIds(self.json_ops).resolve_as(name, ("clock",))
+        if cid:
+            key = cid.partition(":")[2]
+            mx = int((self.json_ops.load_json("threat-clocks.json") or {})[key].get('max', 1))
+        else:
+            # Clocks a waiting consequence will start when it fires.
+            waiting = {}
+            for c in (self.json_ops.load_json(self.consequences_file) or {}).get('active', []):
+                for e in c.get('effects') or []:
+                    if e.get('type') == 'start_clock':
+                        waiting.setdefault(e['name'], {'max': int(e.get('segments', 1)),
+                                                       'text': e.get('text')})
+            key = find_clock(waiting, name)
+            if not key:
+                also = f" Waiting to start: {', '.join(waiting)}." if waiting else ""
+                return "", (f"on_clock matches a clock's short name, or \"<name>:<segment>\". "
+                            f"{error}{also} Create it first (gm-clock.sh add).")
+            mx = waiting[key]['max']
         if segment is None:
             segment = mx
         if not 1 <= segment <= mx:
             return "", f"Clock '{key}' has segments 1 to {mx}, not {segment}."
-        return f"{key}:{segment}", ""
+        return f"clock:{key}:{segment}", ""
 
     @staticmethod
     def structured_triggers(consequence: Dict[str, Any]) -> List[Dict[str, str]]:

@@ -33,7 +33,8 @@ add:
                                                           evening 17-19, dusk 19-21, night 21-23,
                                                           midnight 23-01; not a date)
     --trigger-type on_death    --match "<NPC>" | player
-  Places and NPCs are stored as ids (location:<name>, npc:<name>); add new ones first.
+  Places, NPCs and clocks are stored as ids (location:<name>, npc:<name>,
+  clock:<short name>:<segment>); add new ones first.
     --trigger-type on_clock    --match "<clock's short name>" | "<short name>:<segment>"
     --trigger-type on_learn    --match "<who> learns <fact id>" | "<who> learns about <id>"
     --trigger-type on_event    --match "<the event, in words>"
