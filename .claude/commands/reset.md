@@ -19,7 +19,6 @@ Cleared:
   • Facts, plots, consequences
   • Combat state, campaign memory, threat clocks
   • Session history, world-tick log, loremaster cache
-  • Snapshot saves
 
 Kept:
   • Source: current-document.txt, metadata.json, chunks/, vectors/, images/

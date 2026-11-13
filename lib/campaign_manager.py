@@ -211,7 +211,6 @@ class CampaignManager:
         try:
             # Create campaign directory structure
             campaign_path.mkdir(parents=True)
-            (campaign_path / "saves").mkdir()
             (campaign_path / "extracted").mkdir()
 
             # Initialize empty state files
@@ -340,11 +339,6 @@ class CampaignManager:
                         info[filename.replace('.json', '_count')] = len(data)
                 except (json.JSONDecodeError, IOError) as e:
                     print(f"[WARNING] Could not read {filename} for {name}: {e}", file=sys.stderr)
-
-        # Count saves
-        saves_dir = campaign_path / "saves"
-        if saves_dir.exists():
-            info["saves_count"] = len(list(saves_dir.glob("*.json")))
 
         return info
 

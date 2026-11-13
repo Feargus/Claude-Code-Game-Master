@@ -1,21 +1,15 @@
-"""Tests for the Stop autosave hook: the config is valid (statusLine preserved)
-and the script parses."""
+"""The Claude Code settings: the status line is configured, and nothing runs on
+its own. The Stop hook that autosaved after every turn went with the save system
+(2026-11-13); recall reads the facts directly, so nothing needs refreshing."""
 
 import json
-import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_settings_keeps_statusline_and_adds_hooks():
+def test_settings_keep_the_statusline_and_have_no_hooks():
     s = json.loads((ROOT / ".claude" / "settings.json").read_text(encoding="utf-8"))
-    assert "statusLine" in s, "must not clobber the existing statusLine"
-    assert "Stop" in s["hooks"]
-
-
-def test_hook_scripts_exist_and_parse():
-    for name in ("session-autosave.sh",):
-        p = ROOT / ".claude" / "hooks" / name
-        assert p.exists(), f"missing hook {name}"
-        assert subprocess.run(["bash", "-n", str(p)]).returncode == 0
+    assert s["statusLine"]["command"] == "bash tools/gm-statusline.sh"
+    assert "hooks" not in s
+    assert not (ROOT / ".claude" / "hooks").exists()

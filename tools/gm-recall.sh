@@ -7,7 +7,8 @@
 #   gm-recall.sh arc '{"summary": "...", "who_matters": [...], "open_debts": [...]}'
 #                                                      # REQUIRED at session end — long-term memory
 #   gm-recall.sh memoir                                # arc entries + recent verbatim
-#   gm-recall.sh refresh                               # rebuild the memory index (auto on save)
+#   gm-recall.sh refresh                               # recompute the embeddings for semantic recall
+#                                                      # (only with the RAG deps; keyword recall needs none)
 
 source "$(dirname "$0")/common.sh"
 

@@ -174,7 +174,6 @@ only for operational lessons that fit nowhere else.
 
 ## Technical Notes
 - **Python:** always `uv run python` (never bare `python`/`python3`).
-- **Saves:** JSON snapshots in each campaign's `saves/`.
 - **Multi-campaign:** tools read `world-state/active-campaign.txt`.
 - **Architecture:** bash wrappers (`tools/`) → Python managers (`lib/`) → per-campaign `world-state/campaigns/<name>/*.json`. The generic core is `game_core.py`; the per-book ruleset is `world_kit.py` (`ruleset.json`).
 

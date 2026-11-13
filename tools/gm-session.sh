@@ -22,18 +22,11 @@ show_usage() {
     echo "  world-tick-rollback      - Undo the most recent world tick"
     echo "  world-tick-log           - Show world-tick history"
     echo ""
-    echo "Save System (JSON snapshots):"
-    echo "  save <name>              - Create named save point"
-    echo "  restore <save-name>      - Restore from save point"
-    echo "  list-saves               - List all save points"
-    echo "  delete-save <name>       - Delete a save point"
     echo "  history                  - Show session history"
     echo ""
     echo "Examples:"
     echo "  gm-session.sh start"
     echo "  gm-session.sh end \"Defeated the dragon, found treasure\""
-    echo "  gm-session.sh save \"before-boss-fight\""
-    echo "  gm-session.sh restore 20250127-before-boss-fight"
     echo "  gm-session.sh context"
 }
 
@@ -47,7 +40,7 @@ shift
 
 # Every action the case below handles, in one place: the guard and the
 # unknown-action message both read this, so they cannot drift apart.
-VALID_ACTIONS="start end status move context choices opening world-tick world-tick-rollback world-tick-log save restore list-saves delete-save history"
+VALID_ACTIONS="start end status move context choices opening world-tick world-tick-rollback world-tick-log history"
 
 is_valid_action() {
     local valid
@@ -240,51 +233,6 @@ case "$ACTION" in
         for arg in "$@"; do [ "$arg" = "--full" ] && FULL_FLAG=true; done
         log_token_usage "gm-session-context" "full=$FULL_FLAG" "output_chars=$CONTEXT_CHARS" "output_tokens_est=$CONTEXT_TOKENS"
         exit $CONTEXT_STATUS
-        ;;
-
-    save)
-        if [ "$#" -lt 1 ]; then
-            echo "Usage: gm-session.sh save <name>"
-            echo ""
-            echo "Existing saves:"
-            $PYTHON_CMD "$LIB_DIR/session_manager.py" list-saves
-            exit 1
-        fi
-        echo "Creating Save Point"
-        echo "==================="
-        echo ""
-        $PYTHON_CMD "$LIB_DIR/session_manager.py" save "$@"
-        # Refresh long-term campaign memory on save (best-effort; never blocks).
-        $PYTHON_CMD "$LIB_DIR/campaign_memory.py" refresh >/dev/null 2>&1 || true
-        ;;
-
-    restore)
-        if [ "$#" -lt 1 ]; then
-            echo "Usage: gm-session.sh restore <save-name>"
-            echo ""
-            echo "Available saves:"
-            $PYTHON_CMD "$LIB_DIR/session_manager.py" list-saves
-            exit 1
-        fi
-        echo "Restoring from Save"
-        echo "==================="
-        echo ""
-        $PYTHON_CMD "$LIB_DIR/session_manager.py" restore "$1"
-        ;;
-
-    list-saves)
-        echo "Save Points"
-        echo "==========="
-        echo ""
-        $PYTHON_CMD "$LIB_DIR/session_manager.py" list-saves
-        ;;
-
-    delete-save)
-        if [ "$#" -lt 1 ]; then
-            echo "Usage: gm-session.sh delete-save <name>"
-            exit 1
-        fi
-        $PYTHON_CMD "$LIB_DIR/session_manager.py" delete-save "$1"
         ;;
 
     history)

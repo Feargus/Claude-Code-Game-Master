@@ -2,8 +2,8 @@
 """
 Long-term campaign memory — so a 50-session campaign remembers itself.
 
-Builds a recall index over the campaign's OWN lived history (session summaries +
-facts) and maintains a tiered, consolidating memoir (always-on arc summary +
+Recalls from the campaign's OWN lived history (session summaries + facts, read
+as they are now) and maintains a tiered, consolidating memoir (always-on arc summary +
 recent verbatim + compressed older + retrievable archive) so memory stays
 high-signal and bounded. A provenance dimension separates book-canon from
 our-story so the huge imported world stays out of always-loaded context while the
@@ -99,26 +99,43 @@ class CampaignMemory(EntityManager):
             bits.append("Open debts: " + "; ".join(a["open_debts"]))
         return " ".join(b for b in bits if b)
 
-    # ---- index build + recall ----
+    # ---- recall ----
+
+    def entries(self) -> List[Dict[str, Any]]:
+        """Everything recall searches, as it is now: the session summaries and
+        facts (gather), then the GM's arc entries. Read fresh every time, so a
+        fact is recallable the moment it is recorded; nothing is kept in a copy
+        that could go stale."""
+        return self.gather() + [{"text": self._arc_text(a), "provenance": "our-story",
+                                 "source": "arc", "tier": "arc"} for a in self.arcs()]
+
+    @staticmethod
+    def _hash(entries: List[Dict[str, Any]]) -> str:
+        import hashlib
+        return hashlib.md5("\x1f".join(e["text"] for e in entries).encode("utf-8")).hexdigest()
 
     def refresh(self) -> int:
-        """Rebuild the recall collection (called on save). Preserves arcs, and
-        (when RAG deps are installed) embeds entries for semantic recall —
-        re-embedding only when the entry texts actually changed, since this
-        runs on every autosave."""
-        entries = self.gather()
-        entries += [{"text": self._arc_text(a), "provenance": "our-story",
-                     "source": "arc", "tier": "arc"} for a in self.arcs()]
+        """Recompute the embeddings for semantic recall, when the RAG deps are
+        installed and the entries changed since the last time. Without the deps
+        there is nothing to keep: keyword recall reads the entries directly.
+        campaign-memory.json holds the arcs, plus the embeddings and the hash of
+        the texts they belong to. Returns the number of entries."""
+        entries = self.entries()
         data = self.json_ops.load_json(self.memory_file) or {}
-        data["entries"] = entries
-
-        texts = [e["text"] for e in entries]
-        import hashlib
-        content_hash = hashlib.md5("\x1f".join(texts).encode("utf-8")).hexdigest()
-        if data.get("entries_hash") != content_hash:
-            data["entries_hash"] = content_hash
-            data["embeddings"] = self._embed_batch(texts)  # None when deps missing
-        self.json_ops.save_json(self.memory_file, data)
+        had = dict(data)
+        data.pop("entries", None)          # the copy older versions kept
+        content_hash = self._hash(entries)
+        if data.get("entries_hash") != content_hash or not data.get("embeddings"):
+            vectors = self._embed_batch([e["text"] for e in entries])  # None when deps missing
+            if vectors:
+                data["entries_hash"], data["embeddings"] = content_hash, vectors
+            else:
+                data.pop("entries_hash", None)
+                data.pop("embeddings", None)
+        if not any(data.values()):          # nothing to keep: no arcs, no embeddings
+            (self.campaign_dir / self.memory_file).unlink(missing_ok=True)
+        elif data != had:
+            self.json_ops.save_json(self.memory_file, data)
         return len(entries)
 
     @staticmethod
@@ -135,12 +152,13 @@ class CampaignMemory(EntityManager):
 
     def recall(self, query: str, top_k: int = 5, provenance: str = None) -> List[Dict[str, Any]]:
         """Recall over the campaign's history: cosine over stored embeddings
-        when available, keyword overlap otherwise."""
+        when they belong to the entries as they are now, keyword overlap
+        otherwise (no RAG deps, or facts recorded since the last refresh)."""
+        entries = self.entries()
         data = self.json_ops.load_json(self.memory_file) or {}
-        entries = data.get("entries") or self.gather()
         vectors = data.get("embeddings")
 
-        if vectors and len(vectors) == len(entries):
+        if vectors and len(vectors) == len(entries) and data.get("entries_hash") == self._hash(entries):
             hits = self._recall_semantic(query, entries, vectors, top_k, provenance)
             if hits is not None:
                 return hits

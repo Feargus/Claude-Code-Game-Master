@@ -53,7 +53,6 @@ class AgentExtractor:
         self.extraction_dir.mkdir(parents=True, exist_ok=True)
         (self.extraction_dir / "chunks").mkdir(exist_ok=True)
         (self.extraction_dir / "extracted").mkdir(exist_ok=True)
-        (self.extraction_dir / "saves").mkdir(exist_ok=True)
 
     def _backup_existing_data(self) -> Dict[str, Any]:
         """Backup existing campaign data before extraction.
@@ -110,7 +109,6 @@ class AgentExtractor:
             self.extraction_dir.mkdir(parents=True, exist_ok=True)
             (self.extraction_dir / "chunks").mkdir(exist_ok=True)
             (self.extraction_dir / "extracted").mkdir(exist_ok=True)
-            (self.extraction_dir / "saves").mkdir(exist_ok=True)
 
         print(f"Campaign folder: {self.extraction_dir}")
 

@@ -50,7 +50,7 @@ STORY_FILES=(
     world-tick-log.json
     loremaster-cache.json
 )
-STORY_DIRS=(saves fallen characters)
+STORY_DIRS=(fallen characters)
 
 show_usage() {
     echo "Usage: gm-reset.sh <action> [--yes]"
@@ -72,7 +72,7 @@ show_usage() {
     echo "Reset keeps the SOURCE (source/current-document.txt, metadata.json, chunks/, vectors/,"
     echo "images/), the WORLD (world-bible.json, world-seed.json) and the KIT (ruleset.json,"
     echo "rules.md, chronicler.json); it clears the STORY (characters, NPCs, locations,"
-    echo "facts, plots, items, consequences, combat, memory, clocks, session log, saves/,"
+    echo "facts, plots, items, consequences, combat, memory, clocks, session log,"
     echo "fallen/)."
     echo ""
     echo "Note: This resets the ACTIVE CAMPAIGN only."

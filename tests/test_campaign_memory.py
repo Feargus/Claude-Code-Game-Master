@@ -12,14 +12,13 @@ _TOKEN = "zephyrstone"
 
 
 def _seed_matching_entries(dcc_world, n=8):
-    """Write n keyword-matching entries so top-k caps are observable."""
+    """Record n keyword-matching facts so top-k caps are observable."""
     m = CampaignMemory(dcc_world)
-    entries = [
-        {"text": f"{_TOKEN} fragment {i} recovered from the vault.",
-         "provenance": "our-story", "source": "facts:session_events", "tier": "archive"}
-        for i in range(n)
-    ]
-    m.json_ops.save_json("campaign-memory.json", {"entries": entries, "arcs": []})
+    facts = m.json_ops.load_json("facts.json")
+    facts.setdefault("session_events", []).extend(
+        {"id": f"f9{i:02d}", "fact": f"{_TOKEN} fragment {i} recovered from the vault.",
+         "holders": ["player"]} for i in range(n))
+    m.json_ops.save_json("facts.json", facts)
     return m
 
 
@@ -56,12 +55,38 @@ def test_memoir_is_tiered_and_bounded(dcc_world):
     assert mem["archive_count"] >= 0 and mem["compressed_older"] >= 0
 
 
-def test_refresh_writes_collection(dcc_world):
+def test_refresh_keeps_no_copy_of_the_facts(dcc_world):
+    """campaign-memory.json held a copy of every fact, rebuilt on each save; a
+    fact recorded since was not recallable until the next one. Recall reads the
+    facts as they are, and the file keeps only the arcs (and embeddings, when
+    the RAG deps are installed)."""
     m = CampaignMemory(dcc_world)
-    n = m.refresh()
-    assert n > 0
-    data = m.json_ops.load_json("campaign-memory.json")
-    assert "entries" in data and len(data["entries"]) == n
+    m.json_ops.save_json("campaign-memory.json", {"entries": [{"text": "an old copy"}], "arcs": []})
+    assert m.refresh() == len(m.entries()) > 0
+    assert not (m.campaign_dir / "campaign-memory.json").exists()    # nothing left to keep
+    m.add_arc("They crossed the first floor.")
+    m.refresh()
+    assert list(m.json_ops.load_json("campaign-memory.json")) == ["arcs"]
+
+
+def test_a_fact_is_recallable_the_moment_it_is_recorded(dcc_world):
+    from lib.note_manager import NoteManager
+    m = CampaignMemory(dcc_world)
+    assert m.recall(_TOKEN) == []
+    NoteManager(dcc_world).add_fact("session_events", f"The {_TOKEN} hums in the vault.",
+                                    nowhere=True)
+    assert [e["text"] for e in m.recall(_TOKEN)] == [f"The {_TOKEN} hums in the vault."]
+
+
+def test_stale_embeddings_are_not_used(dcc_world):
+    """Embeddings belong to the texts they were made from: with a fact recorded
+    since, recall falls back to keywords instead of pairing them wrongly."""
+    m = CampaignMemory(dcc_world)
+    entries = m.entries()
+    m.json_ops.save_json("campaign-memory.json", {
+        "arcs": [], "entries_hash": "not the current one",
+        "embeddings": [[0.0] * 3 for _ in entries]})
+    assert m.recall("alliance Tutorial Guild Hall")     # the keyword path answered
 
 
 def test_session_log_is_not_mutated(dcc_world):

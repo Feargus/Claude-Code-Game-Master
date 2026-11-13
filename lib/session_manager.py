@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """
 Session management module for GM tools
-Handles session lifecycle, party movement, and JSON-based saves
+Handles session lifecycle, party movement and the session brief
 """
 
-import json
 import os
-import re
 import sys
 from typing import Dict, List, Optional, Any
 from pathlib import Path
@@ -49,53 +47,12 @@ class SessionManager(EntityManager):
     DEFAULT_PREFERENCES = {"action_menu": True,
                            "beat_length": "adaptive", "rag_inspiration": False}
 
-    SAVE_VERSION = 1
-    AUTOSAVE_KEEP = 3
-
-    # Live campaign files snapshotted when present. character.json is captured
-    # via the `characters` helper (the PC sheet), not as a filename key.
-    # combat_state.json is the on-disk combat file (not combats.json).
-    SNAPSHOT_JSON_FILES = (
-        "campaign-overview.json",
-        "npcs.json",
-        "locations.json",
-        "facts.json",
-        "plots.json",
-        "items.json",
-        "consequences.json",
-        "ruleset.json",
-        "world-bible.json",
-        "threat-clocks.json",
-        "campaign-memory.json",
-        "chronicler.json",
-        "world-tick-log.json",
-        "combat_state.json",
-    )
-    SNAPSHOT_TEXT_FILES = (
-        "rules.md",
-        "session-log.md",
-    )
-    CONTRACT_FILES = SNAPSHOT_JSON_FILES + SNAPSHOT_TEXT_FILES + (
-        "character.json",
-        "fallen/*.json",
-    )
-    LEGACY_SNAPSHOT_KEYS = {
-        "campaign_overview": "campaign-overview.json",
-        "npcs": "npcs.json",
-        "locations": "locations.json",
-        "facts": "facts.json",
-        "consequences": "consequences.json",
-    }
-    _AUTOSAVE_FILE = re.compile(r"^\d{8}-\d{6}-autosave(?:-\d+)?\.json$")
-
     def __init__(self, world_state_dir: str = None):
         super().__init__(world_state_dir)
 
         # Additional paths specific to session management
         self._wsd = world_state_dir  # passed through to sibling managers (CampaignMemory)
         self.world_state_dir = self.campaign_dir  # Alias for compatibility
-        self.saves_dir = self.campaign_dir / "saves"
-        self.saves_dir.mkdir(parents=True, exist_ok=True)
 
         # Core files
         self.campaign_file = "campaign-overview.json"
@@ -107,10 +64,6 @@ class SessionManager(EntityManager):
     def get_timestamp(self) -> str:
         """Get formatted timestamp"""
         return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-
-    def get_iso_timestamp(self) -> str:
-        """Get ISO format timestamp for filenames"""
-        return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
 
     # ==================== Play-Style Preferences ====================
 
@@ -392,184 +345,6 @@ class SessionManager(EntityManager):
 
         print(f"[SUCCESS] Party moved from {old_location} to {location}")
         return result
-
-    # ==================== Save System ====================
-
-    def create_save(self, name: str) -> str:
-        """
-        Create a named save point (JSON snapshot)
-        Returns the save filename
-        """
-        safe_name = name.lower().replace(' ', '-')
-        filename = self._unique_save_filename(safe_name)
-
-        save_data = {
-            "save_version": self.SAVE_VERSION,
-            "name": name,
-            "created": datetime.now(timezone.utc).isoformat(),
-            "session_number": self._get_session_number(),
-            "snapshot": self._build_snapshot(),
-        }
-
-        save_path = self.saves_dir / filename
-        with open(save_path, 'w', encoding='utf-8') as f:
-            json.dump(save_data, f, indent=2, ensure_ascii=False)
-
-        if safe_name == "autosave":
-            self._rotate_autosaves()
-
-        print(f"[SUCCESS] Save created: {filename}")
-        return filename
-
-    def restore_save(self, name: str) -> bool:
-        """
-        Restore from a save point
-        Name can be full filename or partial match
-        """
-        save_file = self._find_save(name)
-        if not save_file:
-            print(f"[ERROR] Save point '{name}' not found")
-            return False
-
-        try:
-            with open(save_file, 'r', encoding='utf-8') as f:
-                save_data = json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"[ERROR] Failed to load save: {e}")
-            return False
-
-        snapshot = save_data.get('snapshot', {})
-        if not isinstance(snapshot, dict):
-            snapshot = {}
-
-        if save_data.get("save_version") is None:
-            missing = self._uncovered_contract_files(snapshot)
-            print("[WARNING] Partial restore: save has no save_version; "
-                  "snapshot did not include: " + ", ".join(missing))
-
-        for key, value in snapshot.items():
-            self._restore_snapshot_entry(key, value)
-
-        print(f"[SUCCESS] Restored from save: {save_file.name}")
-        return True
-
-    def _build_snapshot(self) -> Dict[str, Any]:
-        """Snapshot every live stateful campaign file; omit missing ones."""
-        snapshot = {}
-        for filename in self.SNAPSHOT_JSON_FILES:
-            if (self.campaign_dir / filename).is_file():
-                snapshot[filename] = self.json_ops.load_json(filename)
-        for filename in self.SNAPSHOT_TEXT_FILES:
-            path = self.campaign_dir / filename
-            if path.is_file():
-                snapshot[filename] = path.read_text(encoding="utf-8")
-        characters = self._load_all_characters()
-        if characters:
-            snapshot["characters"] = characters
-        fallen_dir = self.campaign_dir / "fallen"
-        if fallen_dir.is_dir():
-            for fallen_file in sorted(fallen_dir.glob("*.json")):
-                rel = f"fallen/{fallen_file.name}"
-                snapshot[rel] = self.json_ops.load_json(rel)
-        return snapshot
-
-    def _restore_snapshot_entry(self, key: str, value: Any) -> None:
-        """Restore one snapshot key. Legacy underscored names still apply."""
-        if key == "characters":
-            if isinstance(value, dict):
-                self._restore_characters(value)
-            return
-        if key in self.LEGACY_SNAPSHOT_KEYS:
-            self.json_ops.save_json(self.LEGACY_SNAPSHOT_KEYS[key], value)
-            return
-        if key in self.SNAPSHOT_TEXT_FILES:
-            text = value if isinstance(value, str) else ""
-            (self.campaign_dir / key).write_text(text, encoding="utf-8")
-            return
-        fallen = key.startswith("fallen/") and key.endswith(".json") and "/" not in key[7:]
-        if key in self.SNAPSHOT_JSON_FILES or fallen:
-            dest = self.campaign_dir / key
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            self.json_ops.save_json(key, value)
-
-    def _uncovered_contract_files(self, snapshot: Dict[str, Any]) -> List[str]:
-        """Contract files this snapshot has no key for (legacy partial restores)."""
-        covered = set()
-        for key in snapshot:
-            if key == "characters" or key == "character.json":
-                covered.add("character.json")
-            elif key in self.LEGACY_SNAPSHOT_KEYS:
-                covered.add(self.LEGACY_SNAPSHOT_KEYS[key])
-            elif key.startswith("fallen/"):
-                covered.add("fallen/*.json")
-            else:
-                covered.add(key)
-        return [name for name in self.CONTRACT_FILES if name not in covered]
-
-    def _unique_save_filename(self, safe_name: str) -> str:
-        """{timestamp}-{name}.json, uniquified if that path already exists."""
-        timestamp = self.get_iso_timestamp()
-        filename = f"{timestamp}-{safe_name}.json"
-        if not (self.saves_dir / filename).exists():
-            return filename
-        n = 2
-        while (self.saves_dir / f"{timestamp}-{safe_name}-{n}.json").exists():
-            n += 1
-        return f"{timestamp}-{safe_name}-{n}.json"
-
-    def _autosave_seq(self, filename: str) -> int:
-        """Order among same-second autosaves: bare = 1, -2 = 2, …"""
-        match = re.search(r"-autosave(?:-(\d+))?\.json$", filename)
-        if not match:
-            return 0
-        return int(match.group(1) or 1)
-
-    def _autosave_files(self) -> List[Path]:
-        """Autosave snapshots, oldest first (mtime, then same-second sequence)."""
-        found = [p for p in self.saves_dir.glob("*.json")
-                 if self._AUTOSAVE_FILE.match(p.name)]
-        found.sort(key=lambda p: (p.stat().st_mtime, self._autosave_seq(p.name)))
-        return found
-
-    def _rotate_autosaves(self) -> None:
-        """Keep at most AUTOSAVE_KEEP autosave snapshots; named saves untouched."""
-        autosaves = self._autosave_files()
-        while len(autosaves) > self.AUTOSAVE_KEEP:
-            oldest = autosaves.pop(0)
-            oldest.unlink()
-
-    def list_saves(self) -> List[Dict[str, Any]]:
-        """
-        List all save points
-        """
-        import json
-        saves = []
-        for save_file in sorted(self.saves_dir.glob("*.json"), reverse=True):
-            try:
-                with open(save_file, 'r', encoding='utf-8') as f:
-                    save_data = json.load(f)
-                saves.append({
-                    "filename": save_file.name,
-                    "name": save_data.get("name", "Unknown"),
-                    "created": save_data.get("created", "Unknown"),
-                    "session_number": save_data.get("session_number", "?")
-                })
-            except (json.JSONDecodeError, IOError):
-                continue
-        return saves
-
-    def delete_save(self, name: str) -> bool:
-        """
-        Delete a save point
-        """
-        save_file = self._find_save(name)
-        if not save_file:
-            print(f"[ERROR] Save point '{name}' not found")
-            return False
-
-        save_file.unlink()
-        print(f"[SUCCESS] Deleted save: {save_file.name}")
-        return True
 
     def get_history(self) -> List[str]:
         """
@@ -1278,7 +1053,7 @@ class SessionManager(EntityManager):
             hits = mem.recall(query, top_k=top_k)
             arcs = mem.arcs()
             debts = [str(d) for d in (arcs[-1].get("open_debts") or [])] if arcs else []
-            total = len((self.json_ops.load_json(mem.memory_file) or {}).get("entries") or [])
+            total = len(mem.entries())
         except Exception:
             return [], [], 0
 
@@ -1442,47 +1217,6 @@ class SessionManager(EntityManager):
         history = self.get_history()
         return history[-count:] if history else []
 
-    def _load_all_characters(self) -> Dict[str, Any]:
-        """Load the active PC for a snapshot, keyed 'character'."""
-        if self.character_file.exists():
-            return {"character": self.json_ops.load_json("character.json")}
-        return {}
-
-    def _restore_characters(self, characters: Dict[str, Any]) -> None:
-        """Restore the active PC from a snapshot."""
-        import json
-
-        if 'character' in characters:
-            with open(self.character_file, 'w', encoding='utf-8') as f:
-                json.dump(characters['character'], f, indent=2)
-
-    def _find_save(self, name: str) -> Optional[Path]:
-        """Find a save file by name or partial match.
-
-        When several files match (notably rotating autosaves), return the newest.
-        """
-        exact_match = self.saves_dir / name
-        if exact_match.exists():
-            return exact_match
-
-        if not name.endswith('.json'):
-            exact_match = self.saves_dir / f"{name}.json"
-            if exact_match.exists():
-                return exact_match
-
-        needle = name.lower()
-        if needle in ("autosave", "autosave.json"):
-            autosaves = self._autosave_files()
-            if autosaves:
-                return autosaves[-1]
-
-        matches = [p for p in self.saves_dir.glob("*.json")
-                   if needle in p.name.lower()]
-        if not matches:
-            return None
-        matches.sort(key=lambda p: (p.stat().st_mtime, p.name))
-        return matches[-1]
-
 
 def main():
     """CLI interface for session management"""
@@ -1510,21 +1244,6 @@ def main():
     move_parser.add_argument('location', nargs='+', help='Location name')
     move_parser.add_argument('--check', action='store_true',
                              help='Only check that the place can be moved to (before travel time passes)')
-
-    # Save
-    save_parser = subparsers.add_parser('save', help='Create save point')
-    save_parser.add_argument('name', nargs='+', help='Save name')
-
-    # Restore
-    restore_parser = subparsers.add_parser('restore', help='Restore from save')
-    restore_parser.add_argument('name', help='Save name or filename')
-
-    # List saves
-    subparsers.add_parser('list-saves', help='List all save points')
-
-    # Delete save
-    delete_parser = subparsers.add_parser('delete-save', help='Delete a save point')
-    delete_parser.add_argument('name', help='Save name or filename')
 
     # History
     subparsers.add_parser('history', help='Show session history')
@@ -1583,25 +1302,6 @@ def main():
     elif args.action == 'status':
         status = manager.get_status()
         print(json.dumps(status, indent=2))
-
-    elif args.action == 'save':
-        name = ' '.join(args.name)
-        manager.create_save(name)
-
-    elif args.action == 'restore':
-        if not manager.restore_save(args.name):
-            sys.exit(1)
-
-    elif args.action == 'list-saves':
-        saves = manager.list_saves()
-        if saves:
-            print(json.dumps(saves, indent=2))
-        else:
-            print("No saves found")
-
-    elif args.action == 'delete-save':
-        if not manager.delete_save(args.name):
-            sys.exit(1)
 
     elif args.action == 'history':
         history = manager.get_history()
