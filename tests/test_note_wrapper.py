@@ -31,7 +31,9 @@ def test_subcommands_are_not_recorded_as_facts(dcc_world):
     before = _facts(dcc_world)
     r = _run(dcc_world, "truth", fid, "partial")
     assert r.returncode == 0 and "[PARTIAL]" in r.stdout, r.stdout + r.stderr
-    r = _run(dcc_world, "get", "lore")
-    assert r.returncode == 0 and "The drop is at dawn" in r.stdout
+    r = _run(dcc_world, "find", "--category", "lore", "--text", "dawn")
+    assert r.returncode == 0 and "[SECRET] The drop is at dawn" in r.stdout
+    r = _run(dcc_world, "get", "lore")               # gone: it printed facts.json raw
+    assert r.returncode == 1 and "gm-note.sh recent" in r.stderr and r.stdout == ""
     assert _run(dcc_world, "categories").returncode == 0
     assert set(_facts(dcc_world)) == set(before)          # no `truth` or `get` category

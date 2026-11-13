@@ -849,7 +849,7 @@ class SessionManager(EntityManager):
             if not full:
                 hidden_facts = len(self._key_facts(per_category=None)) - len(key_facts)
                 rem = self._remainder(hidden_facts, "facts",
-                                      "--full or gm-note.sh get")
+                                      "--full, or gm-note.sh recent / find")
                 if rem:
                     lines.append(rem)
 

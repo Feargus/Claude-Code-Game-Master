@@ -575,17 +575,9 @@ class NoteManager:
         self._list_waiting(", ".join(written))
         return written
 
-    def get_facts(self, category: str = None) -> dict:
-        """Get facts, optionally filtered by category."""
-        facts = self.json_ops.load_json("facts.json")
-        if category:
-            return {category: facts.get(category, [])}
-        return facts
-
     def list_categories(self) -> list:
         """List all fact categories."""
-        facts = self.get_facts()
-        return list(facts.keys())
+        return list((self.json_ops.load_json("facts.json") or {}).keys())
 
 
 def fact_line(f: dict, width: int = 160) -> str:
@@ -670,7 +662,6 @@ def main():
     p.add_argument("fact_id")
     p.add_argument("--add", action="append", default=[])
     p.add_argument("--remove", action="append", default=[])
-    p = sub.add_parser("get"); p.add_argument("category", nargs="?")
     sub.add_parser("categories")
     p = sub.add_parser("show", help="facts in full, by id")
     p.add_argument("fact_ids", nargs="+")
@@ -728,8 +719,6 @@ def main():
         elif args.action == 'about':
             about = manager.set_about(args.fact_id, args.add, args.remove)
             print(f"{args.fact_id} about: {', '.join(about) or '(nothing)'}")
-        elif args.action == 'get':
-            print(json.dumps(manager.get_facts(args.category), indent=2))
         elif args.action == 'categories':
             for cat in manager.list_categories():
                 print(f"  - {cat}")

@@ -14,7 +14,7 @@ show_usage() {
     echo "                           - Move party to a recorded, described place (gm-location.sh add);"
     echo "                             --takes 20m lets that much time pass first"
     echo "  context                  - Full session context (character, party, consequences, rules)"
-    echo "  choices [on|off|toggle]  - Toggle the [A]-[E] action menu (no arg: show state)"
+    echo "  choices [on|off|toggle]  - The action menu (three numbered options) on or off (no arg: show state)"
     echo "  opening '<json>'         - Set up a new campaign's first scene in one go: place, exits,"
     echo "                             NPCs, the plot and its hook, facts, clocks (lib/opening.py)"
     echo "  world-tick '<json>'      - Record off-screen developments: a fact each, optionally a"
