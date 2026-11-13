@@ -14,8 +14,10 @@ from datetime import datetime, timezone
 
 
 class JsonFileError(RuntimeError):
-    """A file that exists but can't be read. Reading it as empty would let the
-    next save write over everything in it, so the command stops instead."""
+    """A file that exists but can't be read, or one that can't be written. Reading
+    a damaged file as empty would let the next save write over everything in it,
+    and carrying on after a failed write would report success for something that
+    isn't on disk, so the command stops instead."""
 
 
 def _plain_error(kind, error, traceback):
@@ -68,27 +70,31 @@ class JsonOperations:
 
     def save_json(self, filename: str, data: Any, indent: int = 2) -> bool:
         """
-        Save data to JSON file with atomic write
-        Returns True on success, False on failure
+        Save data to a JSON file, written to a temp file and moved into place, so
+        the file is either the old one or the new one, never half of each.
+
+        Returns True. A write that fails (no space, no permission, data that
+        isn't JSON) raises JsonFileError and leaves the file as it was: it used
+        to print an error and return False, which most callers never looked at,
+        so a command could go on and report success.
         """
         filepath = self._resolve_path(filename)
+        temp_path = filepath.with_suffix('.tmp')
 
         try:
-            # Write to temp file first for atomic operation
-            temp_path = filepath.with_suffix('.tmp')
             with open(temp_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=indent, ensure_ascii=False)
-
-            # Atomic rename
             temp_path.replace(filepath)
-            return True
-        except Exception as e:
-            print(f"[ERROR] Failed to save {filename}: {e}")
-            # Clean up temp file if it exists
-            temp_path = filepath.with_suffix('.tmp')
-            if temp_path.exists():
-                temp_path.unlink()
-            return False
+        except (OSError, TypeError, ValueError) as e:
+            try:
+                temp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise JsonFileError(
+                f"Can't write {filepath}: {e}. That file is as it was before; anything the "
+                f"command saved before this point is kept, so check the result before "
+                f"running it again.") from e
+        return True
 
     def update_json(self, filename: str, updates: Dict, path: List[str] = None) -> bool:
         """

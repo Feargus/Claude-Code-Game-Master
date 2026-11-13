@@ -82,3 +82,34 @@ def test_a_damaged_character_stops_the_brief(isolated_world_state):
     assert "character.json is not valid JSON" in result.stderr
     assert "No character found" not in result.stdout and "Traceback" not in result.stderr
     assert (campaign / "character.json").read_text() == '{"identity": {"name": "Dog'
+
+
+def test_a_write_that_fails_raises_and_leaves_the_file_as_it_was(tmp_path):
+    """save_json printed "[ERROR] Failed to save" and returned False, which most
+    callers never looked at, so a command could go on and print [SUCCESS]."""
+    ops = JsonOperations(str(tmp_path))
+    ops.save_json("facts.json", {"lore": ["kept"]})
+    before = (tmp_path / "facts.json").read_bytes()
+    with pytest.raises(JsonFileError, match=r"Can't write .*facts\.json"):
+        ops.save_json("facts.json", {"lore": [{"not json": {1, 2}}]})
+    assert (tmp_path / "facts.json").read_bytes() == before
+    assert not (tmp_path / "facts.tmp").exists()
+
+
+def test_a_command_stops_when_it_cannot_write(dcc_world):
+    if os.geteuid() == 0:
+        pytest.skip("root can write anywhere")
+    campaign = _campaign(dcc_world)
+    before = (campaign / "facts.json").read_bytes()
+    campaign.chmod(0o555)                                # nothing can be created in it
+    try:
+        result = subprocess.run(
+            ["bash", str(ROOT / "tools" / "gm-note.sh"), "lore", "A fact that can't be written.",
+             "--nowhere"],
+            capture_output=True, text=True, env=dict(os.environ, GM_WORLD_STATE_BASE=dcc_world))
+    finally:
+        campaign.chmod(0o755)
+    assert result.returncode == 1
+    assert "Can't write" in result.stderr and "Traceback" not in result.stderr
+    assert "SUCCESS" not in result.stdout
+    assert (campaign / "facts.json").read_bytes() == before
