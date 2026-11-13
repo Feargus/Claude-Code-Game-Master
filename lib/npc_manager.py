@@ -21,7 +21,7 @@ from entity_manager import EntityManager, is_dead, is_party_member, usual_places
 # (design-notes.md, "World state").
 DEATH_FACT_CATEGORY = "session_events"
 # Category of how an NPC regards the player (the attitude given at creation).
-FEELING_CATEGORY = "relations"
+FEELING_CATEGORY = "npc_relations"
 
 
 def check_attitude(raw) -> tuple:

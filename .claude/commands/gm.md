@@ -139,16 +139,16 @@ below, ask the one question, then come back and finish the checklist.
 
 **Campaign Rules:** If the context output shows campaign-specific rules, enforce them throughout the session just like core rules. Each campaign is different.
 
-#### Step 2: Verify Location (CRITICAL)
-```bash
-tail -30 world-state/campaigns/[campaign-name]/session-log.md
-```
-- [ ] Find the LAST session's ending location in the log
-- [ ] Compare to location from Step 1
-- [ ] **If mismatch**: Session log is truth. Run:
-  ```bash
-  bash tools/gm-session.sh move "[correct location]"
-  ```
+#### Step 2: Where the story stands
+The brief's location, time and facts are the truth: every move, time step and fact is
+recorded as it happens. The session log is written only when a session is ended, so its
+last entry (PREVIOUSLY ON, WHERE WE PAUSED) can be older than the brief. Never move the
+character back to where the log says a session ended.
+
+If the brief and the log don't fit together, the last session was probably never ended:
+read the latest facts (`bash tools/gm-note.sh recent 15`) and pick the story up from
+them. If it still doesn't add up, ask the player out of character before narrating
+(`CLAUDE.md` → Scene context).
 
 #### Step 3: Who is in the scene
 ```bash

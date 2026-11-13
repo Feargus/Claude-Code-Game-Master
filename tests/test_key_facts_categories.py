@@ -54,3 +54,26 @@ def test_every_advertised_category_has_a_reader(dcc_world):
     sources = {e.get("source", "") for e in entries}
     for cat in advertised - read_by_key_facts:
         assert f"facts:{cat}" in sources, f"{cat} is advertised but nothing reads it"
+
+
+def test_an_npcs_attitude_is_filed_where_key_facts_reads_it(dcc_world):
+    """`gm-npc.sh create` and CLAUDE.md filed how an NPC feels about the player
+    under `relations`, a category KEY FACTS didn't read and gm-note.sh didn't
+    list; the listed one is `npc_relations`."""
+    from lib.npc_manager import NPCManager
+    assert NPCManager(dcc_world).create_npc("Vesper", "a fence", "wary, greedy", nowhere=True)
+    facts = NoteManager(dcc_world).json_ops.load_json("facts.json")
+    assert "relations" not in facts
+    assert any("How Vesper regards" in f["fact"] for f in facts["npc_relations"])
+    assert "How Vesper regards" in SessionManager(dcc_world).get_full_context()
+    root = WRAPPER.parent.parent
+    for doc in ("CLAUDE.md", ".claude/skills/gm-social/SKILL.md", ".claude/skills/gm-craft/SKILL.md"):
+        assert "gm-note.sh relations" not in (root / doc).read_text(encoding="utf-8"), doc
+
+
+def test_the_session_log_is_not_the_truth_for_location():
+    """/gm told the GM to move the character to where the log's last session
+    ended. A session that was never ended made that an old place."""
+    text = (WRAPPER.parent.parent / ".claude" / "commands" / "gm.md").read_text(encoding="utf-8")
+    assert "Session log is truth" not in text
+    assert "Never move the\ncharacter back" in text

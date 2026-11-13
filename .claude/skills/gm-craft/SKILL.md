@@ -50,7 +50,7 @@ chair; pull a page when the beat needs it. Never make them wait through a census
 - **Don't over-share.** Secrets revealed slowly are 10x more interesting. What an NPC hides is a fact only they hold (the brief marks it `[HIDDEN FROM PLAYER]`): let it show through behaviour, and give it up only when the fiction earns it.
 - **Give NPCs contradictions.** The gentle priest who collects weapons.
 - **NPCs can say no, lie, or give bad advice.**
-- **Reactions compound.** Insult the merchant last session, he remembers: record how he feels now as a fact he holds (`gm-note.sh relations ... --holders npc:<name> --about player`).
+- **Reactions compound.** Insult the merchant last session, he remembers: record how he feels now as a fact he holds (`gm-note.sh npc_relations ... --holders npc:<name> --about player`).
 
 ## Pacing
 - **End sessions on the open situation.** The cliffhanger is the situation as it stands: what's unresolved, who's waiting, what's at stake. Don't invent new events for it; that's only for `/gm cliffhanger`, and then the new event is persisted as a fact, consequence or plot too. Record it: `gm-session.sh end "<summary>" --cliffhanger "..." --open-thread "..."`.

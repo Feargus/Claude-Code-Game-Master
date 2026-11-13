@@ -36,7 +36,7 @@ Modifiers for the player: unreasonable request −5; good rapport +2.
 **No roll needed:** public info, normal commerce at listed prices, casual talk, giving things freely.
 
 ## 4. Persist NPC memory
-What happened is a fact, with the NPC among its holders (they were there). When it changes how they feel about the player, record that too, as a fact only they hold: `bash tools/gm-note.sh relations "[name] now [feeling] toward [player], since [what happened]" --holders npc:[name] --about player`. Reactions compound across sessions, because the brief shows these under them.
+What happened is a fact, with the NPC among its holders (they were there). When it changes how they feel about the player, record that too, as a fact only they hold: `bash tools/gm-note.sh npc_relations "[name] now [feeling] toward [player], since [what happened]" --holders npc:[name] --about player`. Reactions compound across sessions, because the brief shows these under them.
 
 ## 4b. Who now knows what
 A conversation is where most knowledge moves. Anything said in the scene that matters goes in as a fact: its default holders are the player and everyone in the scene (`gm-scene.sh`), so an eavesdropper not in the scene needs `--also "npc:[name]"`. When the player tells an NPC something already recorded (or the NPC lets slip one of their facts), `bash tools/gm-note.sh tell <fact id> <holder>...`. A lie the player tells is a wrong version: the truth (if recorded) stays as it is, the lie is a fact the listener holds, `--truth wrong --version-of <truth id>`.
@@ -48,7 +48,7 @@ Positive (NPC helps later) / negative (NPC hinders) → `bash tools/gm-consequen
 Decide before rolling what refusal COSTS (never tell the player). On a failed social check:
 - **The ask does not happen.** Don't refund the stake by ending on a softer re-ask that costs nothing. If the NPC leaves a door open, that's escalation the fiction has to price — new leverage, new information, or something the player gives up.
 - **Whatever was on the table is spent.** If the player was bargaining for lives, cargo, passage, or mercy, the failure is where that thing is lost — not deferred. The NPC responds from their own goals and power; sometimes that's ugly.
-- **Persist the shift** so refusals compound like wins do: the new feeling as a fact they hold (`gm-note.sh relations ... --holders npc:[name] --about player`), and a changed aim with `gm-npc.sh set "[name]" --goal "..."`.
+- **Persist the shift** so refusals compound like wins do: the new feeling as a fact they hold (`gm-note.sh npc_relations ... --holders npc:[name] --about player`), and a changed aim with `gm-npc.sh set "[name]" --goal "..."`.
 
 ## Reward a social win
 A real social victory (turning a hostile NPC, winning an ally or a favour, talking your way past a threat) is an achievement: XP for an achievement (an obstacle surmounted, a goal reached, a problem solved, power gained): `gm-growth`.
