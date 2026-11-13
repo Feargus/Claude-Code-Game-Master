@@ -180,3 +180,14 @@ def test_clocks_are_listed_most_urgent_first():
     order = [name for name, _ in ThreatClockManager.by_urgency(clocks)]
     assert order == ["Raid", "Slow scrub", "Foreclosure", "Tracker", "Vendetta"]
     assert ThreatClockManager.render(clocks).splitlines()[0].startswith("Raid:")
+
+
+def test_adding_a_clock_twice_is_refused_and_keeps_its_progress(dcc_world):
+    """`gm-clock.sh add` with an existing name silently replaced the clock, so a
+    clock at 3/4 was back at 0/4. The name is compared without regard to case."""
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Hunt", 4, advance_on="event")
+    m.advance("Hunt", 3)
+    with pytest.raises(ValueError, match="exists already"):
+        m.add_clock("hunt", 6, advance_on="event")
+    assert m.get_clocks() == {"Hunt": {"current": 3, "max": 4, "advance_on": "event"}}

@@ -60,6 +60,13 @@ class ThreatClockManager(EntityManager):
         if advance_on not in ("time", "event"):
             raise ValueError(f"A clock advances on time or event, not {advance_on!r}.")
         data = self._load()
+        taken = next((k for k in data if k.lower() == str(name).strip().lower()), None)
+        if taken is not None:
+            c = data[taken]
+            raise ValueError(
+                f"A clock '{taken}' exists already ({c.get('current', 0)}/{c.get('max', 1)}); "
+                f"adding it again would reset it. Advance it or move its due time "
+                f"(gm-clock.sh advance / due), or remove it first (gm-clock.sh remove).")
         entry = {"current": 0, "max": int(segments), "advance_on": advance_on}
         if consequence:
             entry["consequence"] = consequence
