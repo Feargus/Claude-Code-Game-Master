@@ -11,9 +11,9 @@ import pytest
 
 from lib.campaign_manager import CampaignManager
 from lib.new_character import CharacterCreator
+from lib.sheet import ATTRIBUTES
 
 ROOT = Path(__file__).resolve().parent.parent
-ATTRIBUTES = ("STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP")
 COMMON = ("Brawling", "Throwing", "Evasion", "Guard", "Endurance", "Composure", "Athletics",
           "Acrobatics", "Stealth", "Awareness", "Investigation", "Insight", "Persuasion",
           "Deception")

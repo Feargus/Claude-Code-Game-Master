@@ -34,9 +34,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from sheet import SheetError, check as sheet_check
+from sheet import ATTRIBUTES, SheetError, check as sheet_check, check_die
 
-ATTRIBUTES = ("STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP")
 SKILLS_FILE = Path(__file__).parent.parent / ".claude" / "skills" / "gm-skills" / "SKILL.md"
 REPO_MOBS = Path(__file__).parent.parent / ".claude" / "skills" / "gm-skills" / "mobs.json"
 IMPROVISED_FILE = "improvised-skills.md"
@@ -115,8 +114,10 @@ def check(block: Dict[str, Any], campaign_dir: Optional[Path] = None) -> List[st
     warnings = []
     attributes = (block.get("stats") or {}).get("attributes") or {}
     for key, size in attributes.items():
-        if not isinstance(size, int) or size < 2:
-            raise StatError(f"{key}: a die size is a whole number of at least 2, not {size!r}.")
+        try:
+            check_die(key, size)
+        except SheetError as error:
+            raise StatError(str(error))
         if not USUAL_DIE[0] <= size <= USUAL_DIE[1]:
             warnings.append(f"{key} d{size} is outside the usual d{USUAL_DIE[0]}–d{USUAL_DIE[1]} "
                             f"(fine if meant).")

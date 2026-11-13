@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import body
 import sheet as sheet_mod
 from entity_manager import EntityManager
-from skill_contest import ATTRIBUTES
+from sheet import ATTRIBUTES
 from world_kit import WorldKit
 from handover import hand_over
 from stat_block import canon_skills, common_skills
@@ -47,9 +47,10 @@ def _attributes(given: Dict[str, Any]) -> Dict[str, int]:
         attribute = key.upper()
         if attribute not in ATTRIBUTES:
             raise CharacterError(f"Unknown attribute '{key}'. Use: {', '.join(ATTRIBUTES)}.")
-        if not isinstance(value, int) or value < 2:
-            raise CharacterError(f"{attribute} needs a whole die size of 2 or more, got {value!r}.")
-        stats[attribute] = value
+        try:
+            stats[attribute] = sheet_mod.check_die(attribute, value)
+        except sheet_mod.SheetError as error:
+            raise CharacterError(str(error))
     return {attribute: stats.get(attribute, DEFAULT_ATTRIBUTE) for attribute in ATTRIBUTES}
 
 

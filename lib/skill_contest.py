@@ -34,12 +34,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 from campaign_manager import CampaignManager
 from json_ops import JsonOperations
 import sheet as sheet_mod
-from stat_block import COMMON_VALUE, common_skills
+from sheet import ATTRIBUTES
+from stat_block import COMMON_VALUE, REPO_MOBS, common_skills
 
-ATTRIBUTES = ("STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP")
 DICE_PER_ROLL = 3
 
-REPO_MOBS = Path(__file__).parent.parent / ".claude" / "skills" / "gm-skills" / "mobs.json"
 LOG_FILE = "skill-contest.log"
 UNTRAINED = -3  # skill value for a skill the sheet doesn't list, unless the sheet sets a default
 
@@ -171,7 +170,7 @@ def dice_sizes(sheet: Dict[str, Any], name: str, attributes: List[str]) -> Dict[
     sizes = {}
     for attribute in attributes:
         size = table.get(attribute, table.get("default"))
-        if not isinstance(size, int) or size < 2:
+        if not sheet_mod.is_die(size):
             raise ContestError(f"{name} has no usable die for {attribute} (found {size!r}).")
         sizes[attribute] = size
     return sizes

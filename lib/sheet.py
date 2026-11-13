@@ -44,6 +44,8 @@ from typing import Any, Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).parent))
 
 KINDS = ("player", "npc", "mob")
+# The nine attributes, in the order rolls are written. Defined here only: every
+# script that names an attribute imports this list.
 ATTRIBUTES = ("STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP")
 
 TEXT, LIST, DICT, INT, BOOL = "text", "list", "dict", "int", "bool"
@@ -103,6 +105,18 @@ def blank(kind: str, name: str) -> Dict[str, Any]:
         sheet["stats"] = {"attributes": {}}
         sheet["body"] = {"wounds": 1}
     return sheet
+
+
+def is_die(size: Any) -> bool:
+    """An attribute is a die size: a whole number of at least 2."""
+    return isinstance(size, int) and not isinstance(size, bool) and size >= 2
+
+
+def check_die(attribute: str, size: Any) -> int:
+    """`size` if it is a die size, else SheetError naming the attribute."""
+    if not is_die(size):
+        raise SheetError(f"{attribute}: a die size is a whole number of at least 2, not {size!r}.")
+    return size
 
 
 def check_big_five(text: str) -> str:
@@ -167,8 +181,7 @@ def check(sheet: Dict[str, Any], kind: str) -> Dict[str, Any]:
     for key, size in attributes.items():
         if key != "default" and key not in ATTRIBUTES:
             raise SheetError(f"Unknown attribute '{key}'. Use: {', '.join(ATTRIBUTES)}.")
-        if not isinstance(size, int) or size < 2:
-            raise SheetError(f"{key}: a die size is a whole number of at least 2, not {size!r}.")
+        check_die(key, size)
     for name, value in ((sheet.get("stats") or {}).get("skills") or {}).items():
         if not isinstance(value, int) or isinstance(value, bool):
             raise SheetError(f"{name}: a skill value is a whole number, not {value!r}.")

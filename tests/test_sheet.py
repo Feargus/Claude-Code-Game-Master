@@ -82,3 +82,22 @@ def test_describe_shows_what_is_filled_in():
     assert "role: noodle cook" in lines and "voice: Sit. Eat." in lines
     assert "gear: cleaver (always sharp)" in lines
     assert not any(line.startswith("name:") for line in lines)
+
+
+def test_the_attributes_and_the_die_check_are_defined_once():
+    """The list of the nine attributes was written out in three modules, and "a
+    die size is a whole number of at least 2" checked in four, each in its own
+    words. Both live in sheet.py; the others import them."""
+    import re
+    from pathlib import Path
+    from lib import sheet
+    lib = Path(sheet.__file__).parent
+    for module in lib.glob("*.py"):
+        text = module.read_text(encoding="utf-8")
+        if module.name != "sheet.py":
+            assert not re.search(r"^ATTRIBUTES\s*=", text, re.M), module.name
+            assert not re.search(r"^REPO_MOBS\s*=", text, re.M) or module.name == "stat_block.py"
+            assert "size < 2" not in text and "value < 2" not in text, module.name
+    assert sheet.is_die(2) and sheet.is_die(24)
+    for bad in (1, 0, -4, 2.0, "12", None, True):
+        assert not sheet.is_die(bad), bad
