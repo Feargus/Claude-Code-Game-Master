@@ -21,6 +21,18 @@ class LocationManager(EntityManager):
         super().__init__(world_state_dir)
         self.locations_file = "locations.json"
 
+    @staticmethod
+    def _report_added(name: str, position: str, aliases, close) -> None:
+        """What add_location prints once the place is saved."""
+        from world_ids import alias_hint, close_name_warning
+        print(f"[SUCCESS] Added location: {name} ({position})")
+        for line in close_name_warning(close, "location"):
+            print(line)
+        if aliases:
+            print(f"  Also called: {', '.join(aliases)}")
+        elif alias_hint("location", name):
+            print(alias_hint("location", name))
+
     def add_location(self, name: str, position: str, description: str, aliases=None) -> bool:
         """
         Add a new location. `position`: where it is ("two streets down from
@@ -30,7 +42,7 @@ class LocationManager(EntityManager):
         for "Old Iron's Yard"), each checked (world_ids.check_alias).
         Returns True on success, False on failure
         """
-        from world_ids import WorldIds, alias_hint, close_name_warning
+        from world_ids import WorldIds
         description = str(description or "").strip()
         if not description:
             print(f"[ERROR] '{name}' needs a description: what it is like, a sentence or two, "
@@ -67,13 +79,7 @@ class LocationManager(EntityManager):
 
         # Save to file
         if self._add_entity(self.locations_file, name, location_data):
-            print(f"[SUCCESS] Added location: {name} ({position})")
-            for line in close_name_warning(close, "location"):
-                print(line)
-            if aliases:
-                print(f"  Also called: {', '.join(location_data['aliases'])}")
-            elif alias_hint("location", name):
-                print(alias_hint("location", name))
+            self._report_added(name, position, location_data.get('aliases'), close)
             return True
         return False
 
