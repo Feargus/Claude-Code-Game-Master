@@ -125,3 +125,23 @@ def test_player_set_and_item_commands(world):
     assert sheet["items"]["inventory"] == [{"name": "the ribbon", "concealed": True}, {"name": "scrap"}]
     assert sheet["possessions"]["credits"] == 8
     assert run("set", "--hair", "red").returncode != 0
+
+
+def test_a_person_can_start_as_a_sketch(world):
+    """Someone named in the story (a dead examiner, a director nobody has met)
+    is a record from the start: a name and any few fields, no usual place."""
+    from lib.note_manager import NoteManager
+    ws, camp = world
+    manager = NPCManager(ws)
+    assert not manager.create_npc("Ruth Okonedo")              # who is she?
+    assert manager.create_npc("Ruth Okonedo", fields={"goal": "pass the ones others would fail"},
+                              aliases=["Ruth"])
+    sheet = manager.get_sheet("Ruth")
+    assert "personality" not in sheet and "look" not in sheet
+    assert sheet["status"] == {"goal": "pass the ones others would fail"}
+    assert "only a sketch" in manager.show("Ruth Okonedo")
+    fid = NoteManager(ws).add_fact("plot_local", "Ruth died in booth 3.", nowhere=True)
+    assert "npc:Ruth Okonedo" in NoteManager(ws)._entry(
+        NoteManager(ws).json_ops.load_json("facts.json"), fid)["about"]
+    manager.set_fields("Ruth Okonedo", {"voice": "dry, patient"})
+    assert "only a sketch" not in manager.show("Ruth Okonedo")

@@ -119,7 +119,7 @@ What good expansion tends to include:
 - Look for related NPCs, locations they might frequent, or factions they could belong to
 
 ```bash
-./tools/gm-npc.sh create "[Name]" "[role]" "[how they regard the player]" --location "[where they're usually found]"   # or --nowhere
+./tools/gm-npc.sh create "[Name]" "[role]" "[how they regard the player]" [--location "[where they're usually found]"]
 ./tools/gm-npc.sh set "[Name]" --physique "..." --big-five "O0 C1 E-1 A0 N1" --voice "..."
 ./tools/gm-npc.sh show "[Name]"
 ```

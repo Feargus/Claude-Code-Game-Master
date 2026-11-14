@@ -92,13 +92,18 @@ class NPCManager(EntityManager):
                    fields: dict[str, str] | None = None) -> bool:
         """Create an NPC sheet. Returns True on success, False on failure (printed).
 
+        A sheet can start as a sketch: a name and any few fields (a role, a
+        goal, a fear), filled in when play needs the person. At least one field
+        is needed, so the record says who they are.
+
         `role`: who they are in a few words. `attitude`: their attitude towards
         the player at first, as one or more adjectives ("wary", "fond,
         exasperated"), or nothing for someone who has none; it becomes a fact
         they hold about the player, not a field (check_attitude). `locations`:
-        where they are usually found (known places), required unless `nowhere`.
-        `aliases`: shorter names the story will use, each checked. `fields`: any
-        further text fields by flag name (sheet.TEXT_FIELDS), e.g. look, Big Five.
+        where they are usually found (known places), if anywhere; `nowhere` says
+        so explicitly. `aliases`: shorter names the story will use, each checked.
+        `fields`: any further text fields by flag name (sheet.TEXT_FIELDS), e.g.
+        a goal, a fear, a look, the Big Five.
         """
         from world_ids import WorldIds, alias_hint
         places, errors = self._usual_places(locations)
@@ -107,12 +112,6 @@ class NPCManager(EntityManager):
         errors += [e for a in aliases if (e := ids.check_alias(a, f"npc:{name}"))]
         if nowhere and places:
             errors.append("Give --location or --nowhere, not both.")
-        if not nowhere and not places and not errors:
-            here = ((self.json_ops.load_json("campaign-overview.json") or {})
-                    .get("player_position") or {}).get("current_location", "")
-            hint = f' (here: --location "{here}")' if here else ""
-            errors.append(f"Where is {name} usually found? Give --location <place>, "
-                          f"repeatable{hint}, or --nowhere for someone with no usual place.")
         valid, error = self.validators.validate_name(name)
         if not valid:
             errors.append(error)
@@ -128,6 +127,10 @@ class NPCManager(EntityManager):
                 sheet["identity"]["aliases"] = list(dict.fromkeys(aliases))
             sheet["places"] = {"usual": places}
             sheet_mod.check(sheet, "npc")
+            if not any(sheet.get(sec) for sec in ("look", "personality")) and \
+                    set(sheet["identity"]) <= {"name", "aliases"} and not sheet.get("status"):
+                errors.append(f"Say who {name} is in at least one field: a role (\"a fixer\"), "
+                              f"or e.g. --goal, --fears, --background, --physique.")
         except sheet_mod.SheetError as problem:
             errors.append(str(problem))
         if errors:
@@ -146,6 +149,8 @@ class NPCManager(EntityManager):
             print(alias_hint("npc", name))
         if attitude:
             self._first_feeling(name, attitude)
+        if not places:
+            print(f"  If {name} has a usual place: bash tools/gm-npc.sh tag-location \"{name}\" \"<place>\"")
         print(f"  Not in the scene yet: bash tools/gm-scene.sh enter \"{name}\" if they're here.")
         self._witness_hint(name)
         return True
@@ -354,6 +359,9 @@ class NPCManager(EntityManager):
         if sheet_mod.aliases(npc):
             lines.append(f"also called: {', '.join(sheet_mod.aliases(npc))}")
         lines += sheet_mod.describe(npc)
+        if not npc.get("look") and not npc.get("personality"):
+            lines.append("only a sketch: no look or personality yet; give them before playing "
+                         "this person (gm-npc.sh set ...)")
         if is_party_member(npc):
             lines.append("party member")
         try:
@@ -384,7 +392,7 @@ def main():
 
     p = sub.add_parser('create', help='Create an NPC')
     p.add_argument('name')
-    p.add_argument('role', help='who they are, in a few words')
+    p.add_argument('role', nargs='?', default='', help='who they are, in a few words; optional if another field says who they are')
     p.add_argument('attitude', nargs='?', help='attitude towards the player: one or more adjectives, comma separated (becomes a fact); optional')
     p.add_argument('--location', action='append', dest='locations',
                    help='where they are usually found (repeatable)')

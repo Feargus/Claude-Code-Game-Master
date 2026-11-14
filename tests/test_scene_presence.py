@@ -122,18 +122,21 @@ def test_cli_refusal_and_show(dcc_world):
     assert r.returncode == 0 and "Present: Carl" in r.stdout
 
 
-# ---------- a new NPC needs a usual place ----------
+# ---------- a usual place is optional ----------
 
-def test_create_needs_a_usual_place(dcc_world, capsys):
+def test_create_without_a_usual_place(dcc_world, capsys):
+    """A usual place was required (2026-11-07); since 2026-11-14 a person can be
+    a sketch named in the story, with no place yet. A place given must exist."""
     from lib.npc_manager import NPCManager
     nm = NPCManager(dcc_world)
-    assert not nm.create_npc("Vex", "a fixer", "neutral")
-    out = capsys.readouterr().out
-    assert "Where is Vex usually found?" in out and '--location "Warehouse Street Level"' in out
     assert not nm.create_npc("Vex", "a fixer", "neutral", locations=["Bone Gardn"])
     assert "did you mean: location:Bone Garden" in capsys.readouterr().out
     assert not nm.create_npc("Vex", "a fixer", "neutral", locations=["Bone Garden"], nowhere=True)
     assert "Vex" not in json.loads((_cdir(dcc_world) / "npcs.json").read_text(encoding="utf-8"))
+    assert nm.create_npc("Vex", "a fixer", "neutral")
+    assert 'gm-npc.sh tag-location "Vex"' in capsys.readouterr().out
+    assert json.loads((_cdir(dcc_world) / "npcs.json").read_text(encoding="utf-8"))["Vex"][
+        "places"] == {"usual": []}
 
 
 def test_create_with_places_or_nowhere(dcc_world, capsys):

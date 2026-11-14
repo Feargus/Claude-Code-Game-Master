@@ -143,7 +143,7 @@ Write only what tonight needs:
 4. Optional thin binder: a short `authored-canon.md` of *this street only*, then
    `gm-extract.sh prepare` so RAG has something to pull. Do not author the continent.
 
-When a new name walks on in play: `gm-npc.sh create "<name>" "<role>" ["<attitude: adjectives>"] --location "<place>"` or `gm-location.sh add "<place>" "<where>" "<what it is like>"` (with a binder, search it first: `gm-search.sh "<name>" --rag-only`).
+When a new name walks on in play: `gm-npc.sh create "<name>" "<role>" ["<attitude: adjectives>"] [--location "<place>"]` or `gm-location.sh add "<place>" "<where>" "<what it is like>"` (with a binder, search it first: `gm-search.sh "<name>" --rag-only`).
 
 ---
 
