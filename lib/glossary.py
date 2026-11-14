@@ -40,13 +40,14 @@ def glossary(json_ops) -> dict[str, dict[str, Any]]:
 
 
 def terms(json_ops) -> list[str]:
-    """The terms, for the brief. A campaign from before the glossary has only the
-    voice's word list ("in-world terms to favor"); its words count as terms."""
+    """The terms, for the brief. A campaign from before the glossary has the
+    voice's word list ("in-world terms to favor"), words without meanings; they
+    count as terms too, after the glossary's own, until each is added properly."""
     found = list(glossary(json_ops))
-    if found:
-        return found
+    have = {t.lower() for t in found}
     voice = (json_ops.load_json(BIBLE) or {}).get("voice") or {}
-    return [str(v).strip() for v in voice.get("vocab") or [] if str(v).strip()]
+    old = [str(v).strip() for v in voice.get("vocab") or [] if str(v).strip()]
+    return found + [w for w in old if w.lower() not in have]
 
 
 def find(json_ops, raw: str) -> str:

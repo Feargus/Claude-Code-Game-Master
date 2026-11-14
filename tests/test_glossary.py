@@ -62,6 +62,8 @@ def test_a_campaign_from_before_the_glossary_keeps_its_word_list(dcc_world):
     bible.setdefault("voice", {})["vocab"] = ["ghost", "shell"]
     ops.save_json("world-bible.json", bible)
     assert g.terms(ops) == ["ghost", "shell"]
+    g.add(ops, "Shell", "A body built, not born.")
+    assert g.terms(ops) == ["Shell", "ghost"]          # added properly once, not twice
 
 
 def test_the_command(dcc_world):
