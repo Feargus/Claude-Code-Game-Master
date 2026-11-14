@@ -4,7 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from lib.schemas import PLOT_TYPES, PLOT_TYPE_SORT
+from lib.schemas import PLOT_TYPE_SORT, PLOT_TYPES
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -66,7 +66,7 @@ def test_world_stats_counts_every_canonical_type(dcc_world, capsys):
 
     # the breakdown line lists every type that actually has plots
     stats.print_overview()
-    types_line = [l for l in capsys.readouterr().out.splitlines() if l.strip().startswith("Types:")][0]
+    types_line = [line for line in capsys.readouterr().out.splitlines() if line.strip().startswith("Types:")][0]
     for t in PLOT_TYPES:
         assert f"1 {t}" in types_line, t
 
@@ -77,7 +77,7 @@ def test_world_stats_breakdown_hides_empty_types(dcc_world, capsys):
     (camp / "plots.json").write_text(json.dumps({"Only One": {"type": "threat", "status": "active"}}))
 
     WorldStats(dcc_world).print_overview()
-    types_line = [l for l in capsys.readouterr().out.splitlines() if l.strip().startswith("Types:")][0]
+    types_line = [line for line in capsys.readouterr().out.splitlines() if line.strip().startswith("Types:")][0]
     assert types_line.strip() == "Types: 1 threat"
 
 

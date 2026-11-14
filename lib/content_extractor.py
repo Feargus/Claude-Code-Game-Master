@@ -7,7 +7,6 @@ Extract plain text from PDFs, Word documents, Markdown, and text files.
 import os
 import re
 from pathlib import Path
-from typing import Optional
 
 
 class PDFExtractor:
@@ -119,13 +118,12 @@ class MarkdownExtractor:
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"Markdown file not found: {filepath}")
 
-        with open(filepath, 'r', encoding='utf-8') as file:
+        with open(filepath, encoding='utf-8') as file:
             content = file.read()
 
         # Clean up excessive whitespace while preserving structure
-        content = re.sub(r'\n{3,}', '\n\n', content)
+        return re.sub(r'\n{3,}', '\n\n', content)
 
-        return content
 
 
 class DocxExtractor:
@@ -195,10 +193,9 @@ class DocxExtractor:
                 # Try to decode as UTF-8, ignoring errors
                 text = content.decode('utf-8', errors='ignore')
                 # Remove binary garbage
-                text = re.sub(r'[^\x20-\x7E\n\r\t]', '', text)
-                return text
+                return re.sub(r'[^\x20-\x7E\n\r\t]', '', text)
         except Exception as e:
-            raise RuntimeError(f"Cannot extract text from Word document: {e}")
+            raise RuntimeError(f"Cannot extract text from Word document: {e}") from e
 
 
 class TextExtractor:
@@ -221,13 +218,13 @@ class TextExtractor:
 
         for encoding in encodings:
             try:
-                with open(filepath, 'r', encoding=encoding) as file:
+                with open(filepath, encoding=encoding) as file:
                     return file.read()
             except UnicodeDecodeError:
                 continue
 
         # If all encodings fail, try with error handling
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as file:
+        with open(filepath, encoding='utf-8', errors='ignore') as file:
             return file.read()
 
 

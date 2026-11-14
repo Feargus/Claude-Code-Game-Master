@@ -63,10 +63,10 @@ def test_a_name_alone_gets_every_default(campaign):
     assert sheet == _sheet(campaign)
     assert set(sheet) == {"identity", "stats", "body", "items", "possessions", "progress", "status"}
     assert sheet["progress"] == {"level": 0, "xp": 0, "practice": {}}
-    assert sheet["stats"]["attributes"] == {a: 12 for a in ATTRIBUTES}
+    assert sheet["stats"]["attributes"] == dict.fromkeys(ATTRIBUTES, 12)
     assert sheet["stats"]["luck"] == {"current": 7, "max": 7}
     assert sheet["possessions"] == {"credits": 20}
-    assert sheet["stats"]["skills"] == {name: 0 for name in COMMON}
+    assert sheet["stats"]["skills"] == dict.fromkeys(COMMON, 0)
     assert sheet["stats"]["traits"] == {} and sheet["stats"]["perks"] == {}
     assert set(sheet["body"]["zones"]) == {"head", "chest", "groin", "left_arm", "right_arm",
                                            "left_leg", "right_leg"}
@@ -96,7 +96,7 @@ def test_given_values_are_kept_whatever_they_are(campaign):
     assert sheet["look"]["style"] == "chrome and denim"
     assert sheet["personality"]["big_five"] == "O1 C-2 E3 A-1 N2"
     assert sheet["stats"]["attributes"]["AGI"] == 18 and sheet["stats"]["attributes"]["LOG"] == 6
-    assert sheet["stats"]["skills"] == dict({n: 0 for n in COMMON}, Piloting=5)
+    assert sheet["stats"]["skills"] == dict(dict.fromkeys(COMMON, 0), Piloting=5)
     assert sheet["stats"]["luck"] == {"current": 1, "max": 1}
     assert sheet["progress"]["level"] == 2
 

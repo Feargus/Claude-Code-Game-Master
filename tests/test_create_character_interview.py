@@ -6,7 +6,6 @@ import re
 from pathlib import Path
 
 from lib.schemas import validate_character
-
 from tests.test_kit_vitals import HYBORIAN_RULESET, _make_world, _save, _sheet
 
 ROOT = Path(__file__).resolve().parent.parent

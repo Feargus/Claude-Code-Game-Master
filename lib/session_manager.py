@@ -6,19 +6,19 @@ Handles session lifecycle, party movement and the session brief
 
 import os
 import sys
-from typing import Dict, List, Optional, Any
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
+from typing import Any
 
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
+from consequence_manager import describe_effects
 from entity_manager import EntityManager, is_party_member, npcs_present, npcs_usually_at
 from note_manager import fact_text
 from schemas import PLOT_TYPE_SORT
-from world_kit import WorldKit
 from threat_clocks import ThreatClockManager
-from consequence_manager import describe_effects
+from world_kit import WorldKit
 
 
 class SessionManager(EntityManager):
@@ -63,11 +63,11 @@ class SessionManager(EntityManager):
 
     def get_timestamp(self) -> str:
         """Get formatted timestamp"""
-        return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        return datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     # ==================== Play-Style Preferences ====================
 
-    def get_preferences(self) -> Dict[str, Any]:
+    def get_preferences(self) -> dict[str, Any]:
         """Return play-style preferences, defaults merged with any saved overrides."""
         campaign = self.json_ops.load_json(self.campaign_file) or {}
         prefs = dict(self.DEFAULT_PREFERENCES)
@@ -76,7 +76,7 @@ class SessionManager(EntityManager):
             prefs.update(saved)
         return prefs
 
-    def set_preference(self, key: str, value: Any) -> Dict[str, Any]:
+    def set_preference(self, key: str, value: Any) -> dict[str, Any]:
         """Persist a single play-style preference; returns the full merged prefs."""
         campaign = self.json_ops.load_json(self.campaign_file) or {}
         prefs = campaign.get("preferences")
@@ -89,7 +89,7 @@ class SessionManager(EntityManager):
 
     # ==================== Session Lifecycle ====================
 
-    def start_session(self) -> Dict[str, Any]:
+    def start_session(self) -> dict[str, Any]:
         """
         Start a new session, return world state summary
         """
@@ -215,7 +215,7 @@ class SessionManager(EntityManager):
             lines.append(f"Pending consequences: {pending} waiting on a trigger")
         return lines
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """
         Get current campaign status
         """
@@ -311,7 +311,7 @@ class SessionManager(EntityManager):
         if changed:
             self.json_ops.save_json("locations.json", locations)
 
-    def move_party(self, location: str) -> Dict[str, str]:
+    def move_party(self, location: str) -> dict[str, str]:
         """
         Move party to new location (a recorded place with a description, by its
         name or an alias). Returns dict with previous and current location.
@@ -346,7 +346,7 @@ class SessionManager(EntityManager):
         print(f"[SUCCESS] Party moved from {old_location} to {location}")
         return result
 
-    def get_history(self) -> List[str]:
+    def get_history(self) -> list[str]:
         """
         Get session history from session log
         """
@@ -373,13 +373,13 @@ class SessionManager(EntityManager):
         return text[:limit - 3].rstrip() + "..."
 
     @staticmethod
-    def _remainder(hidden: int, noun: str, hint: str) -> Optional[str]:
+    def _remainder(hidden: int, noun: str, hint: str) -> str | None:
         """Disclosure line for a truncated list: '+N more <noun> — <hint>'."""
         if hidden <= 0:
             return None
         return f"+{hidden} more {noun} — {hint}"
 
-    def _place_lines(self, location: str) -> List[str]:
+    def _place_lines(self, location: str) -> list[str]:
         """The current place as recorded, narrated from: its description and its
         exits. A place with no description says how to write one first."""
         place = (self.json_ops.load_json("locations.json") or {}).get(location)
@@ -536,7 +536,7 @@ class SessionManager(EntityManager):
             ("npcs", "NPCs"), ("locations", "Locations"),
             ("items", "Items"), ("monsters", "Monsters"),
         )
-        index_lines: List[str] = []
+        index_lines: list[str] = []
         for bucket, label in index_labels:
             entries = [e for e in (index.get(bucket) or []) if isinstance(e, dict) and e.get("name")]
             if not entries:
@@ -865,7 +865,7 @@ class SessionManager(EntityManager):
             return []
         try:
             text = log_path.read_text(encoding='utf-8')
-        except (IOError, ValueError):
+        except (OSError, ValueError):
             return []
         summaries = []
         for block in text.split("## Session Started:"):
@@ -1164,16 +1164,16 @@ class SessionManager(EntityManager):
             if filename == "facts.json":
                 return sum(len(v) for v in data.values() if isinstance(v, list))
             return len(data)
-        elif isinstance(data, list):
+        if isinstance(data, list):
             return len(data)
         return 0
 
-    def _get_current_location(self) -> Optional[str]:
+    def _get_current_location(self) -> str | None:
         """Get current party location"""
         campaign = self.json_ops.load_json(self.campaign_file)
         return campaign.get('player_position', {}).get('current_location')
 
-    def _get_active_character(self) -> Optional[str]:
+    def _get_active_character(self) -> str | None:
         """Get active character name"""
         campaign = self.json_ops.load_json(self.campaign_file)
         return campaign.get('current_character')
@@ -1192,7 +1192,7 @@ class SessionManager(EntityManager):
         started = content.count('## Session Started:')
         return ended + (1 if started > ended else 0)
 
-    def _latest_session_meta(self) -> Dict[str, str]:
+    def _latest_session_meta(self) -> dict[str, str]:
         """Parse the most recent ended session's structured footer, if present.
 
         Returns {'cliffhanger': ..., 'open_threads': ...} (empty strings if none).
@@ -1212,7 +1212,7 @@ class SessionManager(EntityManager):
                 meta['open_threads'] = s.split('**Open threads:**', 1)[1].strip()
         return meta
 
-    def _get_recent_sessions(self, count: int) -> List[str]:
+    def _get_recent_sessions(self, count: int) -> list[str]:
         """Get recent session entries"""
         history = self.get_history()
         return history[-count:] if history else []
@@ -1257,7 +1257,7 @@ def main():
                                 choices=['on', 'off', 'toggle', 'show'],
                                 help='on | off | toggle | show (default: show)')
 
-    from cli_output import wants_json, strip_json_flag, emit
+    from cli_output import emit, strip_json_flag, wants_json
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
 

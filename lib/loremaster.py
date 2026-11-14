@@ -12,17 +12,17 @@ module owns the find/cache/gate/observe machinery + the source excerpt.)
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from entity_manager import EntityManager
 from book_bible import log_token_estimate
+from entity_manager import EntityManager
 from rag.coarse_index import CoarseIndex
 
 
 class Loremaster(EntityManager):
-    def __init__(self, world_state_dir: str = None, book_text: Optional[str] = None):
+    def __init__(self, world_state_dir: str = None, book_text: str | None = None):
         super().__init__(world_state_dir)
         self.cache_file = "loremaster-cache.json"
         self.index = CoarseIndex()
@@ -36,11 +36,11 @@ class Loremaster(EntityManager):
             if p.exists():
                 try:
                     return p.read_text(encoding="utf-8")
-                except (IOError, ValueError):
+                except (OSError, ValueError):
                     return ""
         return ""
 
-    def _cache(self) -> Dict[str, Any]:
+    def _cache(self) -> dict[str, Any]:
         return self.json_ops.load_json(self.cache_file) or {}
 
     # Excerpt kept in the cache / default output. The FULL chapter span is
@@ -49,7 +49,7 @@ class Loremaster(EntityManager):
     EXCERPT_CHARS = 1500
 
     def brief_for(self, location: str, important: bool = False,
-                  full: bool = False) -> Dict[str, Any]:
+                  full: bool = False) -> dict[str, Any]:
         """Grounded brief for a scene. Deep-reads only on a new or important scene.
 
         full=True attaches the entire chapter span as `chapter_text` — the
@@ -104,7 +104,8 @@ class Loremaster(EntityManager):
 def main():
     import argparse
     import json
-    from cli_output import wants_json, strip_json_flag, emit
+
+    from cli_output import emit, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description="Loremaster scene brief")
     parser.add_argument("location", nargs="+")

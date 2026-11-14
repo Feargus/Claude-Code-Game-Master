@@ -17,14 +17,14 @@ Used by new_character.py; the GM never calls it directly.
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 import sheet as sheet_mod
 
 
-def _swap(ids: List[str], old: str, new: str) -> List[str]:
+def _swap(ids: list[str], old: str, new: str) -> list[str]:
     """`ids` with `old` replaced by `new`, without duplicates, order kept."""
     out = []
     for cid in ids:
@@ -51,7 +51,7 @@ def _learn_match(match: str, old: str, new: str) -> str:
     return f"{who}{sep}{what}"
 
 
-def move_id(json_ops, old: str, new: str) -> List[str]:
+def move_id(json_ops, old: str, new: str) -> list[str]:
     """Rewrite `old` to `new` in the facts (holders, about) and the active
     consequences (triggers, tell effects). Returns notes for the GM about
     anything that no longer makes sense."""
@@ -99,7 +99,7 @@ def move_id(json_ops, old: str, new: str) -> List[str]:
     return notes
 
 
-def _former_record(old: Dict[str, Any], npcs: Dict[str, Any]) -> str:
+def _former_record(old: dict[str, Any], npcs: dict[str, Any]) -> str:
     """Put the outgoing character into npcs.json as an NPC sheet. Returns its key."""
     name = sheet_mod.name(old) or "former character"
     key = name if name not in npcs else f"{name} (former character)"
@@ -109,8 +109,8 @@ def _former_record(old: Dict[str, Any], npcs: Dict[str, Any]) -> str:
     return key
 
 
-def hand_over(json_ops, outgoing: Optional[Dict[str, Any]], canon: Optional[str],
-              timestamp: str = "") -> List[str]:
+def hand_over(json_ops, outgoing: dict[str, Any] | None, canon: str | None,
+              timestamp: str = "") -> list[str]:
     """Move the ids when the story passes from `outgoing` (the old sheet, or None)
     to the canon NPC `canon` (a key in npcs.json, or None). Returns notes."""
     notes = []

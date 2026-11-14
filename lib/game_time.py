@@ -9,7 +9,6 @@ other, which is why each script used to read the time by itself).
 """
 
 from datetime import datetime
-from typing import Optional
 
 STORED_FORMAT = "%Y-%m-%dT%H:%M"
 OVERVIEW = "campaign-overview.json"
@@ -21,7 +20,7 @@ def stored_time(json_ops) -> str:
     return str((json_ops.load_json(OVERVIEW) or {}).get("game_time") or "")
 
 
-def current_time(json_ops) -> Optional[datetime]:
+def current_time(json_ops) -> datetime | None:
     """The game time as a datetime, or None if the campaign has none yet."""
     stored = stored_time(json_ops)
     return datetime.strptime(stored, STORED_FORMAT) if stored else None

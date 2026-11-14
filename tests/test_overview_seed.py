@@ -1,7 +1,8 @@
 """Tests for campaign-overview-author: seed overview + campaign_rules, fix rules_doc."""
 
 import json
-from lib.overview_seed import seed_overview, fix_rules_doc
+
+from lib.overview_seed import fix_rules_doc, seed_overview
 
 
 def test_seed_sets_fields_and_campaign_rules_preserving_others(tmp_path):

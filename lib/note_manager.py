@@ -3,7 +3,7 @@
 
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Add lib directory to path for imports
@@ -24,7 +24,7 @@ def assign_missing_ids(facts: dict) -> dict:
     """
     entries = []
     highest = 0
-    for category, items in facts.items():
+    for _category, items in facts.items():
         if not isinstance(items, list):
             continue
         for i, item in enumerate(items):
@@ -199,11 +199,11 @@ class NoteManager:
         game_time = stored_time(self.json_ops)
         if game_time:
             entry['game_time'] = game_time
-        entry['timestamp'] = datetime.now(timezone.utc).isoformat()
+        entry['timestamp'] = datetime.now(UTC).isoformat()
         facts[category].append(entry)
 
         if not self.json_ops.save_json("facts.json", facts):
-            print(f"[ERROR] Failed to save fact")
+            print("[ERROR] Failed to save fact")
             return ""
 
         print(f"[SUCCESS] Recorded fact {fact_id} in {category}: {fact}")
@@ -633,7 +633,8 @@ def main():
     parser = argparse.ArgumentParser(description="Facts")
     sub = parser.add_subparsers(dest="action")
     p = sub.add_parser("add", help="record a fact")
-    p.add_argument("category"); p.add_argument("fact")
+    p.add_argument("category")
+    p.add_argument("fact")
     p.add_argument("--about", action="append", default=[],
                    help="who or what it concerns (repeatable): player, npc:<name>, location:<name>")
     p.add_argument("--not-about", dest="not_about", action="append", default=[],
@@ -653,12 +654,14 @@ def main():
     p_add.add_argument("--nowhere", action="store_true",
                        help="it happened nowhere in particular (a truth, a secret, off-screen)")
     p = sub.add_parser("truth", help="mark a recorded fact true, partial or wrong")
-    p.add_argument("fact_id"); p.add_argument("truth", choices=["true"] + list(TRUTH_VALUES))
+    p.add_argument("fact_id")
+    p.add_argument("truth", choices=["true"] + list(TRUTH_VALUES))
     p.add_argument("--version-of", dest="version_of")
     p.add_argument("--no-version", dest="no_version", action="store_true",
                    help="drop the link to the true version")
     p = sub.add_parser("tell", help="someone learns a recorded fact")
-    p.add_argument("fact_id"); p.add_argument("holders", nargs="+")
+    p.add_argument("fact_id")
+    p.add_argument("holders", nargs="+")
     p = sub.add_parser("about", help="change a recorded fact's about")
     p.add_argument("fact_id")
     p.add_argument("--add", action="append", default=[])
@@ -727,7 +730,7 @@ def main():
             try:
                 items = json.loads(args.facts)
             except ValueError as error:
-                raise ValueError(f"The beat isn't valid JSON: {error}")
+                raise ValueError(f"The beat isn't valid JSON: {error}") from error
             written = manager.beat(items)
             print(f"[SUCCESS] Recorded {', '.join(written)}")
         elif args.action == 'witness':

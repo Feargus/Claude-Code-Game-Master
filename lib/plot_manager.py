@@ -5,14 +5,14 @@ Handles plot listing, searching, and status updates
 """
 
 import sys
-from typing import Dict, List, Optional, Any
 from pathlib import Path
+from typing import Any
 
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
-from schemas import PLOT_TYPES, PLOT_TYPE_SORT, VALID_PLOT_STATUSES
+from schemas import PLOT_TYPE_SORT, PLOT_TYPES, VALID_PLOT_STATUSES
 
 # Canonical types in display order, with friendlier headings where one reads better
 # than the bare type name.
@@ -33,8 +33,8 @@ class PlotManager(EntityManager):
         super().__init__(world_state_dir)
         self.plots_file = "plots.json"
 
-    def list_plots(self, plot_type: Optional[str] = None,
-                   status: Optional[str] = None) -> Dict[str, Dict]:
+    def list_plots(self, plot_type: str | None = None,
+                   status: str | None = None) -> dict[str, dict]:
         """
         List all plots with optional filtering by type and status
         """
@@ -58,7 +58,7 @@ class PlotManager(EntityManager):
 
         return filtered
 
-    def get_plot(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_plot(self, name: str) -> dict[str, Any] | None:
         """
         Get full details of a specific plot by name
         """
@@ -67,7 +67,7 @@ class PlotManager(EntityManager):
             return None
         return self._get_entity(self.plots_file, actual_name)
 
-    def search_plots(self, query: str) -> Dict[str, Dict]:
+    def search_plots(self, query: str) -> dict[str, dict]:
         """
         Search plots by name, description, NPCs, locations, or objectives
         """
@@ -115,9 +115,9 @@ class PlotManager(EntityManager):
         return results
 
     def add_plot(self, name: str, plot_type: str = 'idea', description: str = '',
-                 status: str = 'dormant', objectives: Optional[List[str]] = None,
-                 npcs: Optional[List[str]] = None, locations: Optional[List[str]] = None,
-                 sequence: Optional[int] = None, first_event: Optional[str] = None) -> bool:
+                 status: str = 'dormant', objectives: list[str] | None = None,
+                 npcs: list[str] | None = None, locations: list[str] | None = None,
+                 sequence: int | None = None, first_event: str | None = None) -> bool:
         """Create a NEW plot row (the only live plot-creation path).
 
         Refuses to clobber an existing plot of the same name — use `update` to advance
@@ -197,7 +197,7 @@ class PlotManager(EntityManager):
             return True
         return False
 
-    def complete_plot(self, name: str, outcome: Optional[str] = None) -> bool:
+    def complete_plot(self, name: str, outcome: str | None = None) -> bool:
         """
         Mark a plot as completed
         """
@@ -228,7 +228,7 @@ class PlotManager(EntityManager):
             return True
         return False
 
-    def fail_plot(self, name: str, reason: Optional[str] = None) -> bool:
+    def fail_plot(self, name: str, reason: str | None = None) -> bool:
         """
         Mark a plot as failed
         """
@@ -259,7 +259,7 @@ class PlotManager(EntityManager):
             return True
         return False
 
-    def get_plot_counts(self) -> Dict[str, int]:
+    def get_plot_counts(self) -> dict[str, int]:
         """
         Get counts of plots by type and status
         """
@@ -271,10 +271,10 @@ class PlotManager(EntityManager):
             'completed': 0,
             'failed': 0,
             'dormant': 0,
-            **{t: 0 for t in PLOT_TYPE_ORDER},
+            **dict.fromkeys(PLOT_TYPE_ORDER, 0),
         }
 
-        for name, data in plots.items():
+        for _name, data in plots.items():
             if not isinstance(data, dict):
                 continue
 
@@ -292,7 +292,7 @@ class PlotManager(EntityManager):
 
         return counts
 
-    def format_plot_status(self, name: str) -> Optional[str]:
+    def format_plot_status(self, name: str) -> str | None:
         """
         Format plot details for display
         """
@@ -351,7 +351,7 @@ class PlotManager(EntityManager):
 
         return "\n".join(lines)
 
-    def format_plot_list(self, plots: Dict[str, Dict]) -> str:
+    def format_plot_list(self, plots: dict[str, dict]) -> str:
         """
         Format a list of plots for display
         """
@@ -393,7 +393,7 @@ class PlotManager(EntityManager):
         return "\n".join(lines)
 
 
-    def get_active_threads(self) -> Dict[str, List[Dict]]:
+    def get_active_threads(self) -> dict[str, list[dict]]:
         """
         Get active plot threads grouped by type, with staleness info.
         Returns dict keyed by type, each containing list of thread summaries.
@@ -403,7 +403,6 @@ class PlotManager(EntityManager):
         were held back is recorded for `format_threads` to disclose, so the GM knows
         they exist and can promote one.
         """
-        from datetime import datetime, timezone
 
         plots = self._load_entities(self.plots_file)
         threads = {t: [] for t in PLOT_TYPE_ORDER}
@@ -464,7 +463,7 @@ class PlotManager(EntityManager):
 
         return threads
 
-    def format_threads(self, threads: Dict[str, List[Dict]]) -> str:
+    def format_threads(self, threads: dict[str, list[dict]]) -> str:
         """
         Format active threads for display — GM notes style, not a database query.
         """
@@ -502,7 +501,7 @@ class PlotManager(EntityManager):
                 if thread['last_event']:
                     lines.append(f"    Last: \"{thread['last_event']}\"")
                 else:
-                    lines.append(f"    (no events recorded)")
+                    lines.append("    (no events recorded)")
 
                 # Connected NPCs
                 if thread['npcs']:
@@ -563,7 +562,7 @@ def main():
     fail_parser.add_argument('reason', nargs='?', help='Failure reason')
 
     # Counts
-    counts_parser = subparsers.add_parser('counts', help='Get plot counts')
+    subparsers.add_parser('counts', help='Get plot counts')
 
     # Active threads summary
     subparsers.add_parser('threads', help='Show active story threads (GM dashboard)')

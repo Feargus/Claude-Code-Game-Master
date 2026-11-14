@@ -12,9 +12,9 @@ No categorization - all chunks are stored uniformly and queried by semantic simi
 """
 
 import re
-from pathlib import Path
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 from lib.rag.embedder import LocalEmbedder
 from lib.rag.vector_store import CampaignVectorStore
@@ -29,7 +29,7 @@ class RAGExtractor:
         self,
         campaign_dir: str,
         chunk_size: int = None,
-        embedder: Optional[LocalEmbedder] = None,
+        embedder: LocalEmbedder | None = None,
     ):
         """
         Initialize the RAG extractor for a campaign.
@@ -47,14 +47,14 @@ class RAGExtractor:
         self.vector_store = CampaignVectorStore(campaign_dir)
 
         # Track extraction state
-        self._document_name: Optional[str] = None
-        self._extraction_metadata: Dict = {}
+        self._document_name: str | None = None
+        self._extraction_metadata: dict = {}
 
     def extract_from_document(
         self,
         filepath: str,
         clear_existing: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Extract text from a document and store as vectors.
 
@@ -123,7 +123,7 @@ class RAGExtractor:
         self,
         query_text: str,
         n_results: int = 20
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Query the vector store by semantic similarity.
 
@@ -151,11 +151,11 @@ class RAGExtractor:
 
         return formatted
 
-    def get_extraction_metadata(self) -> Dict:
+    def get_extraction_metadata(self) -> dict:
         """Get metadata about the last extraction."""
         return self._extraction_metadata.copy()
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get current statistics."""
         return {
             "campaign_dir": str(self.campaign_dir),
@@ -170,7 +170,7 @@ class RAGExtractor:
         extractor = ContentExtractor()
         return extractor.extract_text(str(filepath))
 
-    def _split_into_chunks(self, text: str) -> List[str]:
+    def _split_into_chunks(self, text: str) -> list[str]:
         """Split text into chunks of approximately chunk_size characters."""
         chunks = []
 
@@ -207,7 +207,7 @@ class RAGExtractor:
 
         return chunks
 
-    def _split_by_paragraphs(self, text: str) -> List[str]:
+    def _split_by_paragraphs(self, text: str) -> list[str]:
         """Split text by paragraphs, respecting chunk size."""
         chunks = []
         paragraphs = text.split('\n\n')
@@ -227,7 +227,7 @@ class RAGExtractor:
 
         return chunks
 
-    def _store_chunks(self, chunks: List[str], embeddings):
+    def _store_chunks(self, chunks: list[str], embeddings):
         """Store chunks in the vector store with basic metadata."""
         metadatas = []
         for i in range(len(chunks)):
@@ -247,8 +247,8 @@ class RAGExtractor:
 
 def main():
     """CLI for RAG extraction."""
-    import sys
     import json
+    import sys
     import tempfile
 
     if len(sys.argv) < 2:
@@ -264,7 +264,7 @@ def main():
     print()
 
     extractor = RAGExtractor(campaign_dir)
-    metadata = extractor.extract_from_document(filepath, clear_existing=True)
+    extractor.extract_from_document(filepath, clear_existing=True)
 
     print("\n" + "=" * 50)
     print("Stats:")

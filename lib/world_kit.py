@@ -22,13 +22,12 @@ ruleset.json shape:
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from json_ops import JsonOperations
 from campaign_manager import CampaignManager
-
+from json_ops import JsonOperations
 
 # The standard rules: what a campaign without its own ruleset.json plays by (a
 # world made from one sentence, a new world before its kit is drafted). The rolls, attributes,
@@ -58,20 +57,20 @@ class WorldKit:
     def name(self) -> str:
         return self.ruleset.get("name", STANDARD_NAME)
 
-    def stat_schema(self) -> Dict[str, Any]:
+    def stat_schema(self) -> dict[str, Any]:
         return self.ruleset.get("stat_schema", {})
 
-    def vitals(self) -> List[str]:
+    def vitals(self) -> list[str]:
         """The campaign's own counters (Drift, corruption, water, ...), on top of
         the standard rules; [] when it declares none. Never 'hp': wounds replaced
         it, and every character has a body (gm-body.sh)."""
         declared = (self.stat_schema() or {}).get("vitals") or []
         return [v for v in declared if str(v).lower() != "hp"]
 
-    def active_agents(self) -> List[str]:
+    def active_agents(self) -> list[str]:
         return self.ruleset.get("active_agents", [])
 
-    def rules_doc_path(self) -> Optional[Path]:
+    def rules_doc_path(self) -> Path | None:
         """Path to the campaign's rules prose (loaded on demand), if declared + present."""
         doc = self.ruleset.get("rules_doc")
         if not doc:
@@ -79,7 +78,7 @@ class WorldKit:
         p = self.campaign_dir / doc
         return p if p.exists() else None
 
-    def campaign_rules(self) -> Dict[str, Any]:
+    def campaign_rules(self) -> dict[str, Any]:
         """World-flavor systems (loot boxes, viewers, ...) from campaign-overview.
 
         Legacy fallback for scene context when `signature_systems()` is empty.
@@ -87,14 +86,14 @@ class WorldKit:
         overview = self.json_ops.load_json("campaign-overview.json") or {}
         return overview.get("campaign_rules", {})
 
-    def skills(self) -> List[str]:
+    def skills(self) -> list[str]:
         """Skill names this kit declares, or [] when the ruleset has none."""
         raw = self.ruleset.get("skills") or []
         if isinstance(raw, dict):
             return [str(k) for k in raw]
         if not isinstance(raw, list):
             return []
-        names: List[str] = []
+        names: list[str] = []
         for item in raw:
             if isinstance(item, str):
                 names.append(item)
@@ -102,7 +101,7 @@ class WorldKit:
                 names.append(str(item["name"]))
         return names
 
-    def signature_systems(self) -> List[Dict[str, str]]:
+    def signature_systems(self) -> list[dict[str, str]]:
         """Normalize ruleset.signature_systems to a list of {name, summary}.
 
         Canonical form is a list of `{name, summary, rules?}`. The Conan
@@ -112,7 +111,7 @@ class WorldKit:
         """
         return _normalize_signature_systems(self.ruleset.get("signature_systems"))
 
-    def systems(self) -> List[Dict[str, Any]]:
+    def systems(self) -> list[dict[str, Any]]:
         """Executable signature-system primitives instantiated by this kit.
 
         Each entry is ``{primitive, name, config}`` where ``primitive`` names a
@@ -128,10 +127,10 @@ class WorldKit:
                 if isinstance(s, dict) and s.get("primitive") and s.get("name")]
 
 
-def _normalize_signature_systems(raw: Any) -> List[Dict[str, str]]:
+def _normalize_signature_systems(raw: Any) -> list[dict[str, str]]:
     if not raw:
         return []
-    items: List[Dict[str, str]] = []
+    items: list[dict[str, str]] = []
     if isinstance(raw, dict):
         for name, val in raw.items():
             items.append(_one_signature_system(str(name), val))
@@ -145,7 +144,7 @@ def _normalize_signature_systems(raw: Any) -> List[Dict[str, str]]:
     return [s for s in items if s.get("name") or s.get("summary")]
 
 
-def _one_signature_system(name: str, val: Any) -> Dict[str, str]:
+def _one_signature_system(name: str, val: Any) -> dict[str, str]:
     if isinstance(val, str):
         return {"name": name, "summary": val}
     if not isinstance(val, dict):
@@ -155,7 +154,7 @@ def _one_signature_system(name: str, val: Any) -> Dict[str, str]:
     rules = val.get("rules")
     if not isinstance(summary, str):
         summary = "" if summary is None else str(summary)
-    entry: Dict[str, str] = {"name": sys_name, "summary": summary}
+    entry: dict[str, str] = {"name": sys_name, "summary": summary}
     if not entry["summary"] and rules:
         entry["summary"] = rules if isinstance(rules, str) else str(rules)
     elif rules and rules != entry["summary"]:
@@ -166,7 +165,8 @@ def _one_signature_system(name: str, val: Any) -> Dict[str, str]:
 def main():
     import argparse
     import json
-    from cli_output import wants_json, strip_json_flag, emit
+
+    from cli_output import emit, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description="World Kit info")
     parser.add_argument("action", nargs="?", default="info", choices=["info"])

@@ -163,6 +163,7 @@ def test_a_campaign_without_a_ruleset_plays_the_standard_rules(tmp_path):
 
 def test_new_campaigns_have_no_fantasy_default_and_count_their_sessions(isolated_world_state):
     import json
+
     from lib.campaign_manager import CampaignManager
     cm = CampaignManager()
     cdir = cm.create("Solo", "Solo")

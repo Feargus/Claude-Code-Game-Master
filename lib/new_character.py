@@ -19,17 +19,17 @@ and die sizes, zone names), writes the whole sheet, and wires the new character 
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 import body
 import sheet as sheet_mod
 from entity_manager import EntityManager
-from sheet import ATTRIBUTES
-from world_kit import WorldKit
 from handover import hand_over
+from sheet import ATTRIBUTES
 from stat_block import canon_skills, common_skills
+from world_kit import WorldKit
 
 DEFAULT_ATTRIBUTE = 12
 DEFAULT_LUCK = 7
@@ -40,7 +40,7 @@ class CharacterError(Exception):
     """A sheet that can't be saved. The message says what to fix."""
 
 
-def _attributes(given: Dict[str, Any]) -> Dict[str, int]:
+def _attributes(given: dict[str, Any]) -> dict[str, int]:
     """All nine attributes as die sizes; any left out get the default."""
     stats = {}
     for key, value in given.items():
@@ -50,11 +50,11 @@ def _attributes(given: Dict[str, Any]) -> Dict[str, int]:
         try:
             stats[attribute] = sheet_mod.check_die(attribute, value)
         except sheet_mod.SheetError as error:
-            raise CharacterError(str(error))
+            raise CharacterError(str(error)) from error
     return {attribute: stats.get(attribute, DEFAULT_ATTRIBUTE) for attribute in ATTRIBUTES}
 
 
-def _skills(given: Dict[str, Any], untrained: List[str]) -> Dict[str, int]:
+def _skills(given: dict[str, Any], untrained: list[str]) -> dict[str, int]:
     """The interview's skills, plus every common skill at 0 unless it is listed in
     `untrained` (a pacifist who never threw a punch). A skill left off the sheet is
     untrained; the sheet never holds a negative value."""
@@ -86,7 +86,7 @@ def _skills(given: Dict[str, Any], untrained: List[str]) -> Dict[str, int]:
     return skills
 
 
-def _named(given: Any, what: str) -> Dict[str, str]:
+def _named(given: Any, what: str) -> dict[str, str]:
     """Traits and perks: {"name": "what it does"}."""
     if not given:
         return {}
@@ -95,7 +95,7 @@ def _named(given: Any, what: str) -> Dict[str, str]:
     return {str(name): str(function) for name, function in given.items()}
 
 
-def _counters(given: Dict[str, Any], kit: WorldKit) -> Dict[str, Any]:
+def _counters(given: dict[str, Any], kit: WorldKit) -> dict[str, Any]:
     """The campaign's own counters (ruleset `stat_schema.vitals`), each starting at 0
     unless the interview set it. A counter with a named_track of the same name in the
     ruleset gets that track's max."""
@@ -116,7 +116,7 @@ def _counters(given: Dict[str, Any], kit: WorldKit) -> Dict[str, Any]:
     return counters
 
 
-def _body(character: Dict[str, Any], given: Dict[str, Any]) -> None:
+def _body(character: dict[str, Any], given: dict[str, Any]) -> None:
     """Unwounded zones, plus armor and cyberware from the interview. The interview
     gives armor as {"name", "zones": {zone: boxes}, "dr"?}, outermost first; add_armor
     puts each new piece outside, so they are added in reverse."""
@@ -130,10 +130,10 @@ def _body(character: Dict[str, Any], given: Dict[str, Any]) -> None:
             body.add_cyberware(character, piece["name"], piece["zone"], int(piece.get("boxes", 1)),
                                piece.get("effect", ""))
     except (body.BodyError, KeyError, TypeError) as error:
-        raise CharacterError(f"Armor or cyberware: {error}")
+        raise CharacterError(f"Armor or cyberware: {error}") from error
 
 
-def build_character(data: Dict[str, Any], kit: WorldKit) -> Tuple[Dict[str, Any], List[str]]:
+def build_character(data: dict[str, Any], kit: WorldKit) -> tuple[dict[str, Any], list[str]]:
     """The full sheet (sheet.py) from the interview's answers, with defaults for the
     rest. The answers come in the sheet's sections; `untrained` lists common skills
     the character lacks."""
@@ -171,7 +171,7 @@ def build_character(data: Dict[str, Any], kit: WorldKit) -> Tuple[Dict[str, Any]
         _body(character, data.get("body") or {})
         sheet_mod.check(character, "player")
     except sheet_mod.SheetError as error:
-        raise CharacterError(str(error))
+        raise CharacterError(str(error)) from error
 
     left_out = [a for a in ATTRIBUTES if a not in {k.upper() for k in given_attributes}]
     warnings = [f"attributes set to the default d{DEFAULT_ATTRIBUTE}: {', '.join(left_out)}"] \
@@ -181,7 +181,7 @@ def build_character(data: Dict[str, Any], kit: WorldKit) -> Tuple[Dict[str, Any]
 
 class CharacterCreator(EntityManager):
 
-    def _archive(self, old: Dict[str, Any]) -> str:
+    def _archive(self, old: dict[str, Any]) -> str:
         """Archive the outgoing character.json to fallen/."""
         fallen_dir = self.campaign_dir / "fallen"
         fallen_dir.mkdir(parents=True, exist_ok=True)
@@ -190,8 +190,8 @@ class CharacterCreator(EntityManager):
         self.json_ops.save_json(str(path), old)
         return str(path)
 
-    def create(self, data: Dict[str, Any], canon: Optional[str] = None,
-               replace: bool = False) -> Dict[str, Any]:
+    def create(self, data: dict[str, Any], canon: str | None = None,
+               replace: bool = False) -> dict[str, Any]:
         """Build, save and wire in the new character. Returns a result dict."""
         existing = self.json_ops.load_json("character.json")
         if existing and not replace:
@@ -236,7 +236,8 @@ class CharacterCreator(EntityManager):
 def main():
     import argparse
     import json
-    from cli_output import wants_json, strip_json_flag, emit, emit_error
+
+    from cli_output import emit, emit_error, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description="Create the player character from a finished interview")
     parser.add_argument("character", help="the character as JSON, or --stdin to read it")

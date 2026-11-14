@@ -128,9 +128,9 @@ def reuse_existing_key(query, entities, aliases_key="aliases"):
     best, best_len = None, 0
     for k in keys:
         k_norm = normalize_entity_name(k)
-        if k_norm and (q_norm == k_norm or q_norm.startswith(k_norm + " ")):
-            if len(k_norm) > best_len:
-                best, best_len = k, len(k_norm)
+        if (k_norm and (q_norm == k_norm or q_norm.startswith(k_norm + " "))
+                and len(k_norm) > best_len):
+            best, best_len = k, len(k_norm)
     return best
 
 

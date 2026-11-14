@@ -3,7 +3,6 @@
 import json
 from pathlib import Path
 
-from lib.player_manager import PlayerManager
 from lib.schemas import validate_character
 from tests.sheets import player
 

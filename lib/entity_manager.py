@@ -5,16 +5,15 @@ Provides common initialization and CRUD patterns.
 """
 
 import sys
-from typing import Optional
 from pathlib import Path
 
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from json_ops import JsonOperations
-from validators import Validators
 from campaign_manager import CampaignManager
 from entity_aliases import resolve_entity_name
+from json_ops import JsonOperations
+from validators import Validators
 
 
 def is_dead(data) -> bool:
@@ -169,7 +168,7 @@ class EntityManager:
         entities[name].update(updates)
         return self._save_entities(filename, entities)
 
-    def _get_entity(self, filename: str, name: str) -> Optional[dict]:
+    def _get_entity(self, filename: str, name: str) -> dict | None:
         """Get a single entity by name.
 
         Exact match first, then alias-aware resolution (case/title/parenthetical
@@ -181,7 +180,7 @@ class EntityManager:
         key = resolve_entity_name(name, entities)
         return entities.get(key) if key else None
 
-    def _find_entity_name(self, filename: str, name: str) -> Optional[str]:
+    def _find_entity_name(self, filename: str, name: str) -> str | None:
         """Find the actual entity key via alias-aware resolution.
 
         Resolution order: exact -> case-insensitive -> explicit aliases ->
@@ -195,6 +194,6 @@ class EntityManager:
         return self.json_ops.get_timestamp()
 
     @property
-    def campaign_name(self) -> Optional[str]:
+    def campaign_name(self) -> str | None:
         """Get the name of the active campaign."""
         return self.campaign_mgr.get_active()

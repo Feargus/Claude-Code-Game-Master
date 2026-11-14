@@ -8,8 +8,6 @@ import json
 from pathlib import Path
 
 from lib import book_bible
-from lib.world_bible import validate_bible
-
 
 SAMPLE = (
     "Chapter One\nThe spice must flow. Paul looked across the dunes.\n\n"

@@ -24,10 +24,10 @@ manager that used to ignore the pin, assert the live tree is untouched after.
 import shutil
 import subprocess
 import tempfile
+from importlib.util import find_spec
 from pathlib import Path
 
 import pytest
-from importlib.util import find_spec
 
 PROJECT_ROOT = Path(__file__).parent.parent
 # gm-extract.sh prepare stops before resolving the path without these (the rag extra).

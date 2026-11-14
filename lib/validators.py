@@ -4,14 +4,13 @@ Input validation for GM tools: the two checks that are used.
 """
 
 import re
-from typing import Optional, Tuple
 
 
 class Validators:
     """Input validation for the GM system."""
 
     @staticmethod
-    def validate_name(name: str) -> Tuple[bool, Optional[str]]:
+    def validate_name(name: str) -> tuple[bool, str | None]:
         """
         Validate name/identifier
         Allows: alphanumeric, spaces, hyphens, apostrophes
@@ -32,7 +31,7 @@ class Validators:
         return True, None
 
     @staticmethod
-    def validate_time_of_day(time: str) -> Tuple[bool, Optional[str]]:
+    def validate_time_of_day(time: str) -> tuple[bool, str | None]:
         """
         Validate a time-of-day word (the same words as time_manager.TIMES_OF_DAY)
         Returns: (is_valid, error_message)

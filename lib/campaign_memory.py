@@ -14,7 +14,7 @@ threads you actually touched surface. session-log.md remains the canonical ledge
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -31,9 +31,9 @@ class CampaignMemory(EntityManager):
         super().__init__(world_state_dir)
         self.memory_file = "campaign-memory.json"
 
-    def gather(self) -> List[Dict[str, Any]]:
+    def gather(self) -> list[dict[str, Any]]:
         """Collect memory entries from the campaign's own history (read-only)."""
-        entries: List[Dict[str, Any]] = []
+        entries: list[dict[str, Any]] = []
 
         log_path = self.campaign_dir / "session-log.md"
         if log_path.exists():
@@ -73,8 +73,8 @@ class CampaignMemory(EntityManager):
     # GM's own end-of-session synthesis — what changed, who matters now, what
     # debts are open. Written via `gm-recall.sh arc '<json>'` at session end.
 
-    def add_arc(self, summary: str, who_matters: List[str] = None,
-                open_debts: List[str] = None) -> Dict[str, Any]:
+    def add_arc(self, summary: str, who_matters: list[str] = None,
+                open_debts: list[str] = None) -> dict[str, Any]:
         """Append a GM-authored arc entry. Returns the stored entry."""
         data = self.json_ops.load_json(self.memory_file) or {}
         entry = {
@@ -87,11 +87,11 @@ class CampaignMemory(EntityManager):
         self.json_ops.save_json(self.memory_file, data)
         return entry
 
-    def arcs(self) -> List[Dict[str, Any]]:
+    def arcs(self) -> list[dict[str, Any]]:
         return (self.json_ops.load_json(self.memory_file) or {}).get("arcs", [])
 
     @staticmethod
-    def _arc_text(a: Dict[str, Any]) -> str:
+    def _arc_text(a: dict[str, Any]) -> str:
         bits = [a.get("summary", "")]
         if a.get("who_matters"):
             bits.append("Who matters: " + ", ".join(a["who_matters"]))
@@ -101,7 +101,7 @@ class CampaignMemory(EntityManager):
 
     # ---- recall ----
 
-    def entries(self) -> List[Dict[str, Any]]:
+    def entries(self) -> list[dict[str, Any]]:
         """Everything recall searches, as it is now: the session summaries and
         facts (gather), then the GM's arc entries. Read fresh every time, so a
         fact is recallable the moment it is recorded; nothing is kept in a copy
@@ -110,7 +110,7 @@ class CampaignMemory(EntityManager):
                                  "source": "arc", "tier": "arc"} for a in self.arcs()]
 
     @staticmethod
-    def _hash(entries: List[Dict[str, Any]]) -> str:
+    def _hash(entries: list[dict[str, Any]]) -> str:
         import hashlib
         return hashlib.md5("\x1f".join(e["text"] for e in entries).encode("utf-8")).hexdigest()
 
@@ -150,7 +150,7 @@ class CampaignMemory(EntityManager):
         except ImportError:
             return None
 
-    def recall(self, query: str, top_k: int = 5, provenance: str = None) -> List[Dict[str, Any]]:
+    def recall(self, query: str, top_k: int = 5, provenance: str = None) -> list[dict[str, Any]]:
         """Recall over the campaign's history: cosine over stored embeddings
         when they belong to the entries as they are now, keyword overlap
         otherwise (no RAG deps, or facts recorded since the last refresh)."""
@@ -175,10 +175,10 @@ class CampaignMemory(EntityManager):
         import math
         qn = math.sqrt(sum(x * x for x in q)) or 1.0
         scored = []
-        for e, v in zip(entries, vectors):
+        for e, v in zip(entries, vectors, strict=True):
             if provenance and e.get("provenance") != provenance:
                 continue
-            dot = sum(a * b for a, b in zip(q, v))
+            dot = sum(a * b for a, b in zip(q, v, strict=False))
             vn = math.sqrt(sum(b * b for b in v)) or 1.0
             scored.append((dot / (qn * vn), e))
         scored.sort(key=lambda t: t[0], reverse=True)
@@ -204,7 +204,7 @@ class CampaignMemory(EntityManager):
         scored.sort(key=lambda t: t[:3])
         return [t[3] for t in scored[:top_k]]
 
-    def memoir(self) -> Dict[str, Any]:
+    def memoir(self) -> dict[str, Any]:
         """Tiered, bounded memoir: real arc entries first, raw history behind."""
         entries = self.gather()
         recent = [e for e in entries if e["tier"] == "recent"]
@@ -226,11 +226,13 @@ class CampaignMemory(EntityManager):
 def main():
     import argparse
     import json
-    from cli_output import wants_json, strip_json_flag, emit
+
+    from cli_output import emit, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description="Campaign memory")
     sub = parser.add_subparsers(dest="action")
-    r = sub.add_parser("recall"); r.add_argument("query", nargs="+")
+    r = sub.add_parser("recall")
+    r.add_argument("query", nargs="+")
     r.add_argument("--top-k", type=int, default=5)
     r.add_argument("--provenance", choices=["our-story", "book-canon"])
     sub.add_parser("refresh")
@@ -241,7 +243,8 @@ def main():
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
     if not args.action:
-        parser.print_help(); sys.exit(1)
+        parser.print_help()
+        sys.exit(1)
 
     m = CampaignMemory()
     if args.action == "recall":

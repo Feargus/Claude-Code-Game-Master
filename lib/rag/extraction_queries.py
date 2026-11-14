@@ -6,12 +6,10 @@ Natural language query templates for identifying different content types.
 No regex - pure semantic matching via embeddings.
 """
 
-from typing import Dict, List
-
 
 # Query templates for each content type
 # Multiple queries per type to capture different phrasings and contexts
-EXTRACTION_QUERIES: Dict[str, List[str]] = {
+EXTRACTION_QUERIES: dict[str, list[str]] = {
     "npc": [
         # Character identification
         "character named who is described as personality appearance",
@@ -125,7 +123,7 @@ EXTRACTION_QUERIES: Dict[str, List[str]] = {
 }
 
 
-def get_queries_for_type(content_type: str) -> List[str]:
+def get_queries_for_type(content_type: str) -> list[str]:
     """
     Get all query templates for a specific content type.
 
@@ -138,12 +136,12 @@ def get_queries_for_type(content_type: str) -> List[str]:
     return EXTRACTION_QUERIES.get(content_type, [])
 
 
-def get_all_types() -> List[str]:
+def get_all_types() -> list[str]:
     """Get all content type names."""
     return list(EXTRACTION_QUERIES.keys())
 
 
-def get_combined_queries() -> Dict[str, str]:
+def get_combined_queries() -> dict[str, str]:
     """
     Get a single combined query per type (for simpler matching).
 

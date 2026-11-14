@@ -5,12 +5,13 @@ Provides safe JSON read/write/update operations with proper error handling.
 Import-only: the tools reach campaign files through the managers.
 """
 
+import contextlib
 import json
 import os
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, List, Any
-from datetime import datetime, timezone
+from typing import Any
 
 
 class JsonFileError(RuntimeError):
@@ -58,7 +59,7 @@ class JsonOperations:
             return default
 
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, encoding='utf-8') as f:
                 return json.load(f)
         except json.JSONDecodeError as e:
             raise JsonFileError(
@@ -86,17 +87,15 @@ class JsonOperations:
                 json.dump(data, f, indent=indent, ensure_ascii=False)
             temp_path.replace(filepath)
         except (OSError, TypeError, ValueError) as e:
-            try:
+            with contextlib.suppress(OSError):
                 temp_path.unlink(missing_ok=True)
-            except OSError:
-                pass
             raise JsonFileError(
                 f"Can't write {filepath}: {e}. That file is as it was before; anything the "
                 f"command saved before this point is kept, so check the result before "
                 f"running it again.") from e
         return True
 
-    def update_json(self, filename: str, updates: Dict, path: List[str] = None) -> bool:
+    def update_json(self, filename: str, updates: dict, path: list[str] = None) -> bool:
         """
         Update JSON file with partial data
         If path is provided, updates nested structure at that path
@@ -125,7 +124,7 @@ class JsonOperations:
 
         return self.save_json(filename, data)
 
-    def check_exists(self, filename: str, key: str, path: List[str] = None) -> bool:
+    def check_exists(self, filename: str, key: str, path: list[str] = None) -> bool:
         """
         Check if a key exists in JSON file
         If path is provided, checks at that nested path
@@ -141,8 +140,7 @@ class JsonOperations:
                 current = current[p]
 
             return isinstance(current, dict) and key in current
-        else:
-            return isinstance(data, dict) and key in data
+        return isinstance(data, dict) and key in data
 
     def _resolve_path(self, filename: str) -> Path:
         """Resolve file path relative to world state directory"""
@@ -153,4 +151,4 @@ class JsonOperations:
     @staticmethod
     def get_timestamp() -> str:
         """Get ISO format timestamp"""
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()

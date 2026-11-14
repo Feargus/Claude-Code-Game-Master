@@ -22,7 +22,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -34,26 +34,26 @@ PRESENCE = ("demeanor",)
 PLAYER_DROP = ("id", "hp", "ac", "notes", "current_location", "saves", "max_hp", "speed")
 
 
-def _join(fields: Dict[str, Any], keys) -> str:
+def _join(fields: dict[str, Any], keys) -> str:
     return "; ".join(str(fields[k]).strip() for k in keys if str(fields.get(k) or "").strip())
 
 
-def _look(old: Dict[str, Any]) -> Dict[str, str]:
+def _look(old: dict[str, Any]) -> dict[str, str]:
     va = old.get("visual_appearance") or {}
     look = {"physique": _join(va, PHYSIQUE), "style": _join(va, STYLE),
             "presence": _join(va, PRESENCE)}
     return {k: v for k, v in look.items() if v}
 
 
-def _clean(section: Dict[str, Any]) -> Dict[str, Any]:
+def _clean(section: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in section.items() if v not in (None, "", [], {})}
 
 
-def _is_new(data: Dict[str, Any]) -> bool:
+def _is_new(data: dict[str, Any]) -> bool:
     return isinstance(data, dict) and isinstance(data.get("identity"), dict)
 
 
-def convert_player(old: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
+def convert_player(old: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     if _is_new(old):
         return old, []
     dropped = []
@@ -98,7 +98,7 @@ def convert_player(old: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
     return sheet_mod.check(new, "player"), dropped
 
 
-def convert_npc(name: str, old: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str], List[str]]:
+def convert_npc(name: str, old: dict[str, Any]) -> tuple[dict[str, Any], list[str], list[str]]:
     """(sheet, memories as fact texts, dropped fields)."""
     if _is_new(old):
         return old, [], []
@@ -140,7 +140,7 @@ def convert_npc(name: str, old: Dict[str, Any]) -> Tuple[Dict[str, Any], List[st
     return sheet_mod.check(new, "npc"), [m for m in memories if m], dropped
 
 
-def convert_mob(name: str, old: Dict[str, Any]) -> Dict[str, Any]:
+def convert_mob(name: str, old: dict[str, Any]) -> dict[str, Any]:
     if _is_new(old):
         return old
     new = {"identity": _clean({"name": name, "background": old.get("note") or ""}),
@@ -149,7 +149,7 @@ def convert_mob(name: str, old: Dict[str, Any]) -> Dict[str, Any]:
     return sheet_mod.check(new, "mob")
 
 
-def _add_memories(folder: Path, memories: Dict[str, List[str]]) -> int:
+def _add_memories(folder: Path, memories: dict[str, list[str]]) -> int:
     path = folder / "facts.json"
     facts = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     numbers = [int(f["id"][1:]) for items in facts.values() if isinstance(items, list)
@@ -169,7 +169,7 @@ def _add_memories(folder: Path, memories: Dict[str, List[str]]) -> int:
     return added
 
 
-def convert_campaign(folder: Path, dry_run: bool = False) -> List[str]:
+def convert_campaign(folder: Path, dry_run: bool = False) -> list[str]:
     report = []
     character_path = folder / "character.json"
     if character_path.exists():

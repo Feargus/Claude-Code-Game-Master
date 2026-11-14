@@ -9,7 +9,7 @@ Runs as Pass 2 during extraction workflow to enrich NPCs with context.
 import json
 import re
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any
 
 
 class QuoteExtractor:  # Keep class name for backwards compatibility
@@ -37,13 +37,13 @@ class QuoteExtractor:  # Keep class name for backwards compatibility
     def _ensure_rag(self):
         """Lazy-load RAG components."""
         if self._vector_store is None:
-            from lib.rag.vector_store import CampaignVectorStore
             from lib.rag.embedder import LocalEmbedder
+            from lib.rag.vector_store import CampaignVectorStore
 
             self._vector_store = CampaignVectorStore(str(self.campaign_dir))
             self._embedder = LocalEmbedder()
 
-    def extract_context_for_npc(self, npc_name: str, n_results: int = 15) -> List[str]:
+    def extract_context_for_npc(self, npc_name: str, n_results: int = 15) -> list[str]:
         """
         Query vectors for any relevant passages about a specific NPC.
 
@@ -75,7 +75,7 @@ class QuoteExtractor:  # Keep class name for backwards compatibility
                 n_results=n_results
             )
 
-            for doc, distance in zip(results['documents'], results['distances']):
+            for doc, distance in zip(results['documents'], results['distances'], strict=False):
                 # Skip if already seen
                 doc_key = doc[:200].lower()  # Use first 200 chars as key
                 if doc_key in seen_passages:
@@ -100,7 +100,6 @@ class QuoteExtractor:  # Keep class name for backwards compatibility
 
     def _clean_passage(self, text: str, max_length: int = 500) -> str:
         """Remove page markers and other noise from passages, cap length."""
-        import re
         # Remove page markers like "--- Page 142 ---"
         text = re.sub(r'---\s*Page\s*\d+\s*---\n?', '', text)
         # Remove OceanofPDF watermarks
@@ -124,7 +123,7 @@ class QuoteExtractor:  # Keep class name for backwards compatibility
         return text
 
     # Keep old method name as alias for backwards compatibility
-    def extract_voice_for_npc(self, npc_name: str, n_results: int = 10) -> Dict[str, Any]:
+    def extract_voice_for_npc(self, npc_name: str, n_results: int = 10) -> dict[str, Any]:
         """Legacy method - redirects to extract_context_for_npc."""
         passages = self.extract_context_for_npc(npc_name, n_results)
         return {
@@ -158,7 +157,7 @@ class QuoteExtractor:  # Keep class name for backwards compatibility
 
         enriched_count = 0
 
-        for npc_name in npcs.keys():
+        for npc_name in npcs:
             # Get semantic context passages
             new_passages = self.extract_context_for_npc(npc_name)
 
@@ -169,7 +168,7 @@ class QuoteExtractor:  # Keep class name for backwards compatibility
             all_context = existing_context.copy()
 
             # Add new passages, deduplicating
-            seen_keys = set(p[:100].lower() for p in all_context)
+            seen_keys = {p[:100].lower() for p in all_context}
             for passage in new_passages:
                 p_key = passage[:100].lower()
                 if p_key not in seen_keys:

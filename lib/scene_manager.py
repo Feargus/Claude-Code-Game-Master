@@ -13,7 +13,6 @@ on_npc triggers, a fact's default holders, the ready-threads nudge.
 
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -42,7 +41,7 @@ class SceneManager:
     def _npcs(self) -> dict:
         return self.json_ops.load_json("npcs.json") or {}
 
-    def _listed(self, overview: dict) -> List[str]:
+    def _listed(self, overview: dict) -> list[str]:
         """The stored list, if it belongs to the current location."""
         scene = overview.get("scene") or {}
         pos = overview.get("player_position") or {}
@@ -51,21 +50,21 @@ class SceneManager:
             return []
         return list(scene.get("present") or [])
 
-    def _save(self, overview: dict, listed: List[str]) -> None:
+    def _save(self, overview: dict, listed: list[str]) -> None:
         pos = overview.get("player_position") or {}
         overview["scene"] = {"location": pos.get("current_location", ""), "present": listed}
         self.json_ops.save_json(OVERVIEW, overview)
 
-    def present(self) -> Dict[str, dict]:
+    def present(self) -> dict[str, dict]:
         overview = self._overview()
         return npcs_present(self._npcs(), self.location(), overview.get("scene"))
 
-    def usually_here(self) -> List[str]:
+    def usually_here(self) -> list[str]:
         """NPCs tagged with this place who aren't in the scene."""
         here = self.present()
         return [n for n in npcs_usually_at(self._npcs(), self.location()) if n not in here]
 
-    def _resolve(self, names) -> Tuple[List[str], List[str]]:
+    def _resolve(self, names) -> tuple[list[str], list[str]]:
         """(NPC keys, errors), through the shared resolver."""
         from world_ids import WorldIds
         ids = WorldIds(self.json_ops)
@@ -79,7 +78,7 @@ class SceneManager:
                 keys.append(cid[4:])
         return keys, errors
 
-    def enter(self, names) -> Dict[str, List[str]]:
+    def enter(self, names) -> dict[str, list[str]]:
         """NPCs join the scene. Returns {"entered", "already"}; raises ValueError
         (and changes nothing) for an unknown or dead NPC."""
         keys, errors = self._resolve(names)
@@ -95,7 +94,7 @@ class SceneManager:
             self._save(overview, listed + entered)
         return {"entered": entered, "already": already}
 
-    def leave(self, names, strict: bool = True) -> List[str]:
+    def leave(self, names, strict: bool = True) -> list[str]:
         """NPCs leave the scene. Returns those who left. A party member can't
         leave this way (gm-npc.sh demote). `strict=False` ignores unknown names."""
         keys, errors = self._resolve(names)

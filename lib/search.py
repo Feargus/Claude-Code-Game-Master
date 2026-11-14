@@ -5,18 +5,18 @@ Provides Python API for searching facts, NPCs, locations, and consequences
 """
 
 import sys
-from typing import Dict, List, Optional, Any
 from pathlib import Path
+from typing import Any
 
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from json_ops import JsonOperations
 from campaign_manager import CampaignManager
 from cli_output import emit, emit_error
 from entity_aliases import resolve_entity_name
-from note_manager import fact_text
 from entity_manager import usual_places
+from json_ops import JsonOperations
+from note_manager import fact_text
 
 
 class WorldSearcher:
@@ -31,7 +31,7 @@ class WorldSearcher:
         active_dir = campaign_mgr.get_active_campaign_dir()
         self.json_ops = JsonOperations(str(active_dir))
 
-    def search_facts(self, query: str) -> Dict[str, List[Dict]]:
+    def search_facts(self, query: str) -> dict[str, list[dict]]:
         """Search facts by category or content"""
         facts = self.json_ops.load_json('facts.json')
         results = {}
@@ -54,7 +54,7 @@ class WorldSearcher:
 
         return results
 
-    def search_npcs(self, query: str) -> Dict[str, Dict]:
+    def search_npcs(self, query: str) -> dict[str, dict]:
         """Search NPCs by name or description"""
         npcs = self.json_ops.load_json('npcs.json')
         results = {}
@@ -70,7 +70,7 @@ class WorldSearcher:
 
         return results
 
-    def search_npcs_by_tag(self, tag_type: str, tag_value: str) -> Dict[str, Dict]:
+    def search_npcs_by_tag(self, tag_type: str, tag_value: str) -> dict[str, dict]:
         """Substring search of NPC tags (CLI `--tag-location` / `--tag-quest`).
 
         This is discovery, not scene presence. Who-is-here is `npcs_present`
@@ -97,7 +97,7 @@ class WorldSearcher:
 
         return results
 
-    def search_locations(self, query: str) -> Dict[str, Dict]:
+    def search_locations(self, query: str) -> dict[str, dict]:
         """Search locations by name, description, or position"""
         locations = self.json_ops.load_json('locations.json')
         results = {}
@@ -113,20 +113,20 @@ class WorldSearcher:
 
         return results
 
-    def search_consequences(self, query: str) -> List[Dict]:
+    def search_consequences(self, query: str) -> list[dict]:
         """Search active consequences"""
         consequences = self.json_ops.load_json('consequences.json')
         results = []
         query_lower = query.lower()
 
         for consequence in consequences.get('active', []):
-            if isinstance(consequence, dict):
-                if query_lower in consequence.get('consequence', '').lower():
-                    results.append(consequence)
+            if (isinstance(consequence, dict)
+                    and query_lower in consequence.get('consequence', '').lower()):
+                results.append(consequence)
 
         return results
 
-    def search_plots(self, query: str) -> Dict[str, Dict]:
+    def search_plots(self, query: str) -> dict[str, dict]:
         """Search plots by name, description, NPCs, locations, or objectives"""
         plots = self.json_ops.load_json('plots.json')
         results = {}
@@ -171,7 +171,7 @@ class WorldSearcher:
 
         return results
 
-    def find_related_plots(self, entity_name: str, entity_type: str = 'any') -> Dict[str, Dict]:
+    def find_related_plots(self, entity_name: str, entity_type: str = 'any') -> dict[str, dict]:
         """
         Find plots that reference a specific NPC or location.
         Used for cross-referencing when searching NPCs/locations.
@@ -200,7 +200,7 @@ class WorldSearcher:
 
         return related
 
-    def search_all(self, query: str) -> Dict[str, Any]:
+    def search_all(self, query: str) -> dict[str, Any]:
         """Search across all world state"""
         results = {
             'facts': self.search_facts(query),
@@ -214,14 +214,14 @@ class WorldSearcher:
         related_plots = {}
 
         # Check if any NPCs matched and find their related plots
-        for npc_name in results['npcs'].keys():
+        for npc_name in results['npcs']:
             npc_plots = self.find_related_plots(npc_name, 'npc')
             for plot_name, plot_data in npc_plots.items():
                 if plot_name not in results['plots'] and plot_name not in related_plots:
                     related_plots[plot_name] = plot_data
 
         # Check if any locations matched and find their related plots
-        for loc_name in results['locations'].keys():
+        for loc_name in results['locations']:
             loc_plots = self.find_related_plots(loc_name, 'location')
             for plot_name, plot_data in loc_plots.items():
                 if plot_name not in results['plots'] and plot_name not in related_plots:
@@ -230,19 +230,19 @@ class WorldSearcher:
         results['related_plots'] = related_plots
         return results
 
-    def get_npc(self, name: str) -> Optional[Dict]:
+    def get_npc(self, name: str) -> dict | None:
         """Get an NPC by name (alias-aware via resolve_entity_name)."""
         npcs = self.json_ops.load_json('npcs.json') or {}
         key = resolve_entity_name(name, npcs)
         return npcs.get(key) if key else None
 
-    def get_location(self, name: str) -> Optional[Dict]:
+    def get_location(self, name: str) -> dict | None:
         """Get a location by name (alias-aware via resolve_entity_name)."""
         locations = self.json_ops.load_json('locations.json') or {}
         key = resolve_entity_name(name, locations)
         return locations.get(key) if key else None
 
-    def get_pending_consequences(self, trigger: Optional[str] = None) -> List[Dict]:
+    def get_pending_consequences(self, trigger: str | None = None) -> list[dict]:
         """Get pending consequences, optionally filtered by trigger"""
         consequences = self.json_ops.load_json('consequences.json')
         active = consequences.get('active', [])
@@ -251,7 +251,7 @@ class WorldSearcher:
             return [c for c in active if trigger.lower() in c.get('trigger', '').lower()]
         return active
 
-    def get_facts_by_category(self, category: str) -> List[Dict]:
+    def get_facts_by_category(self, category: str) -> list[dict]:
         """Get all facts in a specific category"""
         facts = self.json_ops.load_json('facts.json')
         return facts.get(category, [])
@@ -264,7 +264,7 @@ class WorldSearcher:
             return text
         return text[:limit - 3].rstrip() + "..."
 
-    def print_results(self, results: Dict[str, Any], query: str = "", full: bool = False):
+    def print_results(self, results: dict[str, Any], query: str = "", full: bool = False):
         """Print formatted search results"""
         found_anything = False
 
@@ -342,7 +342,7 @@ class WorldSearcher:
             print(f"\nNo results found for \"{query}\"")
             self._print_suggestions()
 
-    def print_npc_results(self, npcs: Dict[str, Dict], tag_type: str = "", tag_value: str = "", full: bool = False):
+    def print_npc_results(self, npcs: dict[str, dict], tag_type: str = "", tag_value: str = "", full: bool = False):
         """Print formatted NPC results with tag details"""
         if not npcs:
             print(f"\nNo NPCs found with {tag_type} tag \"{tag_value}\"")
@@ -374,7 +374,7 @@ class WorldSearcher:
         # List available NPCs
         npcs = self.json_ops.load_json('npcs.json')
         if npcs:
-            npc_names = sorted([name for name in npcs.keys() if isinstance(npcs[name], dict)])
+            npc_names = sorted([name for name in npcs if isinstance(npcs[name], dict)])
             if npc_names:
                 print(f"\nKnown NPCs ({len(npc_names)}):")
                 for name in npc_names[:10]:  # Show first 10

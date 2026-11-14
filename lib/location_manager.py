@@ -5,8 +5,8 @@ Handles location creation, connections, and descriptions
 """
 
 import sys
-from typing import Dict, List, Optional, Any
 from pathlib import Path
+from typing import Any
 
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -146,7 +146,7 @@ class LocationManager(EntityManager):
             return True
         return False
 
-    def get_location(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_location(self, name: str) -> dict[str, Any] | None:
         """
         Get location data
         """
@@ -162,14 +162,14 @@ class LocationManager(EntityManager):
 
         return location
 
-    def list_locations(self) -> List[str]:
+    def list_locations(self) -> list[str]:
         """
         List all location names
         """
         locations = self._load_entities(self.locations_file)
         return list(locations.keys())
 
-    def get_connections(self, name: str) -> List[Dict[str, str]]:
+    def get_connections(self, name: str) -> list[dict[str, str]]:
         """
         Get connections for a location
         """
@@ -178,7 +178,7 @@ class LocationManager(EntityManager):
             return location.get('connections', [])
         return []
 
-    def create_batch(self, locations_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def create_batch(self, locations_data: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Create multiple locations in batch
 

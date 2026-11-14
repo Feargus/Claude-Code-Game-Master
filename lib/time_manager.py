@@ -16,7 +16,6 @@ import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -83,7 +82,7 @@ def parse_time(text: str) -> datetime:
     try:
         return datetime.fromisoformat(str(text).strip()).replace(second=0, microsecond=0)
     except ValueError:
-        raise TimeError(f"Can't read the time '{text}'. Use \"YYYY-MM-DD HH:MM\".")
+        raise TimeError(f"Can't read the time '{text}'. Use \"YYYY-MM-DD HH:MM\".") from None
 
 
 def derive_time_of_day(moment: datetime) -> str:
@@ -121,7 +120,7 @@ def describe(moment: datetime) -> str:
 class TimeManager:
     """Read and change a campaign's game time."""
 
-    def __init__(self, world_state_dir: Optional[str] = None):
+    def __init__(self, world_state_dir: str | None = None):
         self.world_state_dir = world_state_dir
         manager = CampaignManager(world_state_dir) if world_state_dir else CampaignManager()
         self.campaign_dir = manager.get_active_campaign_dir()
@@ -129,7 +128,7 @@ class TimeManager:
             raise TimeError("No active campaign. Run /new-game or /import first.")
         self.json_ops = JsonOperations(str(self.campaign_dir))
 
-    def get_game_time(self) -> Optional[datetime]:
+    def get_game_time(self) -> datetime | None:
         return current_time(self.json_ops)
 
     def _write(self, moment: datetime) -> None:
@@ -140,15 +139,15 @@ class TimeManager:
         if not self.json_ops.save_json("campaign-overview.json", data):
             raise TimeError("Failed to save the time.")
 
-    def _update_clocks(self, moment: datetime) -> Dict[str, Dict]:
+    def _update_clocks(self, moment: datetime) -> dict[str, dict]:
         return ThreatClockManager(self.world_state_dir).update_time_clocks(moment)
 
-    def set_time(self, moment: datetime) -> Dict[str, Dict]:
+    def set_time(self, moment: datetime) -> dict[str, dict]:
         """Set the time outright. Returns the time clocks that moved."""
         self._write(moment)
         return self._update_clocks(moment)
 
-    def advance(self, minutes: int) -> Dict[str, Dict]:
+    def advance(self, minutes: int) -> dict[str, dict]:
         """Let time pass. Returns the time clocks that moved."""
         before = self.get_game_time()
         if before is None:
@@ -159,7 +158,7 @@ class TimeManager:
         return self._update_clocks(after)
 
 
-def print_clocks(moved: Dict[str, Dict]) -> None:
+def print_clocks(moved: dict[str, dict]) -> None:
     from consequence_manager import print_fired
     for name, clock in moved.items():
         print(f"Clock {name}: {clock['current']}/{clock['max']}"

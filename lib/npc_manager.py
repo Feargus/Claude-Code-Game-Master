@@ -10,7 +10,7 @@ about the player, remembers or hides is not on the sheet: it is facts they hold
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -50,10 +50,10 @@ class NPCManager(EntityManager):
 
     # ---------- helpers ----------
 
-    def _npcs(self) -> Dict[str, Any]:
+    def _npcs(self) -> dict[str, Any]:
         return self._load_entities(self.npcs_file)
 
-    def _save(self, npcs: Dict[str, Any]) -> bool:
+    def _save(self, npcs: dict[str, Any]) -> bool:
         return self._save_entities(self.npcs_file, npcs)
 
     def _npc_key(self, name: str) -> str:
@@ -81,15 +81,15 @@ class NPCManager(EntityManager):
                 keys.append(cid[9:])
         return keys, errors
 
-    def get_sheet(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_sheet(self, name: str) -> dict[str, Any] | None:
         key = self._npc_key(name)
         return self._npcs().get(key) if key else None
 
     # ---------- creating ----------
 
-    def create_npc(self, name: str, role: str = "", attitude: Optional[str] = None,
+    def create_npc(self, name: str, role: str = "", attitude: str | None = None,
                    locations=None, nowhere: bool = False, aliases=None,
-                   fields: Optional[Dict[str, str]] = None) -> bool:
+                   fields: dict[str, str] | None = None) -> bool:
         """Create an NPC sheet. Returns True on success, False on failure (printed).
 
         `role`: who they are in a few words. `attitude`: their attitude towards
@@ -177,7 +177,7 @@ class NPCManager(EntityManager):
 
     # ---------- changing ----------
 
-    def set_fields(self, name: str, values: Dict[str, str]) -> bool:
+    def set_fields(self, name: str, values: dict[str, str]) -> bool:
         key = self._npc_key(name)
         if not key:
             return False
@@ -197,7 +197,7 @@ class NPCManager(EntityManager):
         return True
 
     def set_stats(self, name: str, attrs=None, skills=None, remove_skills=None,
-                  wounds: Optional[int] = None) -> Dict[str, Any]:
+                  wounds: int | None = None) -> dict[str, Any]:
         """Set or update an NPC's stats (attributes, skills, wounds), checked
         (stat_block.py). Merges into what is there. Returns {"name", "entry",
         "warnings"}; raises stat_block.StatError, or ValueError for an unknown NPC."""
@@ -257,8 +257,8 @@ class NPCManager(EntityManager):
         print(f"[SUCCESS] {key} usually found: {', '.join(left) or 'nowhere (no usual place left)'}")
         return True
 
-    def item(self, name: str, action: str, place: Optional[str] = None,
-             item_name: Optional[str] = None, concealed: bool = False, note: str = "") -> bool:
+    def item(self, name: str, action: str, place: str | None = None,
+             item_name: str | None = None, concealed: bool = False, note: str = "") -> bool:
         key = self._npc_key(name)
         if not key:
             return False
@@ -281,7 +281,7 @@ class NPCManager(EntityManager):
         print(message)
         return True
 
-    def kill_npc(self, name: str, cause: Optional[str] = None) -> Dict[str, Any]:
+    def kill_npc(self, name: str, cause: str | None = None) -> dict[str, Any]:
         """Mark an NPC dead, record the death as a fact, and fire the on_death
         consequences waiting for it. Refuses an NPC who is already dead, so
         on_death fires only once. A dead NPC is no longer present anywhere."""
@@ -339,12 +339,12 @@ class NPCManager(EntityManager):
                                      if member else "left the party"))
         return True
 
-    def get_party_members(self) -> Dict[str, Dict]:
+    def get_party_members(self) -> dict[str, dict]:
         return {k: v for k, v in self._npcs().items() if is_party_member(v)}
 
     # ---------- showing ----------
 
-    def show(self, name: str) -> Optional[str]:
+    def show(self, name: str) -> str | None:
         """The whole sheet, readable, plus what they know and feel about the player."""
         key = self._npc_key(name)
         if not key:
@@ -366,7 +366,7 @@ class NPCManager(EntityManager):
             lines += [f"  {fact_line(f)}" for f in known[:8]]
         return "\n".join(lines)
 
-    def list_npcs(self, filter_location: Optional[str] = None) -> Dict[str, Dict]:
+    def list_npcs(self, filter_location: str | None = None) -> dict[str, dict]:
         npcs = self._npcs()
         if not filter_location:
             return npcs
@@ -376,7 +376,8 @@ class NPCManager(EntityManager):
 
 def main():
     import argparse
-    from cli_output import wants_json, strip_json_flag, emit, emit_error
+
+    from cli_output import emit, emit_error, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description='NPC sheets')
     sub = parser.add_subparsers(dest='action')

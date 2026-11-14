@@ -5,10 +5,9 @@ Campaign-specific Vector Store for RAG-based Extraction
 Uses ChromaDB with persistent storage per campaign.
 """
 
-import os
-from pathlib import Path
-from typing import Dict, List, Optional, Any
 import json
+from pathlib import Path
+from typing import Any
 
 
 class CampaignVectorStore:
@@ -40,7 +39,7 @@ class CampaignVectorStore:
     def is_available() -> bool:
         """Check if ChromaDB is available."""
         try:
-            import chromadb
+            import chromadb  # noqa: F401 (imported to see whether it is installed)
             return True
         except ImportError:
             return False
@@ -68,10 +67,10 @@ class CampaignVectorStore:
 
     def add_chunks(
         self,
-        chunks: List[str],
-        embeddings: List[List[float]],
-        metadatas: Optional[List[Dict[str, Any]]] = None,
-        ids: Optional[List[str]] = None
+        chunks: list[str],
+        embeddings: list[list[float]],
+        metadatas: list[dict[str, Any]] | None = None,
+        ids: list[str] | None = None
     ) -> int:
         """
         Add chunks with embeddings to the vector store.
@@ -118,11 +117,11 @@ class CampaignVectorStore:
 
     def query_similar(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         n_results: int = 10,
-        where: Optional[Dict] = None,
-        where_document: Optional[Dict] = None
-    ) -> Dict[str, Any]:
+        where: dict | None = None,
+        where_document: dict | None = None
+    ) -> dict[str, Any]:
         """
         Query for similar chunks.
 
@@ -162,8 +161,8 @@ class CampaignVectorStore:
         query_text: str,
         embedder,
         n_results: int = 10,
-        where: Optional[Dict] = None
-    ) -> Dict[str, Any]:
+        where: dict | None = None
+    ) -> dict[str, Any]:
         """
         Query for similar chunks using text (embeds the query automatically).
 
@@ -183,7 +182,7 @@ class CampaignVectorStore:
             where=where
         )
 
-    def get_by_category(self, category: str, limit: int = 100) -> List[Dict]:
+    def get_by_category(self, category: str, limit: int = 100) -> list[dict]:
         """
         Get all chunks with a specific category.
 
@@ -217,7 +216,7 @@ class CampaignVectorStore:
         self._ensure_client()
         return self._collection.count()
 
-    def count_by_category(self) -> Dict[str, int]:
+    def count_by_category(self) -> dict[str, int]:
         """Get chunk counts by category."""
         self._ensure_client()
 
@@ -251,7 +250,7 @@ class CampaignVectorStore:
         # PersistentClient handles this automatically
         pass
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get statistics about the vector store."""
         self._ensure_client()
 

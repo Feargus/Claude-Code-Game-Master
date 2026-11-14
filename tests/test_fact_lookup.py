@@ -7,9 +7,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from tests.sheets import npc, player
 
 from lib.note_manager import NoteManager, fact_details, fact_line
+from tests.sheets import npc, player
 
 ROOT = Path(__file__).resolve().parent.parent
 

@@ -13,7 +13,7 @@ LIB = str(Path(__file__).resolve().parent.parent / "lib")
 if LIB not in sys.path:
     sys.path.insert(0, LIB)
 
-from session_manager import SessionManager
+from session_manager import SessionManager  # noqa: E402 (after lib/ is put on the path)
 
 
 def _campaign(tmp_path, voice=None):

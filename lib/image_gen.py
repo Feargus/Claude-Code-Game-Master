@@ -16,12 +16,12 @@ so the project gains no new dependency.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
 import sys
 import time
-import base64
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -29,7 +29,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from campaign_manager import CampaignManager
-from sheet import look_line, name as sheet_name
+from sheet import look_line
+from sheet import name as sheet_name
 
 
 def resolve_campaign_dir(world_state_dir: str = "world-state"):
@@ -338,7 +339,7 @@ def generate_image(prompt: str, *, title: str = "", quality: str = DEFAULT_QUALI
     }
 
 
-def _format_http_error(e: "urllib.error.HTTPError") -> str:
+def _format_http_error(e: urllib.error.HTTPError) -> str:
     """Turn an OpenAI HTTP error into an actionable one-line message."""
     try:
         err = json.loads(e.read().decode("utf-8")).get("error", {})

@@ -27,13 +27,13 @@ import random
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import sheet as sheet_mod
 from campaign_manager import CampaignManager
 from json_ops import JsonOperations
-import sheet as sheet_mod
 from sheet import ATTRIBUTES
 from stat_block import COMMON_VALUE, REPO_MOBS, common_skills
 
@@ -48,7 +48,7 @@ class ContestError(Exception):
 
 
 def roll_attribute(rng, sides: int, count: int, advantages: int = 0,
-                   disadvantages: int = 0) -> Dict[str, Any]:
+                   disadvantages: int = 0) -> dict[str, Any]:
     """Roll one attribute's dice: each advantage adds a die and drops the lowest,
     each disadvantage adds a die and drops the highest."""
     rolled = [rng.randint(1, sides) for _ in range(count + advantages + disadvantages)]
@@ -57,11 +57,11 @@ def roll_attribute(rng, sides: int, count: int, advantages: int = 0,
     return {"sides": sides, "rolled": rolled, "kept": kept}
 
 
-def _count(edges: List[Dict[str, str]], attribute: str) -> int:
+def _count(edges: list[dict[str, str]], attribute: str) -> int:
     return sum(1 for edge in edges if edge["attribute"] == attribute)
 
 
-def roll_side(rng, side: Dict[str, Any]) -> int:
+def roll_side(rng, side: dict[str, Any]) -> int:
     """Roll a side and return its total. Fills in side["dice"] for the log."""
     if "dc" in side:
         return side["dc"]
@@ -81,7 +81,7 @@ def roll_side(rng, side: Dict[str, Any]) -> int:
     return total
 
 
-def apply_luck(quality: int, player_role: Optional[str], luck: int) -> Optional[int]:
+def apply_luck(quality: int, player_role: str | None, luck: int) -> int | None:
     """The quality after a luck rescue, or None if luck doesn't apply.
 
     An exact tie goes to the active side, so the narrowest loss is -1 for an active
@@ -96,8 +96,8 @@ def apply_luck(quality: int, player_role: Optional[str], luck: int) -> Optional[
     return None
 
 
-def resolve_contest(rng, active: Dict[str, Any], reactive: Dict[str, Any],
-                    mods: List[Dict[str, Any]], luck: int = 0) -> Dict[str, Any]:
+def resolve_contest(rng, active: dict[str, Any], reactive: dict[str, Any],
+                    mods: list[dict[str, Any]], luck: int = 0) -> dict[str, Any]:
     """Roll a contest. Touches no files, so it can be tested on its own."""
     active_total = roll_side(rng, active)
     reactive_total = roll_side(rng, reactive)
@@ -116,11 +116,11 @@ def resolve_contest(rng, active: Dict[str, Any], reactive: Dict[str, Any],
     }
 
 
-def format_result(result: Dict[str, Any]) -> str:
+def format_result(result: dict[str, Any]) -> str:
     return f"quality: {result['quality']}" + (" (lucky)" if result["lucky"] else "")
 
 
-def _find(table: Dict[str, Any], name: str) -> Optional[Any]:
+def _find(table: dict[str, Any], name: str) -> Any | None:
     """Look a name up in a dict, ignoring case."""
     for key, value in table.items():
         if key.lower() == name.lower():
@@ -128,7 +128,7 @@ def _find(table: Dict[str, Any], name: str) -> Optional[Any]:
     return None
 
 
-def find_sheet(campaign_dir: Path, name: str) -> Dict[str, Any]:
+def find_sheet(campaign_dir: Path, name: str) -> dict[str, Any]:
     """Find who a name refers to: the player, a named NPC, then a mob.
 
     The player and NPCs go through the shared resolver (world_ids.py), so an
@@ -160,7 +160,7 @@ def find_sheet(campaign_dir: Path, name: str) -> Dict[str, Any]:
         f"for interchangeable enemies), then roll again.")
 
 
-def dice_sizes(sheet: Dict[str, Any], name: str, attributes: List[str]) -> Dict[str, int]:
+def dice_sizes(sheet: dict[str, Any], name: str, attributes: list[str]) -> dict[str, int]:
     """The die size of each attribute. Mobs may set a `default` for the rest."""
     table = sheet_mod.attributes(sheet)
     if not table:
@@ -176,12 +176,12 @@ def dice_sizes(sheet: Dict[str, Any], name: str, attributes: List[str]) -> Dict[
     return sizes
 
 
-def skill_value(sheet: Dict[str, Any], skill: str) -> Optional[int]:
+def skill_value(sheet: dict[str, Any], skill: str) -> int | None:
     """The sheet's value for a skill, or None if the sheet doesn't list it."""
     return None if skill.lower() == "default" else _find(sheet_mod.skills(sheet), skill)
 
 
-def _common_by_rule(sheet: Dict[str, Any], skill: str) -> bool:
+def _common_by_rule(sheet: dict[str, Any], skill: str) -> bool:
     """An NPC or mob without a skill default, and a common skill (gm-skills index):
     it counts COMMON_VALUE without being listed. The player's common skills are on
     the sheet; one missing there is untrained."""
@@ -189,7 +189,7 @@ def _common_by_rule(sheet: Dict[str, Any], skill: str) -> bool:
             and skill.lower() in {c.lower() for c in common_skills()})
 
 
-def untrained_value(sheet: Dict[str, Any], skill: str = "") -> int:
+def untrained_value(sheet: dict[str, Any], skill: str = "") -> int:
     """A skill the sheet doesn't list: the sheet's `default` (mobs and NPCs) if it
     sets one, else 0 for an NPC's or mob's common skill, else untrained."""
     skills = sheet_mod.skills(sheet)
@@ -198,7 +198,7 @@ def untrained_value(sheet: Dict[str, Any], skill: str = "") -> int:
     return COMMON_VALUE if _common_by_rule(sheet, skill) else UNTRAINED
 
 
-def _edges(name: str, attributes: List[str], pairs: Optional[List[List[str]]]) -> List[Dict[str, str]]:
+def _edges(name: str, attributes: list[str], pairs: list[list[str]] | None) -> list[dict[str, str]]:
     """`ATTR REASON` pairs from the command line, checked against the attributes rolled."""
     edges = [{"attribute": attribute.upper(), "label": label} for attribute, label in pairs or []]
     for edge in edges:
@@ -208,8 +208,8 @@ def _edges(name: str, attributes: List[str], pairs: Optional[List[List[str]]]) -
     return edges
 
 
-def build_side(campaign_dir: Path, spec: List[str], advantages: Optional[List[List[str]]],
-               disadvantages: Optional[List[List[str]]]) -> Dict[str, Any]:
+def build_side(campaign_dir: Path, spec: list[str], advantages: list[list[str]] | None,
+               disadvantages: list[list[str]] | None) -> dict[str, Any]:
     """Turn `NAME SKILL ATTR ATTR ATTR` into a side that is ready to roll."""
     name, skill, *attributes = spec
     attributes = [attribute.upper() for attribute in attributes]
@@ -237,7 +237,7 @@ def build_side(campaign_dir: Path, spec: List[str], advantages: Optional[List[Li
     }
 
 
-def build_dc(spec: List[str]) -> Dict[str, Any]:
+def build_dc(spec: list[str]) -> dict[str, Any]:
     return {"dc": _whole_number(spec[0]), "label": spec[1]}
 
 
@@ -245,7 +245,7 @@ def _whole_number(text: str) -> int:
     try:
         return int(text)
     except ValueError:
-        raise ContestError(f"Expected a whole number, got '{text}'.")
+        raise ContestError(f"Expected a whole number, got '{text}'.") from None
 
 
 def spend_luck(campaign_dir: Path) -> None:
@@ -255,8 +255,8 @@ def spend_luck(campaign_dir: Path) -> None:
     ops.save_json("character.json", character)
 
 
-def format_log_entry(time: str, active: Dict[str, Any], reactive: Dict[str, Any],
-                     mods: List[Dict[str, Any]], result: Dict[str, Any]) -> str:
+def format_log_entry(time: str, active: dict[str, Any], reactive: dict[str, Any],
+                     mods: list[dict[str, Any]], result: dict[str, Any]) -> str:
     """One roll as a block of labeled lines, followed by a blank line."""
     fields = {"active": active, "reactive": reactive, "mods": mods, "result": result}
     lines = [f"time: {time}"]
@@ -264,14 +264,14 @@ def format_log_entry(time: str, active: Dict[str, Any], reactive: Dict[str, Any]
     return "\n".join(lines) + "\n\n"
 
 
-def write_log(campaign_dir: Path, active: Dict[str, Any], reactive: Dict[str, Any],
-              mods: List[Dict[str, Any]], result: Dict[str, Any]) -> None:
+def write_log(campaign_dir: Path, active: dict[str, Any], reactive: dict[str, Any],
+              mods: list[dict[str, Any]], result: dict[str, Any]) -> None:
     time = datetime.now().isoformat(timespec="seconds")
     with (campaign_dir / LOG_FILE).open("a", encoding="utf-8") as f:
         f.write(format_log_entry(time, active, reactive, mods, result))
 
 
-def run_contest(args: argparse.Namespace, rng=random) -> Dict[str, Any]:
+def run_contest(args: argparse.Namespace, rng=random) -> dict[str, Any]:
     """The full contest: look up both sides, roll, spend luck, write the log."""
     if args.active_dc and args.reactive_dc:
         raise ContestError("Both sides are DCs, so nothing rolls. At least one side needs a skill.")

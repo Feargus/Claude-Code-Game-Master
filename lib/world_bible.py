@@ -12,12 +12,12 @@ ship a hand-authored DCC bible to prove it.
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from json_ops import JsonOperations
 from campaign_manager import CampaignManager
+from json_ops import JsonOperations
 
 _REQUIRED = ('name', 'voice', 'tone', 'themes', 'factions', 'geography', 'signature_systems')
 
@@ -29,13 +29,13 @@ def _is_graph(g: Any) -> bool:
 _INDEX_BUCKETS = ('npcs', 'locations', 'items', 'monsters')
 
 
-def _index_errors(index: Any) -> List[str]:
+def _index_errors(index: Any) -> list[str]:
     """Validate the optional `index` roster: a dict of four buckets, each a list
     of {"name","note"} objects. Absent is valid (legacy bibles); malformed fails.
     """
     if not isinstance(index, dict):
         return ['index must be an object {npcs:[], locations:[], items:[], monsters:[]}']
-    errors: List[str] = []
+    errors: list[str] = []
     for bucket in _INDEX_BUCKETS:
         entries = index.get(bucket, [])
         if not isinstance(entries, list):
@@ -49,8 +49,8 @@ def _index_errors(index: Any) -> List[str]:
     return errors
 
 
-def validate_bible(bible: Dict[str, Any]) -> Tuple[bool, List[str]]:
-    errors: List[str] = []
+def validate_bible(bible: dict[str, Any]) -> tuple[bool, list[str]]:
+    errors: list[str] = []
     if not isinstance(bible, dict):
         return False, ['world-bible must be an object']
     for key in _REQUIRED:
@@ -85,19 +85,19 @@ class WorldBible:
     def exists(self) -> bool:
         return bool(self.bible)
 
-    def validate(self) -> Tuple[bool, List[str]]:
+    def validate(self) -> tuple[bool, list[str]]:
         return validate_bible(self.bible)
 
-    def voice(self) -> Dict[str, Any]:
+    def voice(self) -> dict[str, Any]:
         return self.bible.get('voice', {})
 
-    def factions(self) -> Dict[str, Any]:
+    def factions(self) -> dict[str, Any]:
         return self.bible.get('factions', {'nodes': [], 'edges': []})
 
-    def geography(self) -> Dict[str, Any]:
+    def geography(self) -> dict[str, Any]:
         return self.bible.get('geography', {'nodes': [], 'edges': []})
 
-    def signature_systems(self) -> List[Any]:
+    def signature_systems(self) -> list[Any]:
         return self.bible.get('signature_systems', [])
 
     # --- draft-then-confirm gate ---
@@ -120,7 +120,7 @@ class WorldBible:
         self.bible['confirmed'] = True
         return self.json_ops.save_json("world-bible.json", self.bible)
 
-    def review_summary(self) -> Dict[str, Any]:
+    def review_summary(self) -> dict[str, Any]:
         """The human-facing draft to review before play (voice/factions/systems)."""
         return {
             'name': self.bible.get('name'),
@@ -140,7 +140,8 @@ class WorldBible:
 def main():
     import argparse
     import json
-    from cli_output import wants_json, strip_json_flag, emit, emit_error
+
+    from cli_output import emit, emit_error, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description="World Bible")
     parser.add_argument('action', nargs='?', default='validate',

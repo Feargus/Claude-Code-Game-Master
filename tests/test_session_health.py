@@ -43,6 +43,4 @@ if __name__ == "__main__":
     test_threads_stalest_and_filters()
     test_clocks_due_only_when_full()
     test_pending_consequences_dict_and_list()
-    test_stale_npcs_term()
-    test_drift_map()
     print("ok")

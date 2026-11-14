@@ -14,7 +14,7 @@ vocabulary.
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -41,7 +41,7 @@ class CoarseIndex:
 
     def __init__(self, embedder: str = "keyword"):
         self.embedder = embedder  # pluggable: "keyword" (default) or a model name
-        self.chapters: List[Dict[str, Any]] = []
+        self.chapters: list[dict[str, Any]] = []
 
     def build(self, text: str) -> int:
         self.chapters = segment_into_chapters(text)
@@ -59,7 +59,7 @@ class CoarseIndex:
         except ImportError:
             return _keyword_score(query, text)
 
-    def query(self, query: str, content_type: str = "literary", top_k: int = 3) -> List[Dict[str, Any]]:
+    def query(self, query: str, content_type: str = "literary", top_k: int = 3) -> list[dict[str, Any]]:
         """Return ranked CHAPTER POINTERS {index, title, score} — not the text."""
         templated = _template(query, content_type)
         scored = [(self._score(templated, c["text"]), c) for c in self.chapters]
@@ -67,7 +67,7 @@ class CoarseIndex:
         return [{"index": c["index"], "title": c["title"], "score": s}
                 for s, c in scored[:top_k] if s > 0]
 
-    def load_chapter(self, index: int) -> Dict[str, Any]:
+    def load_chapter(self, index: int) -> dict[str, Any]:
         """Resolve a pointer to its full chapter text (what the long-context reader loads)."""
         for c in self.chapters:
             if c["index"] == index:

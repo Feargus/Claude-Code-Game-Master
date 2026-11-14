@@ -27,7 +27,7 @@ The opening (opening.py) records its developments through `record` too.
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -48,7 +48,7 @@ class WorldTick:
         self.cm = ConsequenceManager(world_state_dir)
         self.json_ops = self.cm.json_ops
         self.log_file = "world-tick-log.json"
-        self.last_overflow: List[Dict[str, Any]] = []
+        self.last_overflow: list[dict[str, Any]] = []
 
     # ---------- validation ----------
 
@@ -78,16 +78,16 @@ class WorldTick:
                 check_name(clock["name"])
             except ValueError as error:
                 raise WorldTickError(f"{where}: clock: {error} In a development: "
-                                     f"{{\"name\": \"<short name>\", \"text\": \"...\"}}.")
+                                     f"{{\"name\": \"<short name>\", \"text\": \"...\"}}.") from error
             try:
                 if int(clock.get("segments", 0)) < 1:
                     raise ValueError
             except (TypeError, ValueError):
-                raise WorldTickError(f"{where}: \"clock\" needs \"segments\" of 1 or more")
+                raise WorldTickError(f"{where}: \"clock\" needs \"segments\" of 1 or more") from None
 
     # ---------- apply / undo ----------
 
-    def _undo(self, facts: List[str], consequences: List[str], clocks: List[str]) -> bool:
+    def _undo(self, facts: list[str], consequences: list[str], clocks: list[str]) -> bool:
         """Remove what a tick wrote. Returns False if a write failed."""
         from note_manager import NoteManager
         from threat_clocks import ThreatClockManager
@@ -105,8 +105,8 @@ class WorldTick:
                 tcm.remove_clock(name)
         return True
 
-    def apply(self, developments: List[Dict[str, Any]], cap: int = 3,
-              enabled: bool = True) -> List[Dict[str, Any]]:
+    def apply(self, developments: list[dict[str, Any]], cap: int = 3,
+              enabled: bool = True) -> list[dict[str, Any]]:
         """Record every development. enabled=False = no-op (tone).
 
         Returns one entry per development: {"text", "fact", and "consequence" /
@@ -139,7 +139,7 @@ class WorldTick:
             return []
         return applied
 
-    def record(self, developments: List[Dict[str, Any]]):
+    def record(self, developments: list[dict[str, Any]]):
         """Validate and write developments, without the tick's cap and log.
 
         Returns (applied, written): one entry per development as `apply`
@@ -211,7 +211,7 @@ class WorldTick:
                             due_in_minutes=(parse_duration(clock["due_in"])
                                             if clock.get("due_in") else None))
                     except (TimeError, ValueError) as error:
-                        raise WorldTickError(f"development {i + 1}: clock: {error}")
+                        raise WorldTickError(f"development {i + 1}: clock: {error}") from error
                     written["clocks"].append(name)
                     entry["clock"] = name
                 applied.append(entry)
@@ -220,7 +220,7 @@ class WorldTick:
             raise
         return applied, written
 
-    def waiting(self, applied: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def waiting(self, applied: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Consequences waiting on an event that the tick's facts might fulfil
         (leaving out the ones this tick just created)."""
         own = {a.get("consequence") for a in applied}
@@ -240,7 +240,7 @@ class WorldTick:
         self.json_ops.save_json(self.log_file, log)
         return True
 
-    def history(self) -> List[Dict[str, Any]]:
+    def history(self) -> list[dict[str, Any]]:
         return (self.json_ops.load_json(self.log_file) or {}).get("ticks", [])
 
 
@@ -253,11 +253,13 @@ def main():
     """
     import argparse
     import json
-    from cli_output import wants_json, strip_json_flag, emit, emit_error
+
+    from cli_output import emit, emit_error, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description="Between-session world tick")
     sub = parser.add_subparsers(dest="action")
-    p = sub.add_parser("apply"); p.add_argument("developments", help="JSON list of developments")
+    p = sub.add_parser("apply")
+    p.add_argument("developments", help="JSON list of developments")
     p.add_argument("--cap", type=int, default=3)
     sub.add_parser("rollback")
     sub.add_parser("history")
@@ -265,7 +267,8 @@ def main():
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
     if not args.action:
-        parser.print_help(); sys.exit(1)
+        parser.print_help()
+        sys.exit(1)
 
     wt = WorldTick()
     if args.action == "apply":

@@ -12,12 +12,12 @@ RAG_AVAILABLE = False
 _MISSING_DEPS = []
 
 try:
-    import sentence_transformers
+    import sentence_transformers  # noqa: F401 (imported to see whether it is installed)
 except ImportError:
     _MISSING_DEPS.append("sentence-transformers")
 
 try:
-    import chromadb
+    import chromadb  # noqa: F401 (imported to see whether it is installed)
 except ImportError:
     _MISSING_DEPS.append("chromadb")
 
@@ -48,11 +48,11 @@ def require_rag():
 # Conditional exports - only import classes if deps available
 if RAG_AVAILABLE:
     from lib.rag.embedder import LocalEmbedder
-    from lib.rag.vector_store import CampaignVectorStore
-    from lib.rag.semantic_chunker import SemanticChunker
-    from lib.rag.rag_extractor import RAGExtractor
     from lib.rag.extraction_queries import EXTRACTION_QUERIES, get_queries_for_type
     from lib.rag.quote_extractor import QuoteExtractor
+    from lib.rag.rag_extractor import RAGExtractor
+    from lib.rag.semantic_chunker import SemanticChunker
+    from lib.rag.vector_store import CampaignVectorStore
 
     __all__ = [
         'RAG_AVAILABLE',

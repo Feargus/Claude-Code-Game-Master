@@ -7,18 +7,17 @@ Queries the campaign's vector store for passages mentioning an entity and return
 context that can be used to enrich the entity with additional details.
 """
 
-import sys
 import json
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
+import sys
 from difflib import SequenceMatcher
+from pathlib import Path
+from typing import Any
 
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from json_ops import JsonOperations
 from campaign_manager import CampaignManager
-
+from json_ops import JsonOperations
 
 # Query templates for each entity type
 ENTITY_QUERIES = {
@@ -62,7 +61,7 @@ ENTITY_QUERIES = {
 
 
 
-def _is_site(name: str, locations: Dict[str, Any]) -> bool:
+def _is_site(name: str, locations: dict[str, Any]) -> bool:
     """A location is a site when other locations are its areas, named '<name> - <area>'."""
     prefix = f"{name} - "
     return any(other.startswith(prefix) for other in locations)
@@ -102,8 +101,8 @@ class EntityEnhancer:
         """
         if self._vector_store is None:
             try:
-                from lib.rag.vector_store import CampaignVectorStore
                 from lib.rag.embedder import LocalEmbedder
+                from lib.rag.vector_store import CampaignVectorStore
 
                 if not CampaignVectorStore.is_available():
                     return False
@@ -119,7 +118,7 @@ class EntityEnhancer:
                 return False
         return True
 
-    def find_entity(self, name: str) -> Optional[Dict[str, Any]]:
+    def find_entity(self, name: str) -> dict[str, Any] | None:
         """
         Search for an entity by name across all entity types.
 
@@ -148,7 +147,7 @@ class EntityEnhancer:
             if not isinstance(data, dict):
                 continue
 
-            for key in data.keys():
+            for key in data:
                 if key.lower() == name_lower:
                     actual_type = entity_type
                     if entity_type == "location" and _is_site(key, data):
@@ -165,7 +164,7 @@ class EntityEnhancer:
             if not isinstance(data, dict):
                 continue
 
-            for key in data.keys():
+            for key in data:
                 if name_lower in key.lower():
                     actual_type = entity_type
                     if entity_type == "location" and _is_site(key, data):
@@ -185,7 +184,7 @@ class EntityEnhancer:
             if not isinstance(data, dict):
                 continue
 
-            for key in data.keys():
+            for key in data:
                 # Use sequence matching for similarity
                 score = SequenceMatcher(None, name_lower, key.lower()).ratio()
                 if score > best_score:
@@ -201,7 +200,7 @@ class EntityEnhancer:
 
         return best_match
 
-    def search_raw(self, query: str, n_results: int = 15) -> List[Dict[str, Any]]:
+    def search_raw(self, query: str, n_results: int = 15) -> list[dict[str, Any]]:
         """
         Direct RAG search without entity filtering.
 
@@ -236,7 +235,8 @@ class EntityEnhancer:
         for doc, distance, metadata in zip(
             results['documents'],
             results['distances'],
-            results['metadatas']
+            results['metadatas'],
+            strict=False,
         ):
             # Skip duplicates only
             doc_key = doc[:200].lower()
@@ -256,13 +256,13 @@ class EntityEnhancer:
         return passages
 
     @staticmethod
-    def _enhancement_queries(name: str, entity_type: str) -> List[str]:
+    def _enhancement_queries(name: str, entity_type: str) -> list[str]:
         """Retrieval strings for one entity: name+type, then type-specific templates."""
         templates = ENTITY_QUERIES.get(entity_type, ["{name}"])
         lead = f"{name} {entity_type}".strip()
         return [lead] + [t.format(name=name) for t in templates]
 
-    def query_passages(self, name: str, entity_type: str, n_results: int = 10) -> List[Dict[str, Any]]:
+    def query_passages(self, name: str, entity_type: str, n_results: int = 10) -> list[dict[str, Any]]:
         """
         Query the vector store for passages related to an entity.
 
@@ -301,7 +301,8 @@ class EntityEnhancer:
             for doc, distance, metadata in zip(
                 results['documents'],
                 results['distances'],
-                results['metadatas']
+                results['metadatas'],
+                strict=False,
             ):
                 # Skip duplicates (use first 200 chars as key)
                 doc_key = doc[:200].lower()
@@ -354,7 +355,7 @@ class EntityEnhancer:
 
         return text
 
-    def get_enhancement_summary(self, entity: Dict, passages: List[Dict]) -> Dict[str, Any]:
+    def get_enhancement_summary(self, entity: dict, passages: list[dict]) -> dict[str, Any]:
         """
         Generate a summary of what can be enhanced for an entity.
 
@@ -375,8 +376,8 @@ class EntityEnhancer:
             "passages": passages
         }
 
-    def _enhance_npc_sheet(self, data: Dict, name: str, passages: List[str],
-                           description: Optional[str]) -> bool:
+    def _enhance_npc_sheet(self, data: dict, name: str, passages: list[str],
+                           description: str | None) -> bool:
         """An NPC sheet (sheet.py) keeps the book's passages in its source section,
         at most 20, deduplicated; a description fills identity.background if empty."""
         entity = data[name]
@@ -401,9 +402,9 @@ class EntityEnhancer:
         self,
         entity_type: str,
         entity_name: str,
-        new_context: List[str],
-        new_description: Optional[str] = None,
-        additional_fields: Optional[Dict] = None
+        new_context: list[str],
+        new_description: str | None = None,
+        additional_fields: dict | None = None
     ) -> bool:
         """
         Apply enhancements to an entity by updating its JSON file.
@@ -446,7 +447,7 @@ class EntityEnhancer:
 
         # Merge context (additive, deduplicated)
         existing_context = entity.get("context", [])
-        seen_keys = set(p[:100].lower() for p in existing_context)
+        seen_keys = {p[:100].lower() for p in existing_context}
 
         for passage in new_context:
             p_key = passage[:100].lower()
@@ -493,7 +494,7 @@ class EntityEnhancer:
 
         return False
 
-    def get_site_info(self, site_name: str) -> Dict[str, Any]:
+    def get_site_info(self, site_name: str) -> dict[str, Any]:
         """A site's areas: the locations saved as '<site> - <area>' by site-architect."""
         locations = self.json_ops.load_json("locations.json")
         if not isinstance(locations, dict):
@@ -506,7 +507,7 @@ class EntityEnhancer:
             "areas": areas,
         }
 
-    def get_scene_context(self, location_name: str) -> Optional[Dict[str, Any]]:
+    def get_scene_context(self, location_name: str) -> dict[str, Any] | None:
         """
         Get scene context for GM use. Returns None if no RAG available.
 
@@ -574,7 +575,7 @@ class EntityEnhancer:
             "passages": passages
         }
 
-    def list_unenhanced(self, entity_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_unenhanced(self, entity_type: str | None = None) -> list[dict[str, Any]]:
         """
         List entities that haven't been enhanced yet.
 
@@ -671,7 +672,7 @@ class EntityEnhancer:
         return kept, frac
 
     @staticmethod
-    def format_batch_summary(result: Dict[str, Any]) -> Tuple[str, int]:
+    def format_batch_summary(result: dict[str, Any]) -> tuple[str, int]:
         """Render the batch summary. Exit 1 at/above LOW_RELEVANCE_WARN_FRACTION of total."""
         enhanced = result.get("enhanced", 0)
         skipped = result.get("skipped", 0)
@@ -703,7 +704,7 @@ class EntityEnhancer:
                 lines.append(f"  - {n}")
         return "\n".join(lines), (1 if warn else 0)
 
-    def batch_enhance(self, max_entities: Optional[int] = None) -> Dict[str, Any]:
+    def batch_enhance(self, max_entities: int | None = None) -> dict[str, Any]:
         """
         Batch enhance all unenhanced entities, relevance-gated.
 
@@ -725,7 +726,7 @@ class EntityEnhancer:
         enhanced = 0
         skipped = 0
         low_relevance = 0
-        low_relevance_names: List[str] = []
+        low_relevance_names: list[str] = []
 
         print(f"Found {total} unenhanced entities\n")
 

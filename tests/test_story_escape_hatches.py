@@ -5,13 +5,9 @@ a character's stored look is deliberately wrong.
 """
 
 import json
-import os
-import subprocess
-import sys
 from pathlib import Path
 
 from lib.image_gen import build_prompt, save_chronicler
-from lib.player_manager import PlayerManager
 
 ROOT = Path(__file__).resolve().parent.parent
 

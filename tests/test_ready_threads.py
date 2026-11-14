@@ -6,11 +6,10 @@ is present (or its clock matures) — otherwise a seeded thread sleeps forgotten
 """
 
 import json
-
-from tests.scene_helpers import put_in_scene
 from pathlib import Path
 
 from lib.session_manager import SessionManager
+from tests.scene_helpers import put_in_scene
 
 
 def _paths(world_dir):

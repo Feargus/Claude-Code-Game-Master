@@ -4,15 +4,14 @@ Campaign management module for GM tools
 Handles multi-campaign support with CRUD operations
 """
 
-import os
-import re
-import sys
 import hashlib
 import json
+import os
+import re
 import shutil
-from typing import Dict, List, Optional, Any
+import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -104,7 +103,7 @@ class CampaignManager:
     def _resolve_name(self, name: str) -> str:
         return self._resolve_in(self.campaigns_dir, name)
 
-    def list_campaigns(self) -> List[Dict[str, Any]]:
+    def list_campaigns(self) -> list[dict[str, Any]]:
         """
         List all campaigns with their metadata
         Returns list of dicts with name, path, character info
@@ -124,7 +123,7 @@ class CampaignManager:
             overview_file = campaign_dir / "campaign-overview.json"
             if overview_file.exists():
                 try:
-                    with open(overview_file, 'r', encoding='utf-8') as f:
+                    with open(overview_file, encoding='utf-8') as f:
                         overview = json.load(f)
                     campaign_info["campaign_name"] = overview.get("campaign_name", "Unnamed")
                     campaign_info["current_location"] = overview.get("player_position", {}).get("current_location")
@@ -133,14 +132,14 @@ class CampaignManager:
                     if log.exists():  # the log is the record; the overview's count was never kept up
                         campaign_info["session_count"] = log.read_text(
                             encoding="utf-8").count("### Session Ended:")
-                except (json.JSONDecodeError, IOError):
+                except (OSError, json.JSONDecodeError):
                     campaign_info["campaign_name"] = "Unknown"
 
             # Try to read character info
             char_file = campaign_dir / "character.json"
             if char_file.exists():
                 try:
-                    with open(char_file, 'r', encoding='utf-8') as f:
+                    with open(char_file, encoding='utf-8') as f:
                         char = json.load(f)
                     identity = char.get("identity") or {}
                     campaign_info["character"] = {
@@ -149,14 +148,14 @@ class CampaignManager:
                         "role": identity.get("role", ""),
                         "level": (char.get("progress") or {}).get("level", 0)
                     }
-                except (json.JSONDecodeError, IOError) as e:
+                except (OSError, json.JSONDecodeError) as e:
                     print(f"[WARNING] Could not read character for {campaign_dir.name}: {e}", file=sys.stderr)
 
             campaigns.append(campaign_info)
 
         return campaigns
 
-    def get_active(self) -> Optional[str]:
+    def get_active(self) -> str | None:
         """
         Get the currently active campaign name
         Returns None if no active campaign is set
@@ -171,7 +170,7 @@ class CampaignManager:
             if campaign_path.is_dir():
                 return campaign_name
             return None
-        except IOError:
+        except OSError:
             return None
 
     def set_active(self, name: str) -> bool:
@@ -189,11 +188,11 @@ class CampaignManager:
             self.active_file.write_text(name)
             print(f"[SUCCESS] Active campaign set to: {name}")
             return True
-        except IOError as e:
+        except OSError as e:
             print(f"[ERROR] Failed to set active campaign: {e}")
             return False
 
-    def create(self, name: str, campaign_name: str = None) -> Optional[Path]:
+    def create(self, name: str, campaign_name: str = None) -> Path | None:
         """
         Create a new campaign with empty state files
         name: folder name (typically character name, lowercase with hyphens)
@@ -218,7 +217,7 @@ class CampaignManager:
 
             print(f"[SUCCESS] Created campaign: {safe_name}")
             return campaign_path
-        except IOError as e:
+        except OSError as e:
             print(f"[ERROR] Failed to create campaign: {e}")
             # Clean up on failure
             if campaign_path.exists():
@@ -252,11 +251,11 @@ class CampaignManager:
             shutil.rmtree(campaign_path)
             print(f"[SUCCESS] Deleted campaign: {name}")
             return True
-        except IOError as e:
+        except OSError as e:
             print(f"[ERROR] Failed to delete campaign: {e}")
             return False
 
-    def get_campaign_path(self, name: str = None) -> Optional[Path]:
+    def get_campaign_path(self, name: str = None) -> Path | None:
         """
         Get the path to a campaign folder
         If name is None, returns path to active campaign
@@ -274,7 +273,7 @@ class CampaignManager:
             return campaign_path
         return None
 
-    def get_active_campaign_dir(self) -> Optional[Path]:
+    def get_active_campaign_dir(self) -> Path | None:
         """
         Get the directory for the active campaign.
         Returns None if no active campaign is set.
@@ -284,7 +283,7 @@ class CampaignManager:
             return self.campaigns_dir / active
         return None
 
-    def get_info(self, name: str = None) -> Optional[Dict[str, Any]]:
+    def get_info(self, name: str = None) -> dict[str, Any] | None:
         """
         Get detailed info about a campaign
         If name is None, uses active campaign
@@ -312,18 +311,18 @@ class CampaignManager:
         overview_file = campaign_path / "campaign-overview.json"
         if overview_file.exists():
             try:
-                with open(overview_file, 'r', encoding='utf-8') as f:
+                with open(overview_file, encoding='utf-8') as f:
                     info["overview"] = json.load(f)
-            except (json.JSONDecodeError, IOError) as e:
+            except (OSError, json.JSONDecodeError) as e:
                 print(f"[WARNING] Could not read campaign overview for {name}: {e}", file=sys.stderr)
 
         # Read character
         char_file = campaign_path / "character.json"
         if char_file.exists():
             try:
-                with open(char_file, 'r', encoding='utf-8') as f:
+                with open(char_file, encoding='utf-8') as f:
                     info["character"] = json.load(f)
-            except (json.JSONDecodeError, IOError) as e:
+            except (OSError, json.JSONDecodeError) as e:
                 print(f"[WARNING] Could not read character for {name}: {e}", file=sys.stderr)
 
         # Count NPCs, locations, etc.
@@ -331,13 +330,11 @@ class CampaignManager:
             filepath = campaign_path / filename
             if filepath.exists():
                 try:
-                    with open(filepath, 'r', encoding='utf-8') as f:
+                    with open(filepath, encoding='utf-8') as f:
                         data = json.load(f)
-                    if isinstance(data, dict):
+                    if isinstance(data, (dict, list)):
                         info[filename.replace('.json', '_count')] = len(data)
-                    elif isinstance(data, list):
-                        info[filename.replace('.json', '_count')] = len(data)
-                except (json.JSONDecodeError, IOError) as e:
+                except (OSError, json.JSONDecodeError) as e:
                     print(f"[WARNING] Could not read {filename} for {name}: {e}", file=sys.stderr)
 
         return info

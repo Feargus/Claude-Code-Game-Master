@@ -3,7 +3,6 @@ are saved, and enemies in a fight that read their wounds from them (--as). In pl
 the GM wrote these into npcs.json and mobs.json by hand."""
 
 import json
-import random
 import subprocess
 import sys
 from pathlib import Path

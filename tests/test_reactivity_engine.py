@@ -6,7 +6,6 @@ auto-archiving expired ones. Every match is returned; there is no fire limit.
 check_pending() with no args stays the legacy raw-active accessor.
 """
 
-import json
 from pathlib import Path
 
 from lib.consequence_manager import ConsequenceManager

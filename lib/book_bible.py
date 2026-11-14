@@ -15,7 +15,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -28,7 +28,7 @@ class ConfirmedBibleError(RuntimeError):
     """Raised when drafting would clobber a bible a human already approved."""
 
 
-def segment_into_chapters(text: str, max_chars: int = 20000) -> List[Dict[str, Any]]:
+def segment_into_chapters(text: str, max_chars: int = 20000) -> list[dict[str, Any]]:
     """Split book text into large spans for long-context reading.
 
     Prefers real chapter markers; falls back to size-based windows so a span is
@@ -37,7 +37,7 @@ def segment_into_chapters(text: str, max_chars: int = 20000) -> List[Dict[str, A
     if not text:
         return []
     marks = [m.start() for m in _CHAPTER_RE.finditer(text)]
-    spans: List[str] = []
+    spans: list[str] = []
     if len(marks) >= 2:
         bounds = marks + [len(text)]
         for i in range(len(marks)):
@@ -46,7 +46,7 @@ def segment_into_chapters(text: str, max_chars: int = 20000) -> List[Dict[str, A
         spans = [text]
 
     # Further split any span that exceeds max_chars (keep spans large, not tiny).
-    chapters: List[Dict[str, Any]] = []
+    chapters: list[dict[str, Any]] = []
     idx = 0
     for span in spans:
         span = span.strip()
@@ -63,7 +63,7 @@ def segment_into_chapters(text: str, max_chars: int = 20000) -> List[Dict[str, A
     return chapters
 
 
-def bible_to_campaign_rules(bible: Dict[str, Any]) -> Dict[str, Any]:
+def bible_to_campaign_rules(bible: dict[str, Any]) -> dict[str, Any]:
     """Map a world-bible's signature systems into a campaign_rules block."""
     systems = bible.get("signature_systems", []) or []
     return {
@@ -73,7 +73,7 @@ def bible_to_campaign_rules(bible: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def draft_ruleset_from_bible(bible: Dict[str, Any]) -> Dict[str, Any]:
+def draft_ruleset_from_bible(bible: dict[str, Any]) -> dict[str, Any]:
     """Auto-draft a World Kit ruleset.json from a world-bible.
 
     No vitals: those are the world's own counters, added with its signature
@@ -89,8 +89,8 @@ def draft_ruleset_from_bible(bible: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def draft_voice(style: str, sample_passages: List[str], source_text: str,
-                vocab: List[str] = None) -> Dict[str, Any]:
+def draft_voice(style: str, sample_passages: list[str], source_text: str,
+                vocab: list[str] = None) -> dict[str, Any]:
     """Build a world-bible `voice` block for an imported book, GROUNDED in the source.
 
     The GM narrates in the author's voice only if the bible carries it (surfaced by
@@ -140,7 +140,7 @@ def _bible_path(campaign_dir) -> Path:
     return Path(campaign_dir) / "world-bible.json"
 
 
-def load_bible(campaign_dir) -> Dict[str, Any]:
+def load_bible(campaign_dir) -> dict[str, Any]:
     """Read a campaign's world-bible.json, or raise with the step that writes it."""
     path = _bible_path(campaign_dir)
     if not path.exists():
@@ -149,8 +149,8 @@ def load_bible(campaign_dir) -> Dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def draft_bible(campaign_dir, name: str = None, voice: Dict[str, Any] = None,
-                fields: Dict[str, Any] = None) -> Dict[str, Any]:
+def draft_bible(campaign_dir, name: str = None, voice: dict[str, Any] = None,
+                fields: dict[str, Any] = None) -> dict[str, Any]:
     """Draft (or refresh) an unconfirmed world-bible.json from the campaign's source text.
 
     Idempotent: re-running merges `name` / `voice` / `fields` into the existing
@@ -199,7 +199,7 @@ def draft_bible(campaign_dir, name: str = None, voice: Dict[str, Any] = None,
     return bible
 
 
-def write_ruleset(campaign_dir, force: bool = False) -> Dict[str, Any]:
+def write_ruleset(campaign_dir, force: bool = False) -> dict[str, Any]:
     """Draft the World Kit from the bible and write it to ruleset.json."""
     path = Path(campaign_dir) / "ruleset.json"
     if path.exists() and not force:
@@ -209,7 +209,7 @@ def write_ruleset(campaign_dir, force: bool = False) -> Dict[str, Any]:
     return ruleset
 
 
-def write_campaign_rules(campaign_dir) -> Dict[str, Any]:
+def write_campaign_rules(campaign_dir) -> dict[str, Any]:
     """Map the bible's signature systems into campaign-overview.json's campaign_rules."""
     rules = bible_to_campaign_rules(load_bible(campaign_dir))
     seed_overview(campaign_dir, campaign_rules=rules)
@@ -219,7 +219,7 @@ def write_campaign_rules(campaign_dir) -> Dict[str, Any]:
 INDEX_BUCKETS = ("npcs", "locations", "items", "monsters")
 
 
-def write_index(campaign_dir, index: Dict[str, Any]) -> Dict[str, Any]:
+def write_index(campaign_dir, index: dict[str, Any]) -> dict[str, Any]:
     """Persist a WORLD INDEX into the bible (the light import pass, not the census).
 
     Merges `index` into the bible's existing `index`, keyed by four buckets
@@ -230,9 +230,9 @@ def write_index(campaign_dir, index: Dict[str, Any]) -> Dict[str, Any]:
     """
     bible = load_bible(campaign_dir)
     existing = bible.get("index") or {}
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
     for bucket in INDEX_BUCKETS:
-        seen: Dict[str, Dict[str, str]] = {}
+        seen: dict[str, dict[str, str]] = {}
         for entry in list(existing.get(bucket, []) or []) + list((index or {}).get(bucket, []) or []):
             if not isinstance(entry, dict):
                 continue
@@ -252,7 +252,7 @@ def write_index(campaign_dir, index: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-def write_systems(campaign_dir, systems: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def write_systems(campaign_dir, systems: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Persist executable signature systems onto the kit (ruleset.json `systems`).
 
     Each kept entry is `{primitive, name, config}` — an instantiation of a

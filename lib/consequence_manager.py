@@ -6,8 +6,8 @@ Handles tracking future events and consequences
 
 import sys
 import uuid
-from typing import Dict, List, Optional, Any
 from pathlib import Path
+from typing import Any
 
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -52,8 +52,8 @@ class ConsequenceManager(EntityManager):
 
     def add_consequence(self, description: str, trigger: str,
                         trigger_type: str = None, match: str = None,
-                        triggers: List[Dict[str, str]] = None,
-                        effects: List[Dict[str, Any]] = None) -> str:
+                        triggers: list[dict[str, str]] = None,
+                        effects: list[dict[str, Any]] = None) -> str:
         """
         Add a new consequence.
 
@@ -148,7 +148,7 @@ class ConsequenceManager(EntityManager):
             return consequence_id
         return ""
 
-    def check_pending(self, world_state: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    def check_pending(self, world_state: dict[str, Any] = None) -> list[dict[str, Any]]:
         """
         Pending consequences.
 
@@ -181,7 +181,7 @@ class ConsequenceManager(EntityManager):
 
     EFFECT_TYPES = ('start_clock', 'tell')
 
-    def _check_effect(self, effect: Dict[str, Any]) -> str:
+    def _check_effect(self, effect: dict[str, Any]) -> str:
         """Why `effect` can't be carried out, or '' if it can. Fills in defaults
         and makes names canonical."""
         if effect.get('type') not in self.EFFECT_TYPES:
@@ -191,7 +191,7 @@ class ConsequenceManager(EntityManager):
             return self._check_tell(effect)
         return self._check_start_clock(effect)
 
-    def _check_tell(self, effect: Dict[str, Any]) -> str:
+    def _check_tell(self, effect: dict[str, Any]) -> str:
         """tell: {"fact": <id>, "holders": [...]}: who learns which fact."""
         from world_ids import WorldIds
         fact = str(effect.get('fact', '')).strip()
@@ -208,9 +208,9 @@ class ConsequenceManager(EntityManager):
         return ''
 
     @staticmethod
-    def _check_start_clock(effect: Dict[str, Any]) -> str:
-        from time_manager import TimeError, parse_duration, parse_time
+    def _check_start_clock(effect: dict[str, Any]) -> str:
         from threat_clocks import check_name
+        from time_manager import TimeError, parse_duration, parse_time
         try:
             effect['name'] = check_name(effect.get('name'))
         except ValueError as error:
@@ -237,7 +237,7 @@ class ConsequenceManager(EntityManager):
             return f"start_clock: {error}"
         return ''
 
-    def _carry_out(self, hits: List[Dict[str, Any]]) -> None:
+    def _carry_out(self, hits: list[dict[str, Any]]) -> None:
         """Carry out the effects of consequences that just fired.
 
         Called after consequences.json is saved. Each hit gets `effects_done`: what
@@ -257,7 +257,7 @@ class ConsequenceManager(EntityManager):
             if done:
                 hit['effects_done'] = done
 
-    def _tell(self, e: Dict[str, Any]) -> List[str]:
+    def _tell(self, e: dict[str, Any]) -> list[str]:
         from note_manager import NoteManager
         try:
             notes = NoteManager(self.base_dir) if self.base_dir else NoteManager()
@@ -272,7 +272,7 @@ class ConsequenceManager(EntityManager):
             lines += [f"  {line}" for line in c.get('effects_done', [])]
         return lines
 
-    def _start_clock(self, e: Dict[str, Any]) -> str:
+    def _start_clock(self, e: dict[str, Any]) -> str:
         from threat_clocks import ThreatClockManager
         from time_manager import parse_duration, parse_time
         tcm = ThreatClockManager(self.base_dir)
@@ -298,6 +298,7 @@ class ConsequenceManager(EntityManager):
         The fact must exist; an about id must resolve (any kind, places too).
         """
         import re
+
         from world_ids import WorldIds
         usage = ('on_learn matches "<who> learns <fact id>" or "<who> learns about <id>", '
                  'e.g. "npc:Wren learns f42", "street learns about player", '
@@ -363,7 +364,7 @@ class ConsequenceManager(EntityManager):
         return f"clock:{key}:{segment}", ""
 
     @staticmethod
-    def structured_triggers(consequence: Dict[str, Any]) -> List[Dict[str, str]]:
+    def structured_triggers(consequence: dict[str, Any]) -> list[dict[str, str]]:
         """The consequence's structured triggers as a list of {"type", "match"}.
 
         New entries store a `triggers` list. Older entries are read the same way:
@@ -380,7 +381,7 @@ class ConsequenceManager(EntityManager):
         return []
 
     @staticmethod
-    def _evaluate_one(ttype: str, raw_match: str, world_state: Dict[str, Any]) -> str:
+    def _evaluate_one(ttype: str, raw_match: str, world_state: dict[str, Any]) -> str:
         """The reason a single structured trigger matches now, or '' if it doesn't.
 
         on_location and on_npc hold ids (location:<key>, npc:<key>), compared
@@ -402,10 +403,11 @@ class ConsequenceManager(EntityManager):
         return ''
 
     @staticmethod
-    def _time_word(world_state: Dict[str, Any]) -> str:
+    def _time_word(world_state: dict[str, Any]) -> str:
         """The time-of-day word now: derived from the game time when there is one
         (never from words written elsewhere), else the stored word."""
         from datetime import datetime
+
         from time_manager import derive_time_of_day
         stored = world_state.get('game_time')
         if stored:
@@ -415,7 +417,7 @@ class ConsequenceManager(EntityManager):
                 pass
         return str(world_state.get('time', '')).strip()
 
-    def _matches_now(self, consequence: Dict[str, Any], world_state: Dict[str, Any]) -> str:
+    def _matches_now(self, consequence: dict[str, Any], world_state: dict[str, Any]) -> str:
         """Why a state trigger of this consequence matches now, or '' if none does.
 
         Event triggers (on_death, on_event, on_clock) never match here; they fire where
@@ -427,7 +429,7 @@ class ConsequenceManager(EntityManager):
                 return reason
         return ''
 
-    def tick(self, world_state: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+    def tick(self, world_state: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
         """Evaluate all active consequences; fire every one that matches and is new here.
 
         Same scene (location|time|date) will not re-stamp a consequence that already
@@ -483,8 +485,8 @@ class ConsequenceManager(EntityManager):
             'already_fired': already_fired,
         }
 
-    def _stamp_fired(self, data: Dict[str, Any], consequence: Dict[str, Any],
-                     reason: str, ctx_key: str) -> Dict[str, Any]:
+    def _stamp_fired(self, data: dict[str, Any], consequence: dict[str, Any],
+                     reason: str, ctx_key: str) -> dict[str, Any]:
         """Mark `consequence` (a live object in data['active']) as fired and log why.
 
         Shared by event triggers and manual firing. The caller snapshots and saves.
@@ -503,12 +505,12 @@ class ConsequenceManager(EntityManager):
         return hit
 
     @staticmethod
-    def _snapshot(data: Dict[str, Any]) -> None:
+    def _snapshot(data: dict[str, Any]) -> None:
         """Keep the pre-fire state for a one-beat rollback."""
         data['_snapshot'] = {'active': [dict(c) for c in data.get('active', [])],
                              'resolved': [dict(c) for c in data.get('resolved', [])]}
 
-    def fire_event(self, ttype: str, value, reason: str) -> List[Dict[str, Any]]:
+    def fire_event(self, ttype: str, value, reason: str) -> list[dict[str, Any]]:
         """An event happened (e.g. on_death, 'Wren'): fire every active consequence
         with a trigger of that type whose match equals `value` (case-insensitive).
         `value` may be a list of descriptions of the same event (on_learn: "npc:Wren
@@ -532,7 +534,7 @@ class ConsequenceManager(EntityManager):
         self._carry_out(fired)
         return fired
 
-    def waiting_on_event(self) -> List[Dict[str, Any]]:
+    def waiting_on_event(self) -> list[dict[str, Any]]:
         """Active consequences the GM must match to events by judgment.
 
         Those with an on_event trigger (old entries with only a free-text trigger
@@ -548,7 +550,7 @@ class ConsequenceManager(EntityManager):
                 out.append(hit)
         return out
 
-    def _find_fact(self, fact_id: str) -> Dict[str, Any]:
+    def _find_fact(self, fact_id: str) -> dict[str, Any]:
         """The fact with this id, or {}."""
         facts = self.json_ops.load_json("facts.json") or {}
         for items in facts.values():
@@ -557,7 +559,7 @@ class ConsequenceManager(EntityManager):
                     return f
         return {}
 
-    def _find_active(self, data: Dict[str, Any], consequence_id: str):
+    def _find_active(self, data: dict[str, Any], consequence_id: str):
         """The active consequence whose id is or starts with `consequence_id`.
 
         Returns (consequence, error). The session brief shows 4-character ids, so a
@@ -576,7 +578,7 @@ class ConsequenceManager(EntityManager):
         return matches[0], ''
 
     def fire(self, consequence_id: str, reason: str = None,
-             by_fact: str = None) -> Dict[str, Any]:
+             by_fact: str = None) -> dict[str, Any]:
         """The GM fires a consequence by hand (its condition happened in the story).
 
         `by_fact` names the recorded fact that fulfilled it; the provenance log
@@ -604,7 +606,7 @@ class ConsequenceManager(EntityManager):
         self._carry_out([hit])
         return hit
 
-    def get_provenance(self) -> List[Dict[str, Any]]:
+    def get_provenance(self) -> list[dict[str, Any]]:
         """Return the 'why did this fire' log (newest last)."""
         data = self.json_ops.load_json(self.consequences_file)
         return data.get('provenance', [])
@@ -624,7 +626,7 @@ class ConsequenceManager(EntityManager):
             return True
         return False
 
-    def tick_from_session(self) -> Dict[str, List[Dict[str, Any]]]:
+    def tick_from_session(self) -> dict[str, list[dict[str, Any]]]:
         """Build world_state from current campaign state, then tick()."""
         overview = self.json_ops.load_json("campaign-overview.json") or {}
         pos = overview.get("player_position", {})
@@ -674,7 +676,7 @@ class ConsequenceManager(EntityManager):
 
         return False
 
-    def list_resolved(self) -> List[Dict[str, Any]]:
+    def list_resolved(self) -> list[dict[str, Any]]:
         """
         Get all resolved consequences
         """
@@ -713,7 +715,7 @@ def describe_effects(effects) -> str:
     return "; ".join(parts)
 
 
-def print_fired(fired: List[Dict[str, Any]]) -> None:
+def print_fired(fired: list[dict[str, Any]]) -> None:
     """Human output for consequences fired by an event or by hand."""
     if not fired:
         return
@@ -725,7 +727,7 @@ def print_fired(fired: List[Dict[str, Any]]) -> None:
             print(f"      ↳ {line}")
 
 
-def print_waiting(fact_id: str, waiting: List[Dict[str, Any]]) -> None:
+def print_waiting(fact_id: str, waiting: list[dict[str, Any]]) -> None:
     """After a fact is recorded: the consequences the GM must check it against."""
     if not waiting:
         return
@@ -736,7 +738,7 @@ def print_waiting(fact_id: str, waiting: List[Dict[str, Any]]) -> None:
     print(f"  If one does: bash tools/gm-consequence.sh fire <id> --by {by}")
 
 
-def _print_tick_report(result: Dict[str, List[Dict[str, Any]]]) -> None:
+def _print_tick_report(result: dict[str, list[dict[str, Any]]]) -> None:
     """Human CLI for tick(): what fired, and what had already fired here."""
     fired = result.get('fired') or []
     already = result.get('already_fired') or []
@@ -813,7 +815,7 @@ def main():
     # List resolved
     subparsers.add_parser('list-resolved', help='List resolved consequences')
 
-    from cli_output import wants_json, strip_json_flag, emit, emit_error
+    from cli_output import emit, emit_error, strip_json_flag, wants_json
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
 
@@ -830,7 +832,7 @@ def main():
             sys.exit(emit_error(f"{len(types)} --trigger-type but {len(matches)} --match: "
                                 f"give exactly one --match per --trigger-type, in the same order",
                                 json_mode=json_mode))
-        triggers = [{'type': t, 'match': m} for t, m in zip(types, matches)]
+        triggers = [{'type': t, 'match': m} for t, m in zip(types, matches, strict=True)]
         clock_flags = [args.clock_due_in, args.clock_due, args.clock_consequence, args.clock_text]
         if any(clock_flags) and not args.starts_clock:
             sys.exit(emit_error("--clock-... options describe the clock that --starts-clock starts; "

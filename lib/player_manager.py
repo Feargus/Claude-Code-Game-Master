@@ -10,7 +10,7 @@ on the active one.
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -29,14 +29,14 @@ class PlayerManager(EntityManager):
 
     # ---------- loading ----------
 
-    def _load_character(self) -> Optional[Dict]:
+    def _load_character(self) -> dict | None:
         """The player's sheet, or None."""
         return self.json_ops.load_json("character.json") or None
 
-    def _save_character(self, data: Dict) -> bool:
+    def _save_character(self, data: dict) -> bool:
         return self.json_ops.save_json("character.json", data)
 
-    def _sheet(self) -> Optional[Dict[str, Any]]:
+    def _sheet(self) -> dict[str, Any] | None:
         char = self._load_character()
         if not char:
             print("[ERROR] No character yet. Create one: gm-player.sh create")
@@ -49,16 +49,16 @@ class PlayerManager(EntityManager):
         return self._kit
 
     @staticmethod
-    def _refuse(message: str) -> Dict[str, Any]:
+    def _refuse(message: str) -> dict[str, Any]:
         print(f"[ERROR] {message}")
         return {'success': False, 'error': message}
 
     # ---------- showing ----------
 
-    def get_player(self) -> Optional[Dict]:
+    def get_player(self) -> dict | None:
         return self._sheet()
 
-    def summary_line(self, char: Dict[str, Any]) -> str:
+    def summary_line(self, char: dict[str, Any]) -> str:
         from body import summary as wound_summary
         from growth import level
         identity = char.get("identity") or {}
@@ -73,7 +73,7 @@ class PlayerManager(EntityManager):
             line += f" | Conditions: {', '.join(sheet_mod.conditions(char))}"
         return line
 
-    def show_player(self) -> Optional[str]:
+    def show_player(self) -> str | None:
         char = self._sheet()
         if not char:
             return None
@@ -81,7 +81,7 @@ class PlayerManager(EntityManager):
 
     # ---------- fields ----------
 
-    def set_fields(self, values: Dict[str, str]) -> Dict[str, Any]:
+    def set_fields(self, values: dict[str, str]) -> dict[str, Any]:
         """Text fields of the sheet (identity, look, personality), by flag name."""
         char = self._sheet()
         if not char:
@@ -99,7 +99,7 @@ class PlayerManager(EntityManager):
         print(f"[SUCCESS] {sheet_mod.name(char)}: set {', '.join(changed)}")
         return {'success': True, 'changed': changed}
 
-    def change_aliases(self, add: List[str], remove: List[str]) -> Dict[str, Any]:
+    def change_aliases(self, add: list[str], remove: list[str]) -> dict[str, Any]:
         """Add or remove the shorter names the story uses for the character, checked
         like an NPC's (world_ids.change_aliases). Without any, show them."""
         from world_ids import change_aliases
@@ -116,7 +116,7 @@ class PlayerManager(EntityManager):
     # ---------- XP and growth ----------
 
     def award_xp(self, amount: int, source: str = "correction",
-                 reason: str = "") -> Dict[str, Any]:
+                 reason: str = "") -> dict[str, Any]:
         """Book XP (growth.add_xp: logged in xp.log). XP only makes growth due;
         the level rises when it is applied (`grow`) at a quiet moment. Prints
         XP_GAIN, and GROWTH_DUE for the GM when a level has become due."""
@@ -135,7 +135,7 @@ class PlayerManager(EntityManager):
         return {'success': True, 'name': char_name, 'xp_gained': int(amount),
                 'current_xp': result['total'], 'growth_due': result['due']}
 
-    def award(self, size: str, reason: str) -> Dict[str, Any]:
+    def award(self, size: str, reason: str) -> dict[str, Any]:
         """XP for an achievement the GM judges: small, medium or large, i.e. 20, 50
         or 100 % of the current level's span (growth.py)."""
         from growth import achievement_xp
@@ -150,7 +150,7 @@ class PlayerManager(EntityManager):
             return self._refuse(str(error))
         return self.award_xp(amount, f"achievement ({size})", reason)
 
-    def get_xp_status(self) -> Optional[Dict[str, Any]]:
+    def get_xp_status(self) -> dict[str, Any] | None:
         from growth import growth_due, level, next_level_xp, xp_total
         char = self._sheet()
         if not char:
@@ -163,14 +163,14 @@ class PlayerManager(EntityManager):
         return {'name': sheet_mod.name(char), 'level': now, 'current_xp': current,
                 'next_level_xp': next_level_xp(char), 'growth_due': due}
 
-    def _skill_key(self, skills: Dict[str, int], name: str) -> str:
+    def _skill_key(self, skills: dict[str, int], name: str) -> str:
         key = next((k for k in skills if k.lower() == name.lower()), None)
         if key is None:
             from stat_block import canon_skills
             key = next((k for k in canon_skills() if k.lower() == name.lower()), name)
         return key
 
-    def raise_stat(self, kind: str, target: str) -> Dict[str, Any]:
+    def raise_stat(self, kind: str, target: str) -> dict[str, Any]:
         """A correction: one attribute one die size up, or one skill +1 (a skill
         not on the sheet starts at 1). Growth goes through `grow`."""
         from sheet import ATTRIBUTES
@@ -201,7 +201,7 @@ class PlayerManager(EntityManager):
         print(f"RAISED {sheet_mod.name(char)} {key}: {shown}")
         return {'success': True, 'kind': kind, 'name': key, 'previous': old, 'current': new}
 
-    def set_perk(self, perk: str, function: str) -> Dict[str, Any]:
+    def set_perk(self, perk: str, function: str) -> dict[str, Any]:
         """A correction: rewrite a perk, or add one by hand."""
         char = self._sheet()
         if not char:
@@ -215,7 +215,7 @@ class PlayerManager(EntityManager):
         print(f"PERK {sheet_mod.name(char)} {'updated' if replaced else 'gained'} {key}: {function}")
         return {'success': True, 'perk': key, 'function': function, 'replaced': replaced}
 
-    def grow(self, attribute: str, skills: List[str], perk: str, effect: str) -> Dict[str, Any]:
+    def grow(self, attribute: str, skills: list[str], perk: str, effect: str) -> dict[str, Any]:
         """Apply one level of growth that XP has made due: exactly one attribute
         one die size up, two different skills +1 (a new one starts at 1) and one
         new perk. Raises the level by one and logs it."""
@@ -266,11 +266,11 @@ class PlayerManager(EntityManager):
 
     # ---------- the campaign's own counters (stats.counters) ----------
 
-    def _kit_vitals(self) -> List[str]:
+    def _kit_vitals(self) -> list[str]:
         return [v for v in self.world_kit().vitals() if v != 'hp']
 
     @staticmethod
-    def _read_counter(char: Dict, name: str):
+    def _read_counter(char: dict, name: str):
         raw = (sheet_mod.get(char, "stats", "counters") or {}).get(name)
         if isinstance(raw, dict):
             return raw.get('current', 0), raw.get('max')
@@ -278,7 +278,7 @@ class PlayerManager(EntityManager):
             return raw, None
         return 0, None
 
-    def _counters_summary(self, char: Dict) -> str:
+    def _counters_summary(self, char: dict) -> str:
         parts = []
         for name in (sheet_mod.get(char, "stats", "counters") or {}):
             current, maximum = self._read_counter(char, name)
@@ -286,8 +286,8 @@ class PlayerManager(EntityManager):
                                                      else f"{current}"))
         return f" | {' | '.join(parts)}" if parts else ""
 
-    def modify_vital(self, vital: str, amount: Optional[int] = None,
-                     set_value: Optional[int] = None) -> Dict[str, Any]:
+    def modify_vital(self, vital: str, amount: int | None = None,
+                     set_value: int | None = None) -> dict[str, Any]:
         """Read or change one of the campaign's counters (its ruleset's vitals)."""
         if vital == 'hp':
             return self._refuse("HP isn't used. Wounds go through gm-body.sh.")
@@ -323,7 +323,7 @@ class PlayerManager(EntityManager):
 
     # ---------- death ----------
 
-    def kill_character(self, cause: Optional[str] = None) -> Dict[str, Any]:
+    def kill_character(self, cause: str | None = None) -> dict[str, Any]:
         """Mark the player character dead, record it as a fact, fire on_death player."""
         char = self._sheet()
         if not char:
@@ -355,7 +355,7 @@ class PlayerManager(EntityManager):
 
     # ---------- credits and items ----------
 
-    def modify_credits(self, amount: Optional[int] = None) -> Dict[str, Any]:
+    def modify_credits(self, amount: int | None = None) -> dict[str, Any]:
         char = self._sheet()
         if not char:
             return {'success': False}
@@ -381,8 +381,8 @@ class PlayerManager(EntityManager):
         return {'success': True, 'name': char_name, 'credits_change': amount,
                 'current_credits': new}
 
-    def item(self, action: str, place: Optional[str] = None, name: Optional[str] = None,
-             concealed: bool = False, note: str = "") -> Dict[str, Any]:
+    def item(self, action: str, place: str | None = None, name: str | None = None,
+             concealed: bool = False, note: str = "") -> dict[str, Any]:
         """add (to gear or inventory), remove (by name, either place), move (to the
         other place), list."""
         char = self._sheet()
@@ -420,7 +420,7 @@ class PlayerManager(EntityManager):
         print(message)
         return {'success': True, 'items': char.get('items', {})}
 
-    def apply_loot(self, items: List[str], credits: int = 0) -> Dict[str, Any]:
+    def apply_loot(self, items: list[str], credit_amount: int = 0) -> dict[str, Any]:
         """Loot into the inventory, plus credits, in one save."""
         char = self._sheet()
         if not char:
@@ -429,22 +429,22 @@ class PlayerManager(EntityManager):
         before = int(possessions.get('credits', 0) or 0)
         for entry in items:
             sheet_mod.add_item(char, 'inventory', entry)
-        if credits:
-            possessions['credits'] = before + credits
+        if credit_amount:
+            possessions['credits'] = before + credit_amount
         if not self._save_character(char):
             return {'success': False}
         print(f"LOOT {sheet_mod.name(char)} received (into the inventory):")
-        if credits > 0:
-            print(f"  + {credits} credits")
+        if credit_amount > 0:
+            print(f"  + {credit_amount} credits")
         for entry in items:
             print(f"  + {entry}")
         print(f"Credits: {before} -> {possessions.get('credits', before)}")
-        return {'success': True, 'items_added': items, 'credits_added': credits,
+        return {'success': True, 'items_added': items, 'credits_added': credit_amount,
                 'total_credits': possessions.get('credits', before)}
 
     # ---------- conditions ----------
 
-    def modify_condition(self, action: str, condition: Optional[str] = None) -> Dict[str, Any]:
+    def modify_condition(self, action: str, condition: str | None = None) -> dict[str, Any]:
         char = self._sheet()
         if not char:
             return {'success': False}
@@ -498,7 +498,8 @@ def _int(text: str, what: str) -> int:
 
 def main():
     import argparse
-    from cli_output import wants_json, strip_json_flag, emit, emit_error
+
+    from cli_output import emit, emit_error, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description='The player character')
     sub = parser.add_subparsers(dest='action')

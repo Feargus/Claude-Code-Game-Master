@@ -7,7 +7,7 @@ Provides schema definitions and validation functions for all entity types.
 import json
 import sys
 from pathlib import Path
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Any
 
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -62,7 +62,7 @@ VALID_ITEM_TYPES = {
 VALID_RARITIES = {'common', 'uncommon', 'rare', 'very rare', 'legendary', 'artifact'}
 
 
-def validate_npc(name: str, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def validate_npc(name: str, data: dict[str, Any]) -> tuple[bool, list[str]]:
     """Validate an NPC sheet (sheet.py). Returns (is_valid, list of error messages)."""
     from sheet import SheetError, check
     try:
@@ -74,7 +74,7 @@ def validate_npc(name: str, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return True, []
 
 
-def validate_location(name: str, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def validate_location(name: str, data: dict[str, Any]) -> tuple[bool, list[str]]:
     """Validate location data against schema.
 
     Args:
@@ -114,7 +114,7 @@ def validate_location(name: str, data: Dict[str, Any]) -> Tuple[bool, List[str]]
     return len(errors) == 0, errors
 
 
-def validate_plot(name: str, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def validate_plot(name: str, data: dict[str, Any]) -> tuple[bool, list[str]]:
     """Validate plot/quest data against schema.
 
     Args:
@@ -148,7 +148,7 @@ def validate_plot(name: str, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return len(errors) == 0, errors
 
 
-def validate_item(name: str, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def validate_item(name: str, data: dict[str, Any]) -> tuple[bool, list[str]]:
     """Validate item data against schema.
 
     Args:
@@ -177,7 +177,7 @@ def validate_item(name: str, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return len(errors) == 0, errors
 
 
-def validate_consequence(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def validate_consequence(data: dict[str, Any]) -> tuple[bool, list[str]]:
     """Validate consequence data against schema.
 
     Args:
@@ -199,7 +199,7 @@ def validate_consequence(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return len(errors) == 0, errors
 
 
-def validate_campaign_overview(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def validate_campaign_overview(data: dict[str, Any]) -> tuple[bool, list[str]]:
     """Validate campaign overview data against schema.
 
     Args:
@@ -229,7 +229,7 @@ def validate_campaign_overview(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return len(errors) == 0, errors
 
 
-def validate_character(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def validate_character(data: dict[str, Any]) -> tuple[bool, list[str]]:
     """Validate the player's sheet (sheet.py). Returns (is_valid, list of error messages)."""
     from sheet import SheetError, check
     try:
@@ -239,7 +239,7 @@ def validate_character(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return True, []
 
 
-def validate_world_state(campaign_dir: str) -> Dict[str, List[str]]:
+def validate_world_state(campaign_dir: str) -> dict[str, list[str]]:
     """Validate all world state files in a campaign directory.
 
     Args:
@@ -270,12 +270,12 @@ def validate_world_state(campaign_dir: str) -> Dict[str, List[str]]:
             continue
 
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, encoding='utf-8') as f:
                 data = json.load(f)
         except json.JSONDecodeError as e:
             results[filename] = [f"Invalid JSON: {e}"]
             continue
-        except IOError as e:
+        except OSError as e:
             results[filename] = [f"Read error: {e}"]
             continue
 
@@ -302,14 +302,14 @@ def validate_world_state(campaign_dir: str) -> Dict[str, List[str]]:
     consequences_file = campaign_path / 'consequences.json'
     if consequences_file.exists():
         try:
-            with open(consequences_file, 'r', encoding='utf-8') as f:
+            with open(consequences_file, encoding='utf-8') as f:
                 data = json.load(f)
             errors = []
             for consequence in data.get('active', []) + data.get('resolved', []):
                 valid, errs = validate_consequence(consequence)
                 errors.extend(errs)
             results['consequences.json'] = errors
-        except (json.JSONDecodeError, IOError) as e:
+        except (OSError, json.JSONDecodeError) as e:
             results['consequences.json'] = [str(e)]
 
     return results

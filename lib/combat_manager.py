@@ -12,7 +12,7 @@ number of wounds that takes it out, from its sheet. Notes record disabled parts
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -26,22 +26,22 @@ class CombatManager(EntityManager):
         super().__init__(world_state_dir)
         self.combat_file = "combat_state.json"
 
-    def _load(self) -> Dict[str, Any]:
+    def _load(self) -> dict[str, Any]:
         return self.json_ops.load_json(self.combat_file) or {}
 
-    def _save(self, data: Dict[str, Any]) -> bool:
+    def _save(self, data: dict[str, Any]) -> bool:
         return self.json_ops.save_json(self.combat_file, data)
 
     def is_active(self) -> bool:
         return bool(self._load().get('combatants'))
 
-    def start(self) -> Dict[str, Any]:
+    def start(self) -> dict[str, Any]:
         data = {'active': True, 'combatants': []}
         self._save(data)
         return data
 
-    def add_combatant(self, name: str, wounds: Optional[int] = None,
-                      sheet: Optional[str] = None) -> Dict[str, Any]:
+    def add_combatant(self, name: str, wounds: int | None = None,
+                      sheet: str | None = None) -> dict[str, Any]:
         """Add an enemy line. `sheet` names the NPC or mob it is an instance of
         ("street thug 2" as "street thug"): its wounds come from that sheet, and
         contests use that name. Raises ValueError."""
@@ -52,7 +52,7 @@ class CombatManager(EntityManager):
             try:
                 found = find_sheet(self.campaign_dir, sheet)
             except ContestError as error:
-                raise ValueError(str(error))
+                raise ValueError(str(error)) from error
             if found.get('is_player'):
                 raise ValueError("The player's wounds live on the sheet (gm-body.sh), not here.")
             wounds = (found.get('body') or {}).get('wounds')
@@ -80,7 +80,7 @@ class CombatManager(EntityManager):
                 return c
         return None
 
-    def wound(self, name: str, count: int = 1, note: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def wound(self, name: str, count: int = 1, note: str | None = None) -> dict[str, Any] | None:
         """Deal wounds. A note records what they did, e.g. "right arm disabled"."""
         data = self._load()
         c = self._find(data, name)
@@ -92,7 +92,7 @@ class CombatManager(EntityManager):
         self._save(data)
         return c
 
-    def set_condition(self, name: str, action: str, condition: str) -> Optional[Dict[str, Any]]:
+    def set_condition(self, name: str, action: str, condition: str) -> dict[str, Any] | None:
         data = self._load()
         c = self._find(data, name)
         if c is None:
@@ -102,7 +102,7 @@ class CombatManager(EntityManager):
         self._save(data)
         return c
 
-    def end(self) -> Dict[str, Any]:
+    def end(self) -> dict[str, Any]:
         """Close the fight. Each enemy taken out earns the player its wounds² × 10
         XP (growth.py), booked and logged here; driving one off or escaping is an
         achievement the GM awards instead (gm-growth)."""
@@ -143,16 +143,24 @@ class CombatManager(EntityManager):
 def main():
     import argparse
     import json
-    from cli_output import wants_json, strip_json_flag, emit, emit_error
+
+    from cli_output import emit, emit_error, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description="Persisted fight state")
     sub = parser.add_subparsers(dest='action')
     sub.add_parser('start')
-    p = sub.add_parser('add-enemy'); p.add_argument('name'); p.add_argument('wounds', type=int, nargs='?')
+    p = sub.add_parser('add-enemy')
+    p.add_argument('name')
+    p.add_argument('wounds', type=int, nargs='?')
     p.add_argument('--as', dest='sheet', help='the NPC or mob it is an instance of; wounds from its sheet')
-    p = sub.add_parser('wound'); p.add_argument('name'); p.add_argument('count', type=int, nargs='?', default=1)
+    p = sub.add_parser('wound')
+    p.add_argument('name')
+    p.add_argument('count', type=int, nargs='?', default=1)
     p.add_argument('--note')
-    p = sub.add_parser('condition'); p.add_argument('name'); p.add_argument('op', choices=['add', 'remove']); p.add_argument('condition')
+    p = sub.add_parser('condition')
+    p.add_argument('name')
+    p.add_argument('op', choices=['add', 'remove'])
+    p.add_argument('condition')
     sub.add_parser('header')
     sub.add_parser('status')
     sub.add_parser('end')
@@ -160,7 +168,8 @@ def main():
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
     if not args.action:
-        parser.print_help(); sys.exit(1)
+        parser.print_help()
+        sys.exit(1)
 
     m = CombatManager()
     out = None
@@ -178,12 +187,14 @@ def main():
     elif args.action == 'end':
         out = m.end()
     elif args.action in ('header', 'status'):
-        print(m.header()); return
+        print(m.header())
+        return
 
     if out is None:
         if json_mode:
             sys.exit(emit_error("combatant not found", json_mode=True))
-        print("[ERROR] combatant not found", file=sys.stderr); sys.exit(1)
+        print("[ERROR] combatant not found", file=sys.stderr)
+        sys.exit(1)
     if json_mode:
         emit(out, json_mode=True)
     else:

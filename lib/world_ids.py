@@ -19,12 +19,13 @@ with close matches, so a typo never becomes a new, empty id.
 import difflib
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_aliases import aliases_of, normalize_entity_name, resolve_entity_name
-from sheet import aliases as sheet_aliases, name as sheet_name
+from sheet import aliases as sheet_aliases
+from sheet import name as sheet_name
 
 RUNGS = ("street", "public")
 KINDS = ("npc", "location")
@@ -34,7 +35,7 @@ RESERVED = ("player", "anyone") + RUNGS  # words ids and triggers use
 CLOCKS_FILE = "threat-clocks.json"
 
 
-def find_clock(clocks: Dict[str, Any], raw) -> str:
+def find_clock(clocks: dict[str, Any], raw) -> str:
     """The key of the clock `raw` names, or '': its short name (case ignored,
     with or without a leading "clock:"), or failing that its whole text."""
     wanted = " ".join(str(raw or "").split())
@@ -55,14 +56,14 @@ def find_clock(clocks: Dict[str, Any], raw) -> str:
 class WorldIds:
     """Resolve ids against one campaign's files (a JsonOperations on its folder)."""
 
-    def __init__(self, json_ops, player: Dict[str, Any] = None):
+    def __init__(self, json_ops, player: dict[str, Any] = None):
         """`player`: a sheet to take as the player's instead of character.json
         (a character that is being created and isn't saved yet)."""
         self.json_ops = json_ops
         self._tables = None
         self._pc = player
 
-    def _load(self) -> Dict[str, dict]:
+    def _load(self) -> dict[str, dict]:
         if self._tables is None:
             self._tables = {
                 "npc": self.json_ops.load_json("npcs.json") or {},
@@ -70,7 +71,7 @@ class WorldIds:
             }
         return self._tables
 
-    def _player(self) -> Dict[str, Any]:
+    def _player(self) -> dict[str, Any]:
         if self._pc is None:
             self._pc = self.json_ops.load_json("character.json") or {}
         return self._pc
@@ -78,21 +79,21 @@ class WorldIds:
     def player_name(self) -> str:
         return sheet_name(self._player())
 
-    def _player_aliases(self) -> List[str]:
+    def _player_aliases(self) -> list[str]:
         return sheet_aliases(self._player())
 
-    def all_ids(self) -> List[str]:
+    def all_ids(self) -> list[str]:
         """Every id that exists now, in a fixed order."""
         tables = self._load()
         return (["player"] + [f"{kind}:{key}" for kind in KINDS for key in tables[kind]]
                 + list(RUNGS) + [f"clock:{key}" for key in self._clocks()])
 
-    def _clocks(self) -> Dict[str, Any]:
+    def _clocks(self) -> dict[str, Any]:
         """The clocks as they are now (not kept: commands add and remove them)."""
         clocks = self.json_ops.load_json(CLOCKS_FILE) or {}
         return clocks if isinstance(clocks, dict) else {}
 
-    def resolve_clock(self, raw: str) -> Tuple[str, str]:
+    def resolve_clock(self, raw: str) -> tuple[str, str]:
         """("clock:<key>", '') or ('', why not, with close matches)."""
         clocks = self._clocks()
         key = find_clock(clocks, raw)
@@ -135,7 +136,7 @@ class WorldIds:
         close += [n for n in choices if query and query in n.split() and n not in close]
         return f"; did you mean: {', '.join(choices[n] for n in close[:3])}?" if close else ""
 
-    def resolve(self, raw: str) -> Tuple[str, str]:
+    def resolve(self, raw: str) -> tuple[str, str]:
         """(canonical id, '') or ('', why it was refused)."""
         text = str(raw or "").strip()
         if not text:
@@ -160,7 +161,7 @@ class WorldIds:
             return "", f"No {kind} '{rest}'{self._suggest(rest, kinds=(kind,))}"
         return f"{kind}:{key}", ""
 
-    def _resolve_bare(self, text: str) -> Tuple[str, str]:
+    def _resolve_bare(self, text: str) -> tuple[str, str]:
         low = text.lower()
         if low in RUNGS:
             return low, ""
@@ -187,7 +188,7 @@ class WorldIds:
                 out += [(f"{kind}:{key}", a) for a in aliases_of(data)]
         return out
 
-    def mentioned(self, text: str) -> List[str]:
+    def mentioned(self, text: str) -> list[str]:
         """Ids whose name appears in `text`, in the order found.
 
         A name counts only as a whole: case and punctuation may differ, but the
@@ -216,7 +217,7 @@ class WorldIds:
                 ids.append(cid)
         return ids
 
-    def resolve_as(self, raw: str, kinds) -> Tuple[str, str]:
+    def resolve_as(self, raw: str, kinds) -> tuple[str, str]:
         """Like resolve, limited to some kinds ("player", "npc", "location"), as
         a trigger type needs: a bare name is looked up only among those kinds,
         and an id of another kind is refused."""
@@ -273,7 +274,7 @@ class WorldIds:
                 return f"'{text}' already names {cid}."
         return ""
 
-    def resolve_holder(self, raw: str) -> Tuple[str, str]:
+    def resolve_holder(self, raw: str) -> tuple[str, str]:
         """Like resolve, for who can know a fact: a place can't."""
         cid, error = self.resolve(raw)
         if cid.startswith("location:"):
@@ -281,7 +282,7 @@ class WorldIds:
                         f"public, or the NPCs there.")
         return cid, error
 
-    def present(self) -> List[str]:
+    def present(self) -> list[str]:
         """Default holders in a scene: the player plus the NPCs present (party
         members and the scene list; never the dead)."""
         from entity_manager import npcs_present
@@ -291,7 +292,7 @@ class WorldIds:
         present = npcs_present(self._load()["npc"], here, overview.get("scene"))
         return ["player"] + [f"npc:{name}" for name in present]
 
-    def resolve_all(self, raws, holders: bool = False) -> Tuple[List[str], List[str]]:
+    def resolve_all(self, raws, holders: bool = False) -> tuple[list[str], list[str]]:
         """(ids, errors) for several; duplicates collapse, order is kept.
         `holders` refuses places (see resolve_holder)."""
         ids, errors = [], []
@@ -314,8 +315,8 @@ def alias_hint(kind: str, name: str) -> str:
             f"one: bash tools/{tool} alias \"{name}\" \"<short name>\"")
 
 
-def check_player_aliases(json_ops, character: Dict[str, Any], given: bool,
-                         canon: str = None) -> List[str]:
+def check_player_aliases(json_ops, character: dict[str, Any], given: bool,
+                         canon: str = None) -> list[str]:
     """The aliases of a player character that is being created, tidied, or
     ValueError. A name of several words needs them: the story will say "Dogen",
     not "Dogen Mabuchi", and facts, triggers and rolls find the character only by
@@ -340,7 +341,7 @@ def check_player_aliases(json_ops, character: Dict[str, Any], given: bool,
     return aliases
 
 
-def change_aliases(json_ops, kind: str, name: str, add=(), remove=()) -> Tuple[str, List[str]]:
+def change_aliases(json_ops, kind: str, name: str, add=(), remove=()) -> tuple[str, list[str]]:
     """Add aliases to an NPC, a place or the player (kind "npc", "location" or
     "player"; the player needs no `name`), or remove them, and save. Returns
     (key, aliases); raises ValueError for an unknown name, an alias it doesn't

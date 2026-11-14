@@ -63,6 +63,7 @@ def test_menu_options_are_bound_to_what_the_character_knows(dcc_world):
 def test_choices_on_confirmation_says_exactly_three(dcc_world, capsys, monkeypatch):
     """The choices CLI confirmation must match the exactly-three rule."""
     import sys
+
     import lib.session_manager as sm_mod
 
     monkeypatch.setattr(sys, "argv", ["session_manager.py", "choices", "on"])

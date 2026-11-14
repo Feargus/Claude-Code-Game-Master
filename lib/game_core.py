@@ -16,7 +16,7 @@ improve with use are the same for every campaign (growth.py).
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -24,11 +24,9 @@ import random
 
 from dice import roll
 
-
-
 # ---------------------------------------------------------------- conditions
 
-def add_condition(conditions: List[str], condition: str) -> List[str]:
+def add_condition(conditions: list[str], condition: str) -> list[str]:
     """Add a condition (idempotent). Returns a new list."""
     out = list(conditions or [])
     if condition and condition not in out:
@@ -36,7 +34,7 @@ def add_condition(conditions: List[str], condition: str) -> List[str]:
     return out
 
 
-def remove_condition(conditions: List[str], condition: str) -> List[str]:
+def remove_condition(conditions: list[str], condition: str) -> list[str]:
     """Remove a condition if present. Returns a new list."""
     return [c for c in (conditions or []) if c != condition]
 
@@ -62,7 +60,7 @@ def _roll_total(notation: str, rng: Any = None) -> int:
     return roll(notation, rng if rng is not None else random)
 
 
-def _rung_for(rungs: List[Dict[str, Any]], value: int, key: str) -> Optional[Dict[str, Any]]:
+def _rung_for(rungs: list[dict[str, Any]], value: int, key: str) -> dict[str, Any] | None:
     """Pick the rung with the greatest `key` still ≤ value; below all, the lowest."""
     ordered = sorted(rungs or [], key=lambda r: r[key])
     chosen = ordered[0] if ordered else None
@@ -74,7 +72,7 @@ def _rung_for(rungs: List[Dict[str, Any]], value: int, key: str) -> Optional[Dic
     return chosen
 
 
-def named_track(current: int, delta: int, config: Dict[str, Any]) -> Dict[str, Any]:
+def named_track(current: int, delta: int, config: dict[str, Any]) -> dict[str, Any]:
     """A meter with threshold consequences (corruption, doom, heat, ...).
 
     config = {"max": int, "thresholds": [{"at": int, "consequence": str}, ...]}.
@@ -95,7 +93,7 @@ def named_track(current: int, delta: int, config: Dict[str, Any]) -> Dict[str, A
             'crossed': crossed, 'at_max': after >= max_v}
 
 
-def price_roll(severity: int, config: Dict[str, Any], rng: Any = None) -> Dict[str, Any]:
+def price_roll(severity: int, config: dict[str, Any], rng: Any = None) -> dict[str, Any]:
     """The cost a marked action exacts from the actor (a Warp roll, a debt, a scar).
 
     config = {"ladder": [{"min_roll": int, "cost": str}, ...], "dice": "1d20",
@@ -112,7 +110,7 @@ def price_roll(severity: int, config: Dict[str, Any], rng: Any = None) -> Dict[s
             'cost': (rung or {}).get('cost'), 'rung': rung}
 
 
-def reaction_roll(track_value: int, config: Dict[str, Any], rng: Any = None) -> Dict[str, Any]:
+def reaction_roll(track_value: int, config: dict[str, Any], rng: Any = None) -> dict[str, Any]:
     """An NPC's opening disposition, shifted by a track/reputation value.
 
     config = {"dice": "2d6", "tiers": [{"min": int, "reaction": str}, ...],
@@ -128,7 +126,7 @@ def reaction_roll(track_value: int, config: Dict[str, Any], rng: Any = None) -> 
             'reaction': (tier or {}).get('reaction'), 'tier': tier}
 
 
-def guarded_payoff(config: Dict[str, Any], rng: Any = None) -> Dict[str, Any]:
+def guarded_payoff(config: dict[str, Any], rng: Any = None) -> dict[str, Any]:
     """Rolled BEFORE a marked treasure is taken — does the hoard bite back?
 
     config = {"dice": "1d20", "clean_at": int, "guardian_at": int} with

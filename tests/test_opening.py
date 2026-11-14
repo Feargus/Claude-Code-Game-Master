@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 
 from lib.opening import Opening, OpeningError, summary
-from tests.sheets import npc, player
 from lib.session_manager import SessionManager
+from tests.sheets import npc, player
 
 ROOT = Path(__file__).resolve().parent.parent
 

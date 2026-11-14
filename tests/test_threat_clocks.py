@@ -2,14 +2,13 @@
 
 import json
 from datetime import timedelta
-
-import pytest
 from pathlib import Path
 
-from lib.threat_clocks import ThreatClockManager
-from lib.session_manager import SessionManager
-from lib.time_manager import TimeManager, parse_time
+import pytest
 
+from lib.session_manager import SessionManager
+from lib.threat_clocks import ThreatClockManager
+from lib.time_manager import TimeManager, parse_time
 
 
 def _active(dcc_world):

@@ -4,17 +4,17 @@ World statistics module for GM tools
 Provides counts and summaries of world state
 """
 
-import sys
 import json
-from typing import Dict, Any
+import sys
 from pathlib import Path
+from typing import Any
 
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from json_ops import JsonOperations
 from campaign_manager import CampaignManager
-from schemas import PLOT_TYPES, PLOT_TYPE_SORT
+from json_ops import JsonOperations
+from schemas import PLOT_TYPE_SORT, PLOT_TYPES
 
 # Canonical plot types in display order — the counter keys are derived, never hand-listed.
 PLOT_TYPE_ORDER = sorted(PLOT_TYPES, key=PLOT_TYPE_SORT.get)
@@ -35,7 +35,7 @@ class WorldStats:
         # Character file (single character.json per campaign)
         self.character_file = self.world_state_dir / "character.json"
 
-    def get_counts(self) -> Dict[str, int]:
+    def get_counts(self) -> dict[str, int]:
         """Get counts of all world entities"""
         counts = {
             "npcs": 0,
@@ -74,7 +74,7 @@ class WorldStats:
         plots = self.json_ops.load_json("plots.json")
         if isinstance(plots, dict):
             counts["plots_total"] = len(plots)
-            for name, data in plots.items():
+            for _name, data in plots.items():
                 if isinstance(data, dict):
                     # Count by status (default to 'active')
                     status = data.get('status', 'active').lower()
@@ -99,7 +99,7 @@ class WorldStats:
 
         return counts
 
-    def get_current_status(self) -> Dict[str, Any]:
+    def get_current_status(self) -> dict[str, Any]:
         """Get current campaign status"""
         overview = self.json_ops.load_json("campaign-overview.json")
         return {
@@ -110,7 +110,7 @@ class WorldStats:
             "active_character": overview.get("current_character")
         }
 
-    def get_overview(self, detailed: bool = False) -> Dict[str, Any]:
+    def get_overview(self, detailed: bool = False) -> dict[str, Any]:
         """Get full world overview"""
         result = {
             "status": self.get_current_status(),
@@ -122,7 +122,7 @@ class WorldStats:
 
         return result
 
-    def _get_details(self) -> Dict[str, Any]:
+    def _get_details(self) -> dict[str, Any]:
         """Get detailed entity lists"""
         details = {}
 

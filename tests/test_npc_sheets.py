@@ -13,7 +13,7 @@ from lib.note_manager import NoteManager
 from lib.npc_manager import NPCManager
 from lib.player_manager import PlayerManager
 from lib.session_manager import SessionManager
-from tests.sheets import npc, player
+from tests.sheets import player
 
 ROOT = Path(__file__).resolve().parent.parent
 

@@ -5,7 +5,7 @@ inventory (hidden); what a person knows, feels or hides is facts, not fields."""
 
 import pytest
 
-from lib import sheet as S
+from lib import sheet as S  # noqa: N812 (a short name for many calls)
 
 
 def test_the_kinds_share_one_set_of_sections():
@@ -90,6 +90,7 @@ def test_the_attributes_and_the_die_check_are_defined_once():
     words. Both live in sheet.py; the others import them."""
     import re
     from pathlib import Path
+
     from lib import sheet
     lib = Path(sheet.__file__).parent
     for module in lib.glob("*.py"):

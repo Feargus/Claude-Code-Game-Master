@@ -19,7 +19,6 @@ from pathlib import Path
 import pytest
 
 from lib.combat_manager import CombatManager
-from lib.player_manager import PlayerManager
 
 ROOT = Path(__file__).resolve().parent.parent
 RESET_COMMAND_DOC = ROOT / ".claude" / "commands" / "reset.md"

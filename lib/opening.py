@@ -49,12 +49,13 @@ import io
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
-from sheet import TEXT_FIELDS, name as sheet_name
+from sheet import TEXT_FIELDS
+from sheet import name as sheet_name
 
 PLAY_BEGUN = "### Session Ended:"  # what session-log.md holds once a session has ended
 
@@ -63,13 +64,13 @@ class OpeningError(ValueError):
     """The opening can't be set up. Nothing of it was kept."""
 
 
-def _as_list(value) -> List[Any]:
+def _as_list(value) -> list[Any]:
     if value is None:
         return []
     return [value] if isinstance(value, (str, dict)) else list(value)
 
 
-def _entry(raw) -> Dict[str, Any]:
+def _entry(raw) -> dict[str, Any]:
     """A place or NPC given as a bare name or as an object."""
     return raw if isinstance(raw, dict) else {"name": raw}
 
@@ -129,17 +130,17 @@ class Opening:
 
     # ---------- all or nothing ----------
 
-    def _snapshot(self) -> Dict[str, bytes]:
+    def _snapshot(self) -> dict[str, bytes]:
         return {p.name: p.read_bytes() for p in self.campaign_dir.iterdir() if p.is_file()}
 
-    def _restore(self, snapshot: Dict[str, bytes]) -> None:
+    def _restore(self, snapshot: dict[str, bytes]) -> None:
         for p in self.campaign_dir.iterdir():
             if p.is_file() and p.name not in snapshot:
                 p.unlink()
         for name, data in snapshot.items():
             (self.campaign_dir / name).write_bytes(data)
 
-    def apply(self, spec: Dict[str, Any]) -> Dict[str, Any]:
+    def apply(self, spec: dict[str, Any]) -> dict[str, Any]:
         """Set up the opening. Returns what it made (see `summary`). Raises
         OpeningError and keeps nothing if any part is malformed or refused:
         every campaign file goes back to what it was."""
@@ -170,7 +171,7 @@ class Opening:
         cid, _ = WorldIds(self.json_ops).resolve_as(name, (kind,))
         return cid.partition(":")[2]
 
-    def _place(self, raw, near: str = None) -> Tuple[str, bool]:
+    def _place(self, raw, near: str = None) -> tuple[str, bool]:
         """(key, created) for a place: an existing one, or a new one made with
         gm-location.sh add's function."""
         from location_manager import LocationManager
@@ -227,7 +228,7 @@ class Opening:
             raise OpeningError(f"The NPC '{name}' was refused")
         return name
 
-    def _plot(self, spec: Dict[str, Any]) -> Tuple[str, str]:
+    def _plot(self, spec: dict[str, Any]) -> tuple[str, str]:
         """(plot key, hook): the opening's plot, made or found, with the hook as
         its first beat."""
         from plot_manager import PlotManager
@@ -249,13 +250,13 @@ class Opening:
         plots.update_plot(key, str(hook).strip())
         return key, str(hook).strip()
 
-    def horizon(self, plot_key: str) -> List[str]:
+    def horizon(self, plot_key: str) -> list[str]:
         """The plot's people and places that have no record yet."""
         plot = (self.json_ops.load_json("plots.json") or {}).get(plot_key) or {}
         return ([n for n in plot.get("npcs") or [] if not self._resolve(n, "npc")]
                 + [n for n in plot.get("locations") or [] if not self._resolve(n, "location")])
 
-    def _apply(self, spec: Dict[str, Any]) -> Dict[str, Any]:
+    def _apply(self, spec: dict[str, Any]) -> dict[str, Any]:
         from scene_manager import SceneManager
         from session_manager import SessionManager
         from time_manager import TimeManager, describe, parse_time
@@ -303,7 +304,7 @@ class Opening:
                 "clocks": written["clocks"], "consequences": written["consequences"]}
 
 
-def summary(result: Dict[str, Any]) -> str:
+def summary(result: dict[str, Any]) -> str:
     lines = ["[SUCCESS] The opening is set up. Narrate the first scene from this:"]
     if result["time"]:
         lines.append(f"  Time: {result['time']}")

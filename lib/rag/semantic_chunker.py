@@ -6,7 +6,7 @@ Pre-computes query embeddings and scores chunks against categories
 via cosine similarity with threshold-based assignment.
 """
 
-from typing import Dict, List, Tuple, Optional
+
 import numpy as np
 
 from lib.rag.embedder import LocalEmbedder
@@ -20,7 +20,7 @@ class SemanticChunker:
 
     def __init__(
         self,
-        embedder: Optional[LocalEmbedder] = None,
+        embedder: LocalEmbedder | None = None,
         threshold: float = None
     ):
         """
@@ -32,8 +32,8 @@ class SemanticChunker:
         """
         self.embedder = embedder or LocalEmbedder()
         self.threshold = threshold or self.DEFAULT_THRESHOLD
-        self._query_embeddings: Dict[str, np.ndarray] = {}
-        self._category_embeddings: Dict[str, np.ndarray] = {}
+        self._query_embeddings: dict[str, np.ndarray] = {}
+        self._category_embeddings: dict[str, np.ndarray] = {}
         self._initialized = False
 
     def _ensure_initialized(self):
@@ -55,7 +55,7 @@ class SemanticChunker:
         self._initialized = True
         print(f"  Initialized {len(self._query_embeddings)} categories")
 
-    def score_chunk(self, chunk_text: str) -> Dict[str, float]:
+    def score_chunk(self, chunk_text: str) -> dict[str, float]:
         """
         Score a chunk against all content type categories.
 
@@ -78,7 +78,7 @@ class SemanticChunker:
 
         return scores
 
-    def score_chunk_detailed(self, chunk_text: str) -> Dict[str, Dict]:
+    def score_chunk_detailed(self, chunk_text: str) -> dict[str, dict]:
         """
         Score a chunk with detailed per-query similarities.
 
@@ -116,7 +116,7 @@ class SemanticChunker:
         self,
         chunk_text: str,
         allow_multiple: bool = False
-    ) -> List[Tuple[str, float]]:
+    ) -> list[tuple[str, float]]:
         """
         Categorize a chunk into content types.
 
@@ -149,9 +149,9 @@ class SemanticChunker:
 
     def categorize_chunks(
         self,
-        chunks: List[str],
+        chunks: list[str],
         show_progress: bool = False
-    ) -> Dict[str, List[Dict]]:
+    ) -> dict[str, list[dict]]:
         """
         Categorize multiple chunks into content type buckets.
 
@@ -178,7 +178,7 @@ class SemanticChunker:
         categorized["general"] = []
 
         # Score and categorize each chunk
-        for idx, (chunk_text, chunk_emb) in enumerate(zip(chunks, chunk_embeddings)):
+        for idx, (chunk_text, chunk_emb) in enumerate(zip(chunks, chunk_embeddings, strict=False)):
             # Score against all categories
             scores = {}
             for content_type, category_embedding in self._category_embeddings.items():
@@ -190,10 +190,7 @@ class SemanticChunker:
             confidence = scores[best_cat]
 
             # Assign to category or general
-            if confidence >= self.threshold:
-                category = best_cat
-            else:
-                category = "general"
+            category = best_cat if confidence >= self.threshold else "general"
 
             categorized[category].append({
                 "index": idx,
@@ -204,7 +201,7 @@ class SemanticChunker:
 
         return categorized
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get chunker statistics."""
         self._ensure_initialized()
 

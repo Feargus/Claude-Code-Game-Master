@@ -3,8 +3,6 @@ is due. The numbers are the user's (2026-11-11): close results teach (±2: 3,
 ±5: 2, ±10: 1), skill N costs 3 × N learnings and grants 10 × N XP, level N
 needs 100 × N² XP."""
 
-import json
-import random
 
 import pytest
 

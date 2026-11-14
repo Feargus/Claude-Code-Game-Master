@@ -83,9 +83,14 @@ target-version = ["py311", "py312"]
 
 [tool.ruff]
 line-length = 100
+target-version = "py311"
+# The scripts in lib/ import each other by bare name (sys.path), so lib/ counts as
+# first-party for the import order.
+src = ["lib", "."]
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "C90", "I", "N", "UP", "B", "A", "C4", "SIM", "RET"]
 ignore = ["E501"]  # Line too long - handled by black
-target-version = "py311"
 
 [tool.mypy]
 python_version = "3.11"

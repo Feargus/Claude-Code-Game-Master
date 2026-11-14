@@ -11,13 +11,13 @@ gracefully — no vectors / no RAG deps simply means an empty `passages` list.
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from search import WorldSearcher
+from cli_output import emit
 from entity_manager import npcs_present
-from cli_output import emit, emit_error
+from search import WorldSearcher
 
 
 class SceneContext:
@@ -35,11 +35,11 @@ class SceneContext:
             return pos.get("current_location", "") or ""
         return ""
 
-    def build(self, location: str = None, entities: Optional[List[str]] = None) -> Dict[str, Any]:
+    def build(self, location: str = None, entities: list[str] | None = None) -> dict[str, Any]:
         location = location or self.current_location()
         npcs = self.searcher.json_ops.load_json("npcs.json") or {}
         scene = (self.searcher.json_ops.load_json("campaign-overview.json") or {}).get("scene")
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "location": location,
             "world": {
                 "location": self.searcher.get_location(location),

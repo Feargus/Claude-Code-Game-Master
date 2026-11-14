@@ -5,11 +5,11 @@ Local Embedder for RAG-based Document Extraction
 Uses sentence-transformers with all-MiniLM-L6-v2 (22MB, fast) for local vectorization.
 """
 
+import logging
 import os
 import sys
 import warnings
-import logging
-from typing import List, Optional
+
 import numpy as np
 
 # Suppress HuggingFace and transformers warnings
@@ -41,7 +41,7 @@ class LocalEmbedder:
     def is_available() -> bool:
         """Check if sentence-transformers is available."""
         try:
-            import sentence_transformers
+            import sentence_transformers  # noqa: F401 (imported to see whether it is installed)
             return True
         except ImportError:
             return False
@@ -72,7 +72,7 @@ class LocalEmbedder:
         self._ensure_model()
         return self._model.encode(text, convert_to_numpy=True)
 
-    def embed_batch(self, texts: List[str], batch_size: int = 32, show_progress: bool = False) -> np.ndarray:
+    def embed_batch(self, texts: list[str], batch_size: int = 32, show_progress: bool = False) -> np.ndarray:
         """
         Embed multiple texts efficiently in batches.
 

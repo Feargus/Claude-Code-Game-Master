@@ -38,7 +38,7 @@ class ScriptedDice:
 
 def _side(attributes=("DFT", "AGI", "ITU"), size=10, skill_value=0, advantages=(),
           disadvantages=(), is_player=False):
-    return {"attributes": list(attributes), "dice_sizes": {a: size for a in attributes},
+    return {"attributes": list(attributes), "dice_sizes": dict.fromkeys(attributes, size),
             "skill_value": skill_value, "advantages": list(advantages),
             "disadvantages": list(disadvantages), "is_player": is_player}
 

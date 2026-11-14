@@ -10,16 +10,15 @@ review: the "census"). That is gone (2026-11-11): records are made when play
 walks toward someone, with gm-npc.sh create.
 """
 
-import os
-import sys
 import json
 import shutil
-from pathlib import Path
+import sys
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from pathlib import Path
+from typing import Any
 
-from lib.json_ops import JsonOperations
 from lib.campaign_manager import CampaignManager
+from lib.json_ops import JsonOperations
 
 # RAG imports - required, no fallback
 from lib.rag import check_rag_available, get_missing_deps
@@ -54,7 +53,7 @@ class AgentExtractor:
         (self.extraction_dir / "chunks").mkdir(exist_ok=True)
         (self.extraction_dir / "extracted").mkdir(exist_ok=True)
 
-    def _backup_existing_data(self) -> Dict[str, Any]:
+    def _backup_existing_data(self) -> dict[str, Any]:
         """Backup existing campaign data before extraction.
 
         This preserves NPCs, locations, facts, items, and plots that were
@@ -67,18 +66,18 @@ class AgentExtractor:
             filepath = self.extraction_dir / filename
             if filepath.exists():
                 try:
-                    with open(filepath, 'r', encoding='utf-8') as f:
+                    with open(filepath, encoding='utf-8') as f:
                         data = json.load(f)
                     # Only backup if there's actual content
                     if data and (isinstance(data, dict) and len(data) > 0) or (isinstance(data, list) and len(data) > 0):
                         backup[filename] = data
                         print(f"  Backed up existing {filename} ({len(data) if isinstance(data, dict) else 'list'} entries)")
-                except (json.JSONDecodeError, IOError) as e:
+                except (OSError, json.JSONDecodeError) as e:
                     print(f"  Warning: Could not backup {filename}: {e}")
 
         return backup
 
-    def prepare_for_agents(self, filepath: str) -> Dict[str, Any]:
+    def prepare_for_agents(self, filepath: str) -> dict[str, Any]:
         """
         Extract text and vectorize document for agent extraction and /enhance.
 
@@ -174,7 +173,7 @@ class AgentExtractor:
             "metadata": metadata
         }
 
-    def _write_chunk_files(self, chunks: list) -> Dict:
+    def _write_chunk_files(self, chunks: list) -> dict:
         """Write chunks to files for extraction agents to read."""
         chunk_dir = self.extraction_dir / "chunks"
         chunk_dir.mkdir(exist_ok=True)
