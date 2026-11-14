@@ -45,7 +45,6 @@ def test_every_advertised_category_has_a_reader(dcc_world):
             break
     assert advertised, "could not parse advertised categories from gm-note.sh"
 
-    sm = SessionManager(dcc_world)
     read_by_key_facts = set(Brief.KEY_FACT_CATEGORIES)
     for cat in advertised - read_by_key_facts:
         # Reachable through campaign memory, which gathers every facts category.
