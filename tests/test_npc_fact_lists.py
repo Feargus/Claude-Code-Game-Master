@@ -49,7 +49,7 @@ def _add_facts(world, category, texts, **fields):
     _save(world, "facts.json", facts)
 
 
-OLD = "about them (old fact: who knows it isn't recorded): "
+OLD = "about them, they don't know (old fact: who knows it isn't recorded): "
 
 
 def _npc_block(ctx, npc_name):
@@ -148,8 +148,12 @@ def test_they_know_what_they_hold(dcc_world):
     _add_npc(dcc_world, "Griselda", _current_location(dcc_world))
     _add_facts(dcc_world, "session_events", ["The vault code is 0451."],
                holders=["player", "npc:Griselda"])
+    _add_facts(dcc_world, "session_events", ["Griselda hid the key under the altar."],
+               holders=["npc:Griselda"])
     block = _npc_block(SessionManager(dcc_world).get_full_context(), "Griselda")
-    assert "they know: The vault code is 0451." in block
+    # what she knows and the player doesn't is listed; what they share is counted
+    assert "knows, and Tandy doesn't: Griselda hid the key under the altar." in block
+    assert "0451" not in block and "+ 1 fact they share with Tandy" in block
 
 
 def test_about_them_but_not_known_to_them(dcc_world):
@@ -158,7 +162,7 @@ def test_about_them_but_not_known_to_them(dcc_world):
                about=["npc:Griselda"], holders=["player"])
     block = _npc_block(SessionManager(dcc_world).get_full_context(), "Griselda")
     assert "about them, they don't know: Griselda's brother sold her out." in block
-    assert "they know: Griselda's brother" not in block
+    assert "knows, and Tandy doesn't: Griselda's brother" not in block
 
 
 def test_named_in_a_new_fact_is_not_knowing_it(dcc_world):
@@ -176,5 +180,5 @@ def test_a_long_list_is_capped_and_disclosed(dcc_world):
                holders=["npc:Griselda"])
     sm = SessionManager(dcc_world)
     block = _npc_block(sm.get_full_context(), "Griselda")
-    assert block.count("they know:") == 3 and "+2 more facts they know" in block
-    assert _npc_block(sm.get_full_context(full=True), "Griselda").count("they know:") == 5
+    assert block.count("knows, and Tandy doesn't:") == 3 and "+2 more (gm-note.sh find" in block
+    assert _npc_block(sm.get_full_context(full=True), "Griselda").count("knows, and Tandy doesn't:") == 5

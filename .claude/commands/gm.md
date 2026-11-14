@@ -131,12 +131,10 @@ them. If it still doesn't add up, ask the player out of character before narrati
 (`CLAUDE.md` → Scene context).
 
 #### Step 3: Who is in the scene
-```bash
-bash tools/gm-scene.sh
-```
-The scene list (who is actually here) decides who learns what is said, and which NPCs the
-brief shows. It starts empty after a move. If the cliffhanger has someone with the character,
-enter them: `bash tools/gm-scene.sh enter "<name>"...`.
+The brief's THE SCENE shows the place and everyone in it as cards. The scene list (who is
+actually here) decides who learns what is said, and whose cards are shown. It starts empty
+after a move. If the cliffhanger has someone with the character, enter them:
+`bash tools/gm-scene.sh enter "<name>"...` (it prints their card).
 
 #### Step 4: Party context
 

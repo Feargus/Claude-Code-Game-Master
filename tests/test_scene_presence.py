@@ -118,8 +118,8 @@ def test_cli_refusal_and_show(dcc_world):
         cwd=str(ROOT), capture_output=True, text=True, env=env, timeout=60)
     r = run("enter", "Mordekai")
     assert r.returncode == 1 and "did you mean: npc:Mordecai" in r.stderr
-    r = run()
-    assert r.returncode == 0 and "Present: Carl" in r.stdout
+    r = run()                       # the whole scene, as cards
+    assert r.returncode == 0 and r.stdout.startswith("SCENE: ") and "\nCarl (" in r.stdout
 
 
 # ---------- a usual place is optional ----------

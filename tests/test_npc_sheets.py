@@ -98,7 +98,7 @@ def test_the_brief_plays_people_from_their_sheets(world):
     (camp / "campaign-overview.json").write_text(json.dumps(overview))
     PlayerManager(ws).item("add", "gear", "pipe")
     brief = SessionManager(ws).get_full_context()
-    people = brief[brief.index("--- PEOPLE HERE"):]
+    people = brief[brief.index("--- THE SCENE"):]
     assert "Tod (a mechanic; Big Five O1 C2 E-1 A1 N0; patient):" in people
     assert "  look: stooped, oil to the elbows" in people and "  wants: a way out" in people
     assert "  gear: wrench" in people and "shiv" not in people          # concealed

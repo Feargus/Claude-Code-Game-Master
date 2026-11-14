@@ -116,7 +116,10 @@ def test_a_present_npc_who_believes_it_wrongly(message):
     put_in_scene(Path(nm.world_state_dir) / "campaigns" / CAMPAIGN, "Mordecai")
     nm.tell(wrong, ["Mordecai"])
     ctx = SessionManager(nm.world_state_dir).get_full_context()
-    assert f"they know: [WRONG; the truth is {true}] The message names the drop: Pier 9" in ctx
+    # printed above, under what the player gets wrong; the card names it by id
+    scene = ctx[ctx.index("--- THE SCENE"):]
+    mordecai = scene[scene.index("\nMordecai"):]
+    assert f"believes, wrongly or in part: also {wrong} (above)" in mordecai
 
 
 def test_world_tick_plants_a_lie(dcc_world):

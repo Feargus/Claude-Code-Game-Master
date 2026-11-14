@@ -197,6 +197,10 @@ case "$ACTION" in
         # Reactivity: fire any consequences whose triggers match the new scene.
         bash "$TOOLS_DIR/gm-consequence.sh" tick
 
+        # The new place's card: what it is like, who is usually here, what waits here.
+        echo ""
+        $PYTHON_CMD "$LIB_DIR/cards.py" location
+
         # Grounded lore brief on FIRST visit to a place with retained book text.
         # The loremaster cache gates this: revisits are silent, so the deep read
         # fires once per location. (--full is the GM's explicit follow-up.)

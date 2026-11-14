@@ -29,7 +29,7 @@ chair; pull a page when the beat needs it. Never make them wait through a census
   length, word choice, and the kind of imagery they use — not their literal text.
 - **World voice ≠ NPC voice.** The NARRATIVE VOICE governs YOUR prose (description,
   action, scene-setting). NPC *dialogue* still comes from each NPC's own voice
-  (PEOPLE HERE: their `voice`, `tells`, Big Five) — a Howard-voiced narrator can
+  (their card: `voice`, `tells`, Big Five) — a Howard-voiced narrator can
   still voice a timid clerk.
 - **A world with a voice never sounds interchangeable.** If a beat could belong to
   any game — flat, modern, generic-narrator — it isn't this one. The Style line is

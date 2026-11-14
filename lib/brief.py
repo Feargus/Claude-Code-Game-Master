@@ -13,7 +13,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 from consequence_manager import describe_effects
-from entity_manager import is_party_member, npcs_present, npcs_usually_at
+from entity_manager import is_party_member, npcs_present
 from note_manager import fact_text
 from schemas import PLOT_TYPE_SORT
 from threat_clocks import ThreatClockManager
@@ -27,8 +27,8 @@ class Brief:
     # `_section_<name>` returning its lines ([] when it has nothing to show).
     SECTIONS = ("header", "kit", "play_style", "images", "voice", "world_index",
                 "previously_on", "world_remembers", "story_threads", "ready_threads",
-                "key_facts", "wrong_beliefs", "clocks", "character", "party", "people",
-                "usual", "pending", "world_rules", "systems")
+                "key_facts", "wrong_beliefs", "clocks", "character", "party", "scene",
+                "pending", "world_rules", "systems")
 
     def __init__(self, session):
         self.session = session
@@ -73,28 +73,12 @@ class Brief:
             return None
         return f"+{hidden} more {noun} — {hint}"
 
-    def _place_lines(self, location: str) -> list[str]:
-        """The current place as recorded, narrated from: its description and its
-        exits. A place with no description says how to write one first."""
-        place = (self.json_ops.load_json("locations.json") or {}).get(location)
-        if not isinstance(place, dict):
-            return []
-        description = str(place.get("description") or "").strip()
-        lines = [f"Here: {description}" if description else
-                 f"Here: (no description yet: write one before narrating the place, "
-                 f"bash tools/gm-location.sh describe \"{location}\" \"...\")"]
-        exits, _ = self._normalize_connection_list(place.get("connections", []))
-        if exits:
-            lines.append("Exits: " + "; ".join(
-                f"{c['to']} ({c['path']})" if c.get("path") else c["to"] for c in exits))
-        return lines
-
-
     def get_full_context(self, full: bool = False) -> str:
         """The whole brief: each section in turn. Some sections leave what they
         loaded or showed for later ones (the location, the character, the
         session summaries already printed)."""
         self.full = full
+        self.shown_texts = []       # facts printed so far, so the cards don't repeat them
         lines = []
         for section in self.SECTIONS:
             lines += getattr(self, f"_section_{section}")()
@@ -126,7 +110,6 @@ class Brief:
         lines.append("=== SESSION CONTEXT ===")
         lines.append(f"Campaign: {campaign_name} | Session #{session_num}")
         lines.append(f"Location: {location} | Time: {time_str}")
-        lines.extend(self._place_lines(location))
         self.campaign = campaign
         self.location = location
         return lines
@@ -440,61 +423,15 @@ class Brief:
         self.npcs = npcs
         return lines
 
-    def _section_people(self) -> list[str]:
-        lines = []
-        location = self.location
-        summaries = self.summaries
-        remembered = self.remembered
-        char = self.char
-        npcs = self.npcs
-        full = self.full
-        # --- People here (party and scene list): who they are, never mutated ---
-        present = list(npcs_present(npcs, location, self._scene()))
-        if present:
-            lines.append("")
-            lines.append("--- PEOPLE HERE (speak in their own voice; they know only what is "
-                         "under 'they know') ---")
-            fact_lists = self._npc_fact_lists(npcs, present,
-                                              already_shown=list(summaries) + list(remembered))
-            from note_manager import current_attitudes
-            feelings = current_attitudes(self.json_ops.load_json("facts.json") or {})
-            from sheet import name as sheet_name
-            player_name = (sheet_name(char) if char else "") or "the player"
-            for npc_name in present:
-                person = self._person_lines(npc_name, npcs.get(npc_name) or {}, full)
-                feeling = feelings.get((f"npc:{npc_name}", "player"))
-                if feeling:                 # how they regard the player comes first
-                    person.insert(1, f"  towards {player_name}: {feeling['fact']}")
-                lines += person
-                lists = fact_lists.get(npc_name, {})
-                for key, label in (("know", "they know"), ("about", "about them")):
-                    items = lists.get(key, [])
-                    shown_items = items if full else items[-3:]
-                    for text, old in shown_items:
-                        tag = (" (old fact: who knows it isn't recorded)" if old
-                               else ", they don't know" if key == "about" else "")
-                        lines.append(f"  {label}{tag}: {self._truncate(text, 180, full)}")
-                    if not full:
-                        rem = self._remainder(len(items) - len(shown_items),
-                                              f"facts {label}", "--full")
-                        if rem:
-                            lines.append(f"  {rem}")
-        self.present = present
-        return lines
-
-    def _section_usual(self) -> list[str]:
-        lines = []
-        location = self.location
-        npcs = self.npcs
-        present = self.present
-        # Where NPCs usually are is a hint, not presence (gm-scene.sh).
-        present_names = set(present)
-        usual = [n for n in npcs_usually_at(npcs, location) if n not in present_names]
-        if usual:
-            lines.append("")
-            lines.append(f"Usually found here, not in the scene: {', '.join(usual)} "
-                         f"(if one is actually here: bash tools/gm-scene.sh enter \"<name>\")")
-        return lines
+    def _section_scene(self) -> list[str]:
+        """The scene as cards (lib/cards.py): the place, then everyone present.
+        Facts printed in an earlier section are not printed again. What waits
+        at the place is left to READY THREADS and PENDING CONSEQUENCES."""
+        from cards import Cards
+        cards = Cards(self.json_ops, full=self.full,
+                      shown_texts=list(self.summaries) + list(self.remembered) + self.shown_texts)
+        return ["", "--- THE SCENE (play the people as their cards say; they know only "
+                    "what is on their card or shared with the player) ---"] + cards.scene(waiting=False)
 
     def _section_pending(self) -> list[str]:
         lines = []
@@ -787,6 +724,8 @@ class Brief:
                 txt = fact_text(it)
                 if txt:
                     out.append(txt)
+        if per_category is not None or self.full:
+            self.shown_texts = getattr(self, "shown_texts", []) + out
         return out
 
     def _wrong_beliefs(self):
@@ -806,6 +745,7 @@ class Brief:
             if true:
                 line += f"  → truth, {true.get('id')}: {true.get('fact', '')}"
             out.append(line)
+            self.shown_texts = getattr(self, "shown_texts", []) + [f.get('fact', '')]
         return out
 
     def _world_remembers(self, location, full=False, already_shown=()):
@@ -855,81 +795,3 @@ class Brief:
             entries.append(text)
         held_back = total - len(entries) if (entries and not full and total > len(entries)) else 0
         return entries, debts, held_back
-
-    def _person_lines(self, name, npc, full=False):
-        """An NPC in the brief: who they are and how to play them, from their sheet
-        (sheet.py). Only the fields that are filled in."""
-        import sheet as sheet_mod
-        identity = npc.get('identity') or {}
-        personality = npc.get('personality') or {}
-        status = npc.get('status') or {}
-        who = identity.get('role') or self._truncate(identity.get('background') or '', 100, full)
-        head = [x for x in (who,
-                            f"Big Five {personality['big_five']}" if personality.get('big_five') else "",
-                            personality.get('demeanor')) if x]
-        lines = [f"{name}" + (f" ({'; '.join(head)})" if head else "") + ":"]
-        look = sheet_mod.look_line(npc)
-        if look:
-            lines.append(f"  look: {self._truncate(look, 160, full)}")
-        for label, value in (("voice", personality.get('voice')),
-                             ("tells", personality.get('tells')),
-                             ("wants", personality.get('want')),
-                             ("after now", status.get('goal')),
-                             ("fears", personality.get('fears'))):
-            if value:
-                lines.append(f"  {label}: {self._truncate(value, 160, full)}")
-        if full:
-            for label, value in (("needs", personality.get('need')),
-                                 ("values", personality.get('values')),
-                                 ("affiliation", identity.get('affiliation'))):
-                if value:
-                    lines.append(f"  {label}: {value}")
-        visible = sheet_mod.visible_items(npc)
-        if visible:
-            lines.append(f"  gear: {self._truncate(', '.join(visible), 160, full)}")
-        if status.get('conditions'):
-            lines.append(f"  conditions: {', '.join(status['conditions'])}")
-        return lines
-
-    def _npc_fact_lists(self, npcs, names, already_shown=()):
-        """For each NPC name: {"know": [...], "about": [...]}, facts as (text, old).
-
-        "know": facts with the NPC among their `holders`. "about": facts about
-        the NPC (`about`) that they don't hold: secrets about them, talk behind
-        their back. A fact from before holders existed (no `holders` field) can't
-        say who knows it; it goes under "about" with old=True when its `about`,
-        or failing that the name check gm-note.sh uses, finds the NPC. Facts
-        already shown (PREVIOUSLY ON, the world remembers) or identical to one of
-        the NPC's own `events` are left out. Oldest first; [] on any failure.
-        """
-        out = {n: {"know": [], "about": []} for n in names}
-        facts = self.json_ops.load_json("facts.json") or {}
-        if not isinstance(facts, dict) or not names:
-            return out
-        from world_ids import WorldIds
-        ids = WorldIds(self.json_ops)
-
-        def norm(text):
-            return " ".join(str(text).split())
-
-        shown = {norm(x) for x in already_shown if norm(x)}
-        entries = sorted((f for items in facts.values() if isinstance(items, list)
-                          for f in items if isinstance(f, dict) and f.get('fact')),
-                         key=lambda f: str(f.get('timestamp', '')))
-        for f in entries:
-            if f.get('attitude'):
-                continue                    # shown as the person's "towards" line
-            text = fact_text(f)
-            if norm(f['fact']) in shown or norm(text) in shown:
-                continue
-            old = 'holders' not in f
-            about = f.get('about')
-            if about is None and old:
-                about = ids.mentioned(str(f["fact"]))
-            for name in names:
-                nid = f"npc:{name}"
-                if not old and nid in f['holders']:
-                    out[name]["know"].append((text, False))
-                elif nid in (about or []):
-                    out[name]["about"].append((text, old))
-        return out

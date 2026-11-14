@@ -133,14 +133,18 @@ def main() -> int:
     try:
         sm = SceneManager()
         if action == "show" and len(args) <= 1:
-            print(sm.describe())
+            from cards import Cards
+            print("\n".join(Cards(sm.json_ops).scene()))
         elif action == "enter" and args[1:]:
             result = sm.enter(args[1:])
-            if result["entered"]:
-                print(f"Entered: {', '.join(result['entered'])}")
             if result["already"]:
                 print(f"Already here: {', '.join(result['already'])}")
             print(sm.describe())
+            if result["entered"]:
+                from cards import Cards
+                cards = Cards(sm.json_ops)
+                for name in result["entered"]:
+                    print("\nEntered: " + "\n".join(cards.npc_card(name)))
         elif action == "leave" and args[1:]:
             gone = sm.leave(args[1:])
             print(f"Left: {', '.join(gone)}" if gone else "Nobody left: they weren't in the scene.")
