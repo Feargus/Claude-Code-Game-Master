@@ -12,6 +12,8 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from lib.location_manager import LocationManager
 from lib.session_manager import SessionManager
 
@@ -29,23 +31,29 @@ def _load(dcc_world, name):
     return json.loads(Path(dcc_world, *CAMP, name).read_text())
 
 
-def test_a_new_place_needs_a_description(dcc_world, capsys):
+def test_a_place_can_be_bare_until_the_story_goes_there(dcc_world, capsys):
+    """A place named in the story but not yet seen is a bare place: where it is,
+    no description. A move there is refused until it is described, so a place is
+    still on disk before it is narrated."""
+    from lib.session_manager import SessionManager
     locations = LocationManager(dcc_world)
-    assert not locations.add_location("The Kettle", "two streets down", "  ")
-    assert "needs a description" in capsys.readouterr().out
-    assert "The Kettle" not in _load(dcc_world, "locations.json")
-    assert locations.add_location("The Kettle", "two streets down",
+    assert locations.add_location("The Kettle", "two streets down")
+    assert "A bare place: describe it before" in capsys.readouterr().out
+    assert _load(dcc_world, "locations.json")["The Kettle"]["description"] == ""
+    with pytest.raises(ValueError, match="no description yet"):
+        SessionManager(dcc_world).move_party("The Kettle")
+    assert locations.add_location("The Annex", "two streets down",
                                   "A capsule hostel, coffins stacked eight high.")
-    assert _load(dcc_world, "locations.json")["The Kettle"]["description"].startswith("A capsule")
+    assert _load(dcc_world, "locations.json")["The Annex"]["description"].startswith("A capsule")
 
 
 def test_the_command_takes_the_description(dcc_world):
     result = _tool(dcc_world, "gm-location.sh", "add", "The Kettle", "two streets down")
-    assert result.returncode != 0 and "<description>" in result.stdout
-    result = _tool(dcc_world, "gm-location.sh", "add", "The Kettle", "two streets down",
-                   "A capsule hostel.", "--alias", "the Kettle hostel")
+    assert result.returncode == 0 and "A bare place" in result.stdout, result.stdout + result.stderr
+    result = _tool(dcc_world, "gm-location.sh", "add", "The Annex", "two streets down",
+                   "A capsule hostel.", "--alias", "the hostel")
     assert result.returncode == 0, result.stdout + result.stderr
-    assert _load(dcc_world, "locations.json")["The Kettle"]["description"] == "A capsule hostel."
+    assert _load(dcc_world, "locations.json")["The Annex"]["description"] == "A capsule hostel."
 
 
 def test_describe_replaces_by_alias_and_shows_the_old_text(dcc_world, capsys):

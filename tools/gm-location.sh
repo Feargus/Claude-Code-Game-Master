@@ -7,10 +7,11 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: gm-location.sh <action> [args]"
     echo ""
     echo "Actions:"
-    echo "  add <name> <position> <description> [--alias <short name>]... [--another]"
+    echo "  add <name> <position> [<description>] [--alias <short name>]... [--another]"
     echo "                                     - Add a new location: where it is, and what it"
-    echo "                                       is like in a sentence or two (required: on"
-    echo "                                       disk before it is narrated). Aliases: shorter"
+    echo "                                       is like in a sentence or two. Without one it is"
+    echo "                                       a bare place: a move there waits until it is"
+    echo "                                       described (on disk before it is narrated). Aliases: shorter"
     echo "                                       names the story will use, e.g. \"the Yard\""
     echo "  alias <name> <alias>... [--remove <alias>]"
     echo "                                     - Add or remove a location's shorter names"
@@ -35,8 +36,8 @@ shift
 
 case "$ACTION" in
     add)
-        if [ "$#" -lt 3 ]; then
-            echo "Usage: gm-location.sh add <name> <position> <description> [--alias <short name>]... [--another]"
+        if [ "$#" -lt 2 ]; then
+            echo "Usage: gm-location.sh add <name> <position> [<description>] [--alias <short name>]... [--another]"
             exit 1
         fi
         $PYTHON_CMD "$LIB_DIR/location_manager.py" add "$@"

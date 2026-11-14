@@ -25,7 +25,7 @@ class Brief:
 
     # The sections in the order they are printed: each is a method
     # `_section_<name>` returning its lines ([] when it has nothing to show).
-    SECTIONS = ("header", "kit", "play_style", "images", "voice", "world_index",
+    SECTIONS = ("header", "kit", "play_style", "images", "voice",
                 "previously_on", "world_remembers", "story_threads", "ready_threads",
                 "key_facts", "wrong_beliefs", "clocks", "character", "party", "scene",
                 "pending", "world_rules", "systems")
@@ -220,30 +220,6 @@ class Brief:
             if rem:
                 lines.append(rem)
         self.bible = bible
-        return lines
-
-    def _section_world_index(self) -> list[str]:
-        lines = []
-        bible = self.bible
-        # --- World Index (named things that exist; scan before inventing a name) ---
-        index = bible.get("index") or {}
-        index_labels = (
-            ("npcs", "NPCs"), ("locations", "Locations"),
-            ("items", "Items"), ("monsters", "Monsters"),
-        )
-        index_lines: list[str] = []
-        for bucket, label in index_labels:
-            entries = [e for e in (index.get(bucket) or []) if isinstance(e, dict) and e.get("name")]
-            if not entries:
-                continue
-            index_lines.append(f"{label}:")
-            for e in entries:
-                note = str(e.get("note") or "").strip()
-                index_lines.append(f"  {e['name']}" + (f" — {note}" if note else ""))
-        if index_lines:
-            lines.append("")
-            lines.append("--- WORLD INDEX (named things that exist; scan before inventing a name) ---")
-            lines.extend(index_lines)
         return lines
 
     def _section_previously_on(self) -> list[str]:

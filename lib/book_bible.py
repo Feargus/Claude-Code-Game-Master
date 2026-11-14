@@ -130,9 +130,6 @@ _SKELETON = (
     ("factions", {"nodes": [], "edges": []}),
     ("geography", {"nodes": [], "edges": []}),
     ("signature_systems", []),
-    # Named-thing roster the GM scans before inventing a name. Populated by a
-    # later ticket; each entry is {"name": str, "note": str}.
-    ("index", {"npcs": [], "locations": [], "items": [], "monsters": []}),
 )
 
 
@@ -216,42 +213,6 @@ def write_campaign_rules(campaign_dir) -> dict[str, Any]:
     return rules
 
 
-INDEX_BUCKETS = ("npcs", "locations", "items", "monsters")
-
-
-def write_index(campaign_dir, index: dict[str, Any]) -> dict[str, Any]:
-    """Persist a WORLD INDEX into the bible (the light import pass, not the census).
-
-    Merges `index` into the bible's existing `index`, keyed by four buckets
-    (npcs/locations/items/monsters). Each entry is reduced to `{name, note}`;
-    nameless entries are DROPPED and names are deduped case-insensitively (first
-    note wins, a later note fills a blank one). Writes back to world-bible.json
-    without touching any other field or the confirm flag.
-    """
-    bible = load_bible(campaign_dir)
-    existing = bible.get("index") or {}
-    out: dict[str, Any] = {}
-    for bucket in INDEX_BUCKETS:
-        seen: dict[str, dict[str, str]] = {}
-        for entry in list(existing.get(bucket, []) or []) + list((index or {}).get(bucket, []) or []):
-            if not isinstance(entry, dict):
-                continue
-            name = (entry.get("name") or "").strip()
-            if not name:
-                continue  # drop nameless typed extras
-            note = (entry.get("note") or "").strip()
-            key = name.lower()
-            if key not in seen:
-                seen[key] = {"name": name, "note": note}
-            elif note and not seen[key]["note"]:
-                seen[key]["note"] = note
-        out[bucket] = list(seen.values())
-    bible["index"] = out
-    _bible_path(campaign_dir).write_text(
-        json.dumps(bible, indent=2, ensure_ascii=False), encoding="utf-8")
-    return out
-
-
 def write_systems(campaign_dir, systems: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Persist executable signature systems onto the kit (ruleset.json `systems`).
 
@@ -294,12 +255,6 @@ def main():
     p_rules = sub.add_parser("campaign-rules", help="write campaign_rules into campaign-overview.json")
     p_rules.add_argument("campaign_dir")
 
-    p_index = sub.add_parser("write-index",
-                             help="persist a WORLD INDEX into the bible (the light import pass)")
-    p_index.add_argument("campaign_dir")
-    p_index.add_argument("--index-json", required=True,
-                         help='{"npcs":[{"name":..,"note":..}],"locations":[...],"items":[...],"monsters":[...]}')
-
     p_sys = sub.add_parser("write-systems",
                            help="persist executable signature systems onto the kit (ruleset.json)")
     p_sys.add_argument("campaign_dir")
@@ -316,20 +271,12 @@ def main():
                 voice=json.loads(args.voice_json) if args.voice_json else None,
                 fields=json.loads(args.fields_json) if args.fields_json else None,
             )
-            idx = bible.get("index", {})
-            idx_counts = ", ".join(f"{len(idx.get(b, []))} {b}"
-                                   for b in ("npcs", "locations", "items", "monsters"))
             print(f"world-bible.json drafted: {bible['name']} "
-                  f"(index: {idx_counts}; "
-                  f"{len(bible['voice']['sample_passages'])} verbatim passages, confirmed=False)")
+                  f"({len(bible['voice']['sample_passages'])} verbatim passages, confirmed=False)")
         elif args.action == "draft-ruleset":
             ruleset = write_ruleset(args.campaign_dir, force=args.force)
             print(f"ruleset.json drafted: {ruleset['name']} "
                   f"| agents: {ruleset['active_agents']}")
-        elif args.action == "write-index":
-            idx = write_index(args.campaign_dir, json.loads(args.index_json))
-            counts = ", ".join(f"{len(idx.get(b, []))} {b}" for b in INDEX_BUCKETS)
-            print(f"world index written: {counts}")
         elif args.action == "write-systems":
             sysv = write_systems(args.campaign_dir, json.loads(args.systems_json))
             print(f"kit systems written: {', '.join(s['name'] for s in sysv) or '(none)'}")

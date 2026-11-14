@@ -65,7 +65,7 @@ The book is now searchable. That is enough of a "world" to start.
 
 ## Step 3: The door, not the gazetteer
 
-Do **not** launch extractor agents yet (they only build the World Index, Step 5.5). Do **not** preview entity counts. Do **not**
+Do **not** launch extractor agents yet (they only list the book's names, Step 5.5). Do **not** preview entity counts. Do **not**
 ask "what should I extract?"
 
 Ask, in the book's tone:
@@ -159,8 +159,7 @@ Voice — verbatim excerpts only (the filter drops paraphrase):
 ```bash
 bash tools/gm-extract.sh draft-bible --voice-json '{
   "style": "...",
-  "sample_passages": ["<verbatim 1>", "<verbatim 2>"],
-  "vocab": ["..."]
+  "sample_passages": ["<verbatim 1>", "<verbatim 2>"]
 }'
 uv run python lib/world_bible.py validate
 uv run python lib/world_bible.py review
@@ -249,34 +248,41 @@ bash tools/gm-enhance.sh apply "<Name>"
 ```
 
 Do **not** run `gm-enhance.sh batch`. The one use of the `index-extractor` agent
-is the light World Index below — pointers, not a gazetteer. An unresolved name
+is the light roster below — sketches, not a gazetteer. A name with only a sketch
 means not on stage yet.
 
 ---
 
-## Step 5.5: Build the World Index (a light roster — NOT a census)
+## Step 5.5: Name the book's people, places, creatures and things (sketches, NOT a census)
 
-The index is a scannable menu of the named things that actually exist in this
-book — **one sentence each** — so the GM reaches for real names (Yara, the
-Elephant Tower, Yag-kosha) instead of inventing generic ones. It is NOT the
-census: no full records, no stats, no `cap`/`reconcile`/`stub-npcs`/`integrity`.
+A light roster of the named things that actually exist in this book, so the GM
+reaches for real names (Yara, the Elephant Tower, Yag-kosha) instead of inventing
+generic ones. Each becomes a bare record, a sketch filled in when play walks
+toward it. No full records, no stats.
 
 Spawn the `index-extractor` agent over the campaign's chunk files
 (`chunks/chunk_NNN.txt`) — **hard cap 6 agents, and state that 6-agent cap INSIDE
 each prompt**. Give each one kind (`npcs`, `locations`, `items` or `monsters`) and
 the chunks to read (split a long book's chunks between agents of the same kind).
 Each answers with a JSON list of `{name, note}`, the note ONE sentence, named
-things only.
-
-Dedup by name, then persist in a single call:
+things only. Merge the lists by name, then make one record per entry, places first:
 
 ```bash
-bash tools/gm-extract.sh write-index --index-json '{"npcs":[{"name":"Yara","note":"The dread priest of the Elephant Tower."}],"locations":[...],"items":[...],"monsters":[...]}'
+bash tools/gm-location.sh add "<place>" "<where it is, from the book>"          # bare: described before it is narrated
+bash tools/gm-npc.sh create "<Name>" --background "<the note>" --location "<place>" # a sketch
+bash tools/gm-mob.sh add "<creature>" --note "<the note>"                         # stats before it is fought
+bash tools/gm-glossary.sh add "<item or term>" "<the note>"                       # relics, institutions, the book's words
 ```
 
-The index rides into scene context every session (the WORLD INDEX block). You
-still build **no** full records here — a face becomes real only when play walks
-toward it (search the book, then `gm-npc.sh create` or `gm-location.sh add`).
+A name close to one already made is refused: give the existing record an alias
+(`gm-npc.sh alias`) if the book uses both names for one person.
+   **Every person needs a way back into the story on its own:** a usual place
+   (`--location`, a bare place is fine: the location card lists them as "usually
+   found here" whenever the story goes there), or a part in the opening's clock or
+   consequences. A sketch tied only to "when they are in the scene" is forgotten,
+   since nothing brings them into the scene.
+
+Also put the book's own words (the voice's terms) into the glossary, one line each.
 
 ---
 

@@ -31,23 +31,20 @@ class LocationManager(EntityManager):
         elif alias_hint("location", name):
             print(alias_hint("location", name))
 
-    def add_location(self, name: str, position: str, description: str, aliases=None,
+    def add_location(self, name: str, position: str, description: str = "", aliases=None,
                      another: bool = False) -> bool:
         """
         Add a new location. `position`: where it is ("two streets down from
-        Lantern Row"); `description`: what it is like, a sentence or two, required,
-        so the place is on disk before it is narrated (set_description makes it
-        fuller later). `aliases`: shorter names the story will use ("the Yard"
+        Lantern Row"); `description`: what it is like, a sentence or two. A place
+        named in the story but not yet seen can be a bare place, without one:
+        `gm-session.sh move` refuses it until it is described (set_description),
+        so a place is on disk before it is narrated. `aliases`: shorter names the story will use ("the Yard"
         for "Old Iron's Yard"), each checked (world_ids.check_alias). A name close
         to an existing place's (world_ids.close_names) is refused unless `another`.
         Returns True on success, False on failure
         """
         from world_ids import WorldIds
         description = str(description or "").strip()
-        if not description:
-            print(f"[ERROR] '{name}' needs a description: what it is like, a sentence or two, "
-                  f"written before it is narrated")
-            return False
         aliases = [a.strip() for a in aliases or []]
         ids = WorldIds(self.json_ops)
         errors = [e for a in aliases if (e := ids.check_alias(a, f"location:{name}"))]
@@ -85,6 +82,9 @@ class LocationManager(EntityManager):
         # Save to file
         if self._add_entity(self.locations_file, name, location_data):
             self._report_added(name, position, location_data.get('aliases'))
+            if not description:
+                print(f"  A bare place: describe it before the story goes there "
+                      f"(bash tools/gm-location.sh describe \"{name}\" \"<a sentence or two>\").")
             return True
         return False
 
@@ -280,7 +280,9 @@ def main():
     add_parser = subparsers.add_parser('add', help='Add new location')
     add_parser.add_argument('name', help='Location name')
     add_parser.add_argument('position', help='Relative position')
-    add_parser.add_argument('description', help='What it is like, a sentence or two')
+    add_parser.add_argument('description', nargs='?', default='',
+                            help='What it is like, a sentence or two; leave it out for a place '
+                                 'named but not seen yet (a move there waits for it)')
     add_parser.add_argument('--another', action='store_true',
                             help='another place, though the name is close to an existing one')
     add_parser.add_argument('--alias', action='append', dest='aliases',

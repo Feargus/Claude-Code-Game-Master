@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # gm-extract.sh - Preparing a book for play (/import): prepare, the bible and kit,
-# the World Index, list, clean. See show_usage.
+# list, clean. See show_usage.
 
 set -e
 source "$(dirname "$0")/common.sh"
@@ -84,7 +84,6 @@ Commands:
                             Draft the World Kit (ruleset.json) from the bible
   campaign-rules [campaign] Write the bible's signature systems into
                             campaign-overview.json as campaign_rules
-  write-index [campaign] --index-json J    The World Index: {name, note} per entry
   write-systems [campaign] --systems-json J
   list                      List the campaigns made from a document
   clean [campaign]          Remove a campaign folder (a failed import)
@@ -156,7 +155,7 @@ prepare_document() {
 
     echo
     echo "Document prepared: the book is searchable (gm-search.sh \"...\" --rag-only)."
-    echo "Next: /import goes on with the door question and the World Index (Step 5.5)."
+    echo "Next: /import goes on with the door question and the roster of sketches (Step 5.5)."
 }
 
 
@@ -253,7 +252,7 @@ case "$1" in
 
 
 
-    draft-bible|draft-ruleset|campaign-rules|write-index|write-systems)
+    draft-bible|draft-ruleset|campaign-rules|write-systems)
         # The bible -> kit -> campaign_rules chain (lib/book_bible.py). The
         # campaign argument is optional here because every flag these verbs take
         # is a --long option: anything starting with -- is passed through, so

@@ -116,15 +116,24 @@ Write only what tonight needs:
    **guarded_payoff** guarded-or-cursed treasure), name them for this world, and
    persist: `bash tools/gm-extract.sh write-systems --systems-json '[{"primitive":"named_track","name":"Dread","config":{"max":4,"thresholds":[{"at":4,"consequence":"..."}]}}]'`.
    They surface as YOUR WORLD'S SIGNATURE SYSTEMS and are rolled, not narrated.
-2c. **Author the World Index** — a scannable one-sentence roster of the named
-   figures, places, relics, and monsters this world contains. There is no book to
-   extract from, so **you invent it** from the world's tone/themes (same schema as
-   an imported world's index). The GM scans it before inventing a name, so the
-   world stays consistent. Persist:
+2c. **Name the world's people, places, creatures and things** — the faces the player
+   might actually meet, recognizable, not a gazetteer (about 6–10 people, 4–8 places,
+   a few kinds of enemy, a few of the world's own words). There is no book, so **you
+   invent them** from the world's tone and themes. Each becomes a record now, a sketch
+   to fill in when play walks toward it, so the name check, triggers and plots see it:
    ```bash
-   bash tools/gm-extract.sh write-index --index-json '{"npcs":[{"name":"<Name>","note":"one sentence"}],"locations":[...],"items":[...],"monsters":[...]}'
+   bash tools/gm-location.sh add "<place>" "<where it is>"                  # a bare place: described before it is narrated
+   bash tools/gm-npc.sh create "<Name>" --background "<one sentence>" --location "<place>"   # a sketch; any few fields
+   bash tools/gm-mob.sh add "<kind of enemy>" --note "<one sentence>"       # stats before it is fought
+   bash tools/gm-glossary.sh add "<term>" "<what it means here>"            # relics, institutions, slang
    ```
-   Recognizable, not a gazetteer — the faces the player might actually meet.
+   Places first, so people can be usually found there. A name close to one already
+   made is refused (one record per person or place).
+   **Every person needs a way back into the story on its own:** a usual place
+   (`--location`, a bare place is fine: the location card lists them as "usually
+   found here" whenever the story goes there), or a part in the opening's clock or
+   consequences. A sketch tied only to "when they are in the scene" is forgotten,
+   since nothing brings them into the scene.
 3. **Sketch the opening; don't write it yet.** It is written in Phase D with
    `gm-session.sh opening`, once the character exists and the player has said where
    and when to start, so it fits them. Until then nothing of it is stored. Sketch:
