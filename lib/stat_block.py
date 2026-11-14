@@ -21,7 +21,7 @@ Everything is checked before it is saved; the GM never edits these files by hand
 
     gm-mob.sh list
     gm-mob.sh show "<mob>"
-    gm-mob.sh add "<mob>" --note "..." [--attr STR=14]... [--skill Brawling=3]... --wounds N
+    gm-mob.sh add "<mob>" --note "..." [--attr STR=14]... [--skill Brawling=3]... [--wounds N]
     gm-mob.sh stats "<mob>" [--attr ...] [--skill ...] [--remove-skill X] [--wounds N] [--note ...]
 """
 
@@ -192,6 +192,12 @@ def describe(name: str, entry: dict[str, Any]) -> str:
     else:
         lines.append(f"  not listed: common skills {COMMON_VALUE}, the rest untrained −3")
     lines.append(f"  wounds: {(entry.get('body') or {}).get('wounds', '(not set)')}")
+    missing = [what for what, have in (("attributes", attrs),
+                                       ("wounds", "wounds" in (entry.get("body") or {})))
+               if not have]
+    if missing:
+        lines.append(f"  not ready: give it {' and '.join(missing)} before it is rolled or "
+                     f"fought (gm-mob.sh stats \"{name}\" --attr ... --wounds N)")
     return "\n".join(lines)
 
 
@@ -253,10 +259,6 @@ class Mobs:
         warnings = self._refuse_taken(name) if create else []
         if create and not str((entry.get("identity") or {}).get("background") or "").strip():
             raise StatError("A new mob needs --note: one line on what it is.")
-        if create and not (entry.get("stats") or {}).get("attributes"):
-            raise StatError("A new mob needs attributes (--attr STR=12 ..., or --attr default=10).")
-        if create and (entry.get("body") or {}).get("wounds") is None:
-            raise StatError("A new mob needs --wounds: how many wounds take one out.")
         warnings += check(entry, self.campaign_dir)
         entry.setdefault("identity", {})["name"] = key or name.strip()
         try:

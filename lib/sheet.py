@@ -81,7 +81,7 @@ ALLOWED = {
 REQUIRED = {
     "player": (("identity", "name"), ("stats", "attributes"), ("body", "zones")),
     "npc": (("identity", "name"),),
-    "mob": (("identity", "name"), ("stats", "attributes"), ("body", "wounds")),
+    "mob": (("identity", "name"),),   # stats and wounds come before the first roll or fight
 }
 
 BIG_FIVE = "OCEAN"
@@ -101,9 +101,6 @@ def blank(kind: str, name: str) -> dict[str, Any]:
     if kind == "player":
         sheet["stats"] = {"attributes": {}}
         sheet["body"] = {"zones": {}}
-    if kind == "mob":
-        sheet["stats"] = {"attributes": {}}
-        sheet["body"] = {"wounds": 1}
     return sheet
 
 

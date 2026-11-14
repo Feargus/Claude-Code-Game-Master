@@ -112,6 +112,17 @@ def test_mobs_are_added_checked_and_kept_apart_from_npcs(world):
         mobs.save("Rook", entry, create=True)
     with pytest.raises(ValueError, match="needs --note"):
         mobs.save("Hound", merged({}, {"STR": 12}, wounds=1), create=True)
+    # A kind of enemy can be named before it has stats; it gets them before a fight.
+    assert mobs.save("Hollow", merged({}, note="a body still running on routine"), create=True) == []
+    assert "not ready: give it attributes and wounds" in describe("Hollow", mobs.campaign()["Hollow"])
+    from lib.skill_contest import ContestError, find_sheet
+    with pytest.raises(ContestError, match="no stats yet"):
+        from lib.skill_contest import dice_sizes
+        dice_sizes(find_sheet(camp, "Hollow"), "Hollow", ["STR"])
+    with pytest.raises(ValueError, match="has no wounds on its sheet"):
+        CombatManager(ws).add_combatant("hollow 1", sheet="Hollow")
+    mobs.save("Hollow", merged(mobs.campaign()["Hollow"], {"default": 8}, wounds=2), create=False)
+    assert "not ready" not in describe("Hollow", mobs.campaign()["Hollow"])
     with pytest.raises(ValueError, match="repo's example mobs, which stay"):
         mobs.save("street thug", entry, create=False)
     warnings = mobs.save("street thug", entry, create=True)

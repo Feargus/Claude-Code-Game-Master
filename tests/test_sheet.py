@@ -21,7 +21,7 @@ def test_the_kinds_share_one_set_of_sections():
     ({"identity": {"name": "X"}, "look": {"hair": "red"}}, "npc", "no field 'hair'"),
     ({"identity": {"name": "X"}, "look": {"style": 3}}, "npc", "is a text"),
     ({"identity": {}}, "npc", "needs identity.name"),
-    ({"identity": {"name": "X"}}, "mob", "needs stats.attributes"),
+    ({"identity": {}}, "mob", "needs identity.name"),
     ({"identity": {"name": "X"}, "status": {"state": "dying"}}, "npc", "alive or dead"),
     ({"identity": {"name": "X"}, "stats": {"attributes": {"DEX": 12}}}, "npc", "Unknown attribute"),
 ])
