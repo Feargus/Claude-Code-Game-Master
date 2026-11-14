@@ -14,13 +14,12 @@ def test_all_quiet():
 
 def test_threads_stalest_and_filters():
     plots = {
-        "The Sunken Pact": {"status": "active", "events": [{"session_number": 2}]},
-        "Fresh Lead":      {"status": "active", "events": [{"session_number": 8}]},
-        "Old News":        {"status": "resolved", "events": [{"session_number": 1}]},  # closed, skip
-        "Deep Lore":       {"status": "active", "background": True},                    # background, skip
+        "Sunken Pact": {"status": "open"},
+        "Fresh Lead":  {"status": "open"},
+        "Old News":    {"status": "completed"},     # ended, skip
     }
     lines = H(8, plots, {}, {})
-    assert lines == ['Threads: 2 open · stalest "The Sunken Pact" untouched 6 sessions']
+    assert lines == ["Plots: 2 open"]
 
 
 def test_clocks_due_only_when_full():

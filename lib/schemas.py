@@ -21,25 +21,17 @@ VALID_ATTITUDES = {'ally', 'neutral', 'enemy', 'friendly', 'hostile', 'suspiciou
 # do not re-declare a local copy.
 # The values are ordered by narrative weight: this is both the sort order for
 # STORY THREADS and the display order for plot listings.
-PLOT_TYPE_SORT = {
-    'main': 0,        # the spine
-    'threat': 1,      # pressure on the spine
-    'mystery': 2,     # open questions
-    'side': 3,        # optional quests worth running
-    'personal': 4,    # PC-specific arcs
-    'world': 5,       # world-scale movements
-    'optional': 6,    # take-it-or-leave-it content
-    'scene': 7,       # a single beat lifted from the source
-    'theme': 8,       # recurring idea (fiction imports)
-    'idea': 9,        # unformed hook (notes imports)
-    'lore': 10,       # background colour, not a quest
-    'background': 11,
-    'other': 12,      # catch-all bucket
+# The kinds of plot, in the order the brief and gm-plot.sh list sort them (the
+# last tie-breaker). Add a kind here, where it belongs; nowhere else lists them.
+PLOT_KINDS = {
+    'main': "the campaign's starting hook and what follows from it",
+    'antagonist': 'someone interfering with the character, or out for blood',
+    'mystery': 'an open question the story turns on',
+    'conspiracy': 'people working together in secret towards something',
+    'background': "a faction's or the world's own business, going on beside the character",
 }
-PLOT_TYPES = set(PLOT_TYPE_SORT)
-
-# Valid plot statuses
-VALID_PLOT_STATUSES = {'active', 'completed', 'failed', 'dormant', 'available'}
+PLOT_KIND_ORDER = {kind: i for i, kind in enumerate(PLOT_KINDS)}
+PLOT_STATUSES = ('open', 'completed', 'failed')
 
 # Valid item types (broad categories - specific weapon/armor types allowed)
 VALID_ITEM_TYPES = {
@@ -130,18 +122,15 @@ def validate_plot(name: str, data: dict[str, Any]) -> tuple[bool, list[str]]:
     if not data.get('description') and not data.get('name'):
         errors.append(f"Plot '{name}': missing description")
 
-    # Validate type if present
-    plot_type = data.get('type', '').lower()
-    if plot_type and plot_type not in PLOT_TYPES:
-        errors.append(f"Plot '{name}': invalid type '{plot_type}' (valid: {', '.join(sorted(PLOT_TYPES, key=PLOT_TYPE_SORT.get))})")
-
-    # Validate status if present
-    status = data.get('status', '').lower()
-    if status and status not in VALID_PLOT_STATUSES:
-        errors.append(f"Plot '{name}': invalid status '{status}' (valid: {', '.join(VALID_PLOT_STATUSES)})")
+    kind = str(data.get('kind') or '').lower()
+    if kind and kind not in PLOT_KINDS:
+        errors.append(f"Plot '{name}': unknown kind '{kind}' (kinds: {', '.join(PLOT_KINDS)})")
+    status = str(data.get('status') or '').lower()
+    if status and status not in PLOT_STATUSES:
+        errors.append(f"Plot '{name}': status is {', '.join(PLOT_STATUSES)}, not '{status}'")
 
     # Validate lists
-    for field in ['npcs', 'locations', 'objectives', 'progress']:
+    for field in ['involves']:
         if field in data and not isinstance(data[field], list):
             errors.append(f"Plot '{name}': {field} must be a list")
 

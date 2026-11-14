@@ -8,8 +8,10 @@ usage() {
     echo "                  [--also <id>]... | [--holders <id>]... | [--secret]"
     echo "                  [--truth wrong|partial] [--version-of <fact id>]"
     echo "                  [--at <place> | --nowhere]   where it happened (default: here)"
+    echo "                  [--plot <plot>]...           the plot it belongs to"
     echo "       gm-note.sh tell <fact id> <holder>...      someone learns it"
     echo "       gm-note.sh about <fact id> [--add <id>]... [--remove <id>]..."
+    echo "       gm-note.sh plot <fact id> [--add <plot>]... [--remove <plot>]..."
     echo "       gm-note.sh truth <fact id> wrong|partial|true [--version-of <id>]"
     echo "       gm-note.sh beat '<json list>'               several facts of one beat at once"
     echo "                                                    (version_of \"#1\": an earlier fact of it)"
@@ -17,7 +19,7 @@ usage() {
     echo "                                                    they were there: they learn what happened"
     echo "       gm-note.sh show <fact id>...                 facts in full (truth, versions)"
     echo "       gm-note.sh find [--held-by <id>]... [--about <id>]... [--secret | --hidden]"
-    echo "                       [--truth wrong|partial] [--category C] [--text \"words\"] [--at <place>] [--limit N]"
+    echo "                       [--truth wrong|partial] [--category C] [--text \"words\"] [--at <place>] [--plot <plot>] [--limit N]"
     echo "                                                    facts by who knows them, who they're about"
     echo "       gm-note.sh recent [N]                        the last N facts (default 10)"
     echo "       gm-note.sh categories"
@@ -56,7 +58,7 @@ case "$1" in
         echo "  gm-note.sh recent [N]  |  find --category <c> / --about <id> / --held-by <id> / --text \"words\"  |  show <fact id>" >&2
         exit 1
         ;;
-    tell|about|truth|categories|show|find|recent|beat|witness)
+    tell|about|plot|truth|categories|show|find|recent|beat|witness)
         $PYTHON_CMD "$LIB_DIR/note_manager.py" "$@"
         ;;
     *)

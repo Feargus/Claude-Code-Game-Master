@@ -17,9 +17,10 @@ after the character exists and the player has said where and when to start.
              "aliases": ["Ro"], "location": ["The Lantern noodle stall"],
              "present": true, "physique": "...", "big_five": "O0 C2 E1 A1 N-1",
              "voice": "..."}],
-   "plot": {"name": "The Writ", "type": "main", "description": "...",
+   "plot": {"name": "The Writ", "kind": "main", "description": "...",
             "hook": "Dekker's crew walks into the market with a writ ...",
-            "npcs": ["Dekker", "Seraphine Halcyon-Vey"], "locations": ["The Chrome"]},
+            "owner": "Dekker", "goal": "clear the market by the end of the week",
+            "involves": ["Dekker", "Seraphine Halcyon-Vey", "The Chrome"]},
    "developments": [...]}
 
 - A place or NPC that already exists (an import made it) is given by its name
@@ -34,15 +35,17 @@ after the character exists and the player has said where and when to start.
   ("wary", "fond, exasperated"; leave it out if they have none), becomes a fact
   they hold. A new NPC or place whose name is close to an existing one is
   refused unless the entry has `"another": true`.
-- The plot is required: every campaign starts with at least one. Its `hook`, the
-  problem that won't wait, becomes its first beat, so STORY THREADS carries it
-  on from there. Its `npcs` and `locations` that have no record yet are the
-  horizon: named, and not built until play walks there. An existing plot can be
-  given by name ("plot": "<name>", plus "hook" next to it).
+- The plot is required: every campaign starts with at least one. Its `name` is a
+  short key (plot_manager.check_key); its `hook`, the problem that won't wait, is
+  where it stands at the start. `owner` and `goal` say whose goal it is, if
+  anyone's; `kind` is one of schemas.PLOT_KINDS (default main). `involves` names
+  people and places that exist already, sketches included (/new-game step 2c);
+  those still sketches are the horizon: named, and not built until play walks
+  there. An existing plot can be given by name ("plot": "<name>", plus "hook").
 - `developments`: the premise, the secrets, the antagonist's clock and any
   consequences, in the form /gm world takes (world_tick.py): each a fact with its
   holders (none given: nobody knows it), optionally a consequence and a clock.
-  Clocks link to the opening's plot unless they name another.
+  Each belongs to the opening's plot unless it names another ("plot").
 """
 
 import contextlib
@@ -232,32 +235,38 @@ class Opening:
         return name
 
     def _plot(self, spec: dict[str, Any]) -> tuple[str, str]:
-        """(plot key, hook): the opening's plot, made or found, with the hook as
-        its first beat."""
-        from plot_manager import PlotManager
+        """(plot key, hook): the opening's plot, made or found; the hook is where it
+        stands at the start."""
+        from plot_manager import PlotError, PlotManager
         plots = PlotManager(self.wsd)
         plot = spec["plot"]
-        if isinstance(plot, str):
-            key, hook = plots._find_entity_name(plots.plots_file, plot), spec["hook"]
-            if not key:
-                raise OpeningError(f"No plot '{plot}'")
-        else:
-            key, hook = str(plot["name"]).strip(), plot["hook"]
-            if not plots.add_plot(key, plot.get("type") or "main", plot.get("description") or "",
-                                  status="active", objectives=_as_list(plot.get("objectives")),
-                                  npcs=_as_list(plot.get("npcs")),
-                                  locations=_as_list(plot.get("locations")),
-                                  first_event=str(hook).strip()):
-                raise OpeningError(f"The plot '{key}' was refused")
-            return key, str(hook).strip()
-        plots.update_plot(key, str(hook).strip())
-        return key, str(hook).strip()
+        try:
+            if isinstance(plot, str):
+                key, hook = plots.key(plot), str(spec["hook"]).strip()
+                plots.set_stands(key, hook)
+                return key, hook
+            hook = str(plot["hook"]).strip()
+            key = plots.add(plot["name"], plot.get("description") or hook,
+                            owner=plot.get("owner") or "", goal=plot.get("goal") or "",
+                            kind=plot.get("kind") or "main",
+                            involves=_as_list(plot.get("involves")), stands=hook,
+                            another=bool(plot.get("another")))
+        except PlotError as error:
+            raise OpeningError(str(error)) from error
+        return key, hook
 
     def horizon(self, plot_key: str) -> list[str]:
-        """The plot's people and places that have no record yet."""
+        """The plot's people and places that are still sketches: a person with no
+        look or personality, a place with no description."""
         plot = (self.json_ops.load_json("plots.json") or {}).get(plot_key) or {}
-        return ([n for n in plot.get("npcs") or [] if not self._resolve(n, "npc")]
-                + [n for n in plot.get("locations") or [] if not self._resolve(n, "location")])
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        places = self.json_ops.load_json("locations.json") or {}
+        out = []
+        for cid in plot.get("involves") or []:
+            kind, _, key = cid.partition(":")
+            if kind == "npc" and not (npcs.get(key, {}).get("look") or npcs.get(key, {}).get("personality")) or kind == "location" and not str(places.get(key, {}).get("description") or "").strip():
+                out.append(key)
+        return out
 
     def _apply(self, spec: dict[str, Any]) -> dict[str, Any]:
         from scene_manager import SceneManager
@@ -288,9 +297,9 @@ class Opening:
         developments = [dict(d) for d in spec.get("developments") or [] if isinstance(d, dict)]
         if len(developments) != len(spec.get("developments") or []):
             raise OpeningError("Every development is a JSON object")
-        for d in developments:
-            if isinstance(d.get("clock"), dict):
-                d["clock"] = {"linked_plot": plot, **d["clock"]}
+        for d in developments:                # they belong to the opening's plot
+            if not d.get("plot") and not d.get("plots"):
+                d["plot"] = plot
         try:
             applied, written = WorldTick(self.wsd).record(developments)
         except ValueError as error:

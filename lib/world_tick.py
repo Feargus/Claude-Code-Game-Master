@@ -17,10 +17,11 @@ A development (JSON object):
    "truth": "wrong", "version_of": "f12",   optional: a cover story, a planted lie
    "consequence": {"text": "The tracker finds Fearghas",              optional
                    "triggers": [{"type": "on_location", "match": "Old Iron's Yard"}]},
+   "plot": "Vey Inheritance",   optional: the plot it belongs to, given to all its parts
    "clock": {"name": "Tracker", "text": "The tracker closes in",      optional; the name
              "segments": 3,                                           is a short key
              "due_in": "3d", "consequence": "The tracker finds Fearghas",
-             "linked_plot": "The Vey Inheritance"}}                  optional
+             }}
 
 The opening (opening.py) records its developments through `record` too.
 """
@@ -176,8 +177,10 @@ class WorldTick:
         try:
             for i, d in enumerate(developments):
                 text = str(d.get("fact") or d.get("text")).strip()
+                plots = as_list(d.get("plot")) + as_list(d.get("plots"))
                 fid = notes.add_fact(d.get("category") or DEFAULT_CATEGORY, text,
                                      list_waiting=False, about=as_list(d.get("about")),
+                                     plots=plots, offer_plot=False,
                                      holders=as_list(d.get("holders")),
                                      truth=d.get("truth"), version_of=d.get("version_of"),
                                      at=d.get("at"), auto_at=False)
@@ -190,7 +193,8 @@ class WorldTick:
                 if con:
                     when = con.get("trigger") or " or ".join(
                         str(t.get("match", "")) for t in con["triggers"] if isinstance(t, dict))
-                    cid = self.cm.add_consequence(con["text"], when, triggers=con["triggers"])
+                    cid = self.cm.add_consequence(con["text"], when, triggers=con["triggers"],
+                                                  plots=plots)
                     if not cid:
                         raise WorldTickError(f"development {i + 1}: the consequence was "
                                              f"refused (see the error above)")
@@ -206,7 +210,7 @@ class WorldTick:
                             name, int(clock["segments"]),
                             advance_on=clock.get("on", "time"),
                             consequence=clock.get("consequence"),
-                            linked_plot=clock.get("linked_plot"), text=clock.get("text"),
+                            plots=plots, text=clock.get("text"),
                             due_at=parse_time(clock["due"]) if clock.get("due") else None,
                             due_in_minutes=(parse_duration(clock["due_in"])
                                             if clock.get("due_in") else None))

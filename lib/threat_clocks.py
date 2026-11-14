@@ -77,7 +77,7 @@ class ThreatClockManager(EntityManager):
         clock.setdefault("due_at", (now + timedelta(days=mx - cur)).strftime(STORED_FORMAT))
 
     def add_clock(self, name: str, segments: int, advance_on: str = "time",
-                  consequence: str = None, linked_plot: str = None,
+                  consequence: str = None, plots=None,
                   due_at: datetime = None, due_in_minutes: int = None,
                   text: str = None) -> dict[str, Any]:
         """Add a clock. `name` is its short key (check_name), `text` what it is
@@ -101,8 +101,12 @@ class ThreatClockManager(EntityManager):
             entry = {"text": str(text).strip(), **entry}
         if consequence:
             entry["consequence"] = consequence
-        if linked_plot:
-            entry["linked_plot"] = linked_plot
+        if plots:
+            from plot_manager import resolve_plots
+            keys, errors = resolve_plots(self.json_ops, plots)
+            if errors:
+                raise ValueError(" ".join(errors))
+            entry["plots"] = keys
         if advance_on == "time":
             now = current_time(self.json_ops)
             if due_in_minutes is not None:
@@ -148,7 +152,8 @@ class ThreatClockManager(EntityManager):
         with contextlib.redirect_stdout(sys.stderr):
             cid = ConsequenceManager(self._wsd).add_consequence(
                 f"[Clock — {name}] {text}", trigger=f"the {name} clock ran out",
-                trigger_type="on_clock", match=f"{name}:{clock.get('max', 1)}")
+                trigger_type="on_clock", match=f"{name}:{clock.get('max', 1)}",
+                plots=clock.get("plots"))
         clock["consequence_fired"] = cid
         return cid
 
@@ -364,7 +369,8 @@ def main():
     p.add_argument("--text", help="what the clock is about (can be reworded later)")
     p.add_argument("--on", default="time")
     p.add_argument("--consequence", help="what happens when it fills (fired into the world)")
-    p.add_argument("--linked-plot", dest="linked_plot")
+    p.add_argument("--plot", action="append", dest="plots", default=[],
+                   help="the plot it belongs to (repeatable)")
     p.add_argument("--due-in", dest="due_in", help="time clock: due after this long, e.g. 3d, 12h")
     p.add_argument("--due", help='time clock: due at "YYYY-MM-DD HH:MM"')
     p = sub.add_parser("advance")
@@ -403,7 +409,7 @@ def main():
         from time_manager import TimeError, parse_duration, parse_time
         try:
             out = m.add_clock(args.name, args.segments, advance_on=args.on,
-                              consequence=args.consequence, linked_plot=args.linked_plot,
+                              consequence=args.consequence, plots=args.plots,
                               text=args.text,
                               due_at=parse_time(args.due) if args.due else None,
                               due_in_minutes=parse_duration(args.due_in) if args.due_in else None)

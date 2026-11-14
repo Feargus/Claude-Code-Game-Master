@@ -93,15 +93,19 @@ def _save(json_ops, entries: dict[str, dict[str, Any]]) -> None:
     json_ops.save_json(BIBLE, bible)
 
 
-def add(json_ops, raw_term: str, description: str) -> str:
-    """Add a term. Returns it as stored; raises GlossaryError."""
+def add(json_ops, raw_term: str, description: str, plots=()) -> str:
+    """Add a term, belonging to `plots` if given. Returns it as stored; raises GlossaryError."""
     term = _term(raw_term)
     taken = find(json_ops, term)
     if taken:
         raise GlossaryError(f"'{taken}' is in the glossary already: "
                             f"gm-glossary.sh describe \"{taken}\" \"...\" to reword it.")
+    from plot_manager import resolve_plots
+    keys, errors = resolve_plots(json_ops, plots)
+    if errors:
+        raise GlossaryError(" ".join(errors))
     entries = glossary(json_ops)
-    entries[term] = {"description": _description(description), "plots": []}
+    entries[term] = {"description": _description(description), "plots": keys}
     _save(json_ops, entries)
     return term
 
@@ -140,6 +144,9 @@ def main() -> int:
         p = sub.add_parser(action)
         p.add_argument("term")
         p.add_argument("description")
+        if action == "add":
+            p.add_argument("--plot", action="append", dest="plots", default=[],
+                           help="the plot it belongs to (repeatable)")
     args = parser.parse_args()
 
     campaign = CampaignManager().get_active_campaign_dir()
@@ -159,7 +166,7 @@ def main() -> int:
                 raise GlossaryError(_missing(ops, args.term))
             print(f"{term}: {glossary(ops)[term].get('description', '')}")
         elif args.action == "add":
-            term = add(ops, args.term, args.description)
+            term = add(ops, args.term, args.description, args.plots)
             print(f"[SUCCESS] Added to the glossary: {term}")
         else:
             term, old = describe(ops, args.term, args.description)

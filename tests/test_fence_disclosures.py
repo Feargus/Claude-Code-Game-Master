@@ -106,7 +106,7 @@ def test_context_remainder_counts_on_every_truncated_section(tmp_path):
     ctx = SessionManager(ws).get_full_context()
     remainders = REMAINDER.findall(ctx)
     assert remainders, "truncated context must disclose +N more"
-    assert "+2 more threads" in ctx
+    assert "more threads" not in ctx               # every open plot is listed, most pressing first
     assert "+2 more facts" in ctx
     assert "term-14" in ctx and "more terms" not in ctx   # the glossary lists every term
     assert "+2 more sessions" in ctx

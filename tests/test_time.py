@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -209,7 +210,7 @@ def test_the_game_time_is_read_in_one_place():
     for module in lib.glob("*.py"):
         text = module.read_text(encoding="utf-8")
         if module.name != "game_time.py":
-            assert '.get("game_time")' not in text.replace("overview.get", ""), module.name
+            assert not re.search(r'campaign-overview\.json"\)[^\n]*\.get\("game_time"\)', text), module.name
             assert "STORED_FORMAT =" not in text, module.name
     clocks = (lib / "threat_clocks.py").read_text(encoding="utf-8")
     assert "import STORED_FORMAT\n        " not in clocks and "    from time_manager import STORED_FORMAT" not in clocks

@@ -121,7 +121,7 @@ READ_VERBS = [
     ("tools/gm-session.sh", "status"),
     ("tools/gm-note.sh", "categories"),
     ("tools/gm-search.sh", "carl", "--world-only"),
-    ("tools/gm-plot.sh", "threads"),
+    ("tools/gm-plot.sh", "list"),
     ("tools/gm-campaign.sh", "list"),
     ("tools/gm-clock.sh", "list"),
     ("tools/gm-consequence.sh", "list-resolved"),

@@ -53,7 +53,7 @@ class ConsequenceManager(EntityManager):
     def add_consequence(self, description: str, trigger: str,
                         trigger_type: str = None, match: str = None,
                         triggers: list[dict[str, str]] = None,
-                        effects: list[dict[str, Any]] = None) -> str:
+                        effects: list[dict[str, Any]] = None, plots=None) -> str:
         """
         Add a new consequence.
 
@@ -122,6 +122,11 @@ class ConsequenceManager(EntityManager):
             if error:
                 print(f"[ERROR] {error}", file=sys.stderr)
                 return ""
+        from plot_manager import resolve_plots
+        plot_keys, errors = resolve_plots(self.json_ops, plots)
+        if errors:
+            print(f"[ERROR] {' '.join(errors)}", file=sys.stderr)
+            return ""
 
         data = self.json_ops.load_json(self.consequences_file)
 
@@ -136,6 +141,8 @@ class ConsequenceManager(EntityManager):
             consequence['triggers'] = triggers
         if effects:
             consequence['effects'] = effects
+        if plot_keys:
+            consequence['plots'] = plot_keys
 
         if 'active' not in data:
             data['active'] = []
@@ -251,7 +258,7 @@ class ConsequenceManager(EntityManager):
             done = []
             for e in hit.get('effects') or []:
                 if e.get('type') == 'start_clock':
-                    done.append(self._start_clock(e))
+                    done.append(self._start_clock(e, hit.get('plots')))
                 elif e.get('type') == 'tell':
                     done.extend(self._tell(e))
             if done:
@@ -272,7 +279,8 @@ class ConsequenceManager(EntityManager):
             lines += [f"  {line}" for line in c.get('effects_done', [])]
         return lines
 
-    def _start_clock(self, e: dict[str, Any]) -> str:
+    def _start_clock(self, e: dict[str, Any], plots=None) -> str:
+        """Start the clock an effect names; it belongs to the consequence's plots."""
         from threat_clocks import ThreatClockManager
         from time_manager import parse_duration, parse_time
         tcm = ThreatClockManager(self.base_dir)
@@ -282,7 +290,7 @@ class ConsequenceManager(EntityManager):
         try:
             clock = tcm.add_clock(
                 name, e.get('segments', 1), advance_on=e.get('on', 'time'),
-                consequence=e.get('consequence'), text=e.get('text'),
+                consequence=e.get('consequence'), text=e.get('text'), plots=plots,
                 due_at=parse_time(e['due']) if e.get('due') else None,
                 due_in_minutes=parse_duration(e['due_in']) if e.get('due_in') else None)
         except ValueError as error:
@@ -603,8 +611,20 @@ class ConsequenceManager(EntityManager):
         if by_fact:
             data['provenance'][-1]['fact'] = by_fact
         self.json_ops.save_json(self.consequences_file, data)
+        if by_fact and c.get('plots'):
+            self._give_plots(by_fact, c['plots'])     # the fact belongs where it led
         self._carry_out([hit])
         return hit
+
+    def _give_plots(self, fact_id: str, plots) -> None:
+        """Add plots to a recorded fact (the fact that fired a consequence)."""
+        facts = self.json_ops.load_json("facts.json") or {}
+        for items in facts.values():
+            for f in items if isinstance(items, list) else []:
+                if isinstance(f, dict) and f.get('id') == fact_id:
+                    f['plots'] = list(dict.fromkeys(list(f.get('plots') or []) + list(plots)))
+                    self.json_ops.save_json("facts.json", facts)
+                    return
 
     def get_provenance(self) -> list[dict[str, Any]]:
         """Return the 'why did this fire' log (newest last)."""
@@ -776,6 +796,8 @@ def main():
                                  '--match for several triggers; any one fires it.')
     add_parser.add_argument('--match', action='append',
                             help='Structured trigger match value, one per --trigger-type, in order')
+    add_parser.add_argument('--plot', action='append', dest='plots', default=[],
+                            help='The plot it belongs to (repeatable)')
     add_parser.add_argument('--tells', metavar='FACT_ID',
                             help='When it fires, these holders (--to) learn this fact')
     add_parser.add_argument('--to', action='append', default=[], metavar='HOLDER',
@@ -858,7 +880,7 @@ def main():
         with contextlib.redirect_stdout(io.StringIO()):  # keep stdout JSON-only
             cid = manager.add_consequence(args.description, args.trigger,
                                           triggers=triggers,
-                                          effects=effects)
+                                          effects=effects, plots=args.plots)
         if cid:
             emit({"id": cid}, json_mode=True)
         else:
@@ -874,7 +896,7 @@ def main():
     if args.action == 'add':
         if not manager.add_consequence(args.description, args.trigger,
                                        triggers=triggers,
-                                       effects=effects):
+                                       effects=effects, plots=args.plots):
             sys.exit(1)
 
     elif args.action == 'check':

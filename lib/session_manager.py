@@ -152,21 +152,8 @@ class SessionManager(EntityManager):
     @staticmethod
     def _health_summary(session_num, plots, clocks, consequences) -> list:
         """Pure staleness computation over already-loaded state (unit-testable)."""
-        closed = {'completed', 'resolved', 'failed', 'done', 'abandoned', 'dropped'}
-
-        open_threads = []
-        if isinstance(plots, dict):
-            for name, p in plots.items():
-                if not isinstance(p, dict):
-                    continue
-                if str(p.get('status', 'active')).lower() in closed:
-                    continue
-                if p.get('background'):
-                    continue  # import's background tier: real, but not a live thread
-                events = p.get('events', [])
-                last_sess = events[-1].get('session_number') if events and isinstance(events[-1], dict) else None
-                stale = (session_num - last_sess) if (session_num and isinstance(last_sess, int)) else None
-                open_threads.append((name, stale))
+        open_threads = [(name, None) for name, p in (plots.items() if isinstance(plots, dict) else [])
+                        if isinstance(p, dict) and (p.get('status') or 'open') == 'open']
 
         due = []
         if isinstance(clocks, dict):
@@ -191,7 +178,7 @@ class SessionManager(EntityManager):
             if staley:
                 nm, s = max(staley, key=lambda t: t[1])
                 tail = f" · stalest \"{nm}\" untouched {s} session{'s' if s != 1 else ''}"
-            lines.append(f"Threads: {len(open_threads)} open{tail}")
+            lines.append(f"Plots: {len(open_threads)} open{tail}")
         if due:
             lines.append(f"Clocks: {len(due)} at a due beat ({', '.join(due)}) — resolve or advance the fiction")
         if pending:

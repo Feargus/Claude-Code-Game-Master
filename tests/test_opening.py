@@ -26,11 +26,14 @@ SPEC = {
     "npcs": [{"name": "Auntie Ro", "who": "runs the noodle stall", "attitude": "friendly",
               "aliases": ["Ro"], "location": "The Lantern noodle stall"},
              {"name": "Dekker", "who": "a Reclaimer crew boss", "attitude": "hostile"},
-             {"name": "Mags Teller", "who": "a fixer", "nowhere": True, "present": False}],
-    "plot": {"name": "The Writ", "type": "main",
+             {"name": "Mags Teller", "who": "a fixer", "nowhere": True, "present": False},
+             {"name": "Seraphine Halcyon-Vey", "who": "the sleeve's first owner",
+              "nowhere": True, "present": False}],
+    "plot": {"name": "The Writ", "kind": "main",
              "description": "Meridian wants the sleeve back, with its mind.",
              "hook": "Dekker's crew walks into the market with a writ for a sleeve.",
-             "npcs": ["Dekker", "Seraphine Halcyon-Vey"], "locations": ["The Chrome"]},
+             "owner": "Dekker", "goal": "bring the sleeve back to Meridian",
+             "involves": ["Dekker", "Seraphine Halcyon-Vey", "Lanternside"]},
     "developments": [
         {"fact": "Meridian has bought Level 40's debt and is foreclosing Lanternside.",
          "holders": ["street", "Auntie Ro"],
@@ -83,10 +86,13 @@ def test_the_opening_makes_ordinary_records(world):
     assert overview["opened"] == "2187-10-25T19:00"
 
     plot = _load(camp, "plots.json")["The Writ"]
-    assert plot["status"] == "active"
-    assert plot["events"][-1]["event"] == SPEC["plot"]["hook"]
+    assert plot["status"] == "open" and plot["stands"] == SPEC["plot"]["hook"]
+    assert plot["owner"] == "npc:Dekker" and plot["goal"] == "bring the sleeve back to Meridian"
+    assert plot["involves"] == ["npc:Dekker", "npc:Seraphine Halcyon-Vey", "location:Lanternside"]
     clocks = _load(camp, "threat-clocks.json")
-    assert clocks["The Foreclosure"]["linked_plot"] == "The Writ"
+    assert clocks["The Foreclosure"]["plots"] == ["The Writ"]        # the opening's plot
+    assert all(f.get("plots") == ["The Writ"] for items in _load(camp, "facts.json").values()
+               for f in items if not f.get("attitude"))
 
     facts = [f for items in _load(camp, "facts.json").values() for f in items]
     assert {f["fact"]: f["holders"] for f in facts} == {
@@ -98,19 +104,20 @@ def test_the_opening_makes_ordinary_records(world):
     triggers = _load(camp, "consequences.json")["active"][0]["triggers"]
     assert triggers == [{"type": "on_location", "match": "location:The Lantern noodle stall"}]
 
-    assert result["horizon"] == ["Seraphine Halcyon-Vey", "The Chrome"]
+    assert result["horizon"] == ["Dekker", "Seraphine Halcyon-Vey"]   # no look or personality yet
     text = summary(result)
     assert "Hook: Dekker's crew walks into the market" in text
     assert "On the horizon (named, not built until play walks there): " \
-           "Seraphine Halcyon-Vey, The Chrome" in text
+           "Dekker, Seraphine Halcyon-Vey" in text
 
 
 def test_the_brief_carries_the_hook_and_horizon_on(world):
     ws, _ = world
     Opening(ws).apply(json.loads(json.dumps(SPEC)))
     ctx = SessionManager(ws).get_full_context()
-    assert ("[main] The Writ - latest: Dekker's crew walks into the market with a writ for a "
-            "sleeve. · on the horizon (not built yet): Seraphine Halcyon-Vey, The Chrome") in ctx
+    assert "[main] The Writ: Dekker's crew walks into the market with a writ for a sleeve." in ctx
+    assert "  Dekker wants: bring the sleeve back to Meridian" in ctx
+    assert "  still sketches (named, not built): Dekker, Seraphine Halcyon-Vey" in ctx
     assert "PRIMER" not in ctx
 
 
@@ -158,7 +165,7 @@ def test_existing_places_npcs_and_plot_are_used_as_they_are(world):
     (camp / "npcs.json").write_text(json.dumps(
         {"Dekker": npc("Dekker", places=[], identity={"name": "Dekker", "role": "imported"})}))
     (camp / "plots.json").write_text(json.dumps(
-        {"The Writ": {"type": "main", "status": "available", "events": []}}))
+        {"The Writ": {"kind": "main", "status": "open", "description": "Meridian wants it."}}))
     with pytest.raises(OpeningError, match="'Lanternside' has no description yet"):
         Opening(ws).apply({"place": "Lanternside", "npcs": ["Dekker"],
                            "plot": "The Writ", "hook": "The crew walks in."})
@@ -169,7 +176,7 @@ def test_existing_places_npcs_and_plot_are_used_as_they_are(world):
     assert _load(camp, "npcs.json")["Dekker"]["identity"]["role"] == "imported"
     assert _load(camp, "campaign-overview.json")["scene"]["present"] == ["Dekker"]
     plot = _load(camp, "plots.json")["The Writ"]
-    assert plot["status"] == "active" and plot["events"][-1]["event"] == "The crew walks in."
+    assert plot["status"] == "open" and plot["stands"] == "The crew walks in."
 
 
 def test_cli(world):
@@ -189,7 +196,6 @@ def test_the_plot_starts_with_its_hook_and_consequences_say_when(world):
     seeded', and the opening's consequences read 'triggers: off-screen development'."""
     ws, camp = world
     Opening(ws).apply(json.loads(json.dumps(SPEC)))
-    events = [e["event"] for e in _load(camp, "plots.json")["The Writ"]["events"]]
-    assert events == [SPEC["plot"]["hook"]]
+    assert _load(camp, "plots.json")["The Writ"]["stands"] == SPEC["plot"]["hook"]
     con = _load(camp, "consequences.json")["active"][0]
     assert con["trigger"] == "the Lantern"   # the match it waits for

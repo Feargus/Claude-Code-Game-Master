@@ -10,7 +10,7 @@ A card shows what the record says about its subject, then a few facts, newest
 first (until semantic recall ranks them by what is happening):
 
     location card   the description and exits; who is usually found there; the
-                    consequences and dormant threads waiting there; the facts
+                    consequences waiting there and the plots that involve it; the facts
                     that happened there or are about the place
     NPC card        the sheet: who they are and how to play them; their
                     attitudes (towards the player first); what they know that
@@ -151,7 +151,7 @@ class Cards:
         return lines
 
     def _waiting_here(self, location: str) -> list[str]:
-        """Consequences that fire at this place, and dormant threads tied to it."""
+        """Consequences that fire at this place, and the open plots that involve it."""
         lines = []
         lid = f"location:{location}".lower()
         store = self.json_ops.load_json("consequences.json") or {}
@@ -160,14 +160,17 @@ class Cards:
                    and str(t.get("match", "")).lower() == lid for t in c.get("triggers") or []):
                 lines.append(f"Waiting here: [{str(c.get('id', '?'))[:4]}] "
                              f"{self._cut(c.get('consequence', ''), TEXT_WIDTH)}")
-        plots = self.json_ops.load_json("plots.json") or {}
-        for name, p in plots.items() if isinstance(plots, dict) else []:
-            if isinstance(p, dict) and p.get("status") == "dormant" and any(
-                    str(loc).strip().lower() == location.strip().lower()
-                    for loc in p.get("locations") or []):
-                lines.append(f"A thread that wakes here: \"{name}\" — "
-                             f"{self._cut(p.get('description', ''), 120)} (gm-plot.sh update)")
+        lines += self._plots_of(f"location:{location}", "Plots here")
         return lines
+
+    def _plots_of(self, cid: str, label: str) -> list[str]:
+        """The open plots that involve `cid`, most pressing first, one line each."""
+        from plot_manager import plot_order
+        plots = self.json_ops.load_json("plots.json") or {}
+        keys = [k for k in plot_order(self.json_ops, plots) if cid in (plots[k].get("involves") or [])]
+        return [f"{label}: [{plots[k].get('kind', '?')}] {k}: "
+                f"{self._cut(plots[k].get('stands') or plots[k].get('description', ''), 120)}"
+                for k in keys]
 
     # ---------- the NPC card ----------
 
@@ -180,6 +183,7 @@ class Cards:
         mine.sort(key=lambda pair: pair[0] != "player")             # the player first
         lines[1:1] = [f"  towards {self.player if whom == 'player' else whom.partition(':')[2]}: "
                       f"{f['fact']}" for whom, f in mine]           # right under who they are
+        lines += ["  " + line for line in self._plots_of(nid, "in plot")]
         knows, wrong, about, shared = [], [], [], 0
         for f in self.facts:
             if f.get("attitude"):

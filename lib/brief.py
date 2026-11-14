@@ -15,7 +15,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 from consequence_manager import describe_effects
 from entity_manager import is_party_member, npcs_present
 from note_manager import fact_text
-from schemas import PLOT_TYPE_SORT
 from threat_clocks import ThreatClockManager
 from world_kit import WorldKit
 
@@ -26,8 +25,7 @@ class Brief:
     # The sections in the order they are printed: each is a method
     # `_section_<name>` returning its lines ([] when it has nothing to show).
     SECTIONS = ("header", "kit", "play_style", "images", "voice",
-                "previously_on", "world_remembers", "story_threads", "ready_threads",
-                "key_facts", "wrong_beliefs", "clocks", "character", "party", "scene",
+                "previously_on", "world_remembers", "plots", "key_facts", "wrong_beliefs", "clocks", "character", "party", "scene",
                 "pending", "world_rules", "systems")
 
     def __init__(self, session):
@@ -272,39 +270,27 @@ class Brief:
         self.remembered = remembered
         return lines
 
-    def _section_story_threads(self) -> list[str]:
-        lines = []
-        full = self.full
-        # --- Story Threads (active plots, main first, each with its latest beat) ---
-        all_threads = self._active_plot_threads(limit=None)
-        threads = all_threads if full else all_threads[:6]
-        if threads:
-            lines.append("")
-            lines.append("--- STORY THREADS ---")
-            lines.extend(threads)
-            rem = None if full else self._remainder(
-                len(all_threads) - len(threads), "threads",
-                "gm-plot.sh threads for all")
-            if rem:
-                lines.append(rem)
-        return lines
-
-    def _section_ready_threads(self) -> list[str]:
-        lines = []
-        location = self.location
-        full = self.full
-        # --- Ready Threads (dormant seeded plots that just became relevant) ---
-        ready = self._ready_threads(location, full=full)
-        if ready:
-            lines.append("")
-            lines.append("--- READY THREADS (dormant plots now relevant — wake with "
-                         "gm-plot.sh update) ---")
-            shown = ready if full else ready[:5]
-            lines.extend(shown)
-            rem = None if full else self._remainder(
-                len(ready) - len(shown), "ready threads", "--full")
-            if rem:
-                lines.append(rem)
+    def _section_plots(self) -> list[str]:
+        """Every open plot, most pressing first (plot_manager.plot_order): where it
+        stands, whose goal it is, and who and what in it is still a sketch."""
+        from opening import Opening
+        from plot_manager import plot_order
+        plots = self.json_ops.load_json("plots.json") or {}
+        keys = plot_order(self.json_ops, plots)
+        if not keys:
+            return []
+        horizon = Opening(self._wsd).horizon
+        lines = ["", "--- PLOTS (most pressing first; gm-plot.sh show \"<plot>\" for one in full) ---"]
+        for key in keys:
+            p = plots[key]
+            lines.append(f"[{p.get('kind', '?')}] {key}: "
+                         + self._truncate(p.get('stands') or p.get('description', ''), 240, self.full))
+            if p.get("owner"):
+                owner = p["owner"].partition(":")[2] or p["owner"]
+                lines.append(f"  {owner} wants: {p.get('goal') or '(no goal written)'}")
+            sketches = horizon(key)
+            if sketches:
+                lines.append(f"  still sketches (named, not built): {', '.join(sketches)}")
         return lines
 
     def _section_key_facts(self) -> list[str]:
@@ -583,99 +569,6 @@ class Brief:
         normalized = summary.replace('!', '.').replace('?', '.')
         parts = [s.strip() for s in normalized.split('.') if s.strip()]
         return ('. '.join(parts[-2:]) + '.') if parts else ''
-
-    def _ready_threads(self, location, full=False):
-        """Dormant seeded plots that just became relevant — a nudge for the GM to wake them.
-
-        A dormant plot surfaces here when (a) one of its linked NPCs is present, (b) its
-        linked location is the current one, or (c) a threat clock linked to it is at
-        least half full. Reuses `npcs_present` (the same presence predicate the NPC
-        block and consequence tick use). Read-only; returns [] on any failure. This is
-        what actively tells the GM a seeded thread is relevant NOW; `gm-plot.sh update`
-        wakes it (dormant -> active).
-        """
-        try:
-            plots = self.json_ops.load_json("plots.json") or {}
-        except Exception:
-            return []
-        dormant = [(n, p) for n, p in plots.items()
-                   if isinstance(p, dict) and p.get('status') == 'dormant']
-        if not dormant:
-            return []
-
-        try:
-            present = set(npcs_present(
-                self.json_ops.load_json("npcs.json") or {}, location, self._scene()).keys())
-        except Exception:
-            present = set()
-
-        # plot name -> a clock linked to it that is at least half full
-        mature_clock = {}
-        clocks = self.json_ops.load_json("threat-clocks.json") or {}
-        if isinstance(clocks, dict):
-            for cname, c in clocks.items():
-                if not isinstance(c, dict):
-                    continue
-                lp, cur, mx = c.get('linked_plot'), c.get('current', 0), (c.get('max', 0) or 0)
-                if lp and mx and cur >= mx / 2:
-                    mature_clock[lp] = (cname, cur, mx)
-
-        cur_loc = (location or '').strip().lower()
-        out = []
-        for name, p in dormant:
-            npc_hit = next((n for n in (p.get('npcs') or []) if n in present), None)
-            if npc_hit:
-                reason = f"{npc_hit} is here"
-            elif cur_loc and any((loc or '').strip().lower() == cur_loc
-                                 for loc in (p.get('locations') or [])):
-                reason = f"you are at {location}"
-            elif name in mature_clock:
-                cname, ccur, cmx = mature_clock[name]
-                reason = f'the "{cname}" clock is {ccur}/{cmx}'
-            else:
-                continue
-            hook = self._truncate(p.get('description', ''), 120, full)
-            out.append(f'💤→ "{name}" — {hook} (because {reason})')
-        return out
-
-    def _active_plot_threads(self, limit=6):
-        """Active plots, main-first, each with its latest event beat and its
-        horizon: the people and places it names that have no record yet (named,
-        not built until play walks there). limit=None = all."""
-        from entity_aliases import resolve_entity_name
-        plots = self.json_ops.load_json("plots.json") or {}
-        if not isinstance(plots, dict):
-            return []
-        known = {"npcs": self.json_ops.load_json("npcs.json") or {},
-                 "locations": self.json_ops.load_json("locations.json") or {}}
-        closed = {'completed', 'resolved', 'failed', 'done', 'abandoned', 'dropped'}
-        order = PLOT_TYPE_SORT
-        active = []
-        for name, p in plots.items():
-            if not isinstance(p, dict):
-                continue
-            if str(p.get('status', 'active')).lower() in closed:
-                continue
-            if p.get('background'):
-                continue  # import's background tier: real, but not a live thread
-            ptype = str(p.get('type', 'side')).lower()
-            # Within a type, order by spine `sequence` when present (arc order);
-            # unsequenced plots sort last via a large fallback key.
-            seq = p.get('sequence')
-            seq = seq if isinstance(seq, int) else 9999
-            latest = ''
-            events = p.get('events')
-            if isinstance(events, list) and events:
-                ev = events[-1]
-                latest = ev.get('event', ev.get('description', '')) if isinstance(ev, dict) else str(ev)
-            horizon = [str(n) for field in ("npcs", "locations") for n in p.get(field) or []
-                       if resolve_entity_name(str(n), known[field]) is None]
-            active.append((order.get(ptype, len(order)), seq, ptype, name, latest, horizon))
-        active.sort(key=lambda t: (t[0], t[1]))
-        chosen = active if limit is None else active[:limit]
-        return [f"[{ptype}] {name}" + (f" - latest: {latest}" if latest else "")
-                + (f" · on the horizon (not built yet): {', '.join(horizon)}" if horizon else "")
-                for _, _seq, ptype, name, latest, horizon in chosen]
 
     # Categories that carry continuity the GM must not contradict. `player_choices`
     # and `npc_relations` were advertised by gm-note.sh and read by nothing, so the

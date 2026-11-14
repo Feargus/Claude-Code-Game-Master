@@ -193,7 +193,7 @@ class NoteManager:
     def add_fact(self, category: str, fact: str, list_waiting: bool = True,
                  about=None, not_about=None, holders=None, secret: bool = False,
                  also=None, truth=None, version_of=None, at=None, nowhere: bool = False,
-                 auto_at: bool = True) -> str:
+                 auto_at: bool = True, plots=None, offer_plot: bool = True) -> str:
         """Add a fact to the specified category. Returns its id, or "" on failure.
 
         Each fact carries an id, the in-game time it was recorded (`game_time`,
@@ -206,7 +206,9 @@ class NoteManager:
         (or an empty list) means nobody, a GM-only secret. Afterwards it lists
         the consequences waiting on an event, unless `list_waiting` is False.
         `at` is where it happened: the place given, else the current location
-        (with `auto_at`), or none with `nowhere`.
+        (with `auto_at`), or none with `nowhere`. `plots`: the plots it belongs to;
+        with none, and `offer_plot`, the one open plot that involves who or where
+        the fact is about is offered (only when exactly one fits).
         """
         about_ids, found, errors = self._about(fact, about, not_about)
         where, more = self._where(at, nowhere, auto_at)
@@ -215,6 +217,9 @@ class NoteManager:
         errors += more
         truth, version_of, version_notes, more = self._check_version(
             self.json_ops.load_json("facts.json") or {}, truth, version_of)
+        errors += more
+        from plot_manager import resolve_plots
+        plot_keys, more = resolve_plots(self.json_ops, plots)
         errors += more
         if errors:
             for error in errors:
@@ -238,6 +243,8 @@ class NoteManager:
             entry['version_of'] = version_of
         if where:
             entry['at'] = where
+        if plot_keys:
+            entry['plots'] = plot_keys
         game_time = stored_time(self.json_ops)
         if game_time:
             entry['game_time'] = game_time
@@ -257,6 +264,10 @@ class NoteManager:
         print(f"  known to: {', '.join(holder_ids) if holder_ids else 'nobody (a secret)'}")
         if where:
             print(f"  at: {where}")
+        if plot_keys:
+            print(f"  plot: {', '.join(plot_keys)}")
+        elif offer_plot:
+            self._offer_plot(fact_id, about_ids + ([where] if where else []))
         for note in version_notes:
             print(f"  {note}")
         if truth:
@@ -310,6 +321,33 @@ class NoteManager:
         return {whom: f for (holder, whom), f in
                 current_attitudes(self.json_ops.load_json("facts.json") or {}).items()
                 if holder == who}
+
+    def _offer_plot(self, fact_id: str, ids) -> None:
+        """The one open plot that involves someone or somewhere the fact is about,
+        offered, never given. Nothing when none or several fit."""
+        plots = self.json_ops.load_json("plots.json") or {}
+        fits = [k for k, p in plots.items() if isinstance(p, dict)
+                and (p.get("status") or "open") == "open" and set(ids) & set(p.get("involves") or [])]
+        if len(fits) == 1:
+            print(f"  Part of {fits[0]}? bash tools/gm-note.sh plot {fact_id} --add \"{fits[0]}\"")
+
+    def set_plots(self, fact_id: str, add=None, remove=None) -> list:
+        """Add plots to a recorded fact, or remove them. Returns the new list."""
+        from plot_manager import resolve_plots
+        adding, errors = resolve_plots(self.json_ops, add)
+        removing, more = resolve_plots(self.json_ops, remove)
+        if errors + more:
+            raise ValueError(" ".join(errors + more))
+        facts = self.json_ops.load_json("facts.json")
+        entry = self._entry(facts, fact_id)
+        keys = [k for k in entry.get('plots', []) if k not in removing]
+        keys += [k for k in adding if k not in keys]
+        if keys:
+            entry['plots'] = keys
+        else:
+            entry.pop('plots', None)
+        self.json_ops.save_json("facts.json", facts)
+        return keys
 
     def set_about(self, fact_id: str, add=None, remove=None) -> list:
         """Add ids to, or remove them from, a recorded fact's `about`.
@@ -495,7 +533,7 @@ class NoteManager:
         return out
 
     def find(self, held_by=None, about=None, secret=False, hidden=False, truth=None,
-             category=None, text=None, at=None, since=None, until=None) -> list:
+             category=None, text=None, at=None, since=None, until=None, plot=None) -> list:
         """Facts matching every filter given, newest first.
 
         held_by: holder ids (or names); each must know it, and a fact held by
@@ -514,6 +552,12 @@ class NoteManager:
         if at:
             place, error = ids.resolve_as(at, ("location",))
             errors += [error] if error else []
+        plot_key = ""
+        if plot:
+            from plot_manager import resolve_plots
+            keys, more = resolve_plots(self.json_ops, [plot])
+            errors += more
+            plot_key = keys[0] if keys else ""
         if errors:
             raise ValueError("; ".join(errors))
         words = [w.lower() for w in str(text or '').split()]
@@ -538,6 +582,8 @@ class NoteManager:
             if words and not all(w in str(f.get('fact', '')).lower() for w in words):
                 continue
             if place and f.get('at') != place:
+                continue
+            if plot_key and plot_key not in (f.get('plots') or []):
                 continue
             when = str(f.get('game_time') or '')
             if (since or until) and not when:
@@ -604,7 +650,7 @@ class NoteManager:
         nothing if any item is refused.
         """
         allowed = {"fact", "category", "about", "not_about", "holders", "also", "secret",
-                   "truth", "version_of", "at", "nowhere"}
+                   "truth", "version_of", "at", "nowhere", "plots"}
         def as_list(value):
             return None if value is None else [value] if isinstance(value, str) else list(value)
         if not isinstance(items, list) or not items:
@@ -652,7 +698,8 @@ class NoteManager:
                                 holders=as_list(item.get("holders")),
                                 secret=bool(item.get("secret")), also=as_list(item.get("also")),
                                 truth=item.get("truth"), version_of=ref or None,
-                                at=item.get("at"), nowhere=bool(item.get("nowhere")))
+                                at=item.get("at"), nowhere=bool(item.get("nowhere")),
+                                plots=as_list(item.get("plots")))
             if not fid:
                 self.remove_facts(written)
                 raise ValueError("A fact was refused (see above); none of this beat was kept.")
@@ -737,6 +784,12 @@ def main():
     p_add.add_argument("--at", help="where it happened (default: the current location)")
     p_add.add_argument("--nowhere", action="store_true",
                        help="it happened nowhere in particular (a truth, a secret, off-screen)")
+    p_add.add_argument("--plot", action="append", dest="plots", default=[],
+                       help="the plot it belongs to (repeatable)")
+    p = sub.add_parser("plot", help="add a recorded fact to a plot, or take it out")
+    p.add_argument("fact_id")
+    p.add_argument("--add", action="append", default=[])
+    p.add_argument("--remove", action="append", default=[])
     p = sub.add_parser("truth", help="mark a recorded fact true, partial or wrong")
     p.add_argument("fact_id")
     p.add_argument("truth", choices=["true"] + list(TRUTH_VALUES))
@@ -763,6 +816,7 @@ def main():
     p.add_argument("--category")
     p.add_argument("--text", help="words that must all occur in it")
     p.add_argument("--at", help="where it happened")
+    p.add_argument("--plot", help="the plot it belongs to")
     p.add_argument("--limit", type=int, default=20, help="how many (0: all); newest first")
     p = sub.add_parser("beat", help="several facts of one beat at once")
     p.add_argument("facts", help='JSON list: [{"fact": ..., "holders": [...], ...}, ...]; '
@@ -792,7 +846,7 @@ def main():
                                     holders=args.holders, secret=args.secret,
                                     also=args.also, truth=args.truth,
                                     version_of=args.version_of, at=args.at,
-                                    nowhere=args.nowhere):
+                                    nowhere=args.nowhere, plots=args.plots):
                 sys.exit(1)
         elif args.action == 'truth':
             entry = manager.set_truth(args.fact_id, args.truth, args.version_of,
@@ -804,6 +858,9 @@ def main():
                   f"{args.fact_id}: they knew it already")
             from consequence_manager import print_fired
             print_fired(manager.last_fired)
+        elif args.action == 'plot':
+            keys = manager.set_plots(args.fact_id, args.add, args.remove)
+            print(f"{args.fact_id} plots: {', '.join(keys) or '(none)'}")
         elif args.action == 'about':
             about = manager.set_about(args.fact_id, args.add, args.remove)
             print(f"{args.fact_id} about: {', '.join(about) or '(nothing)'}")
@@ -836,7 +893,8 @@ def main():
                 found = manager.show(args.fact_ids)
             elif args.action == 'find':
                 found = manager.find(args.held_by, args.about, args.secret, args.hidden,
-                                     args.truth, args.category, args.text, args.at)
+                                     args.truth, args.category, args.text, args.at,
+                                     plot=args.plot)
             else:
                 found = manager.find()[:max(0, args.count)]
             if json_mode:

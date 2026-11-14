@@ -14,10 +14,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from campaign_manager import CampaignManager
 from json_ops import JsonOperations
-from schemas import PLOT_TYPE_SORT, PLOT_TYPES
+from schemas import PLOT_KINDS
 
 # Canonical plot types in display order — the counter keys are derived, never hand-listed.
-PLOT_TYPE_ORDER = sorted(PLOT_TYPES, key=PLOT_TYPE_SORT.get)
+PLOT_TYPE_ORDER = list(PLOT_KINDS)
 
 
 class WorldStats:
@@ -77,14 +77,14 @@ class WorldStats:
             for _name, data in plots.items():
                 if isinstance(data, dict):
                     # Count by status (default to 'active')
-                    status = data.get('status', 'active').lower()
-                    if status == 'active':
+                    status = str(data.get('status') or 'open').lower()
+                    if status == 'open':
                         counts["plots_active"] += 1
                     elif status == 'completed':
                         counts["plots_completed"] += 1
                     # Count by type
-                    plot_type = data.get('type', '').lower()
-                    if plot_type in PLOT_TYPES:
+                    plot_type = str(data.get('kind') or '').lower()
+                    if plot_type in PLOT_KINDS:
                         counts[f"plots_{plot_type}"] += 1
 
         # Characters (single character.json per campaign)
