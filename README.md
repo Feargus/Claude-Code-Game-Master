@@ -60,8 +60,8 @@ claude
 
 | Command | What it does |
 |---|---|
-| `/gm end` | End the session, recording where you paused. Invents nothing. |
-| `/gm cliffhanger` | End the session on a cliffhanger. |
+| `/gm end` | Stop for now: the plots that moved get their one sentence. Invents nothing. |
+| `/gm cliffhanger` | Stop on a cliffhanger. |
 | `/gm world` | Let the world move off-screen, e.g. during a long rest. |
 | `/gm character` | Show your character sheet. |
 | `/gm status` | A short overview of the campaign. |

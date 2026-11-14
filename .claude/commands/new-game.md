@@ -272,8 +272,7 @@ gate. **Setting and lore only:** no signature systems, no `ruleset.json`, no
 You do not pre-plan the campaign — you plan it as you run it. When you see a
 long-game opportunity, seed it with the living-world tools and let it tick:
 - **Threat clocks** (`gm-clock.sh`) — named pressure that advances on its own.
-- **Story threads** (`gm-session.sh end --open-thread`) — questions left hanging.
-- **Plots** (`plots.json`) — a spine you extend when the story earns a next beat.
+- **Plots** (`gm-plot.sh`) — someone's goal or the problem the story turns on; what belongs to one says so (`--plot`), and its one sentence (`stands`) moves with it.
 - **Consequences** (`gm-consequence.sh add`) — a seed that fires on the right trigger.
 These are how the world develops mid- to long-term — reactively, from play, not
 from a gazetteer built before anyone sat down.

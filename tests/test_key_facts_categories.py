@@ -71,9 +71,11 @@ def test_an_npcs_attitude_is_filed_where_key_facts_reads_it(dcc_world):
         assert "gm-note.sh relations" not in (root / doc).read_text(encoding="utf-8"), doc
 
 
-def test_the_session_log_is_not_the_truth_for_location():
-    """/gm told the GM to move the character to where the log's last session
-    ended. A session that was never ended made that an old place."""
+def test_gm_md_says_the_brief_is_the_truth_and_no_session_log_exists():
+    """/gm once told the GM to move the character to where the log's last session
+    ended. Since 2026-11-14 there is no session log: the plots and facts are the
+    record, and /gm end rewrites the plots that moved."""
     text = (WRAPPER.parent.parent / ".claude" / "commands" / "gm.md").read_text(encoding="utf-8")
-    assert "Session log is truth" not in text
-    assert "Never move the\ncharacter back" in text
+    assert "Session log is truth" not in text and "gm-session.sh end" not in text
+    assert "session-log" not in text and "gm-recall.sh arc" not in text
+    assert "gm-plot.sh stands" in text

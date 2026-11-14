@@ -23,7 +23,7 @@ You are the NPC Builder - a character enrichment specialist who deepens NPCs by 
 ### Step 1: DISCOVER
 - Check if NPC exists: `bash tools/gm-npc.sh show "[Name]"`
 - If not found, check variations or similar names
-- Read session log for context about this NPC
+- Read the facts about this NPC for context: `gm-note.sh find --about "npc:<name>"`
 - Note what's already there so you add rather than repeat
 
 ### Step 2: RESEARCH

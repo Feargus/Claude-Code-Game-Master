@@ -19,21 +19,6 @@ echo "Path: $CAMPAIGN_DIR"
 uv run python lib/schemas.py
 ```
 
-### Step 2: Check Session Log
-```bash
-CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
-if [ -f "$CAMPAIGN_DIR/session-log.md" ]; then
-    lines=$(wc -l < "$CAMPAIGN_DIR/session-log.md")
-    if [ $lines -gt 3 ]; then
-        echo "✅ session-log.md - Has content ($lines lines)"
-    else
-        echo "⚠️ session-log.md - Minimal content"
-    fi
-else
-    echo "❌ session-log.md - Missing"
-fi
-```
-
 ---
 
 ## PHASE 2: CONTENT VALIDATION

@@ -82,8 +82,8 @@ outcome is genuinely certain (trivial, or literally impossible).
 1. Validate destination (`gm-search.sh`); reachable? obstacles? 2. Travel time (adjacent 1 min · district 15-30 min · <5 mi 1-2 hr · 5-20 mi 2-8 hr · day trip 8-10 hr; stealth ×2, running ÷2, difficult terrain ×2, mounted ×0.75). 3. A place is on disk before it is narrated: a new one first `bash tools/gm-location.sh add "<name>" "<where it is>" "<what it is like, a sentence or two>"`; a known one with no description first `gm-location.sh describe`. Then `bash tools/gm-session.sh move "<loc>" --takes <travel time>` (e.g. `20m`, `2h`): the travel time passes first, then the move (refuses a place that isn't recorded or described, before any time passes; checks consequences once, at the destination). Without `--takes`, no time passes. The new scene holds only the party: put whoever is there into it with `bash tools/gm-scene.sh enter "<npc>"...` (the place's card, which `move` prints, lists who is usually found there), and `gm-scene.sh leave` when someone goes. 4. Arrival awareness: if something here is hidden, roll the player's Awareness and mention only what they notice. 5. Narrate. (Sites of runs, jobs and dungeons → `gm-sites`.)
 
 ## Scene context (read at session start) and scene cards (come by themselves)
-`bash tools/gm-session.sh context` is the brief, read at session start: PREVIOUSLY ON (recent summaries +
-cliffhanger + open threads), PLOTS (every open plot, most pressing first), KEY FACTS, THREAT CLOCKS, PENDING CONSEQUENCES, THE SCENE, and YOUR
+`bash tools/gm-session.sh context` is the brief, read at session start: PLOTS (every open plot, most pressing
+first, with where it stands), KEY FACTS, THREAT CLOCKS, PENDING CONSEQUENCES, THE SCENE, and YOUR
 WORLD'S RULES (full, never truncated). THE SCENE is cards: the place (description, exits, who is usually found
 there, facts of the place), then a card for each person present (their sheet; their attitude towards the player
 first; what they know that the player doesn't; what they believe wrongly; what is true about them that they don't
@@ -94,8 +94,8 @@ scene. A fact already printed above is named by id ("also f12"). More than three
 the `gm-note.sh find` that lists the rest. `bash tools/gm-context.sh ["loc"]` adds
 grounded source passages.
 
-**Never write a guess as a fact.** When resuming, the context can be incomplete: the last
-session may not have been ended, so PREVIOUSLY ON can be older than the latest facts. If
+**Never write a guess as a fact.** When resuming, the context can be incomplete: a plot's
+"stands" can be older than its latest facts (`gm-note.sh recent` shows them). If
 something doesn't add up (a condition with no recorded cause, a pause that contradicts
 later facts), ask the player out of character before narrating or noting it.
 
@@ -142,7 +142,7 @@ later facts), ask the player out of character before narrating or noting it.
 | Someone was there before they had a name (a lord in the gallery, a guard who was a mob) | `gm-note.sh witness "<npc>" [--at <place>] [--from "YYYY-MM-DD HH:MM"] [--to ...]`: they learn what happened there in the open; secrets, facts only others hold and the character's wrong beliefs are listed, not taught: add those they could have perceived with `--include <id>`. `--dry-run` first if in doubt |
 | Look facts up (never read facts.json yourself) | `gm-note.sh show <id>...` (in full: truth, versions) · `gm-note.sh find --held-by <who> --about <who or where>` (what someone knows, what is known about someone; combinable with `--hidden`, `--secret`, `--truth wrong`, `--text "words"`; public facts count as known to everyone) · `gm-note.sh recent [N]` |
 | A new plot (or async via `plot-weaver`) | `gm-plot.sh add "<short name>" --description "…" [--owner … --goal …] [--kind …] --involves …`; it moves: `gm-plot.sh stands`; it ends: `complete`/`fail` with its summary |
-| End session (record what is; a twist only on `/gm cliffhanger`) | `gm-session.sh end "<summary>" --cliffhanger "<the situation as it stands>" --open-thread "..."` — then write the arc entry: `gm-recall.sh arc '{"summary": "...", "who_matters": [...], "open_debts": [...]}'` (this is what long-term recall surfaces) |
+| The player stops for now (`/gm end`; a twist only on `/gm cliffhanger`) | for each plot that moved: `gm-plot.sh stands "<plot>" "<one sentence: where it stands now>"`. There is no session log or summary: the plots and their facts are the record |
 All tools take `--json` for structured returns. **Always prefix with `bash tools/`.**
 
 ## Search Guide (which tool)
@@ -165,7 +165,7 @@ plot-weaver (async story planning — spawn IN THE BACKGROUND; develops one plot
 Do NOT use the Claude memory directory as a shadow copy of campaign data. All
 campaign knowledge has a home: character stats → `character.json`; NPCs →
 `npcs.json` (`gm-npc.sh`); locations → `locations.json`; facts → `facts.json`
-(`gm-note.sh`); history → `session-log.md`; tool patterns → this file. Memory is
+(`gm-note.sh`); what happened → plots and facts (`gm-plot.sh`); tool patterns → this file. Memory is
 only for operational lessons that fit nowhere else.
 
 ## Technical Notes

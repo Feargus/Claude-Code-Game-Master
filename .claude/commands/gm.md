@@ -16,10 +16,10 @@ When user invokes `/gm <subcommand>`, route to the appropriate section:
 | character | Jump to CHARACTER DISPLAY section |
 | overview | Jump to CAMPAIGN OVERVIEW section |
 | status | Run `bash tools/gm-overview.sh` and display results |
-| end | Jump to ENDING SESSION: record what is, invent nothing |
-| cliffhanger | Jump to ENDING SESSION, ending on a cliffhanger |
-| world | Jump to OFF-SCREEN DEVELOPMENTS (does not end the session) |
-| world cliffhanger, cliffhanger world | OFF-SCREEN DEVELOPMENTS first, then ENDING SESSION on a cliffhanger |
+| end | Jump to STOPPING FOR NOW: record what is, invent nothing |
+| cliffhanger | Jump to STOPPING FOR NOW, ending on a cliffhanger |
+| world | Jump to OFF-SCREEN DEVELOPMENTS (does not stop play) |
+| world cliffhanger, cliffhanger world | OFF-SCREEN DEVELOPMENTS first, then STOPPING FOR NOW on a cliffhanger |
 | choices [on\|off\|toggle] | Run `bash tools/gm-session.sh choices <arg>`, confirm the new play style, and continue the current scene in it |
 
 ---
@@ -120,15 +120,11 @@ below, ask the one question, then come back and finish the checklist.
 **Campaign Rules:** If the context output shows campaign-specific rules, enforce them throughout the session just like core rules. Each campaign is different.
 
 #### Step 2: Where the story stands
-The brief's location, time and facts are the truth: every move, time step and fact is
-recorded as it happens. The session log is written only when a session is ended, so its
-last entry (PREVIOUSLY ON, WHERE WE PAUSED) can be older than the brief. Never move the
-character back to where the log says a session ended.
-
-If the brief and the log don't fit together, the last session was probably never ended:
-read the latest facts (`bash tools/gm-note.sh recent 15`) and pick the story up from
-them. If it still doesn't add up, ask the player out of character before narrating
-(`CLAUDE.md` → Scene context).
+The brief's location, time, plots and facts are the truth: every move, time step and fact
+is recorded as it happens. A plot's "stands" is one sentence the GM wrote when it last
+moved, so it can be older than the plot's latest facts: `bash tools/gm-note.sh recent 15`
+shows them. If something still doesn't add up, ask the player out of character before
+narrating (`CLAUDE.md` → Scene context).
 
 #### Step 3: Who is in the scene
 The brief's THE SCENE shows the place and everyone in it as cards. The scene list (who is
@@ -175,19 +171,21 @@ the play style the brief reports.
 
 ---
 
-## ENDING SESSION
+## STOPPING FOR NOW
 
 When the player says they're done, or types `/gm end`: **record what is, invent nothing.**
+Everything that happened is on disk already (persist before narrating). What is left:
 
-```bash
-bash tools/gm-session.sh end "<summary of what happened>" --cliffhanger "<the situation as it stands>" --open-thread "<...>"
-bash tools/gm-recall.sh arc '{"summary": "...", "who_matters": [...], "open_debts": [...]}'
-```
+- **For each plot that moved,** rewrite where it stands, one sentence for the whole state
+  or its major turns, not every detail: `bash tools/gm-plot.sh stands "<plot>" "<…>"`.
+  A plot that ended: `gm-plot.sh complete|fail "<plot>" "<what came of it>" [--next "<plot>"]`.
+- **Stop where the story is.** If the player stopped mid-action, that is where the next
+  time begins: no new events, twists, arrivals or reveals, and no off-screen developments.
+- **`/gm cliffhanger`:** the same, but you may close on a real new development: a twist,
+  an arrival, a reveal. Persist it properly (a fact, a consequence, a plot's `stands`), so
+  the next time treats it as established.
 
-- **The cliffhanger is where we paused,** exactly as it stands: where the character is, what's unresolved, who's waiting, what's at stake. If the player stopped mid-action, record it mid-action. No new events, twists, arrivals or reveals, and no off-screen developments.
-- **`/gm cliffhanger`:** the same, but you may close on a real new development: a twist, an arrival, a reveal. Persist it properly as well (a fact, a consequence or a plot), not only in the cliffhanger, so the next session treats it as established.
-
-Confirm the session is saved: who rests where, and that progress is recorded. No fenced boxes; phone-friendly.
+Tell the player where the story rests: who is where, and that it is all recorded. No fenced boxes; phone-friendly.
 This confirmation is for the player, so the fourth wall holds (`CLAUDE.md` → Dice): tell only
 what the character knows. Never mention threat clocks, due times, pending consequences or
 anything still to come ("the priests come for Ishbel at 16:30" is the GM's knowledge). A

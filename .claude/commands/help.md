@@ -14,8 +14,8 @@ Display all available commands and tools.
   CORE GAMEPLAY
   --------------------------------------------------------
   /gm              Play the game (handles everything)
-  /gm end          End the session, recording only what is
-  /gm cliffhanger  End the session on a cliffhanger
+  /gm end          Stop for now: the plots that moved get their sentence
+  /gm cliffhanger  Stop on a cliffhanger
   /gm world        Let the world move off-screen (no ending)
   /gm choices      Action menu on/off (on | off | toggle)
   /gm character    Show character sheet & inventory

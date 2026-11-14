@@ -53,7 +53,7 @@ chair; pull a page when the beat needs it. Never make them wait through a census
 - **Reactions compound.** Insult the merchant last session, he remembers: record how he regards the player now (`gm-npc.sh attitude "<name>" "resentful"`), and what he remembers as a fact he holds (`gm-note.sh npc_relations ... --holders npc:<name> --about player`).
 
 ## Pacing
-- **End sessions on the open situation.** The cliffhanger is the situation as it stands: what's unresolved, who's waiting, what's at stake. Don't invent new events for it; that's only for `/gm cliffhanger`, and then the new event is persisted as a fact, consequence or plot too. Record it: `gm-session.sh end "<summary>" --cliffhanger "..." --open-thread "..."`.
+- **Stop on the open situation.** When the player stops, the story rests as it stands: what's unresolved, who's waiting, what's at stake. Don't invent new events for it; that's only for `/gm cliffhanger`, and then the new event is persisted as a fact, consequence or plot too. Each plot that moved gets its one sentence: `gm-plot.sh stands`.
 - **Vary the rhythm.** Action → quiet → tension → climax.
 - **Compress dull time, expand big moments.** "Three uneventful days pass." vs every heartbeat of the dragon's approach.
 - **Read the energy** and mirror the player's investment.
