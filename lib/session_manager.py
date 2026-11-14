@@ -33,17 +33,6 @@ class SessionManager(EntityManager):
     # disabled by default (2026-11-08: the campaigns have no book text, so each
     # search was wasted); re-enable with "rag_inspiration": true here or in a
     # campaign's overview.preferences.
-    # What the three options may contain. In play they handed the player a GM-only
-    # secret as something to say, promised what enemies would do, and invented a
-    # decoy (2026-11-11). Same wording in CLAUDE.md's Output Format.
-    MENU_RULE = ("The options are things the character could try, built only from what "
-                 "the character knows and what the scene has already shown: never a "
-                 "`[SECRET]` or `[HIDDEN FROM PLAYER]` fact, never anything the GM knows "
-                 "that they don't. An option never says how it will turn out, what someone "
-                 "will do, or that something is safe or will work, and it adds nothing new: "
-                 "no object, exit, weakness, ally or resource. An option built on a belief "
-                 "is the character's belief, and may be wrong.")
-
     DEFAULT_PREFERENCES = {"action_menu": True,
                            "beat_length": "adaptive", "rag_inspiration": False}
 
@@ -436,8 +425,11 @@ class SessionManager(EntityManager):
             lines.append(f"vitals: {', '.join(vitals) if vitals else '(none)'}")
             lines.append(f"skills: {', '.join(skills) if skills else 'the standard list (gm-skills)'}")
 
-        # --- Play style (honor every beat; player toggles anytime) ---
-        if self.get_preferences().get("beat_length", "adaptive") == "tight":
+        # --- Play style: only what differs from the defaults CLAUDE.md states ---
+        # (action menu on, adaptive pacing, no book inspiration, no images). A line
+        # that only repeated CLAUDE.md cost 300 tokens a brief and drifted from it.
+        prefs = self.get_preferences()
+        if prefs.get("beat_length", "adaptive") == "tight":
             lines.append("Pacing: TIGHT — a beat is the player's action, its immediate "
                          "consequence, and AT MOST ONE new world development. Then stop at "
                          "the first moment the player could plausibly act. Scene-state "
@@ -447,32 +439,17 @@ class SessionManager(EntityManager):
                          "sending, test: could the player reasonably say 'wait — I do X' "
                          "anywhere in this reply? If yes, cut there. Keep prose short: a few "
                          "sentences to a short paragraph.")
-        else:
-            lines.append("Pacing: no tight preference is set. Match prose to the beat, one "
-                         "clear beat at a time; don't fast-forward past a choice.")
-
-        # Informing, not adjudicating — caps and judgment live in skills / gm-craft.
-        lines.append("Failure: failure should cost something; decide the stake before the roll.")
-
-        if self.get_preferences().get("rag_inspiration", False):
+        if prefs.get("rag_inspiration", False):
             lines.append("Inspiration: every beat (or every other beat), run "
                          "`gm-search.sh \"<what's happening now>\" --rag-only` and mine the "
                          "returned passages for a concrete image, phrase, or sensory detail "
                          "from the source. Synthesize — never paste raw passages.")
-        else:
-            lines.append("Inspiration from the source book every beat is currently "
-                         "disabled: don't run gm-search.sh for it.")
-        if self.get_preferences().get("action_menu", True):
-            lines.append("Play style: action menu ON — end each beat with exactly THREE "
-                         "numbered options, then a final line \"Or something else...\" to "
-                         "signal the player can always choose their own action. "
-                         + self.MENU_RULE)
-        else:
+        if not prefs.get("action_menu", True):
             lines.append("Play style: action menu OFF — end beats with an open prompt; do "
                          "NOT list numbered choices. The player drives freely. "
                          "(Toggle: /gm choices on|off)")
 
-        # --- Scene images (gpt-image-2): only available when a key is configured ---
+        # --- Scene images (gpt-image-2): only when a key is configured ---
         if os.environ.get("OPENAI_API_KEY"):
             lines.append("Scene images: ENABLED — illustrate GENEROUSLY and with glee "
                          "(images cost ~$0.04; lean toward YES). New location, monster/boss "
@@ -500,9 +477,6 @@ class SessionManager(EntityManager):
                 lines.append("  Chronicler: none yet — name one the first time you "
                              "illustrate and persist it with `bash tools/gm-image.sh "
                              "chronicler --name \"...\" --style \"...\" --persona \"...\"`.")
-        else:
-            lines.append("Scene images: DISABLED (no OPENAI_API_KEY) — do NOT call gm-image.sh "
-                         "and do NOT mention images; narrate in text only.")
 
         # --- Narrative Voice (write the prose in the world's authorial voice) ---
         bible = self.json_ops.load_json("world-bible.json") or {}

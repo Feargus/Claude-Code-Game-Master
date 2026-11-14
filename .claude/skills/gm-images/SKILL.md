@@ -5,7 +5,7 @@ description: Generated scene images (OpenAI gpt-image-2) — when to illustrate,
 
 # Scene images
 
-**Currently disabled:** there is no `OPENAI_API_KEY` in `.env`. Kept for later use. If scene context reports `Scene images: DISABLED`, close this skill, never call `gm-image.sh`, and don't mention images.
+**Currently disabled:** there is no `OPENAI_API_KEY` in `.env`. Kept for later use. Unless scene context reports `Scene images: ENABLED`, close this skill, never call `gm-image.sh`, and don't mention images.
 
 When ENABLED, **illustrate GENEROUSLY and with glee** — at ~$0.04 an image, lean toward YES. A new location, a monster/boss reveal, big loot, a player's styled flourish, a comedic beat, a haunting vista — any beat with a real visual or emotional charge earns a picture.
 
