@@ -70,7 +70,7 @@ class NPCManager(EntityManager):
 
     def create_npc(self, name: str, role: str = "", attitude: str | None = None,
                    locations=None, nowhere: bool = False, aliases=None,
-                   fields: dict[str, str] | None = None) -> bool:
+                   fields: dict[str, str] | None = None, another: bool = False) -> bool:
         """Create an NPC sheet. Returns True on success, False on failure (printed).
 
         A sheet can start as a sketch: a name and any few fields (a role, a
@@ -84,9 +84,10 @@ class NPCManager(EntityManager):
         where they are usually found (known places), if anywhere; `nowhere` says
         so explicitly. `aliases`: shorter names the story will use, each checked.
         `fields`: any further text fields by flag name (sheet.TEXT_FIELDS), e.g.
-        a goal, a fear, a look, the Big Five.
+        a goal, a fear, a look, the Big Five. A name close to an existing NPC's
+        (world_ids.close_names) is refused unless `another` says it is someone else.
         """
-        from world_ids import WorldIds, alias_hint, close_name_warning
+        from world_ids import WorldIds, alias_hint, close_name_refusal
         places, errors = self._usual_places(locations)
         aliases = [a.strip() for a in aliases or [] if a.strip()]
         ids = WorldIds(self.json_ops)
@@ -101,7 +102,10 @@ class NPCManager(EntityManager):
         attitude, error = check_attitude(attitude)
         if error:
             errors.append(error)
-        close = ids.close_names(name, "npc")   # read before the new record is added
+        if not another and not self._entity_exists(self.npcs_file, name):
+            refusal = close_name_refusal(ids.close_names(name, "npc"), "npc", name)
+            if refusal:
+                errors.append(refusal)
         sheet = sheet_mod.blank("npc", name)
         try:
             sheet_mod.set_fields(sheet, dict(fields or {}, **({"role": role} if role else {})))
@@ -125,8 +129,6 @@ class NPCManager(EntityManager):
         where = ', '.join(places) if places else 'no usual place'
         print(f"[SUCCESS] Created NPC: {name}" + (f" - {role}" if role else "")
               + f"; usually found: {where}")
-        for line in close_name_warning(close, "npc"):
-            print(line)
         if aliases:
             print(f"  Also called: {', '.join(sheet['identity']['aliases'])}")
         elif alias_hint("npc", name):
@@ -389,6 +391,8 @@ def main():
                    help='where they are usually found (repeatable)')
     p.add_argument('--nowhere', action='store_true', help='no usual place')
     p.add_argument('--alias', action='append', dest='aliases', help='a shorter name (repeatable)')
+    p.add_argument('--another', action='store_true',
+                   help='someone else, though the name is close to an existing NPC')
     sheet_mod.add_field_flags(p)
 
     p = sub.add_parser('attitude', help='How an NPC regards the player (or another NPC) now')
@@ -456,7 +460,8 @@ def main():
     elif args.action == 'create':
         if not manager.create_npc(args.name, args.role, args.attitude, locations=args.locations,
                                   nowhere=args.nowhere, aliases=args.aliases,
-                                  fields=sheet_mod.fields_from_args(args)):
+                                  fields=sheet_mod.fields_from_args(args),
+                                  another=args.another):
             sys.exit(1)
     elif args.action == 'attitude':
         from note_manager import NoteManager, fact_text

@@ -7,7 +7,7 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: gm-location.sh <action> [args]"
     echo ""
     echo "Actions:"
-    echo "  add <name> <position> <description> [--alias <short name>]..."
+    echo "  add <name> <position> <description> [--alias <short name>]... [--another]"
     echo "                                     - Add a new location: where it is, and what it"
     echo "                                       is like in a sentence or two (required: on"
     echo "                                       disk before it is narrated). Aliases: shorter"
@@ -36,7 +36,7 @@ shift
 case "$ACTION" in
     add)
         if [ "$#" -lt 3 ]; then
-            echo "Usage: gm-location.sh add <name> <position> <description> [--alias <short name>]..."
+            echo "Usage: gm-location.sh add <name> <position> <description> [--alias <short name>]... [--another]"
             exit 1
         fi
         $PYTHON_CMD "$LIB_DIR/location_manager.py" add "$@"

@@ -32,7 +32,8 @@ after the character exists and the player has said where and when to start.
   (sheet.TEXT_FIELDS: physique, style, presence, big_five, voice, tells, want,
   fears, ...). `attitude`, their attitude towards the player as one or more adjectives
   ("wary", "fond, exasperated"; leave it out if they have none), becomes a fact
-  they hold.
+  they hold. A new NPC or place whose name is close to an existing one is
+  refused unless the entry has `"another": true`.
 - The plot is required: every campaign starts with at least one. Its `hook`, the
   problem that won't wait, becomes its first beat, so STORY THREADS carries it
   on from there. Its `npcs` and `locations` that have no record yet are the
@@ -195,7 +196,8 @@ class Opening:
                                f"like, a sentence or two.")
         locations = LocationManager(self.wsd)
         if not locations.add_location(name, position, description,
-                                      aliases=_as_list(entry.get("aliases"))):
+                                      aliases=_as_list(entry.get("aliases")),
+                                      another=bool(entry.get("another"))):
             raise OpeningError(f"The place '{name}' was refused")
         return name, True
 
@@ -224,7 +226,8 @@ class Opening:
                   for key in (flag, flag.replace("-", "_")) if entry.get(key)}
         if not NPCManager(self.wsd).create_npc(
                 name, entry["who"], entry.get("attitude"), locations=usual,
-                nowhere=nowhere, aliases=_as_list(entry.get("aliases")), fields=fields):
+                nowhere=nowhere, aliases=_as_list(entry.get("aliases")), fields=fields,
+                another=bool(entry.get("another"))):
             raise OpeningError(f"The NPC '{name}' was refused")
         return name
 

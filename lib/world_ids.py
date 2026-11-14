@@ -330,16 +330,17 @@ class WorldIds:
         return ids, errors
 
 
-def close_name_warning(close: list[str], kind: str) -> list[str]:
-    """Lines warning that a new record's name is close to existing ones, or []."""
+def close_name_refusal(close: list[str], kind: str, name: str) -> str:
+    """Why a new record with a name close to existing ones is refused, or ''."""
     if not close:
-        return []
+        return ""
     tool = {"npc": "gm-npc.sh show", "location": "gm-location.sh get"}[kind]
     first = close[0].partition(":")[2]
     what = "person" if kind == "npc" else "place"
-    return [f"  [WARNING] The name is close to {', '.join(close[:3])}. Check that this is "
-            f"another {what}: bash tools/{tool} \"{first}\". The same {what} under two "
-            f"names splits what is known about them; a second name is an alias."]
+    return (f"'{name}' is close to {', '.join(close[:3])}. The same {what} under two names "
+            f"splits what is known about them, so this is refused: look at bash tools/{tool} "
+            f"\"{first}\". A second name for them is an alias. If it really is another "
+            f"{what}, add --another.")
 
 
 def alias_hint(kind: str, name: str) -> str:

@@ -22,24 +22,24 @@ class LocationManager(EntityManager):
         self.locations_file = "locations.json"
 
     @staticmethod
-    def _report_added(name: str, position: str, aliases, close) -> None:
+    def _report_added(name: str, position: str, aliases) -> None:
         """What add_location prints once the place is saved."""
-        from world_ids import alias_hint, close_name_warning
+        from world_ids import alias_hint
         print(f"[SUCCESS] Added location: {name} ({position})")
-        for line in close_name_warning(close, "location"):
-            print(line)
         if aliases:
             print(f"  Also called: {', '.join(aliases)}")
         elif alias_hint("location", name):
             print(alias_hint("location", name))
 
-    def add_location(self, name: str, position: str, description: str, aliases=None) -> bool:
+    def add_location(self, name: str, position: str, description: str, aliases=None,
+                     another: bool = False) -> bool:
         """
         Add a new location. `position`: where it is ("two streets down from
         Lantern Row"); `description`: what it is like, a sentence or two, required,
         so the place is on disk before it is narrated (set_description makes it
         fuller later). `aliases`: shorter names the story will use ("the Yard"
-        for "Old Iron's Yard"), each checked (world_ids.check_alias).
+        for "Old Iron's Yard"), each checked (world_ids.check_alias). A name close
+        to an existing place's (world_ids.close_names) is refused unless `another`.
         Returns True on success, False on failure
         """
         from world_ids import WorldIds
@@ -66,7 +66,12 @@ class LocationManager(EntityManager):
             print(f"[ERROR] Location '{name}' already exists")
             return False
 
-        close = ids.close_names(name, "location")
+        from world_ids import close_name_refusal
+        refusal = "" if another else close_name_refusal(
+            ids.close_names(name, "location"), "location", name)
+        if refusal:
+            print(f"[ERROR] {refusal}")
+            return False
         # Create location data
         location_data = {
             'position': position,
@@ -79,7 +84,7 @@ class LocationManager(EntityManager):
 
         # Save to file
         if self._add_entity(self.locations_file, name, location_data):
-            self._report_added(name, position, location_data.get('aliases'), close)
+            self._report_added(name, position, location_data.get('aliases'))
             return True
         return False
 
@@ -276,6 +281,8 @@ def main():
     add_parser.add_argument('name', help='Location name')
     add_parser.add_argument('position', help='Relative position')
     add_parser.add_argument('description', help='What it is like, a sentence or two')
+    add_parser.add_argument('--another', action='store_true',
+                            help='another place, though the name is close to an existing one')
     add_parser.add_argument('--alias', action='append', dest='aliases',
                             help='a shorter name the story will use (repeatable)')
 
@@ -317,7 +324,7 @@ def main():
 
     if args.action == 'add':
         if not manager.add_location(args.name, args.position, args.description,
-                                    aliases=args.aliases):
+                                    aliases=args.aliases, another=args.another):
             sys.exit(1)
 
     elif args.action == 'alias':
