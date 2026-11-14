@@ -4,9 +4,9 @@ census, which set the tiers, is gone since 2026-11-11; the tier stays readable.)
 
 import json
 
+from lib.brief import Brief
 from lib.plot_manager import PlotManager
 from lib.search import WorldSearcher
-from lib.brief import Brief
 from lib.session_manager import SessionManager
 
 

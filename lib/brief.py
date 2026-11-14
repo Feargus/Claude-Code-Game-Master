@@ -23,6 +23,13 @@ from world_kit import WorldKit
 class Brief:
     """The brief for one campaign, built from a SessionManager's view of it."""
 
+    # The sections in the order they are printed: each is a method
+    # `_section_<name>` returning its lines ([] when it has nothing to show).
+    SECTIONS = ("header", "kit", "play_style", "images", "voice", "world_index",
+                "previously_on", "world_remembers", "story_threads", "ready_threads",
+                "key_facts", "wrong_beliefs", "clocks", "character", "party", "people",
+                "usual", "pending", "world_rules", "systems")
+
     def __init__(self, session):
         self.session = session
         self.json_ops = session.json_ops
@@ -82,11 +89,26 @@ class Brief:
                 f"{c['to']} ({c['path']})" if c.get("path") else c["to"] for c in exits))
         return lines
 
+
     def get_full_context(self, full: bool = False) -> str:
-        """
-        Aggregate all session state into a single readable output.
-        Replaces the 5-step startup checklist with one command.
-        """
+        """The whole brief: each section in turn. Some sections leave what they
+        loaded or showed for later ones (the location, the character, the
+        session summaries already printed)."""
+        self.full = full
+        lines = []
+        for section in self.SECTIONS:
+            lines += getattr(self, f"_section_{section}")()
+        context = "\n".join(lines)
+
+        # Token observability: soft ~2k-token target is GUIDANCE only, never a hard
+        # cut. Opt in with DM_DEBUG_CONTEXT=1 to watch the budget without altering output.
+        if os.environ.get('DM_DEBUG_CONTEXT'):
+            approx_tokens = len(context) // 4
+            print(f"[context] ~{approx_tokens} tokens ({len(context)} chars)", file=sys.stderr)
+
+        return context
+
+    def _section_header(self) -> list[str]:
         lines = []
 
         # --- Campaign header ---
@@ -105,7 +127,12 @@ class Brief:
         lines.append(f"Campaign: {campaign_name} | Session #{session_num}")
         lines.append(f"Location: {location} | Time: {time_str}")
         lines.extend(self._place_lines(location))
+        self.campaign = campaign
+        self.location = location
+        return lines
 
+    def _section_kit(self) -> list[str]:
+        lines = []
         # --- KIT (ambient; skills defer here instead of calling world_kit.py info) ---
         kit = None
         try:
@@ -122,7 +149,11 @@ class Brief:
             lines.append(f"name: {kit.name()}")
             lines.append(f"vitals: {', '.join(vitals) if vitals else '(none)'}")
             lines.append(f"skills: {', '.join(skills) if skills else 'the standard list (gm-skills)'}")
+        self.kit = kit
+        return lines
 
+    def _section_play_style(self) -> list[str]:
+        lines = []
         # --- Play style: only what differs from the defaults CLAUDE.md states ---
         # (action menu on, adaptive pacing, no book inspiration, no images). A line
         # that only repeated CLAUDE.md cost 300 tokens a brief and drifted from it.
@@ -146,7 +177,10 @@ class Brief:
             lines.append("Play style: action menu OFF — end beats with an open prompt; do "
                          "NOT list numbered choices. The player drives freely. "
                          "(Toggle: /gm choices on|off)")
+        return lines
 
+    def _section_images(self) -> list[str]:
+        lines = []
         # --- Scene images (gpt-image-2): only when a key is configured ---
         if os.environ.get("OPENAI_API_KEY"):
             lines.append("Scene images: ENABLED — illustrate GENEROUSLY and with glee "
@@ -175,7 +209,11 @@ class Brief:
                 lines.append("  Chronicler: none yet — name one the first time you "
                              "illustrate and persist it with `bash tools/gm-image.sh "
                              "chronicler --name \"...\" --style \"...\" --persona \"...\"`.")
+        return lines
 
+    def _section_voice(self) -> list[str]:
+        lines = []
+        full = self.full
         # --- Narrative Voice (write the prose in the world's authorial voice) ---
         bible = self.json_ops.load_json("world-bible.json") or {}
         voice = bible.get("voice") or {}
@@ -198,7 +236,12 @@ class Brief:
                 len(passages) - len(shown_passages), "sample passages", "--full")
             if rem:
                 lines.append(rem)
+        self.bible = bible
+        return lines
 
+    def _section_world_index(self) -> list[str]:
+        lines = []
+        bible = self.bible
         # --- World Index (named things that exist; scan before inventing a name) ---
         index = bible.get("index") or {}
         index_labels = (
@@ -218,7 +261,11 @@ class Brief:
             lines.append("")
             lines.append("--- WORLD INDEX (named things that exist; scan before inventing a name) ---")
             lines.extend(index_lines)
+        return lines
 
+    def _section_previously_on(self) -> list[str]:
+        lines = []
+        full = self.full
         # --- Previously On (story spine: resume story-aware, not stat-amnesiac) ---
         # Bounded by item COUNT, never by chopping a single entry. --full shows all.
         all_summaries = self._recent_session_summaries(n=None)
@@ -239,7 +286,14 @@ class Brief:
                 lines.append(f"WHERE WE PAUSED: {cliff}")
             if meta.get('open_threads'):
                 lines.append(f"OPEN THREADS: {meta['open_threads']}")
+        self.summaries = summaries
+        return lines
 
+    def _section_world_remembers(self) -> list[str]:
+        lines = []
+        location = self.location
+        summaries = self.summaries
+        full = self.full
         # --- The World Remembers (memory volunteered for THIS scene, never waited for) ---
         remembered, open_debts, held_back = self._world_remembers(
             location, full=full, already_shown=summaries)
@@ -256,7 +310,12 @@ class Brief:
                     held_back, "remembered entries", "--full or gm-recall.sh")
                 if rem:
                     lines.append(rem)
+        self.remembered = remembered
+        return lines
 
+    def _section_story_threads(self) -> list[str]:
+        lines = []
+        full = self.full
         # --- Story Threads (active plots, main first, each with its latest beat) ---
         all_threads = self._active_plot_threads(limit=None)
         threads = all_threads if full else all_threads[:6]
@@ -269,7 +328,12 @@ class Brief:
                 "gm-plot.sh threads for all")
             if rem:
                 lines.append(rem)
+        return lines
 
+    def _section_ready_threads(self) -> list[str]:
+        lines = []
+        location = self.location
+        full = self.full
         # --- Ready Threads (dormant seeded plots that just became relevant) ---
         ready = self._ready_threads(location, full=full)
         if ready:
@@ -282,7 +346,11 @@ class Brief:
                 len(ready) - len(shown), "ready threads", "--full")
             if rem:
                 lines.append(rem)
+        return lines
 
+    def _section_key_facts(self) -> list[str]:
+        lines = []
+        full = self.full
         # --- Key Facts (established plot facts the GM must keep continuity on) ---
         key_facts = self._key_facts(per_category=None if full else 3)
         if key_facts:
@@ -296,7 +364,10 @@ class Brief:
                                       "--full, or gm-note.sh recent / find")
                 if rem:
                     lines.append(rem)
+        return lines
 
+    def _section_wrong_beliefs(self) -> list[str]:
+        lines = []
         wrong = self._wrong_beliefs()
         if wrong:
             name = ((self.json_ops.load_json("character.json") or {}).get("identity") or {}).get(
@@ -305,7 +376,10 @@ class Brief:
             lines.append(f"--- WHAT {name.upper()} GETS WRONG (narrate from the belief; "
                          f"the truth is for you) ---")
             lines += [f"- {w}" for w in wrong]
+        return lines
 
+    def _section_clocks(self) -> list[str]:
+        lines = []
         # --- Threat Clocks (felt, mounting pressure; only when any are declared) ---
         clocks = self.json_ops.load_json("threat-clocks.json") or {}
         if clocks:
@@ -318,7 +392,11 @@ class Brief:
                 due = "" if flag else ThreatClockManager.due_text(c)
                 about = f" — {c['text']}" if c.get('text') else ""
                 lines.append(f"{clock_name}: [{bar}] {cur}/{mx}{due}{flag}{about}")
+        return lines
 
+    def _section_character(self) -> list[str]:
+        lines = []
+        full = self.full
         # --- Character ---
         lines.append("")
         lines.append("--- CHARACTER ---")
@@ -348,14 +426,28 @@ class Brief:
                              f"Never mention it to the player before.")
         else:
             lines.append("No character found.")
+        self.char = char
+        return lines
 
+    def _section_party(self) -> list[str]:
+        lines = []
         # --- Party Members ---
         npcs = self.json_ops.load_json("npcs.json") or {}
         party = [n for n, d in npcs.items() if isinstance(d, dict) and is_party_member(d)]
         lines.append("")
         lines.append("--- PARTY MEMBERS (with the player wherever they go) ---")
         lines.append(", ".join(party) if party else "(none)")
+        self.npcs = npcs
+        return lines
 
+    def _section_people(self) -> list[str]:
+        lines = []
+        location = self.location
+        summaries = self.summaries
+        remembered = self.remembered
+        char = self.char
+        npcs = self.npcs
+        full = self.full
         # --- People here (party and scene list): who they are, never mutated ---
         present = list(npcs_present(npcs, location, self._scene()))
         if present:
@@ -387,7 +479,14 @@ class Brief:
                                               f"facts {label}", "--full")
                         if rem:
                             lines.append(f"  {rem}")
+        self.present = present
+        return lines
 
+    def _section_usual(self) -> list[str]:
+        lines = []
+        location = self.location
+        npcs = self.npcs
+        present = self.present
         # Where NPCs usually are is a hint, not presence (gm-scene.sh).
         present_names = set(present)
         usual = [n for n in npcs_usually_at(npcs, location) if n not in present_names]
@@ -395,7 +494,11 @@ class Brief:
             lines.append("")
             lines.append(f"Usually found here, not in the scene: {', '.join(usual)} "
                          f"(if one is actually here: bash tools/gm-scene.sh enter \"<name>\")")
+        return lines
 
+    def _section_pending(self) -> list[str]:
+        lines = []
+        full = self.full
         # --- Pending Consequences ---
         lines.append("")
         lines.append("--- PENDING CONSEQUENCES ---")
@@ -439,7 +542,12 @@ class Brief:
                     lines.append(rem)
         else:
             lines.append("(none)")
+        return lines
 
+    def _section_world_rules(self) -> list[str]:
+        lines = []
+        campaign = self.campaign
+        kit = self.kit
         # --- Your World's Rules (bespoke per-campaign systems; NEVER truncated) ---
         # Prefer kit signature_systems; campaign_rules is the legacy fallback.
         # These rules ARE the magic that makes each book feel distinct. The GM is
@@ -479,7 +587,11 @@ class Brief:
                                 lines.append(f"  {vline}")
                         else:
                             lines.append(f"- {rule}")
+        return lines
 
+    def _section_systems(self) -> list[str]:
+        lines = []
+        kit = self.kit
         # --- Signature Systems (executable primitives; the GM ROLLS these, not vibes) ---
         try:
             sys_list = kit.systems() if kit is not None else []
@@ -499,16 +611,7 @@ class Brief:
                 else:
                     how = 'roll: uv run python lib/dice.py "1d20"'
                 lines.append(f"- {name} ({how}): {self._system_summary(s)}")
-
-        context = "\n".join(lines)
-
-        # Token observability: soft ~2k-token target is GUIDANCE only, never a hard
-        # cut. Opt in with DM_DEBUG_CONTEXT=1 to watch the budget without altering output.
-        if os.environ.get('DM_DEBUG_CONTEXT'):
-            approx_tokens = len(context) // 4
-            print(f"[context] ~{approx_tokens} tokens ({len(context)} chars)", file=sys.stderr)
-
-        return context
+        return lines
 
     # ==================== Private Helpers ====================
 

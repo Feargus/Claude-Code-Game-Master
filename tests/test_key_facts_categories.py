@@ -8,8 +8,8 @@ write-only. These assert every advertised category now has a reader.
 import re
 from pathlib import Path
 
-from lib.note_manager import NoteManager
 from lib.brief import Brief
+from lib.note_manager import NoteManager
 from lib.session_manager import SessionManager
 
 WRAPPER = Path(__file__).parent.parent / "tools" / "gm-note.sh"

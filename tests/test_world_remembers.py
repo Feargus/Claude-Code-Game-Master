@@ -10,8 +10,8 @@ never costs the brief.
 import json
 from pathlib import Path
 
-from lib.campaign_memory import CampaignMemory
 from lib.brief import Brief
+from lib.campaign_memory import CampaignMemory
 from lib.session_manager import SessionManager
 
 CAMPAIGN = "dungeon-crawler-carl"
