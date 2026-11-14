@@ -74,7 +74,7 @@ here; everything else grows from the table.
 
 Write `world-bible.json` to the campaign dir with `confirmed: false` and ALL
 required keys (validated by `lib/world_bible.py`): `name`, `voice`
-(`style`/`vocab`/`sample_passages`), `tone`, `themes`, `factions`
+(`style`/`sample_passages`), `tone`, `themes`, `factions`
 
 **Author the `voice` block from `voice_exemplar`** — this is how the GM narrates
 in the author's voice at play (surfaced every beat by `get_full_context`):
@@ -83,7 +83,10 @@ in the author's voice at play (surfaced every beat by `get_full_context`):
   sensory violence; archaic but plain diction."
 - `sample_passages`: 2-3 SHORT passages YOU write *in that author's voice* (original
   imitation, NOT copied from the real author's text) so the GM has a concrete target.
-- `vocab`: a few signature in-world terms.
+- The world's own words go into `glossary`, a key of the bible beside `voice`: each
+  term with a line on what it means here, `{"glossary": {"Lantern papers":
+  {"description": "the certificate of a ghost; forged ones are expensive and fragile",
+  "plots": []}}}`. A few to start; more join in play (`gm-glossary.sh add`).
 Keep geography to the starting street plus a few horizon names. Do not author
 the continent. **Wire 2–4 edges** into the `factions`/`geography` graphs (a
 tension between two factions, an adjacency between two places) — nodes with no

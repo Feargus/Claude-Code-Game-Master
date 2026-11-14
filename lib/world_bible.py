@@ -60,15 +60,16 @@ def validate_bible(bible: dict[str, Any]) -> tuple[bool, list[str]]:
         errors.append('themes must be a list')
     if not isinstance(bible.get('signature_systems', []), list):
         errors.append('signature_systems must be a list')
-    if 'factions' in bible and not _is_graph(bible['factions']):
-        errors.append('factions must be a graph {nodes:[], edges:[]}')
-    if 'geography' in bible and not _is_graph(bible['geography']):
-        errors.append('geography must be a graph {nodes:[], edges:[]}')
+    errors += [f'{key} must be a graph {{nodes:[], edges:[]}}' for key in ('factions', 'geography')
+               if key in bible and not _is_graph(bible[key])]
     voice = bible.get('voice')
     if voice is not None and not isinstance(voice, dict):
-        errors.append('voice must be an object (style/vocab/sample_passages)')
+        errors.append('voice must be an object (style/sample_passages)')
     if 'index' in bible:
         errors.extend(_index_errors(bible['index']))
+    if 'glossary' in bible:
+        from glossary import check_entries
+        errors.extend(check_entries(bible['glossary']))
     return (len(errors) == 0), errors
 
 

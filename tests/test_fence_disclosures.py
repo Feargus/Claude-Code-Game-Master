@@ -108,7 +108,7 @@ def test_context_remainder_counts_on_every_truncated_section(tmp_path):
     assert remainders, "truncated context must disclose +N more"
     assert "+2 more threads" in ctx
     assert "+2 more facts" in ctx
-    assert "+3 more terms" in ctx
+    assert "term-14" in ctx and "more terms" not in ctx   # the glossary lists every term
     assert "+2 more sessions" in ctx
     assert "+2 more pending consequences" in ctx
     assert "+1 more sample passages" in ctx

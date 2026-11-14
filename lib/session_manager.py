@@ -483,19 +483,16 @@ class SessionManager(EntityManager):
         voice = bible.get("voice") or {}
         style = (voice.get("style") or "").strip()
         passages = [str(p).strip() for p in (voice.get("sample_passages") or []) if str(p).strip()]
-        vocab = [str(v).strip() for v in (voice.get("vocab") or []) if str(v).strip()]
-        if style or passages:
+        from glossary import terms as glossary_terms
+        words = glossary_terms(self.json_ops)
+        if style or passages or words:
             lines.append("")
             lines.append("--- NARRATIVE VOICE (narrate in this voice; a prose target, NOT lore) ---")
             if style:
                 lines.append(f"Style: {style}")
-            if vocab:
-                shown_vocab = vocab if full else vocab[:12]
-                lines.append("In-world terms to favor: " + ", ".join(shown_vocab))
-                rem = None if full else self._remainder(
-                    len(vocab) - len(shown_vocab), "terms", "--full")
-                if rem:
-                    lines.append(rem)
+            if words:
+                lines.append("The world's own words (what one means: gm-glossary.sh show "
+                             "\"<term>\"): " + ", ".join(words))
             shown_passages = passages if full else passages[:3]
             for p in shown_passages:
                 lines.append(f"  | {p}")
