@@ -91,7 +91,6 @@ if [ -n "$WORLD_STATE_DIR" ]; then
     LOCATIONS_FILE="$WORLD_STATE_DIR/locations.json"
     FACTS_FILE="$WORLD_STATE_DIR/facts.json"
     CONSEQUENCES_FILE="$WORLD_STATE_DIR/consequences.json"
-    SESSION_LOG="$WORLD_STATE_DIR/session-log.md"
     CAMPAIGN_OVERVIEW="$WORLD_STATE_DIR/campaign-overview.json"
     CHARACTER_FILE="$WORLD_STATE_DIR/character.json"
 else
@@ -100,7 +99,6 @@ else
     LOCATIONS_FILE=""
     FACTS_FILE=""
     CONSEQUENCES_FILE=""
-    SESSION_LOG=""
     CAMPAIGN_OVERVIEW=""
     CHARACTER_FILE=""
 fi

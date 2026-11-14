@@ -127,11 +127,6 @@ class CampaignManager:
                         overview = json.load(f)
                     campaign_info["campaign_name"] = overview.get("campaign_name", "Unnamed")
                     campaign_info["current_location"] = overview.get("player_position", {}).get("current_location")
-                    campaign_info["session_count"] = overview.get("session_count", 0)
-                    log = campaign_dir / "session-log.md"
-                    if log.exists():  # the log is the record; the overview's count was never kept up
-                        campaign_info["session_count"] = log.read_text(
-                            encoding="utf-8").count("### Session Ended:")
                 except (OSError, json.JSONDecodeError):
                     campaign_info["campaign_name"] = "Unknown"
 
@@ -377,8 +372,7 @@ class CampaignManager:
                     "current_location": None,
                     "previous_location": None
                 },
-                "current_character": None,
-                "session_count": 0
+                "current_character": None
             }
             with open(overview_path, 'w', encoding='utf-8') as f:
                 json.dump(overview, f, indent=2)
@@ -406,14 +400,6 @@ class CampaignManager:
         if not preserve_existing or not consequences_path.exists():
             with open(consequences_path, 'w', encoding='utf-8') as f:
                 json.dump({"active": [], "resolved": []}, f, indent=2)
-
-        # session-log.md - ALWAYS preserve if exists (append only)
-        session_log_path = campaign_path / "session-log.md"
-        if not session_log_path.exists():
-            with open(session_log_path, 'w', encoding='utf-8') as f:
-                f.write(f"# Session Log - {campaign_name}\n\n")
-                f.write("*A new adventure begins...*\n\n")
-                f.write("---\n\n")
 
 
 def main():
@@ -496,7 +482,7 @@ def main():
             print("Create one with: gm-campaign.sh create <name>")
         else:
             active = manager.get_active()
-            print(f"{'':2}{'NAME':20}{'SESSIONS':10}CHARACTER")
+            print(f"{'':2}{'NAME':24}CHARACTER")
             print("-" * 60)
             for c in campaigns:
                 marker = "*" if c["name"] == active else " "
@@ -505,8 +491,7 @@ def main():
                     char = c["character"]
                     who = " ".join(x for x in (char['race'], char['role']) if x)
                     char_info = f"{char['name']}" + (f" ({who})" if who else "") + f" L{char['level']}"
-                sessions = c.get("session_count", 0)
-                print(f"{marker} {c['name']:20}{sessions:<10}{char_info}")
+                print(f"{marker} {c['name']:24}{char_info}")
             print()
             if active:
                 print(f"* = active campaign ({active})")

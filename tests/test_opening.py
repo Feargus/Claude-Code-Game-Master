@@ -154,8 +154,8 @@ def test_needs_a_character_and_a_new_campaign(world):
     with pytest.raises(OpeningError, match="Create the character first"):
         Opening(ws).apply(json.loads(json.dumps(SPEC)))
     (camp / "character.json").write_text(json.dumps(player("Fearghas")))
-    (camp / "session-log.md").write_text("## Session Started: x\n\n### Session Ended: y\nDone.\n")
-    with pytest.raises(OpeningError, match="Play has begun"):
+    Opening(ws).apply(json.loads(json.dumps(SPEC)))
+    with pytest.raises(OpeningError, match="set up already"):
         Opening(ws).apply(json.loads(json.dumps(SPEC)))
 
 

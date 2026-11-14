@@ -7,8 +7,7 @@ show_usage() {
     echo "Usage: gm-session.sh <action> [args]"
     echo ""
     echo "Session Actions:"
-    echo "  start                    - Begin new session, show world state"
-    echo "  end <summary>            - End session with summary"
+    echo "  start                    - The start of play: world state, pending consequences"
     echo "  status                   - Show current campaign status"
     echo "  move <location> [--takes <duration>]"
     echo "                           - Move party to a recorded, described place (gm-location.sh add);"
@@ -22,11 +21,8 @@ show_usage() {
     echo "  world-tick-rollback      - Undo the most recent world tick"
     echo "  world-tick-log           - Show world-tick history"
     echo ""
-    echo "  history                  - Show session history"
-    echo ""
     echo "Examples:"
     echo "  gm-session.sh start"
-    echo "  gm-session.sh end \"Defeated the dragon, found treasure\""
     echo "  gm-session.sh context"
 }
 
@@ -40,7 +36,7 @@ shift
 
 # Every action the case below handles, in one place: the guard and the
 # unknown-action message both read this, so they cannot drift apart.
-VALID_ACTIONS="start end status move context choices opening world-tick world-tick-rollback world-tick-log history"
+VALID_ACTIONS="start status move context choices opening world-tick world-tick-rollback world-tick-log"
 
 is_valid_action() {
     local valid
@@ -104,28 +100,6 @@ case "$ACTION" in
                 fi
             fi
         fi
-        ;;
-
-    end)
-        if [ "$#" -lt 1 ]; then
-            echo "Usage: gm-session.sh end <summary>"
-            exit 1
-        fi
-        echo "Ending Session"
-        echo "=============="
-        echo ""
-        $PYTHON_CMD "$LIB_DIR/session_manager.py" end "$@"
-        RESULT=$?
-        if [ $RESULT -ne 0 ]; then exit $RESULT; fi
-        echo ""
-        echo "Pending Consequences:"
-        bash "$TOOLS_DIR/gm-consequence.sh" check
-        echo ""
-        echo "Arc entry (REQUIRED — this is what long-term memory recalls):"
-        echo "  bash tools/gm-recall.sh arc '{\"summary\": \"what changed this session\","
-        echo "    \"who_matters\": [\"...\"], \"open_debts\": [\"...\"]}'"
-        echo ""
-        echo "Off-screen developments: only when the player asks (/gm world), never on your own."
         ;;
 
     opening)
@@ -237,13 +211,6 @@ case "$ACTION" in
         for arg in "$@"; do [ "$arg" = "--full" ] && FULL_FLAG=true; done
         log_token_usage "gm-session-context" "full=$FULL_FLAG" "output_chars=$CONTEXT_CHARS" "output_tokens_est=$CONTEXT_TOKENS"
         exit $CONTEXT_STATUS
-        ;;
-
-    history)
-        echo "Session History"
-        echo "==============="
-        echo ""
-        $PYTHON_CMD "$LIB_DIR/session_manager.py" history
         ;;
 
     choices)

@@ -30,10 +30,6 @@ def _gm_recall(dcc_world, *args):
     )
 
 
-def _log(dcc_world):
-    return Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "session-log.md"
-
-
 def test_recall_surfaces_a_past_event(dcc_world):
     m = CampaignMemory(dcc_world)
     m.refresh()
@@ -48,25 +44,25 @@ def test_recall_filters_by_provenance(dcc_world):
     assert all(h["provenance"] == "book-canon" for h in canon)
 
 
-def test_memoir_is_tiered_and_bounded(dcc_world):
-    mem = CampaignMemory(dcc_world).memoir()
-    assert mem["arc_summary"]
-    assert isinstance(mem["recent"], list) and len(mem["recent"]) <= 3
-    assert mem["archive_count"] >= 0 and mem["compressed_older"] >= 0
-
-
 def test_refresh_keeps_no_copy_of_the_facts(dcc_world):
     """campaign-memory.json held a copy of every fact, rebuilt on each save; a
     fact recorded since was not recallable until the next one. Recall reads the
-    facts as they are, and the file keeps only the arcs (and embeddings, when
-    the RAG deps are installed)."""
+    facts as they are, and the file keeps only embeddings, when the RAG deps
+    are installed. Arc entries folded into plots (2026-11-14)."""
     m = CampaignMemory(dcc_world)
-    m.json_ops.save_json("campaign-memory.json", {"entries": [{"text": "an old copy"}], "arcs": []})
+    m.json_ops.save_json("campaign-memory.json",
+                         {"entries": [{"text": "an old copy"}], "arcs": [{"summary": "x"}]})
     assert m.refresh() == len(m.entries()) > 0
     assert not (m.campaign_dir / "campaign-memory.json").exists()    # nothing left to keep
-    m.add_arc("They crossed the first floor.")
-    m.refresh()
-    assert list(m.json_ops.load_json("campaign-memory.json")) == ["arcs"]
+
+
+def test_plots_are_recalled_before_facts_on_a_tie(dcc_world):
+    """A plot sums up its facts, so on a keyword tie it comes first."""
+    from lib.plot_manager import PlotManager
+    (Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "plots.json").write_text("{}")
+    PlotManager(dcc_world).add("Circus Dragon", "The party freed the dragon from the circus.")
+    hits = CampaignMemory(dcc_world).recall("dragon circus", top_k=10)
+    assert hits[0]["source"] == "plot:Circus Dragon"
 
 
 def test_a_fact_is_recallable_the_moment_it_is_recorded(dcc_world):
@@ -89,36 +85,8 @@ def test_stale_embeddings_are_not_used(dcc_world):
     assert m.recall("alliance Tutorial Guild Hall")     # the keyword path answered
 
 
-def test_session_log_is_not_mutated(dcc_world):
-    before = _log(dcc_world).read_text(encoding="utf-8")
-    m = CampaignMemory(dcc_world)
-    m.refresh()
-    m.recall("anything")
-    m.memoir()
-    assert _log(dcc_world).read_text(encoding="utf-8") == before  # canonical ledger untouched
-
-
 def test_recall_empty_query_returns_nothing(dcc_world):
     assert CampaignMemory(dcc_world).recall("") == []
-
-
-def test_arc_entry_persists_and_leads_the_memoir(dcc_world):
-    m = CampaignMemory(dcc_world)
-    m.add_arc("Carl skinned the Terror Clown and the dungeon noticed.",
-              who_matters=["Grimaldi"], open_debts=["Grimaldi wants revenge"])
-    mem = m.memoir()
-    assert "Terror Clown" in mem["arc_summary"]
-    assert "Grimaldi" in mem["arc_summary"]
-    assert mem["arc_entries"] == 1
-
-
-def test_refresh_preserves_arcs_and_indexes_them(dcc_world):
-    m = CampaignMemory(dcc_world)
-    m.add_arc("The party freed the dragon from the circus.")
-    m.refresh()
-    assert len(m.arcs()) == 1  # refresh must not clobber arcs
-    hits = m.recall("dragon circus", top_k=10)
-    assert any(e.get("source") == "arc" for e in hits)
 
 
 def test_recall_falls_back_to_keyword_without_rag_deps(dcc_world):

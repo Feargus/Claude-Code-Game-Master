@@ -61,8 +61,6 @@ from entity_manager import EntityManager
 from sheet import TEXT_FIELDS
 from sheet import name as sheet_name
 
-PLAY_BEGUN = "### Session Ended:"  # what session-log.md holds once a session has ended
-
 
 class OpeningError(ValueError):
     """The opening can't be set up. Nothing of it was kept."""
@@ -124,10 +122,6 @@ class Opening:
         overview = self.json_ops.load_json("campaign-overview.json") or {}
         if overview.get("opened"):
             raise OpeningError(f"This campaign's opening was set up already ({overview['opened']}).")
-        log = self.campaign_dir / "session-log.md"
-        if log.exists() and PLAY_BEGUN in log.read_text(encoding="utf-8"):
-            raise OpeningError("Play has begun here (a session has ended); the opening "
-                               "is for a new campaign.")
         if not sheet_name(self.json_ops.load_json("character.json") or {}):
             raise OpeningError("Create the character first (/create-character): the "
                                "opening is built for them.")

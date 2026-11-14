@@ -44,7 +44,6 @@ class WorldStats:
             "consequences_active": 0,
             "consequences_resolved": 0,
             "characters": 0,
-            "sessions": 0,
             "plots_total": 0,
             "plots_active": 0,
             "plots_completed": 0,
@@ -90,12 +89,6 @@ class WorldStats:
         # Characters (single character.json per campaign)
         if self.character_file.exists():
             counts["characters"] = 1
-
-        # Sessions
-        session_log = self.world_state_dir / "session-log.md"
-        if session_log.exists():
-            content = session_log.read_text()
-            counts["sessions"] = content.count("Session Started:")
 
         return counts
 
@@ -238,7 +231,6 @@ class WorldStats:
             for char in overview["details"]["characters"]:
                 print(f"  - {char['name']} - Level {char['level']}")
 
-        print(f"\nSessions: {counts['sessions']}")
 
     def print_counts(self):
         """Print simple counts for preview"""
@@ -248,7 +240,6 @@ class WorldStats:
         print(f"  - {counts['facts']} Facts")
         print(f"  - {counts['consequences_active'] + counts['consequences_resolved']} Consequences")
         print(f"  - {counts['characters']} Characters")
-        print(f"  - {counts['sessions']} Sessions logged")
 
 
 def main():

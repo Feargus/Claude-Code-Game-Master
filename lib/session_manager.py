@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Session management module for GM tools
-Handles session lifecycle, party movement and the session brief
+Handles the start of play, party movement and the session brief
 """
 
 import sys
@@ -39,7 +39,6 @@ class SessionManager(EntityManager):
 
         # Core files
         self.campaign_file = "campaign-overview.json"
-        self.session_log = self.campaign_dir / "session-log.md"
 
         # Character file (single character per campaign)
         self.character_file = self.campaign_dir / "character.json"
@@ -73,14 +72,8 @@ class SessionManager(EntityManager):
     # ==================== Session Lifecycle ====================
 
     def start_session(self) -> dict[str, Any]:
-        """
-        Start a new session, return world state summary
-        """
-        # Ensure session log exists
-        if not self.session_log.exists():
-            self.session_log.write_text("# Campaign Session Log\n\n")
-
-        # Gather world state summary
+        """A short world-state summary for the start of play. Writes nothing: there
+        is no session log (since 2026-11-14 plots carry the story)."""
         summary = {
             "facts_count": self._count_items("facts.json"),
             "npcs_count": self._count_items("npcs.json"),
@@ -90,100 +83,7 @@ class SessionManager(EntityManager):
             "timestamp": self.get_timestamp()
         }
 
-        # Log session start
-        with open(self.session_log, 'a') as f:
-            f.write(f"## Session Started: {summary['timestamp']}\n\n")
-
-        print(f"[SUCCESS] Session started at {summary['timestamp']}")
         return summary
-
-    def end_session(self, summary: str, cliffhanger: str = None,
-                    open_threads: list = None) -> bool:
-        """
-        End session with summary + structured footer, log to session-log.md.
-
-        The footer (session number, ended_at, location, cliffhanger, open_threads)
-        is both human-readable and machine-parseable so the next session can resume
-        on the exact dramatic beat (see _latest_session_meta + get_full_context).
-        """
-        timestamp = self.get_timestamp()
-        session_num = self._get_session_number()
-
-        campaign = self.json_ops.load_json(self.campaign_file) or {}
-        pos = campaign.get('player_position', {})
-        location = pos.get('current_location', 'Unknown') if isinstance(pos, dict) else 'Unknown'
-        threads_str = '; '.join(open_threads) if open_threads else ''
-
-        with open(self.session_log, 'a') as f:
-            f.write(f"### Session Ended: {timestamp}\n")
-            f.write(f"{summary}\n\n")
-            f.write(f"**Session:** {session_num}\n")
-            f.write(f"**Location:** {location}\n")
-            if cliffhanger:
-                f.write(f"**Cliffhanger:** {cliffhanger}\n")
-            if threads_str:
-                f.write(f"**Open threads:** {threads_str}\n")
-            f.write("\n---\n\n")
-
-        print(f"[SUCCESS] Session {session_num} ended and logged")
-
-        health = self._session_health()
-        print("\n--- SESSION HEALTH (housekeeping, not canon) ---")
-        if health:
-            for line in health:
-                print(line)
-        else:
-            print("All quiet — nothing stale.")
-        return True
-
-    def _session_health(self) -> list:
-        """Read-only staleness scan for the session-end footer.
-
-        Reports only what existing state already tracks: open threads (+ the
-        stalest), clocks sitting at a full/due beat, and pending consequences.
-        Surfaces the silent-lapse failure mode without adding any new tracking.
-        ponytail: NPC canon-drift is not here yet — the re-grounding pass adds it.
-        """
-        plots = self.json_ops.load_json("plots.json") or {}
-        clocks = self.json_ops.load_json("threat-clocks.json") or {}
-        consequences = self.json_ops.load_json("consequences.json") or {}
-        return self._health_summary(self._get_session_number(), plots, clocks, consequences)
-
-    @staticmethod
-    def _health_summary(session_num, plots, clocks, consequences) -> list:
-        """Pure staleness computation over already-loaded state (unit-testable)."""
-        open_threads = [(name, None) for name, p in (plots.items() if isinstance(plots, dict) else [])
-                        if isinstance(p, dict) and (p.get('status') or 'open') == 'open']
-
-        due = []
-        if isinstance(clocks, dict):
-            for name, c in clocks.items():
-                if not isinstance(c, dict):
-                    continue
-                cur, mx = c.get('current', 0), c.get('max', 0)
-                if isinstance(cur, int) and isinstance(mx, int) and mx > 0 and cur >= mx:
-                    due.append(name)
-
-        pending = 0
-        if isinstance(consequences, dict):
-            for section in ('active', 'pending'):
-                pending += sum(1 for x in consequences.get(section, []) if isinstance(x, dict))
-        elif isinstance(consequences, list):
-            pending += sum(1 for x in consequences if isinstance(x, dict))
-
-        lines = []
-        if open_threads:
-            staley = [(n, s) for n, s in open_threads if s is not None and s > 0]
-            tail = ""
-            if staley:
-                nm, s = max(staley, key=lambda t: t[1])
-                tail = f" · stalest \"{nm}\" untouched {s} session{'s' if s != 1 else ''}"
-            lines.append(f"Plots: {len(open_threads)} open{tail}")
-        if due:
-            lines.append(f"Clocks: {len(due)} at a due beat ({', '.join(due)}) — resolve or advance the fiction")
-        if pending:
-            lines.append(f"Pending consequences: {pending} waiting on a trigger")
-        return lines
 
     def get_status(self) -> dict[str, Any]:
         """
@@ -195,8 +95,6 @@ class SessionManager(EntityManager):
             "locations_count": self._count_items("locations.json"),
             "current_location": self._get_current_location(),
             "active_character": self._get_active_character(),
-            "session_number": self._get_session_number(),
-            "recent_sessions": self._get_recent_sessions(5)
         }
 
     # ==================== Party Movement ====================
@@ -316,26 +214,6 @@ class SessionManager(EntityManager):
         print(f"[SUCCESS] Party moved from {old_location} to {location}")
         return result
 
-    def get_history(self) -> list[str]:
-        """
-        Get session history from session log
-        """
-        if not self.session_log.exists():
-            return []
-
-        content = self.session_log.read_text()
-        lines = content.split('\n')
-
-        # Extract session entries
-        sessions = []
-        for line in lines:
-            if 'Session Started:' in line or 'Session Ended:' in line:
-                sessions.append(line.strip())
-
-        return sessions[-10:]  # Return last 10 entries
-
-    # ==================== Full Session Context ====================
-
     def get_full_context(self, full: bool = False) -> str:
         """The session brief (lib/brief.py)."""
         from brief import Brief
@@ -367,45 +245,6 @@ class SessionManager(EntityManager):
         campaign = self.json_ops.load_json(self.campaign_file)
         return campaign.get('current_character')
 
-    def _get_session_number(self) -> int:
-        """Current session number, derived from matched start/end pairs.
-
-        Counting raw 'Session Started:' over-counts orphan/duplicate starts
-        (DCC showed ~20 starts for ~13 real sessions). The current number is the
-        count of completed (ended) sessions, plus 1 if a session is open now.
-        """
-        if not self.session_log.exists():
-            return 0
-        content = self.session_log.read_text()
-        ended = content.count('### Session Ended:')
-        started = content.count('## Session Started:')
-        return ended + (1 if started > ended else 0)
-
-    def _latest_session_meta(self) -> dict[str, str]:
-        """Parse the most recent ended session's structured footer, if present.
-
-        Returns {'cliffhanger': ..., 'open_threads': ...} (empty strings if none).
-        """
-        meta = {'cliffhanger': '', 'open_threads': ''}
-        if not self.session_log.exists():
-            return meta
-        blocks = self.session_log.read_text(encoding='utf-8').split("### Session Ended:")
-        if len(blocks) < 2:
-            return meta
-        last = blocks[-1]
-        for line in last.splitlines():
-            s = line.strip()
-            if s.startswith('**Cliffhanger:**'):
-                meta['cliffhanger'] = s.split('**Cliffhanger:**', 1)[1].strip()
-            elif s.startswith('**Open threads:**'):
-                meta['open_threads'] = s.split('**Open threads:**', 1)[1].strip()
-        return meta
-
-    def _get_recent_sessions(self, count: int) -> list[str]:
-        """Get recent session entries"""
-        history = self.get_history()
-        return history[-count:] if history else []
-
 
 def main():
     """CLI interface for session management"""
@@ -418,13 +257,6 @@ def main():
     # Start session
     subparsers.add_parser('start', help='Start new session')
 
-    # End session
-    end_parser = subparsers.add_parser('end', help='End session')
-    end_parser.add_argument('summary', nargs='+', help='Session summary')
-    end_parser.add_argument('--cliffhanger', help='One-line cliffhanger to resume on')
-    end_parser.add_argument('--open-thread', dest='open_threads', action='append',
-                            default=[], help='Open thread (repeatable)')
-
     # Status
     subparsers.add_parser('status', help='Get campaign status')
 
@@ -433,9 +265,6 @@ def main():
     move_parser.add_argument('location', nargs='+', help='Location name')
     move_parser.add_argument('--check', action='store_true',
                              help='Only check that the place can be moved to (before travel time passes)')
-
-    # History
-    subparsers.add_parser('history', help='Show session history')
 
     # Full session context
     context_parser = subparsers.add_parser('context', help='Get full session context (one-command startup)')
@@ -482,20 +311,9 @@ def main():
         summary = manager.start_session()
         print(json.dumps(summary, indent=2))
 
-    elif args.action == 'end':
-        summary_text = ' '.join(args.summary)
-        if not manager.end_session(summary_text, cliffhanger=args.cliffhanger,
-                                   open_threads=args.open_threads):
-            sys.exit(1)
-
     elif args.action == 'status':
         status = manager.get_status()
         print(json.dumps(status, indent=2))
-
-    elif args.action == 'history':
-        history = manager.get_history()
-        for entry in history:
-            print(entry)
 
     elif args.action == 'context':
         print(manager.get_full_context(full=getattr(args, 'full', False)))

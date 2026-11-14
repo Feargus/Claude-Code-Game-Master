@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """
-Long-term campaign memory — so a 50-session campaign remembers itself.
+Long-term campaign memory: recall over the campaign's own history.
 
-Recalls from the campaign's OWN lived history (session summaries + facts, read
-as they are now) and maintains a tiered, consolidating memoir (always-on arc summary +
-recent verbatim + compressed older + retrievable archive) so memory stays
-high-signal and bounded. A provenance dimension separates book-canon from
-our-story so the huge imported world stays out of always-loaded context while the
-threads you actually touched surface. session-log.md remains the canonical ledger
-— this only reads it.
+Recalls from the plots (what each is about, where it stands, what came of it)
+and the facts, read as they are now. A provenance dimension separates
+book-canon from our-story. Semantic recall uses embeddings when the RAG deps
+are installed (`refresh`); otherwise keyword overlap.
 """
 
 import re
@@ -22,8 +19,8 @@ from entity_manager import EntityManager
 from note_manager import fact_text
 
 _CANON_CATEGORIES = {"plot_world", "world_building"}
-# Keyword recall breaks ties by tier: arcs, then session summaries, then facts.
-_TIE_ORDER = {"arc": 0, "recent": 1, "archive": 2}
+# Keyword recall breaks ties by tier: plots (they sum up their facts), then facts.
+_TIE_ORDER = {"plot": 0, "archive": 1}
 
 
 class CampaignMemory(EntityManager):
@@ -32,26 +29,19 @@ class CampaignMemory(EntityManager):
         self.memory_file = "campaign-memory.json"
 
     def gather(self) -> list[dict[str, Any]]:
-        """Collect memory entries from the campaign's own history (read-only)."""
+        """Everything recall searches, read as it is now: each plot (what it is
+        about, where it stands, what came of it) and each fact."""
         entries: list[dict[str, Any]] = []
 
-        log_path = self.campaign_dir / "session-log.md"
-        if log_path.exists():
-            text = log_path.read_text(encoding="utf-8")
-            for block in text.split("## Session Started:"):
-                if "### Session Ended:" not in block:
-                    continue
-                after = block.split("### Session Ended:", 1)[1]
-                body = []
-                for ln in after.splitlines()[1:]:
-                    s = ln.strip()
-                    if s == "---":
-                        break
-                    if s and not s.startswith("**"):  # skip the structured footer lines
-                        body.append(s)
-                if body:
-                    entries.append({"text": " ".join(body), "provenance": "our-story",
-                                    "source": "session-log", "tier": "recent"})
+        plots = self.json_ops.load_json("plots.json") or {}
+        for key, p in plots.items() if isinstance(plots, dict) else []:
+            if not isinstance(p, dict):
+                continue
+            text = " ".join(str(p.get(f) or "").strip()
+                            for f in ("description", "stands", "summary") if p.get(f))
+            if text:
+                entries.append({"text": f"{key}: {text}", "provenance": "our-story",
+                                "source": f"plot:{key}", "tier": "plot"})
 
         facts = self.json_ops.load_json("facts.json") or {}
         if isinstance(facts, dict):
@@ -67,47 +57,13 @@ class CampaignMemory(EntityManager):
                                         "source": f"facts:{cat}", "tier": "archive"})
         return entries
 
-    # ---- GM-authored arc entries (the real consolidation tier) ----
-    #
-    # gather() can only re-read what the log already says; an ARC entry is the
-    # GM's own end-of-session synthesis — what changed, who matters now, what
-    # debts are open. Written via `gm-recall.sh arc '<json>'` at session end.
-
-    def add_arc(self, summary: str, who_matters: list[str] = None,
-                open_debts: list[str] = None) -> dict[str, Any]:
-        """Append a GM-authored arc entry. Returns the stored entry."""
-        data = self.json_ops.load_json(self.memory_file) or {}
-        entry = {
-            "summary": (summary or "").strip(),
-            "who_matters": [str(x) for x in (who_matters or []) if str(x).strip()],
-            "open_debts": [str(x) for x in (open_debts or []) if str(x).strip()],
-            "at": self.get_timestamp(),
-        }
-        data.setdefault("arcs", []).append(entry)
-        self.json_ops.save_json(self.memory_file, data)
-        return entry
-
-    def arcs(self) -> list[dict[str, Any]]:
-        return (self.json_ops.load_json(self.memory_file) or {}).get("arcs", [])
-
-    @staticmethod
-    def _arc_text(a: dict[str, Any]) -> str:
-        bits = [a.get("summary", "")]
-        if a.get("who_matters"):
-            bits.append("Who matters: " + ", ".join(a["who_matters"]))
-        if a.get("open_debts"):
-            bits.append("Open debts: " + "; ".join(a["open_debts"]))
-        return " ".join(b for b in bits if b)
-
     # ---- recall ----
 
     def entries(self) -> list[dict[str, Any]]:
-        """Everything recall searches, as it is now: the session summaries and
-        facts (gather), then the GM's arc entries. Read fresh every time, so a
-        fact is recallable the moment it is recorded; nothing is kept in a copy
-        that could go stale."""
-        return self.gather() + [{"text": self._arc_text(a), "provenance": "our-story",
-                                 "source": "arc", "tier": "arc"} for a in self.arcs()]
+        """Everything recall searches (gather), read fresh every time, so a fact
+        is recallable the moment it is recorded; nothing is kept in a copy that
+        could go stale."""
+        return self.gather()
 
     @staticmethod
     def _hash(entries: list[dict[str, Any]]) -> str:
@@ -118,12 +74,13 @@ class CampaignMemory(EntityManager):
         """Recompute the embeddings for semantic recall, when the RAG deps are
         installed and the entries changed since the last time. Without the deps
         there is nothing to keep: keyword recall reads the entries directly.
-        campaign-memory.json holds the arcs, plus the embeddings and the hash of
-        the texts they belong to. Returns the number of entries."""
+        campaign-memory.json holds the embeddings and the hash of the texts they
+        belong to. Returns the number of entries."""
         entries = self.entries()
         data = self.json_ops.load_json(self.memory_file) or {}
         had = dict(data)
         data.pop("entries", None)          # the copy older versions kept
+        data.pop("arcs", None)             # folded into plots (2026-11-14)
         content_hash = self._hash(entries)
         if data.get("entries_hash") != content_hash or not data.get("embeddings"):
             vectors = self._embed_batch([e["text"] for e in entries])  # None when deps missing
@@ -132,7 +89,7 @@ class CampaignMemory(EntityManager):
             else:
                 data.pop("entries_hash", None)
                 data.pop("embeddings", None)
-        if not any(data.values()):          # nothing to keep: no arcs, no embeddings
+        if not any(data.values()):          # nothing to keep: no embeddings
             (self.campaign_dir / self.memory_file).unlink(missing_ok=True)
         elif data != had:
             self.json_ops.save_json(self.memory_file, data)
@@ -186,10 +143,9 @@ class CampaignMemory(EntityManager):
 
     @staticmethod
     def _recall_keyword(query, entries, top_k, provenance):
-        """Entries sharing the most words with the query. On a tie, the GM's arc
-        entries come first (they sum up the raw history), then session summaries,
-        then facts; within each, the order gathered (oldest first). Without this,
-        a tie always went to the oldest entry, so an arc never surfaced."""
+        """Entries sharing the most words with the query. On a tie, plots come
+        first (they sum up their facts), then facts; within each, the order
+        gathered (oldest first)."""
         if provenance:
             entries = [e for e in entries if e.get("provenance") == provenance]
         q = set(re.findall(r"\w+", query.lower()))
@@ -203,24 +159,6 @@ class CampaignMemory(EntityManager):
                 scored.append((-s, _TIE_ORDER.get(e.get("tier"), len(_TIE_ORDER)), i, e))
         scored.sort(key=lambda t: t[:3])
         return [t[3] for t in scored[:top_k]]
-
-    def memoir(self) -> dict[str, Any]:
-        """Tiered, bounded memoir: real arc entries first, raw history behind."""
-        entries = self.gather()
-        recent = [e for e in entries if e["tier"] == "recent"]
-        archive = [e for e in entries if e["tier"] == "archive"]
-        arcs = self.arcs()
-        # A GM-authored arc entry is the arc summary; the last raw session
-        # summary (truncated) is only the fallback for campaigns without arcs.
-        arc = self._arc_text(arcs[-1]) if arcs else (recent[-1]["text"][:300] if recent else "")
-        return {
-            "arc_summary": arc,
-            "arc_entries": len(arcs),
-            "recent": recent[-3:],
-            "compressed_older": max(0, len(recent) - 3),
-            "archive_count": len(archive),
-            "canon_count": sum(1 for e in entries if e["provenance"] == "book-canon"),
-        }
 
 
 def main():
@@ -236,9 +174,6 @@ def main():
     r.add_argument("--top-k", type=int, default=5)
     r.add_argument("--provenance", choices=["our-story", "book-canon"])
     sub.add_parser("refresh")
-    sub.add_parser("memoir")
-    a = sub.add_parser("arc", help="Record the GM's end-of-session arc entry")
-    a.add_argument("entry", help='JSON: {"summary": "...", "who_matters": [...], "open_debts": [...]}')
 
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
@@ -252,20 +187,9 @@ def main():
                        provenance=getattr(args, "provenance", None))
     elif args.action == "refresh":
         out = {"indexed": m.refresh()}
-    elif args.action == "arc":
-        try:
-            payload = json.loads(args.entry)
-        except ValueError:
-            payload = {"summary": args.entry}  # bare prose is a valid arc summary
-        if not isinstance(payload, dict) or not str(payload.get("summary", "")).strip():
-            from cli_output import emit_error
-            sys.exit(emit_error("arc entry needs a summary", json_mode=json_mode))
-        out = m.add_arc(payload.get("summary", ""),
-                        who_matters=payload.get("who_matters"),
-                        open_debts=payload.get("open_debts"))
-        m.refresh()  # arcs join the recall index immediately
     else:
-        out = m.memoir()
+        parser.print_help()
+        sys.exit(1)
 
     if json_mode:
         emit(out, json_mode=True)

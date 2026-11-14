@@ -164,7 +164,7 @@ def test_a_campaign_without_a_ruleset_plays_the_standard_rules(tmp_path):
     assert "skills: the standard list (gm-skills)" in block
 
 
-def test_new_campaigns_have_no_fantasy_default_and_count_their_sessions(isolated_world_state):
+def test_new_campaigns_have_no_fantasy_default_and_no_session_log(isolated_world_state):
     import json
 
     from lib.campaign_manager import CampaignManager
@@ -172,8 +172,5 @@ def test_new_campaigns_have_no_fantasy_default_and_count_their_sessions(isolated
     cdir = cm.create("Solo", "Solo")
     overview = json.loads((cdir / "campaign-overview.json").read_text())
     assert overview["genre"] == "" and overview["current_date"] == ""
-    with open(cdir / "session-log.md", "a") as f:
-        f.write("## Session Started: a\n\n### Session Ended: b\nOne.\n\n---\n\n"
-                "## Session Started: c\n\n### Session Ended: d\nTwo.\n\n---\n\n")
-    info = next(c for c in cm.list_campaigns() if c["name"] == cdir.name)
-    assert info["session_count"] == 2
+    assert not (cdir / "session-log.md").exists()      # plots carry the story (2026-11-14)
+    assert "session_count" not in overview

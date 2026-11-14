@@ -13,7 +13,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 from consequence_manager import describe_effects
-from entity_manager import is_party_member, npcs_present
+from entity_manager import is_party_member
 from note_manager import fact_text
 from threat_clocks import ThreatClockManager
 from world_kit import WorldKit
@@ -25,7 +25,7 @@ class Brief:
     # The sections in the order they are printed: each is a method
     # `_section_<name>` returning its lines ([] when it has nothing to show).
     SECTIONS = ("header", "kit", "play_style", "images", "voice",
-                "previously_on", "world_remembers", "plots", "key_facts", "wrong_beliefs", "clocks", "character", "party", "scene",
+                "plots", "key_facts", "wrong_beliefs", "clocks", "character", "party", "scene",
                 "pending", "world_rules", "systems")
 
     def __init__(self, session):
@@ -34,21 +34,14 @@ class Brief:
         self.campaign_dir = session.campaign_dir
         self.campaign_file = session.campaign_file
         self.character_file = session.character_file
-        self.session_log = session.session_log
         self._wsd = session._wsd
 
-    # What the brief asks of the session (kept there: moves and session ends use them).
+    # What the brief asks of the session (kept there: moves use them too).
     def get_preferences(self) -> dict[str, Any]:
         return self.session.get_preferences()
 
     def _scene(self):
         return self.session._scene()
-
-    def _get_session_number(self) -> int:
-        return self.session._get_session_number()
-
-    def _latest_session_meta(self) -> dict[str, str]:
-        return self.session._latest_session_meta()
 
     @staticmethod
     def _normalize_connection_list(connections):
@@ -96,7 +89,6 @@ class Brief:
         # --- Campaign header ---
         campaign = self.json_ops.load_json(self.campaign_file) or {}
         campaign_name = campaign.get('name', campaign.get('campaign_name', 'Unknown Campaign'))
-        session_num = self._get_session_number()
         location = campaign.get('player_position', {}).get('current_location', 'Unknown')
         time_of_day = campaign.get('time', {}).get('time_of_day', campaign.get('time_of_day', ''))
         current_date = campaign.get('time', {}).get('current_date', campaign.get('current_date', ''))
@@ -106,7 +98,7 @@ class Brief:
         time_str = f"{time_of_day}, {current_date}" if time_of_day and current_date else time_of_day or current_date or 'Unknown'
 
         lines.append("=== SESSION CONTEXT ===")
-        lines.append(f"Campaign: {campaign_name} | Session #{session_num}")
+        lines.append(f"Campaign: {campaign_name}")
         lines.append(f"Location: {location} | Time: {time_str}")
         self.campaign = campaign
         self.location = location
@@ -218,56 +210,6 @@ class Brief:
             if rem:
                 lines.append(rem)
         self.bible = bible
-        return lines
-
-    def _section_previously_on(self) -> list[str]:
-        lines = []
-        full = self.full
-        # --- Previously On (story spine: resume story-aware, not stat-amnesiac) ---
-        # Bounded by item COUNT, never by chopping a single entry. --full shows all.
-        all_summaries = self._recent_session_summaries(n=None)
-        summaries = all_summaries if full else all_summaries[-3:]
-        if summaries:
-            lines.append("")
-            lines.append("--- PREVIOUSLY ON ---")
-            for s in summaries:
-                lines.append(f"- {s}")
-            rem = None if full else self._remainder(
-                len(all_summaries) - len(summaries), "sessions",
-                "--full or session-log.md")
-            if rem:
-                lines.append(rem)
-            meta = self._latest_session_meta()
-            cliff = meta.get('cliffhanger') or self._cliffhanger(summaries[-1])
-            if cliff:
-                lines.append(f"WHERE WE PAUSED: {cliff}")
-            if meta.get('open_threads'):
-                lines.append(f"OPEN THREADS: {meta['open_threads']}")
-        self.summaries = summaries
-        return lines
-
-    def _section_world_remembers(self) -> list[str]:
-        lines = []
-        location = self.location
-        summaries = self.summaries
-        full = self.full
-        # --- The World Remembers (memory volunteered for THIS scene, never waited for) ---
-        remembered, open_debts, held_back = self._world_remembers(
-            location, full=full, already_shown=summaries)
-        if remembered or open_debts:
-            lines.append("")
-            lines.append("--- THE WORLD REMEMBERS (older history this scene touches — "
-                         "use it or let it lie, but don't contradict it) ---")
-            for r in remembered:
-                lines.append(f"- {self._truncate(r, 240, full)}")
-            for d in open_debts:
-                lines.append(f"OPEN DEBT: {d}")
-            if held_back:
-                rem = self._remainder(
-                    held_back, "remembered entries", "--full or gm-recall.sh")
-                if rem:
-                    lines.append(rem)
-        self.remembered = remembered
         return lines
 
     def _section_plots(self) -> list[str]:
@@ -390,8 +332,7 @@ class Brief:
         Facts printed in an earlier section are not printed again. What waits
         at the place is left to READY THREADS and PENDING CONSEQUENCES."""
         from cards import Cards
-        cards = Cards(self.json_ops, full=self.full,
-                      shown_texts=list(self.summaries) + list(self.remembered) + self.shown_texts)
+        cards = Cards(self.json_ops, full=self.full, shown_texts=self.shown_texts)
         return ["", "--- THE SCENE (play the people as their cards say; they know only "
                     "what is on their card or shared with the player) ---"] + cards.scene(waiting=False)
 
@@ -533,48 +474,11 @@ class Brief:
             return "roll BEFORE taking marked treasure: clean / guardian wakes / curse attaches"
         return system.get("summary") or prim or ""
 
-    def _recent_session_summaries(self, n=3):
-        """Return recent completed-session summary paragraphs (oldest -> newest).
-
-        Parses session-log.md blocks; a completed session is one with a
-        '### Session Ended:' marker. n=None returns all.
-        """
-        log_path = self.campaign_dir / "session-log.md"
-        if not log_path.exists():
-            return []
-        try:
-            text = log_path.read_text(encoding='utf-8')
-        except (OSError, ValueError):
-            return []
-        summaries = []
-        for block in text.split("## Session Started:"):
-            if "### Session Ended:" not in block:
-                continue
-            after = block.split("### Session Ended:", 1)[1]
-            body = []
-            for ln in after.splitlines()[1:]:  # skip the 'Session Ended' timestamp line
-                if ln.strip() == "---":
-                    break
-                if ln.strip():
-                    body.append(ln.strip())
-            if body:
-                summaries.append(" ".join(body))
-        return summaries if n is None else summaries[-n:]
-
-    def _cliffhanger(self, summary):
-        """Best-effort 'where we paused' = last 1-2 sentences of a summary.
-
-        Superseded by structured session metadata once session-identity-metadata lands.
-        """
-        normalized = summary.replace('!', '.').replace('?', '.')
-        parts = [s.strip() for s in normalized.split('.') if s.strip()]
-        return ('. '.join(parts[-2:]) + '.') if parts else ''
-
     # Categories that carry continuity the GM must not contradict. `player_choices`
     # and `npc_relations` were advertised by gm-note.sh and read by nothing, so the
     # two categories that hold what the player DID were write-only. `session_events`
-    # stays out (the session log and PREVIOUSLY ON own it) and so does `rules` (the
-    # world's own rules block owns that); both remain reachable through recall.
+    # stays out (the plots carry what happened) and so does `rules` (the world's
+    # own rules block owns that); both remain reachable through recall.
     KEY_FACT_CATEGORIES = ('plot_local', 'plot_regional', 'plot_world',
                            'player_choices', 'npc_relations', 'lore')
 
@@ -616,51 +520,3 @@ class Brief:
             out.append(line)
             self.shown_texts = getattr(self, "shown_texts", []) + [f.get('fact', '')]
         return out
-
-    def _world_remembers(self, location, full=False, already_shown=()):
-        """What the campaign's long-term memory volunteers for THIS scene.
-
-        CampaignMemory (arcs, session history, facts — embedded and searchable)
-        had no automated reader: recall fired only when the GM thought to ask,
-        which requires already suspecting there is something to remember. That is
-        the exact failure memory exists to fix. The scene itself is the query —
-        where we are, and who is standing here.
-
-        Returns (entries, open_debts, held_back_total). Degrades to empty on any
-        failure — no memory file, no embedding deps, a half-written index — so a
-        broken memory costs the brief nothing mid-session.
-        """
-        try:
-            from campaign_memory import CampaignMemory
-            mem = CampaignMemory(self._wsd)
-            npcs = self.json_ops.load_json("npcs.json") or {}
-            present = list(npcs_present(npcs, location, self._scene()))
-            query = " ".join([location or ""] + present).strip()
-            if not query:
-                return [], [], 0
-            top_k = None if full else 3
-            hits = mem.recall(query, top_k=top_k)
-            arcs = mem.arcs()
-            debts = [str(d) for d in (arcs[-1].get("open_debts") or [])] if arcs else []
-            total = len(mem.entries())
-        except Exception:
-            return [], [], 0
-
-        # Don't echo PREVIOUSLY ON. recall() falls back to re-gathering the session
-        # log, so its top hits are frequently the very summaries printed above —
-        # compare on collapsed whitespace, and either way round, since a gathered
-        # entry may span several logged sessions.
-        def _norm(s):
-            return " ".join(str(s).split())
-
-        shown = [_norm(s) for s in already_shown if _norm(s)]
-        entries = []
-        for h in hits:
-            text = str(h.get("text", "")).strip()
-            norm = _norm(text)
-            if not norm or any(norm in s or s in norm for s in shown):
-                continue
-            shown.append(norm)
-            entries.append(text)
-        held_back = total - len(entries) if (entries and not full and total > len(entries)) else 0
-        return entries, debts, held_back

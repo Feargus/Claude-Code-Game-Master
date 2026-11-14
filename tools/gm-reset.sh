@@ -177,22 +177,13 @@ reset_world() {
     "current_location": null,
     "previous_location": null
   },
-  "current_character": null,
-  "session_count": 0
+  "current_character": null
 }
 EOF
     echo "  ✓ Campaign overview reset"
 
-    # Reset Session Log
-    cat > "$SESSION_LOG" << 'EOF'
-# Campaign Session Log
-
-*A new adventure begins...*
-
----
-
-EOF
-    echo "  ✓ Session log cleared"
+    # An old campaign's session log goes with the story (none is written any more)
+    rm -f "$WORLD_STATE_DIR/session-log.md"
 
     # Remove character file
     if [ -f "$CHARACTER_FILE" ]; then
