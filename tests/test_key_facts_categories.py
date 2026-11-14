@@ -64,8 +64,8 @@ def test_an_npcs_attitude_is_filed_where_key_facts_reads_it(dcc_world):
     assert NPCManager(dcc_world).create_npc("Vesper", "a fence", "wary, greedy", nowhere=True)
     facts = NoteManager(dcc_world).json_ops.load_json("facts.json")
     assert "relations" not in facts
-    assert any("How Vesper regards" in f["fact"] for f in facts["npc_relations"])
-    assert "How Vesper regards" in SessionManager(dcc_world).get_full_context()
+    assert any(f.get("attitude") and f["fact"] == "wary, greedy" for f in facts["npc_relations"])
+    assert "Vesper regards the player: wary, greedy" in SessionManager(dcc_world).get_full_context()
     root = WRAPPER.parent.parent
     for doc in ("CLAUDE.md", ".claude/skills/gm-social/SKILL.md", ".claude/skills/gm-craft/SKILL.md"):
         assert "gm-note.sh relations" not in (root / doc).read_text(encoding="utf-8"), doc

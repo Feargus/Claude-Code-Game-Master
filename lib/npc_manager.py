@@ -7,7 +7,6 @@ about the player, remembers or hides is not on the sheet: it is facts they hold
 (`gm-note.sh ... --holders npc:<name>`), and `show` lists them.
 """
 
-import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -17,30 +16,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 import sheet as sheet_mod
 from entity_manager import EntityManager, is_dead, is_party_member, usual_places
 from game_time import stored_time
+from note_manager import ATTITUDE_CATEGORY as FEELING_CATEGORY  # noqa: F401 (kept for callers)
+from note_manager import check_attitude
 
 # Category of the fact `kill` records. Provisional: categories are due for rework
 # (design-notes.md, "World state").
 DEATH_FACT_CATEGORY = "session_events"
-# Category of how an NPC regards the player (the attitude given at creation).
-FEELING_CATEGORY = "npc_relations"
-
-
-def check_attitude(raw) -> tuple:
-    """(attitude, '') or ('', why it was refused). An attitude is one or more
-    adjectives, comma separated ("wary", "fond, exasperated"), never a sentence:
-    in the Tidewater playtest the GM wrote whole relationships into it ("a regular
-    at Seo's, polite; does not know Dogen beyond sight"), which hid plain facts
-    from the player. Empty is fine: not everyone has an attitude."""
-    words = [w.strip() for w in str(raw or "").strip().rstrip(".").split(",")]
-    words = [w for w in words if w]
-    if any(re.search(r"[.;:!?]", w) or len(w.split()) > 2 for w in words):
-        return "", (f"The attitude is one or more adjectives, comma separated (\"wary\", "
-                    f"\"fond, exasperated\"), not a sentence: '{raw}'. Leave it out for someone "
-                    f"with no attitude towards the player; what they know, remember or do is "
-                    f"its own fact (gm-note.sh).")
-    return ", ".join(words), ""
-
-
 class NPCManager(EntityManager):
     """The active campaign's NPCs."""
 
@@ -156,13 +137,14 @@ class NPCManager(EntityManager):
         return True
 
     def _first_feeling(self, name: str, attitude: str) -> None:
-        """How the NPC regards the player at first, as a fact only they hold."""
-        from note_manager import NoteManager
+        """How the NPC regards the player at first: an attitude (a flagged fact)."""
+        from note_manager import NoteManager, fact_text
+        notes = NoteManager(self.base_dir)
+        fid = notes.set_attitude(name, attitude, "player")
         player = sheet_mod.name(self.json_ops.load_json("character.json") or {}) or "the player"
-        NoteManager(self.base_dir).add_fact(
-            FEELING_CATEGORY, f"How {name} regards {player}: {attitude}.",
-            list_waiting=False,
-            about=[f"npc:{name}", "player"], holders=[f"npc:{name}"], nowhere=True)
+        entry = next(f for f in notes.json_ops.load_json("facts.json")[FEELING_CATEGORY]
+                     if f["id"] == fid)
+        print(f"  Attitude {fid}: {fact_text(entry, player)}")
 
     def _witness_hint(self, name: str) -> None:
         """A new NPC may have seen what happened here before they had a name (Lord
@@ -366,9 +348,15 @@ class NPCManager(EntityManager):
             lines.append("party member")
         try:
             from note_manager import NoteManager, fact_line
-            known = NoteManager(self.base_dir).find(held_by=[f"npc:{key}"], about=["player"])
+            notes = NoteManager(self.base_dir)
+            known = [f for f in notes.find(held_by=[f"npc:{key}"], about=["player"])
+                     if not f.get("attitude")]
+            feelings = notes.attitudes(key)
         except (RuntimeError, ValueError):
-            known = []
+            known, feelings = [], {}
+        for whom, f in feelings.items():
+            towards = "the player" if whom == "player" else whom.partition(":")[2]
+            lines.append(f"attitude towards {towards}: {f['fact']} ({f['id']})")
         if known:
             lines.append("what they know and feel about the player (newest first):")
             lines += [f"  {fact_line(f)}" for f in known[:8]]
@@ -399,6 +387,11 @@ def main():
     p.add_argument('--nowhere', action='store_true', help='no usual place')
     p.add_argument('--alias', action='append', dest='aliases', help='a shorter name (repeatable)')
     sheet_mod.add_field_flags(p)
+
+    p = sub.add_parser('attitude', help='How an NPC regards the player (or another NPC) now')
+    p.add_argument('name')
+    p.add_argument('adjectives', nargs='?', help='one or more adjectives, comma separated; without: show')
+    p.add_argument('--towards', default='player', help='player (the default) or another NPC')
 
     p = sub.add_parser('set', help='Text fields: identity, look, personality, goal')
     p.add_argument('name')
@@ -461,6 +454,25 @@ def main():
         if not manager.create_npc(args.name, args.role, args.attitude, locations=args.locations,
                                   nowhere=args.nowhere, aliases=args.aliases,
                                   fields=sheet_mod.fields_from_args(args)):
+            sys.exit(1)
+    elif args.action == 'attitude':
+        from note_manager import NoteManager, fact_text
+        notes = NoteManager()
+        player = sheet_mod.name(notes.json_ops.load_json("character.json") or {}) or "the player"
+        try:
+            if args.adjectives is None:
+                feelings = notes.attitudes(args.name)
+                for f in feelings.values():
+                    print(f"{f['id']} {fact_text(f, player)}")
+                if not feelings:
+                    print("No attitude recorded.")
+            else:
+                fid = notes.set_attitude(args.name, args.adjectives, args.towards)
+                entry = next(f for f in notes.json_ops.load_json("facts.json")[FEELING_CATEGORY]
+                             if f["id"] == fid)
+                print(f"[SUCCESS] Attitude {fid}: {fact_text(entry, player)}")
+        except ValueError as error:
+            print(f"[ERROR] {error}", file=sys.stderr)
             sys.exit(1)
     elif args.action == 'set':
         if not manager.set_fields(args.name, sheet_mod.fields_from_args(args)):

@@ -695,8 +695,16 @@ class SessionManager(EntityManager):
                          "under 'they know') ---")
             fact_lists = self._npc_fact_lists(npcs, present,
                                               already_shown=list(summaries) + list(remembered))
+            from note_manager import current_attitudes
+            feelings = current_attitudes(self.json_ops.load_json("facts.json") or {})
+            from sheet import name as sheet_name
+            player_name = (sheet_name(char) if char else "") or "the player"
             for npc_name in present:
-                lines += self._person_lines(npc_name, npcs.get(npc_name) or {}, full)
+                person = self._person_lines(npc_name, npcs.get(npc_name) or {}, full)
+                feeling = feelings.get((f"npc:{npc_name}", "player"))
+                if feeling:                 # how they regard the player comes first
+                    person.insert(1, f"  towards {player_name}: {feeling['fact']}")
+                lines += person
                 lists = fact_lists.get(npc_name, {})
                 for key, label in (("know", "they know"), ("about", "about them")):
                     items = lists.get(key, [])
@@ -1137,6 +1145,8 @@ class SessionManager(EntityManager):
                           for f in items if isinstance(f, dict) and f.get('fact')),
                          key=lambda f: str(f.get('timestamp', '')))
         for f in entries:
+            if f.get('attitude'):
+                continue                    # shown as the person's "towards" line
             text = fact_text(f)
             if norm(f['fact']) in shown or norm(text) in shown:
                 continue

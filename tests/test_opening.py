@@ -93,8 +93,8 @@ def test_the_opening_makes_ordinary_records(world):
         SPEC["developments"][0]["fact"]: ["street", "npc:Auntie Ro"],
         SPEC["developments"][1]["fact"]: ["npc:Auntie Ro"],
         # an attitude becomes a fact the NPC holds about the player
-        "How Auntie Ro regards Fearghas: friendly.": ["npc:Auntie Ro"],
-        "How Dekker regards Fearghas: hostile.": ["npc:Dekker"]}
+        "friendly": ["npc:Auntie Ro"],
+        "hostile": ["npc:Dekker"]}
     triggers = _load(camp, "consequences.json")["active"][0]["triggers"]
     assert triggers == [{"type": "on_location", "match": "location:The Lantern noodle stall"}]
 

@@ -2,6 +2,7 @@
 """Note/fact management module for GM tools."""
 
 import json
+import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -44,16 +45,57 @@ def assign_missing_ids(facts: dict) -> dict:
 
 
 TRUTH_VALUES = ("partial", "wrong")  # a missing `truth` means true
+ATTITUDE_CATEGORY = "npc_relations"
 
 
-def fact_text(entry) -> str:
+def check_attitude(raw) -> tuple:
+    """(attitude, '') or ('', why it was refused). An attitude is one or more
+    adjectives, comma separated ("wary", "fond, exasperated"), never a sentence:
+    in the Tidewater playtest the GM wrote whole relationships into it ("a regular
+    at Seo's, polite; does not know Dogen beyond sight"), which hid plain facts
+    from the player. Empty is fine: not everyone has an attitude."""
+    words = [w.strip() for w in str(raw or "").strip().rstrip(".").split(",")]
+    words = [w for w in words if w]
+    if any(re.search(r"[.;:!?]", w) or len(w.split()) > 2 for w in words):
+        return "", (f"The attitude is one or more adjectives, comma separated (\"wary\", "
+                    f"\"fond, exasperated\"), not a sentence: '{raw}'. Leave it out for someone "
+                    f"with no attitude; what they know, remember or do is its own fact "
+                    f"(gm-note.sh).")
+    return ", ".join(words), ""
+
+
+def _person(cid: str, player: str) -> str:
+    """An id as a name in a sentence: npc:Mama Seo -> Mama Seo, player -> the player's name."""
+    return player if cid == "player" else cid.partition(":")[2] or cid
+
+
+def current_attitudes(facts: dict) -> dict:
+    """{(holder id, about id): fact} for the newest attitude of each pair: the one
+    that counts. Older ones stay as the record of how it changed."""
+    newest = {}
+    for items in facts.values():
+        for f in items if isinstance(items, list) else []:
+            if isinstance(f, dict) and f.get('attitude') and f.get('holders') and f.get('about'):
+                key = (f['holders'][0], f['about'][0])
+                number = int(str(f.get('id', 'f0'))[1:] or 0) if str(f.get('id', ''))[1:].isdigit() else 0
+                if key not in newest or number > newest[key][0]:
+                    newest[key] = (number, f)
+    return {key: f for key, (_, f) in newest.items()}
+
+
+def fact_text(entry, player: str = "the player") -> str:
     """A fact's text as the GM should read it, wherever it is shown or searched:
     a secret (holders recorded and empty: nobody knows it) is marked [SECRET], one
     that others know but the player character doesn't is marked [HIDDEN FROM PLAYER],
-    a wrong or partial version is marked with the id of the truth."""
+    a wrong or partial version is marked with the id of the truth. An attitude,
+    stored as its adjectives only, is written out: "Mama Seo regards Dogen: fond"
+    (`player` is the name used for the player character)."""
     if not isinstance(entry, dict):
         return str(entry)
     text = str(entry.get('fact', entry.get('text', entry.get('event', ''))))
+    if entry.get('attitude') and entry.get('holders') and entry.get('about'):
+        text = (f"{_person(entry['holders'][0], player)} regards "
+                f"{_person(entry['about'][0], player)}: {text}")
     holders = entry.get('holders')
     if holders == []:
         text = f"[SECRET] {text}"
@@ -226,6 +268,48 @@ class NoteManager:
         if list_waiting:
             self._list_waiting(fact_id)
         return fact_id
+
+    def set_attitude(self, owner: str, adjectives: str, towards: str = "player") -> str:
+        """Record how `owner` (an NPC) regards `towards` (the player or another
+        NPC) now: a fact flagged as an attitude, holding only the adjectives,
+        known only to the owner. The newest one per pair counts. It is a state,
+        not news: no on_learn fires, and it happened nowhere. Returns its id;
+        raises ValueError."""
+        from world_ids import WorldIds
+        ids = WorldIds(self.json_ops)
+        who, error = ids.resolve_as(owner, ("npc",))
+        if error:
+            raise ValueError(error)
+        whom, error = ids.resolve_as(towards, ("player", "npc"))
+        if error:
+            raise ValueError(error)
+        if who == whom:
+            raise ValueError("An attitude is towards someone else.")
+        adjectives, error = check_attitude(adjectives)
+        if error or not adjectives:
+            raise ValueError(error or "Give the attitude: one or more adjectives (\"wary\").")
+        facts = self.json_ops.load_json("facts.json") or {}
+        assign_missing_ids(facts)
+        fact_id = next_fact_id(facts)
+        entry = {'id': fact_id, 'fact': adjectives, 'attitude': True,
+                 'about': [whom], 'holders': [who]}
+        game_time = stored_time(self.json_ops)
+        if game_time:
+            entry['game_time'] = game_time
+        entry['timestamp'] = datetime.now(UTC).isoformat()
+        facts.setdefault(ATTITUDE_CATEGORY, []).append(entry)
+        self.json_ops.save_json("facts.json", facts)
+        return fact_id
+
+    def attitudes(self, owner: str) -> dict:
+        """{towards id: the current attitude fact} for an NPC; raises ValueError."""
+        from world_ids import WorldIds
+        who, error = WorldIds(self.json_ops).resolve_as(owner, ("npc",))
+        if error:
+            raise ValueError(error)
+        return {whom: f for (holder, whom), f in
+                current_attitudes(self.json_ops.load_json("facts.json") or {}).items()
+                if holder == who}
 
     def set_about(self, fact_id: str, add=None, remove=None) -> list:
         """Add ids to, or remove them from, a recorded fact's `about`.

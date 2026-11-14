@@ -51,14 +51,14 @@ def test_create_needs_little_and_the_attitude_becomes_a_fact(world, capsys):
                      "personality": {"big_five": "O1 C2 E-1 A1 N0", "voice": "dry"},
                      "places": {"usual": ["The Pens"]}}
     feeling = NoteManager(ws).find(held_by=["npc:Tod Brask"], about=["player"])
-    assert [f["fact"] for f in feeling] == ["How Tod Brask regards Lullaby: wary."]
+    assert [(f["fact"], f["attitude"]) for f in feeling] == [("wary", True)]
     assert feeling[0]["holders"] == ["npc:Tod Brask"] and "at" not in feeling[0]
     assert NPCManager(ws).create_npc("Benno", "a handler", locations=["The Pens"])  # no attitude
     assert not NPCManager(ws).create_npc(
         "Seo", "a cook", "fond of him; feeds him for free and tells him so", locations=["The Pens"])
     assert "one or more adjectives" in capsys.readouterr().out
     assert NPCManager(ws).create_npc("Seo", "a cook", "Fond,  exasperated.", locations=["The Pens"])
-    assert "How Seo regards Lullaby: Fond, exasperated." in capsys.readouterr().out
+    assert "Seo regards Lullaby: Fond, exasperated" in capsys.readouterr().out
     assert NoteManager(ws).find(held_by=["npc:Benno"]) == []
     assert not NPCManager(ws).create_npc("Bad", "x", nowhere=True, fields={"big-five": "ENTJ"})
     assert "Big Five" in capsys.readouterr().out
@@ -145,3 +145,39 @@ def test_a_person_can_start_as_a_sketch(world):
         NoteManager(ws).json_ops.load_json("facts.json"), fid)["about"]
     manager.set_fields("Ruth Okonedo", {"voice": "dry, patient"})
     assert "only a sketch" not in manager.show("Ruth Okonedo")
+
+
+def test_an_attitude_is_a_flagged_fact_and_the_newest_counts(world, capsys):
+    """An attitude was a fact worded "How X regards Y: ...", told apart from other
+    facts only by its wording. It is a fact flagged as an attitude, holding only
+    the adjectives; holder and about say whose attitude towards whom."""
+    from lib.note_manager import NoteManager, fact_text
+    from lib.session_manager import SessionManager
+    ws, camp = world
+    manager = NPCManager(ws)
+    manager.create_npc("Tod Brask", "a pit mechanic", "wary", locations=["The Pens"])
+    manager.create_npc("Benno", "a handler", locations=["The Pens"])
+    notes = NoteManager(ws)
+    capsys.readouterr()
+    newer = notes.set_attitude("Tod Brask", "Fond,  grudging.")
+    notes.set_attitude("Tod Brask", "contemptuous", towards="Benno")
+    now = notes.attitudes("tod brask")
+    assert {k: f["fact"] for k, f in now.items()} == {"player": "Fond, grudging",
+                                                      "npc:Benno": "contemptuous"}
+    assert now["player"]["id"] == newer and now["player"]["holders"] == ["npc:Tod Brask"]
+    assert fact_text(now["player"], "Lullaby") == "[HIDDEN FROM PLAYER] Tod Brask regards Lullaby: Fond, grudging"
+    assert capsys.readouterr().out == ""                 # no on_learn, no waiting list
+    for owner, adjectives, towards, why in (
+            ("Nobody", "wary", "player", "No npc"), ("Tod Brask", "wary", "Tod Brask", "someone else"),
+            ("Tod Brask", "he hates her guts.", "player", "adjectives"),
+            ("Tod Brask", "", "player", "Give the attitude")):
+        with pytest.raises(ValueError, match=why):
+            notes.set_attitude(owner, adjectives, towards)
+    assert "attitude towards the player: Fond, grudging" in manager.show("Tod Brask")
+    (camp / "campaign-overview.json").write_text(json.dumps({
+        "campaign_name": "C", "player_position": {"current_location": "The Pens"},
+        "scene": {"location": "The Pens", "present": ["Tod Brask"]}}))
+    brief = SessionManager(ws).get_full_context()
+    person = brief[brief.index("Tod Brask (a pit mechanic"):]
+    assert person.splitlines()[1] == "  towards Lullaby: Fond, grudging"
+    assert "regards" not in person.split("\n\n")[0]     # not listed again as a fact
