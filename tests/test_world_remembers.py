@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 from lib.campaign_memory import CampaignMemory
+from lib.brief import Brief
 from lib.session_manager import SessionManager
 
 CAMPAIGN = "dungeon-crawler-carl"
@@ -83,10 +84,11 @@ def test_recall_does_not_echo_previously_on(dcc_world):
     mem = CampaignMemory(dcc_world)
     mem.refresh()
     sm = SessionManager(dcc_world)
-    summaries = sm._recent_session_summaries(n=3)
+    brief = Brief(sm)
+    summaries = brief._recent_session_summaries(n=3)
     if not summaries:
         return  # fixture has no completed sessions; nothing to echo
-    remembered, _debts, _held = sm._world_remembers(
+    remembered, _debts, _held = brief._world_remembers(
         _current_location(dcc_world), already_shown=summaries)
     for s in summaries:
         assert s.strip() not in remembered

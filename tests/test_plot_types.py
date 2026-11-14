@@ -27,7 +27,7 @@ def test_only_schemas_defines_the_enum():
 
 
 def test_every_former_site_imports_the_canonical_enum():
-    for module in ("plot_manager.py", "session_manager.py", "world_stats.py"):
+    for module in ("plot_manager.py", "brief.py", "world_stats.py"):
         src = (REPO / "lib" / module).read_text()
         assert "from schemas import PLOT_TYPE" in src, module
 
@@ -41,12 +41,13 @@ def test_gm_plot_usage_prints_the_canonical_types():
 
 
 def test_story_threads_sort_covers_all_canonical_types(dcc_world):
+    from lib.brief import Brief
     from lib.session_manager import SessionManager
     camp = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
     plots = {f"Plot {t}": {"type": t, "status": "active"} for t in PLOT_TYPES}
     (camp / "plots.json").write_text(json.dumps(plots))
 
-    threads = SessionManager(dcc_world)._active_plot_threads(limit=None)
+    threads = Brief(SessionManager(dcc_world))._active_plot_threads(limit=None)
 
     assert len(threads) == len(PLOT_TYPES)
     ranks = [PLOT_TYPE_SORT[line.split(']')[0].lstrip('[')] for line in threads]

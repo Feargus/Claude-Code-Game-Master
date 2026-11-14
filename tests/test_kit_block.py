@@ -90,7 +90,10 @@ def test_kit_block_skipped_when_worldkit_fails(dcc_world, monkeypatch):
     def boom(*_a, **_k):
         raise RuntimeError("no campaign")
 
-    monkeypatch.setattr("lib.session_manager.WorldKit", boom)
+    # The managers import each other by bare name (lib/ on sys.path), so the brief
+    # runs as the module "brief", not "lib.brief".
+    import importlib
+    monkeypatch.setattr(importlib.import_module("brief"), "WorldKit", boom)
     ctx = SessionManager(dcc_world).get_full_context()
     assert "--- KIT ---" not in ctx
     assert "SESSION CONTEXT" in ctx

@@ -80,7 +80,7 @@ def _doors(world):
 
 
 def test_single_presence_and_resolution_implementations():
-    callers = ("session_manager.py", "consequence_manager.py", "scene_context.py")
+    callers = ("brief.py", "consequence_manager.py", "scene_context.py")
     for name in callers:
         text = (LIB / name).read_text(encoding="utf-8")
         assert "npcs_present(" in text, f"{name} must call npcs_present"

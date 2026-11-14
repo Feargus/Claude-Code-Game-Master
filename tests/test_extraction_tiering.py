@@ -6,6 +6,7 @@ import json
 
 from lib.plot_manager import PlotManager
 from lib.search import WorldSearcher
+from lib.brief import Brief
 from lib.session_manager import SessionManager
 
 
@@ -30,7 +31,7 @@ TIERED_PLOTS = {
 def test_scene_context_story_threads_skip_background_plots(tmp_path):
     """Background plots are real, but they are not what the scene is about."""
     world = _world_with_plots(tmp_path, TIERED_PLOTS)
-    threads = SessionManager(str(world))._active_plot_threads(limit=None)
+    threads = Brief(SessionManager(str(world)))._active_plot_threads(limit=None)
 
     assert len(threads) == 3
     named = " ".join(threads)

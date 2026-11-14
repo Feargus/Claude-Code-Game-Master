@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 
 from lib.note_manager import NoteManager
+from lib.brief import Brief
 from lib.session_manager import SessionManager
 
 WRAPPER = Path(__file__).parent.parent / "tools" / "gm-note.sh"
@@ -45,7 +46,7 @@ def test_every_advertised_category_has_a_reader(dcc_world):
     assert advertised, "could not parse advertised categories from gm-note.sh"
 
     sm = SessionManager(dcc_world)
-    read_by_key_facts = set(sm.KEY_FACT_CATEGORIES)
+    read_by_key_facts = set(Brief.KEY_FACT_CATEGORIES)
     for cat in advertised - read_by_key_facts:
         # Reachable through campaign memory, which gathers every facts category.
         NoteManager(dcc_world).add_fact(cat, f"a distinctive {cat} fact about zzyzx")
