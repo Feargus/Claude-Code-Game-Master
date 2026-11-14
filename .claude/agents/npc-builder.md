@@ -130,7 +130,7 @@ Allies who travel with the player. Give them their own goals and limits, so they
 Link NPCs to:
 - **Locations**: Where they work/live/frequent
   - `gm-npc.sh tag-location "[Name]" "[Location name]"` (where they're usually found)
-- **Plots**: Current story involvement (the plot names them: `gm-plot.sh`)
+- **Plots**: Current story involvement (the plots that involve them: `gm-plot.sh list`, and their card)
 - **Other NPCs**: Family, rivals, employers
 - **Factions**: Guilds, cults, governments
 - **Events**: Past consequences, future plans
