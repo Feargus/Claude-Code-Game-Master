@@ -86,7 +86,7 @@ class NPCManager(EntityManager):
         `fields`: any further text fields by flag name (sheet.TEXT_FIELDS), e.g.
         a goal, a fear, a look, the Big Five.
         """
-        from world_ids import WorldIds, alias_hint
+        from world_ids import WorldIds, alias_hint, close_name_warning
         places, errors = self._usual_places(locations)
         aliases = [a.strip() for a in aliases or [] if a.strip()]
         ids = WorldIds(self.json_ops)
@@ -101,6 +101,7 @@ class NPCManager(EntityManager):
         attitude, error = check_attitude(attitude)
         if error:
             errors.append(error)
+        close = ids.close_names(name, "npc")   # read before the new record is added
         sheet = sheet_mod.blank("npc", name)
         try:
             sheet_mod.set_fields(sheet, dict(fields or {}, **({"role": role} if role else {})))
@@ -124,6 +125,8 @@ class NPCManager(EntityManager):
         where = ', '.join(places) if places else 'no usual place'
         print(f"[SUCCESS] Created NPC: {name}" + (f" - {role}" if role else "")
               + f"; usually found: {where}")
+        for line in close_name_warning(close, "npc"):
+            print(line)
         if aliases:
             print(f"  Also called: {', '.join(sheet['identity']['aliases'])}")
         elif alias_hint("npc", name):

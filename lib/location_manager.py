@@ -30,7 +30,7 @@ class LocationManager(EntityManager):
         for "Old Iron's Yard"), each checked (world_ids.check_alias).
         Returns True on success, False on failure
         """
-        from world_ids import WorldIds, alias_hint
+        from world_ids import WorldIds, alias_hint, close_name_warning
         description = str(description or "").strip()
         if not description:
             print(f"[ERROR] '{name}' needs a description: what it is like, a sentence or two, "
@@ -54,6 +54,7 @@ class LocationManager(EntityManager):
             print(f"[ERROR] Location '{name}' already exists")
             return False
 
+        close = ids.close_names(name, "location")
         # Create location data
         location_data = {
             'position': position,
@@ -67,6 +68,8 @@ class LocationManager(EntityManager):
         # Save to file
         if self._add_entity(self.locations_file, name, location_data):
             print(f"[SUCCESS] Added location: {name} ({position})")
+            for line in close_name_warning(close, "location"):
+                print(line)
             if aliases:
                 print(f"  Also called: {', '.join(location_data['aliases'])}")
             elif alias_hint("location", name):

@@ -136,6 +136,31 @@ class WorldIds:
         close += [n for n in choices if query and query in n.split() and n not in close]
         return f"; did you mean: {', '.join(choices[n] for n in close[:3])}?" if close else ""
 
+    def close_names(self, name: str, kind: str) -> list[str]:
+        """Existing records of `kind` ("npc" or "location") whose name or alias is
+        close to `name`: nearly the same spelling ("Ilse Vargas"), or one name
+        inside the other word by word ("Ilse Varga" and "Director Ilse Varga",
+        "Seo" and "Mama Seo"). For a warning when a new record is made: the same
+        person or place under a second name splits what is known about them.
+        Returns ids, best match first; [] if none."""
+        query = normalize_entity_name(name) or str(name).strip().lower()
+        words = set(query.split())
+        if not words:
+            return []
+        scored = []
+        for key, data in self._load()[kind].items():
+            best = 0.0
+            for known in [key, *aliases_of(data)]:
+                other = normalize_entity_name(known) or known.lower()
+                ratio = difflib.SequenceMatcher(None, query, other).ratio()
+                theirs = set(other.split())
+                inside = words <= theirs or theirs <= words
+                if inside or ratio >= 0.8:
+                    best = max(best, 1.0 if other == query else max(ratio, 0.9 if inside else 0))
+            if best:
+                scored.append((-best, key))
+        return [f"{kind}:{key}" for _, key in sorted(scored)]
+
     def resolve(self, raw: str) -> tuple[str, str]:
         """(canonical id, '') or ('', why it was refused)."""
         text = str(raw or "").strip()
@@ -303,6 +328,18 @@ class WorldIds:
             elif cid not in ids:
                 ids.append(cid)
         return ids, errors
+
+
+def close_name_warning(close: list[str], kind: str) -> list[str]:
+    """Lines warning that a new record's name is close to existing ones, or []."""
+    if not close:
+        return []
+    tool = {"npc": "gm-npc.sh show", "location": "gm-location.sh get"}[kind]
+    first = close[0].partition(":")[2]
+    what = "person" if kind == "npc" else "place"
+    return [f"  [WARNING] The name is close to {', '.join(close[:3])}. Check that this is "
+            f"another {what}: bash tools/{tool} \"{first}\". The same {what} under two "
+            f"names splits what is known about them; a second name is an alias."]
 
 
 def alias_hint(kind: str, name: str) -> str:

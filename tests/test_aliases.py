@@ -124,3 +124,30 @@ def test_an_alias_the_name_check_already_finds_is_explained(world, capsys):
     assert not LocationManager(ws).add_location("Saint Ayo's", "a clinic", "A clinic.", aliases=["Ayo's"])
     out = capsys.readouterr().out
     assert "needs no alias: the name check already finds it as 'Saint Ayo's'" in out
+
+
+def test_a_new_name_close_to_an_existing_one_is_warned_about(world, capsys):
+    """The same person under a second name ("Ilse Varga" beside "Director Ilse
+    Varga") splits what is known about them. Creating still works: it may be
+    someone else."""
+    from lib.world_ids import WorldIds
+    ws, camp = world
+    manager = NPCManager(ws)
+    assert manager.create_npc("Director Ilse Varga", "head of Asset Recovery")
+    assert manager.create_npc("Mama Seo", "runs the noodle counter", aliases=["Seo"])
+    capsys.readouterr()
+    ids = WorldIds(manager.json_ops)
+    assert ids.close_names("Ilse Varga", "npc") == ["npc:Director Ilse Varga"]
+    assert ids.close_names("Director Ilse Vargas", "npc") == ["npc:Director Ilse Varga"]
+    assert ids.close_names("Grandma Seo", "npc") == ["npc:Mama Seo"]       # through the alias
+    assert ids.close_names("Juniper", "npc") == [] and ids.close_names("Ilse", "location") == []
+    assert manager.create_npc("Ilse Varga", "a Hesper director")
+    out = capsys.readouterr().out
+    assert "[WARNING] The name is close to npc:Director Ilse Varga" in out
+    assert 'gm-npc.sh show "Director Ilse Varga"' in out
+    assert manager.create_npc("Juniper", "a Lark-series android")
+    assert "WARNING" not in capsys.readouterr().out
+    LocationManager(ws).add_location("The Lantern noodle stall", "on Lantern Row", "A stall.")
+    capsys.readouterr()
+    LocationManager(ws).add_location("The Lantern", "on Lantern Row", "A stall.")
+    assert "close to location:The Lantern noodle stall" in capsys.readouterr().out
