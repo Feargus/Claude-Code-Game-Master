@@ -24,9 +24,14 @@ class Brief:
 
     # The sections in the order they are printed: each is a method
     # `_section_<name>` returning its lines ([] when it has nothing to show).
-    SECTIONS = ("header", "kit", "play_style", "images", "voice",
-                "plots", "key_facts", "wrong_beliefs", "clocks", "character", "party", "scene",
-                "pending", "world_rules", "systems")
+    # Ordered by plot (2026-11-15): each open plot with its clocks, the
+    # consequences waiting in it and what the character doesn't know of it; then
+    # what belongs to no plot; the character; the world; what just happened; the scene.
+    SECTIONS = ("header", "kit", "play_style", "images", "plots", "unplotted",
+                "character", "party", "wrong_beliefs", "world_rules", "systems", "voice",
+                "latest", "scene")
+    SECRETS_PER_PLOT = 5     # what the character doesn't know, newest first
+    LATEST = 5               # the newest facts, for what just happened
 
     def __init__(self, session):
         self.session = session
@@ -48,12 +53,13 @@ class Brief:
         from session_manager import SessionManager
         return SessionManager._normalize_connection_list(connections)
 
-    def text(self, full: bool = False) -> str:
-        return self.get_full_context(full=full)
+    def text(self) -> str:
+        return self.get_full_context()
 
-    def _truncate(self, text: str, limit: int, full: bool) -> str:
-        """Trim long text in compact context mode."""
-        if full or not text or len(text) <= limit:
+    @staticmethod
+    def _truncate(text: str, limit: int) -> str:
+        """Trim long text."""
+        if not text or len(text) <= limit:
             return text
         return text[:limit - 3].rstrip() + "..."
 
@@ -64,12 +70,12 @@ class Brief:
             return None
         return f"+{hidden} more {noun} — {hint}"
 
-    def get_full_context(self, full: bool = False) -> str:
+    def get_full_context(self) -> str:
         """The whole brief: each section in turn. Some sections leave what they
-        loaded or showed for later ones (the location, the character, the
-        session summaries already printed)."""
-        self.full = full
+        loaded or showed for later ones (the location, the character, the facts
+        already printed)."""
         self.shown_texts = []       # facts printed so far, so the cards don't repeat them
+        self.shown_ids = set()
         lines = []
         for section in self.SECTIONS:
             lines += getattr(self, f"_section_{section}")()
@@ -187,7 +193,6 @@ class Brief:
 
     def _section_voice(self) -> list[str]:
         lines = []
-        full = self.full
         # --- Narrative Voice (write the prose in the world's authorial voice) ---
         bible = self.json_ops.load_json("world-bible.json") or {}
         voice = bible.get("voice") or {}
@@ -203,56 +208,138 @@ class Brief:
             if words:
                 lines.append("The world's own words (what one means: gm-glossary.sh show "
                              "\"<term>\"): " + ", ".join(words))
-            shown_passages = passages if full else passages[:3]
-            for p in shown_passages:
+            for p in passages[:3]:
                 lines.append(f"  | {p}")
-            rem = None if full else self._remainder(
-                len(passages) - len(shown_passages), "sample passages", "--full")
-            if rem:
-                lines.append(rem)
         self.bible = bible
         return lines
 
     def _section_plots(self) -> list[str]:
         """Every open plot, most pressing first (plot_manager.plot_order): where it
-        stands, whose goal it is, and who and what in it is still a sketch."""
+        stands, whose goal it is, who and what in it is still a sketch, its
+        clocks, the consequences waiting in it, and what the character doesn't
+        know of it (secrets and facts only others hold), newest first."""
         from opening import Opening
         from plot_manager import plot_order
         plots = self.json_ops.load_json("plots.json") or {}
-        keys = plot_order(self.json_ops, plots)
+        self.open_plots = keys = plot_order(self.json_ops, plots)
         if not keys:
             return []
         horizon = Opening(self._wsd).horizon
         lines = ["", "--- PLOTS (most pressing first; gm-plot.sh show \"<plot>\" for one in full) ---"]
         for key in keys:
             p = plots[key]
-            lines.append(f"[{p.get('kind', '?')}] {key}: "
-                         + self._truncate(p.get('stands') or p.get('description', ''), 240, self.full))
+            lines.append(f"[{p.get('kind', '?')}] {key}: {p.get('stands') or p.get('description', '')}")
             if p.get("owner"):
                 owner = p["owner"].partition(":")[2] or p["owner"]
                 lines.append(f"  {owner} wants: {p.get('goal') or '(no goal written)'}")
             sketches = horizon(key)
             if sketches:
                 lines.append(f"  still sketches (named, not built): {', '.join(sketches)}")
+            lines += self._belongings(lambda plots_of, k=key: k in plots_of,
+                                      f'gm-note.sh find --plot "{key}" --hidden')
         return lines
 
-    def _section_key_facts(self) -> list[str]:
+    def _section_unplotted(self) -> list[str]:
+        """Clocks, waiting consequences and what the character doesn't know that
+        belong to no open plot."""
+        open_plots = set(getattr(self, "open_plots", []))
+        body = self._belongings(lambda plots_of: not open_plots & set(plots_of),
+                                "gm-note.sh find --hidden", unplotted=True)
+        return ["", "--- IN NO PLOT ---"] + body if body else []
+
+    def _belongings(self, belongs, more_hint: str, unplotted: bool = False) -> list[str]:
+        """The lines under one plot: its clocks, its waiting consequences, and
+        what the character doesn't know of it. `belongs(plots)` says whether a
+        record with that `plots` list is in it."""
         lines = []
-        full = self.full
-        # --- Key Facts (established plot facts the GM must keep continuity on) ---
-        key_facts = self._key_facts(per_category=None if full else 3)
-        if key_facts:
-            lines.append("")
-            lines.append("--- KEY FACTS ---")
-            for fact_line in key_facts:
-                lines.append(f"- {fact_line}")
-            if not full:
-                hidden_facts = len(self._key_facts(per_category=None)) - len(key_facts)
-                rem = self._remainder(hidden_facts, "facts",
-                                      "--full, or gm-note.sh recent / find")
-                if rem:
-                    lines.append(rem)
+        clocks = {n: c for n, c in (self.json_ops.load_json("threat-clocks.json") or {}).items()
+                  if isinstance(c, dict) and belongs(c.get("plots") or [])}
+        for name, c in ThreatClockManager.by_urgency(clocks):
+            cur, mx = int(c.get('current', 0)), int(c.get('max', 1))
+            state = "FULL: a beat is due" if cur >= mx else (
+                f"{cur}/{mx}" + ThreatClockManager.due_text(c))
+            lines.append(f"  clock {name}: {state}" + (f" ({c['text']})" if c.get('text') else ""))
+        waiting = [c for c in self._open_consequences() if belongs(c.get("plots") or [])]
+        for c in waiting:
+            cid = str(c.get('id', '?'))[:4]
+            fired = "FIRED, not resolved yet: " if c.get("last_fired_key") else ""
+            then = describe_effects(c.get('effects'))
+            lines.append(f"  waiting [{cid}]: {fired}{c.get('consequence', '?')} "
+                         f"(when: {self._when(c)})" + (f"; when it fires, {then}" if then else ""))
+        unknown = [f for f in self._facts_newest_first()
+                   if self._unknown_to_character(f) and belongs(f.get("plots") or [])]
+        if unknown:
+            lines.append(f"  {self._character_name()} doesn't know:")
+            for f in unknown[:self.SECRETS_PER_PLOT]:
+                lines.append(f"    {self._fact_line(f)}")
+            if len(unknown) > self.SECRETS_PER_PLOT:
+                lines.append(f"    + {len(unknown) - self.SECRETS_PER_PLOT} more: {more_hint}")
         return lines
+
+    def _section_latest(self) -> list[str]:
+        """The newest facts: what just happened, for picking up where play stopped."""
+        latest = [f for f in self._facts_newest_first() if not f.get("attitude")][:self.LATEST]
+        if not latest:
+            return []
+        lines = ["", f"--- LATEST (the newest {len(latest)} facts; more: gm-note.sh recent 15) ---"]
+        for f in latest:
+            fid = f.get("id")
+            lines.append(f"  also {fid} (above)" if fid in self.shown_ids else f"  {self._fact_line(f)}")
+        return lines
+
+    # ---------- what the plot sections read ----------
+
+    def _facts_newest_first(self) -> list[dict]:
+        facts = self.json_ops.load_json("facts.json") or {}
+        entries = [f for items in facts.values() if isinstance(items, list)
+                   for f in items if isinstance(f, dict) and f.get("id")]
+        def number(f):
+            digits = str(f["id"])[1:]
+            return int(digits) if digits.isdigit() else 0
+        return sorted(entries, key=number, reverse=True)
+
+    @staticmethod
+    def _unknown_to_character(f: dict) -> bool:
+        """A secret, or a fact only others hold; attitudes are on the cards, and
+        the character's wrong beliefs have their own section."""
+        holders = f.get("holders")
+        return (isinstance(holders, list) and not {"player", "public"} & set(holders)
+                and not f.get("attitude"))
+
+    def _fact_line(self, f: dict) -> str:
+        """`fN <text>` with who knows it when only others do; marks it printed."""
+        self.shown_ids.add(f.get("id"))
+        self.shown_texts.append(f.get("fact", ""))
+        text = fact_text(f, self._character_name()).replace("[HIDDEN FROM PLAYER] ", "")
+        holders = f.get("holders")
+        if self._unknown_to_character(f) and holders:
+            names = [h.partition(":")[2] or ("the street" if h == "street" else h) for h in holders]
+            text += f" ({', '.join(names)} {'knows' if len(names) == 1 else 'know'})"
+        return f"{f.get('id')} {text}"
+
+    def _character_name(self) -> str:
+        import sheet as sheet_mod
+        return sheet_mod.name(self.json_ops.load_json("character.json") or {}) or "The character"
+
+    @staticmethod
+    def _when(c: dict) -> str:
+        """A consequence's trigger in words, and how it fires when that says more
+        (`on_location location:Floor 2 Junction`); not when it only repeats it."""
+        said = str(c.get('trigger') or '').strip()
+        typed = [t for t in c.get('triggers') or [] if isinstance(t, dict) and t.get('type')]
+        repeats = len(typed) == 1 and said in (str(typed[0].get('match')),
+                                               str(typed[0].get('match')).partition(':')[2])
+        how = " · ".join(f"{t['type']} {t.get('match')}" for t in typed)
+        if how and not repeats:
+            return f"{said}; {how}" if said else how
+        return said or how or "?"
+
+    def _open_consequences(self) -> list[dict]:
+        store = self.json_ops.load_json("consequences.json") or {}
+        if isinstance(store, list):
+            return [c for c in store if isinstance(c, dict)]
+        return [c for section in ("active", "pending") for c in store.get(section) or []
+                if isinstance(c, dict)]
 
     def _section_wrong_beliefs(self) -> list[str]:
         lines = []
@@ -266,25 +353,8 @@ class Brief:
             lines += [f"- {w}" for w in wrong]
         return lines
 
-    def _section_clocks(self) -> list[str]:
-        lines = []
-        # --- Threat Clocks (felt, mounting pressure; only when any are declared) ---
-        clocks = self.json_ops.load_json("threat-clocks.json") or {}
-        if clocks:
-            lines.append("")
-            lines.append("--- THREAT CLOCKS (most urgent first) ---")
-            for clock_name, c in ThreatClockManager.by_urgency(clocks):
-                cur, mx = int(c.get('current', 0)), int(c.get('max', 1))
-                bar = "●" * cur + "○" * max(0, mx - cur)
-                flag = "  ⚠ FULL — a beat is due" if cur >= mx else ""
-                due = "" if flag else ThreatClockManager.due_text(c)
-                about = f" — {c['text']}" if c.get('text') else ""
-                lines.append(f"{clock_name}: [{bar}] {cur}/{mx}{due}{flag}{about}")
-        return lines
-
     def _section_character(self) -> list[str]:
         lines = []
-        full = self.full
         # --- Character ---
         lines.append("")
         lines.append("--- CHARACTER ---")
@@ -306,7 +376,7 @@ class Brief:
             lines.append(f"Conditions: {', '.join(conditions) if conditions else '(none)'}")
             visible = sheet_mod.visible_items(char)
             if visible:
-                lines.append(f"Gear (what others can see): {self._truncate(', '.join(visible), 200, full)}")
+                lines.append(f"Gear (what others can see): {self._truncate(', '.join(visible), 200)}")
             due = growth_due(char)
             if due:
                 lines.append(f"Growth due: {due} level{'s' if due != 1 else ''}, at the next quiet "
@@ -323,67 +393,20 @@ class Brief:
         npcs = self.json_ops.load_json("npcs.json") or {}
         party = [n for n, d in npcs.items() if isinstance(d, dict) and is_party_member(d)]
         lines.append("")
-        lines.append("--- PARTY MEMBERS (with the player wherever they go) ---")
+        lines.append(f"--- PARTY MEMBERS (with {self._character_name()} wherever they go) ---")
         lines.append(", ".join(party) if party else "(none)")
         self.npcs = npcs
         return lines
 
     def _section_scene(self) -> list[str]:
         """The scene as cards (lib/cards.py): the place, then everyone present.
-        Facts printed in an earlier section are not printed again. What waits
-        at the place is left to READY THREADS and PENDING CONSEQUENCES."""
+        Facts printed in an earlier section are named by id. What waits at the
+        place is under its plot above."""
         from cards import Cards
-        cards = Cards(self.json_ops, full=self.full, shown_texts=self.shown_texts)
-        return ["", "--- THE SCENE (play the people as their cards say; they know only "
-                    "what is on their card or shared with the player) ---"] + cards.scene(waiting=False)
-
-    def _section_pending(self) -> list[str]:
-        lines = []
-        full = self.full
-        # --- Pending Consequences ---
-        lines.append("")
-        lines.append("--- PENDING CONSEQUENCES ---")
-        consequences = self.json_ops.load_json("consequences.json") or {}
-        pending = []
-        if isinstance(consequences, dict):
-            # Not-yet-resolved consequences live in the 'active' (and optional 'pending') lists
-            for section in ('active', 'pending'):
-                for cdata in consequences.get(section, []):
-                    if not isinstance(cdata, dict):
-                        continue
-                    event = cdata.get('consequence', 'Unknown')
-                    trigger = cdata.get('trigger', 'Unknown')
-                    cid = str(cdata.get('id', '?'))
-                    short_id = cid[:4] if len(cid) >= 4 else cid
-                    typed = " · ".join(f"{t.get('type')} {t.get('match')}"
-                                       for t in cdata.get('triggers') or []
-                                       if isinstance(t, dict) and t.get('type'))
-                    line = f"[{short_id}] {event} -> triggers: {trigger}"
-                    line += f" [{typed}]" if typed else ""
-                    then = describe_effects(cdata.get('effects'))
-                    pending.append(line + (f" -> when it fires, {then}" if then else ""))
-        elif isinstance(consequences, list):
-            for cdata in consequences:
-                if isinstance(cdata, dict):
-                    event = cdata.get('consequence', cdata.get('event', 'Unknown'))
-                    trigger = cdata.get('trigger', 'Unknown')
-                    cid = str(cdata.get('id', '?'))
-                    short_id = cid[:4] if len(cid) >= 4 else cid
-                    pending.append(f"[{short_id}] {event} -> triggers: {trigger}")
-
-        if pending:
-            max_pending = len(pending) if full else 10
-            for p in pending[:max_pending]:
-                lines.append(p)
-            if not full and len(pending) > max_pending:
-                rem = self._remainder(
-                    len(pending) - max_pending, "pending consequences",
-                    "--full or gm-consequence.sh check")
-                if rem:
-                    lines.append(rem)
-        else:
-            lines.append("(none)")
-        return lines
+        cards = Cards(self.json_ops, shown_ids=self.shown_ids, shown_texts=self.shown_texts)
+        return (["", "--- THE SCENE (play the people as their cards say; they know only "
+                     f"what is on their card or shared with {self._character_name()}) ---"]
+                + cards.scene(waiting=False))
 
     def _section_world_rules(self) -> list[str]:
         lines = []
@@ -474,36 +497,6 @@ class Brief:
         if prim == "guarded_payoff":
             return "roll BEFORE taking marked treasure: clean / guardian wakes / curse attaches"
         return system.get("summary") or prim or ""
-
-    # Categories that carry continuity the GM must not contradict. `player_choices`
-    # and `npc_relations` were advertised by gm-note.sh and read by nothing, so the
-    # two categories that hold what the player DID were write-only. `session_events`
-    # stays out (the plots carry what happened) and so does `rules` (the world's
-    # own rules block owns that); both remain reachable through recall.
-    KEY_FACT_CATEGORIES = ('plot_local', 'plot_regional', 'plot_world',
-                           'player_choices', 'npc_relations', 'lore')
-
-    def _key_facts(self, per_category=3):
-        """Established facts the GM must keep continuity on, attitudes aside (the
-        NPC cards show those). per_category=None = all."""
-        facts = self.json_ops.load_json("facts.json") or {}
-        if not isinstance(facts, dict):
-            return []
-        out = []
-        for cat in self.KEY_FACT_CATEGORIES:
-            items = facts.get(cat)
-            if not isinstance(items, list):
-                continue
-            chosen = items if per_category is None else items[-per_category:]
-            for it in chosen:
-                if isinstance(it, dict) and it.get('attitude'):
-                    continue                # the cards show attitudes, written out
-                txt = fact_text(it)
-                if txt:
-                    out.append(txt)
-        if per_category is not None or self.full:
-            self.shown_texts = getattr(self, "shown_texts", []) + out
-        return out
 
     def _wrong_beliefs(self):
         """Lines for what the player character holds that is wrong or partial,

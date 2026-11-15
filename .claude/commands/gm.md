@@ -108,9 +108,9 @@ Complete Steps 1-3 before presenting the scene. Do not skip them.
 bash tools/gm-session.sh start
 bash tools/gm-session.sh context
 ```
-This single command gives you: character stats, party members (with recent events), pending consequences, campaign rules, location, and time. Read and internalize ALL of it.
+This single command gives you: the plots (with their clocks, waiting consequences and secrets), the character, the campaign's rules, the newest facts, the scene, location and time. Read and internalize ALL of it.
 
-For the latest facts in full (who knows them, what is true), run `bash tools/gm-note.sh recent 15`; for anything else, `gm-note.sh find` (by who knows it, who it's about) and `gm-note.sh show <id>`. Never read `facts.json` or the other campaign files yourself.
+The brief's LATEST lists the newest facts; for more, `bash tools/gm-note.sh recent 15`, `gm-note.sh find` (by who knows it, who it's about, `--plot`) and `gm-note.sh show <id>`. Never read `facts.json` or the other campaign files yourself.
 
 **If there is no character yet** (no `character.json` / the context shows no active PC), don't
 narrate a scene into a void and don't launch the 9-step builder — go to ENTERING A WORLD
@@ -121,8 +121,7 @@ below, ask the one question, then come back and finish the checklist.
 #### Step 2: Where the story stands
 The brief's location, time, plots and facts are the truth: every move, time step and fact
 is recorded as it happens. A plot's "stands" is one sentence the GM wrote when it last
-moved, so it can be older than the plot's latest facts: `bash tools/gm-note.sh recent 15`
-shows them. If something still doesn't add up, ask the player out of character before
+moved, so it can be older than the plot's latest facts: the brief's LATEST shows them. If something still doesn't add up, ask the player out of character before
 narrating (`CLAUDE.md` → Scene context).
 
 #### Step 3: Who is in the scene
@@ -214,7 +213,7 @@ bash tools/gm-session.sh world-tick <<'EOF'
 EOF
 ```
 
-- `fact` (required): what happened, one line. Optional `"category"` (default `plot_local`, shown under KEY FACTS) and `"about"`: a list of ids (`npc:<name>`, `location:<name>`, `player`) the text doesn't name; names in the text are added by themselves. Optional `"holders"`: who knows it (`npc:<name>`, `street`, `public`, `player`); default nobody, since it happened off-screen. Optional `"at"`: where it happened (a known place); default none. Optional `"truth": "wrong"` or `"partial"` with `"version_of": "<fact id>"`: a cover story, a planted lie.
+- `fact` (required): what happened, one line. Optional `"category"` (default `plot_local`) and `"about"`: a list of ids (`npc:<name>`, `location:<name>`, `player`) the text doesn't name; names in the text are added by themselves. Optional `"holders"`: who knows it (`npc:<name>`, `street`, `public`, `player`); default nobody, since it happened off-screen. Optional `"at"`: where it happened (a known place); default none. Optional `"truth": "wrong"` or `"partial"` with `"version_of": "<fact id>"`: a cover story, a planted lie.
 - `plot` (optional): the plot the development belongs to; its fact, consequence and clock all join it.
 - `consequence` (optional): `text` plus `triggers`, the same types as `gm-consequence.sh add` (`on_location`, `on_npc`, `on_time`, `on_death`, `on_clock`, `on_learn`, `on_event`). A consequence without triggers is refused.
 - `clock` (optional): `name` (a short key of one to three words, which triggers and commands use: `on_clock` `"Tracker:2"`), `text` (what it is about), `segments`, and `due_in` (`3d`) or `due` (`"YYYY-MM-DD HH:MM"`) for a time clock, or `"on": "event"` for one you advance by hand; `consequence` fires when it fills.

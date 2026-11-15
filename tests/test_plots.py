@@ -138,3 +138,23 @@ def test_plot_is_the_field_everywhere(world):
         notes.beat([{"fact": "The stairs groan.", "plots": ["The Descent"]}])
     with pytest.raises(WorldTickError, match='"plot"'):
         WorldTick(world).record([{"fact": "Far off, a door.", "plots": ["The Descent"]}])
+
+
+def test_the_brief_is_ordered_by_plot(world):
+    """Under each plot: its clocks, what waits in it, and what the character
+    doesn't know of it, with who does; LATEST names a fact shown above by id."""
+    from lib.session_manager import SessionManager
+    notes = NoteManager(world)
+    PlotManager(world).add("The Descent", "Down the stairs.", stands="The timer runs.")
+    ThreatClockManager(world).add_clock("Collapse", 3, advance_on="event", plots=["The Descent"])
+    ConsequenceManager(world).add_consequence("The stairs give way", "Collapse:2",
+                                              triggers=[{"type": "on_clock", "match": "Collapse:2"}],
+                                              plots=["The Descent"])
+    secret = notes.add_fact("plot_local", "Mordecai rigged the stairs.", holders=["npc:Mordecai"],
+                            plots=["The Descent"])
+    brief = SessionManager(world).get_full_context()
+    block = brief.split("] The Descent: The timer runs.")[1].split("\n---")[0]
+    assert "clock Collapse: 0/3" in block and "The stairs give way (when: Collapse:2" in block
+    assert f"{secret} Mordecai rigged the stairs. (Mordecai knows)" in block
+    assert f"also {secret} (above)" in brief.split("--- LATEST")[1]
+    assert "KEY FACTS" not in brief and "THREAT CLOCKS" not in brief

@@ -313,7 +313,7 @@ A dictionary with category keys, each containing an array of fact **objects**.
   truth is one step away; a wrong fact with no truth behind it can't be pointed at.
   `fact_text()` (`lib/note_manager.py`) marks such text `[WRONG; the truth is fN]` /
   `[PARTIAL; fuller: fN]`, a fact nobody holds (`holders: []`) `[SECRET]`, and one
-  that others hold but not the player (nor `public`) `[HIDDEN FROM PLAYER]`, in KEY FACTS, the NPC lists, long-term memory and search; the
+  that others hold but not the player (nor `public`) `[HIDDEN FROM PLAYER]`, in the brief, the NPC lists, long-term memory and search; the
   brief lists what the player holds wrongly or partly next to the truth.
   `gm-note.sh … --truth --version-of` sets them at recording, `gm-note.sh truth <id>
   wrong|partial|true [--version-of <id> | --no-version]` later.

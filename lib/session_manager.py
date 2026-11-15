@@ -214,10 +214,10 @@ class SessionManager(EntityManager):
         print(f"[SUCCESS] Party moved from {old_location} to {location}")
         return result
 
-    def get_full_context(self, full: bool = False) -> str:
+    def get_full_context(self) -> str:
         """The session brief (lib/brief.py)."""
         from brief import Brief
-        return Brief(self).text(full=full)
+        return Brief(self).text()
 
     def _scene(self):
         """campaign-overview.json's scene list (see gm-scene.sh), or None."""
@@ -267,8 +267,7 @@ def main():
                              help='Only check that the place can be moved to (before travel time passes)')
 
     # Full session context
-    context_parser = subparsers.add_parser('context', help='Get full session context (one-command startup)')
-    context_parser.add_argument('--full', action='store_true', help='Show full context with less truncation')
+    subparsers.add_parser('context', help='The start brief (one-command startup)')
 
     choices_parser = subparsers.add_parser('choices', help='Toggle the action-menu play style')
     choices_parser.add_argument('value', nargs='?', default='show',
@@ -289,7 +288,7 @@ def main():
         emit(manager.get_status(), json_mode=True)
         return
     if json_mode and args.action == 'context':
-        emit({"context": manager.get_full_context(full=getattr(args, 'full', False))}, json_mode=True)
+        emit({"context": manager.get_full_context()}, json_mode=True)
         return
     if args.action == 'move':
         location = ' '.join(args.location)
@@ -316,7 +315,7 @@ def main():
         print(json.dumps(status, indent=2))
 
     elif args.action == 'context':
-        print(manager.get_full_context(full=getattr(args, 'full', False)))
+        print(manager.get_full_context())
 
     elif args.action == 'choices':
         val = getattr(args, 'value', 'show')

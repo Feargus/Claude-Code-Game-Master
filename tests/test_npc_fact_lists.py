@@ -181,4 +181,3 @@ def test_a_long_list_is_capped_and_disclosed(dcc_world):
     sm = SessionManager(dcc_world)
     block = _npc_block(sm.get_full_context(), "Griselda")
     assert block.count("knows, and Tandy doesn't:") == 3 and "+2 more (gm-note.sh find" in block
-    assert _npc_block(sm.get_full_context(full=True), "Griselda").count("knows, and Tandy doesn't:") == 5

@@ -8,7 +8,6 @@ write-only. These assert every advertised category now has a reader.
 import re
 from pathlib import Path
 
-from lib.brief import Brief
 from lib.note_manager import NoteManager
 from lib.session_manager import SessionManager
 
@@ -34,7 +33,7 @@ def test_plot_facts_still_reach_the_scene(dcc_world):
 
 
 def test_every_advertised_category_has_a_reader(dcc_world):
-    """No category may be a write-only hole: KEY FACTS reads it, or recall does."""
+    """No category may be a write-only hole: recall reads every one."""
     help_text = WRAPPER.read_text(encoding="utf-8")
     advertised = set()
     for line in help_text.splitlines():
@@ -45,7 +44,7 @@ def test_every_advertised_category_has_a_reader(dcc_world):
             break
     assert advertised, "could not parse advertised categories from gm-note.sh"
 
-    read_by_key_facts = set(Brief.KEY_FACT_CATEGORIES)
+    read_by_key_facts = set()          # the brief reads by plot now, not by category
     for cat in advertised - read_by_key_facts:
         # Reachable through campaign memory, which gathers every facts category.
         NoteManager(dcc_world).add_fact(cat, f"a distinctive {cat} fact about zzyzx")

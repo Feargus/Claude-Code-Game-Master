@@ -34,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from consequence_manager import ConsequenceManager
 
-# Default fact category: one the session brief shows under KEY FACTS.
+# Default fact category for an off-screen development.
 # Provisional, like all categories (design-notes.md, "World state").
 DEFAULT_CATEGORY = "plot_local"
 

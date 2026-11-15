@@ -39,7 +39,7 @@ description — never fabricate canon to fill the gap.
 
 ## Step 2 — Read and weave into the existing world
 ```bash
-bash tools/gm-session.sh context     # the scene, running THREAT CLOCKS, KEY FACTS
+bash tools/gm-session.sh context     # the plots with their clocks and secrets, the scene
 bash tools/gm-npc.sh list            # the world's people, sketches included
 bash tools/gm-plot.sh list           # existing plots — do NOT duplicate one
 bash tools/gm-search.sh "<seed>" --world-only   # established NPCs / locations / facts

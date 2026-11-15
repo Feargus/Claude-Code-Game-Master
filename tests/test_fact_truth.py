@@ -158,7 +158,7 @@ def test_a_secret_is_marked_wherever_its_text_shows(dcc_world):
     nm = NoteManager(dcc_world)
     nm.add_fact("plot_local", "The vault code is 0451.", secret=True)
     ctx = SessionManager(dcc_world).get_full_context()
-    assert "- [SECRET] The vault code is 0451." in ctx            # KEY FACTS
+    assert "[SECRET] The vault code is 0451." in ctx              # IN NO PLOT
 
 
 def test_a_fact_the_player_does_not_hold_is_marked():

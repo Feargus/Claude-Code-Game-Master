@@ -20,8 +20,11 @@ def test_context_includes_active_character(dcc_world):
     assert "Tandy" in _context(dcc_world)
 
 
-def test_context_has_pending_consequences_section(dcc_world):
-    assert "PENDING CONSEQUENCES" in _context(dcc_world)
+def test_a_consequence_in_no_plot_is_listed_there(dcc_world):
+    from lib.consequence_manager import ConsequenceManager
+    ConsequenceManager(dcc_world).add_consequence("The bouncer remembers", "later")
+    ctx = _context(dcc_world)
+    assert "--- IN NO PLOT ---" in ctx and "The bouncer remembers (when: later)" in ctx
 
 
 def test_the_brief_states_only_play_styles_that_differ_from_the_default(dcc_world):
@@ -101,5 +104,5 @@ def test_pending_consequences_show_their_typed_triggers(dcc_world):
         triggers=[{"type": "on_location", "match": "Floor 2 Junction"},
                   {"type": "on_npc", "match": "Mordecai"}])
     ctx = _context(dcc_world)
-    assert ("-> triggers: when Carl is back at the club "
-            "[on_location location:Floor 2 Junction · on_npc npc:Mordecai]") in ctx
+    assert ("(when: when Carl is back at the club; "
+            "on_location location:Floor 2 Junction · on_npc npc:Mordecai)") in ctx

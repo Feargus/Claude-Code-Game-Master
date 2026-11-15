@@ -207,9 +207,7 @@ case "$ACTION" in
         echo "$CONTEXT_OUTPUT"
         CONTEXT_CHARS=${#CONTEXT_OUTPUT}
         CONTEXT_TOKENS=$(estimate_tokens_from_chars "$CONTEXT_CHARS")
-        FULL_FLAG=false
-        for arg in "$@"; do [ "$arg" = "--full" ] && FULL_FLAG=true; done
-        log_token_usage "gm-session-context" "full=$FULL_FLAG" "output_chars=$CONTEXT_CHARS" "output_tokens_est=$CONTEXT_TOKENS"
+        log_token_usage "gm-session-context" "output_chars=$CONTEXT_CHARS" "output_tokens_est=$CONTEXT_TOKENS"
         exit $CONTEXT_STATUS
         ;;
 

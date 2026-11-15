@@ -65,52 +65,25 @@ def test_world_tick_applies_five_and_warns_on_overflow(dcc_world, capsys):
 
 
 def test_context_remainder_counts_on_every_truncated_section(tmp_path):
-    plots = {f"Thread {i}": {"name": f"Thread {i}", "type": "side", "status": "active"}
+    """The brief cuts one list: what the character doesn't know of a plot, at
+    five, with the command for the rest. Plots, terms and consequences are all
+    listed; there is no --full (2026-11-15)."""
+    plots = {f"Thread {i}": {"description": f"thread {i}", "kind": "main", "status": "open"}
              for i in range(8)}
-    facts = {"plot_local": [{"fact": f"local fact {i}"} for i in range(5)]}
+    facts = {"plot_local": [{"id": f"f{i}", "fact": f"secret fact {i}", "holders": [],
+                             "plots": ["Thread 0"]} for i in range(1, 8)]}
     vocab = [f"term-{i}" for i in range(15)]
-    npcs = {
-        "Hero": {
-            "identity": {"name": "Hero", "role": "the PC's shadow"},
-            "status": {"party_member": True},
-        }
-    }
-    bible = {
-        "voice": {
-            "style": "terse",
-            "vocab": vocab,
-            "sample_passages": ["The sea remembered.", "The dead walked.",
-                                "Night kept the ledger.", "Dawn closed it."],
-        }
-    }
-    sessions = []
-    for i in range(5):
-        sessions.append(
-            f"## Session Started: 2026-01-0{i+1}\n"
-            f"### Session Ended: 2026-01-0{i+1}\n"
-            f"Session {i+1}: something happened.\n---\n"
-        )
-    pending = {"active": [
-        {"id": f"c{i:02d}", "consequence": f"event {i}", "trigger": "later"}
-        for i in range(12)
-    ]}
-    ws, camp = _campaign(tmp_path, extra={
-        "plots.json": plots,
-        "facts.json": facts,
-        "npcs.json": npcs,
-        "world-bible.json": bible,
-        "consequences.json": pending,
-    })
-    (camp / "session-log.md").write_text("".join(sessions), encoding="utf-8")
-
+    bible = {"voice": {"style": "terse", "vocab": vocab,
+                       "sample_passages": ["The sea remembered.", "The dead walked.",
+                                           "Night kept the ledger.", "Dawn closed it."]}}
+    pending = {"active": [{"id": f"c{i:02d}", "consequence": f"event {i}", "trigger": "later"}
+                          for i in range(12)]}
+    ws, _ = _campaign(tmp_path, extra={"plots.json": plots, "facts.json": facts,
+                                       "world-bible.json": bible, "consequences.json": pending})
     ctx = SessionManager(ws).get_full_context()
-    remainders = REMAINDER.findall(ctx)
-    assert remainders, "truncated context must disclose +N more"
-    assert "more threads" not in ctx               # every open plot is listed, most pressing first
-    assert "+2 more facts" in ctx
-    assert "term-14" in ctx and "more terms" not in ctx   # the glossary lists every term
-    assert "+2 more pending consequences" in ctx
-    assert "+1 more sample passages" in ctx
-
-    full = SessionManager(ws).get_full_context(full=True)
-    assert not REMAINDER.search(full), "--full lifts every bound; no remainder lines"
+    assert all(f"] Thread {i}:" in ctx for i in range(8))
+    assert '+ 2 more: gm-note.sh find --plot "Thread 0" --hidden' in ctx
+    assert "secret fact 7" in ctx and "secret fact 2" not in ctx.split("--- LATEST")[0]
+    assert "term-14" in ctx
+    assert all(f"event {i} (when: later)" in ctx for i in range(12))
+    assert "Dawn closed it." not in ctx                      # three sample passages

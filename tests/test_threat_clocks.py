@@ -57,8 +57,7 @@ def test_clocks_surface_in_session_context(dcc_world):
     ThreatClockManager(dcc_world).add_clock("Floor Collapse", segments=4, advance_on="event")
     ThreatClockManager(dcc_world).advance("Floor Collapse", 2)
     ctx = SessionManager(dcc_world).get_full_context()
-    assert "THREAT CLOCKS" in ctx
-    assert "Floor Collapse" in ctx and "2/4" in ctx
+    assert "clock Floor Collapse: 2/4" in ctx           # in no plot
 
 
 def _start_time(dcc_world, text="2187-10-26 10:00"):
@@ -143,7 +142,7 @@ def test_context_shows_when_a_time_clock_is_due(dcc_world):
     _start_time(dcc_world)
     ThreatClockManager(dcc_world).add_clock("Siege", segments=4)
     ctx = SessionManager(dcc_world).get_full_context()
-    assert "Siege: [○○○○] 0/4, due 10:00, Tuesday, 30 October 2187" in ctx
+    assert "clock Siege: 0/4, due 10:00, Tuesday, 30 October 2187" in ctx
 
 
 def test_a_clock_needs_a_segment_and_a_known_mode(dcc_world):
