@@ -110,7 +110,7 @@ def test_a_new_character_after_a_death_starts_knowing_nothing(camp):
 def test_the_interview_example_saves(camp):
     """The example in /create-character is the default character: it must save."""
     text = (ROOT / ".claude" / "commands" / "create-character.md").read_text()
-    data = json.loads(re.search(r"gm-player.sh create '(\{.*\})'", text).group(1))
+    data = json.loads(re.search(r"gm-player.sh create <<'EOF'\n(\{.*\})\nEOF", text).group(1))
     result = CharacterCreator().create(data)
     assert result["success"], result
     skills = result["character"]["stats"]["skills"]

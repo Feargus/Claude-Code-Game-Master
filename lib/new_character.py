@@ -235,7 +235,6 @@ class CharacterCreator(EntityManager):
 
 def main():
     import argparse
-    import json
 
     from cli_output import emit, emit_error, strip_json_flag, wants_json
 

@@ -66,7 +66,7 @@ def test_the_save_example_is_a_valid_new_sheet():
 def test_the_death_protocol_routes_new_characters_to_the_interview():
     text = (ROOT / ".claude" / "skills" / "gm-death" / "SKILL.md").read_text(encoding="utf-8")
     swap = text[text.index("Swap in the new character"):]
-    assert "/create-character" in swap and "create '<json>' --replace" in swap
+    assert "/create-character" in swap and "create --replace" in swap
     assert "--canon" in swap
 
 

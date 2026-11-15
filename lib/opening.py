@@ -50,7 +50,6 @@ after the character exists and the player has said where and when to start.
 
 import contextlib
 import io
-import json
 import sys
 from pathlib import Path
 from typing import Any
