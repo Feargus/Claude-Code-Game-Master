@@ -751,14 +751,24 @@ def fact_details(f: dict) -> str:
     return "\n".join(lines)
 
 
-def _print_found(found: list, limit: int) -> None:
+NARROW = ('gm-note.sh find --about "npc:<who>" --at "<where>" (or --plot "<plot>", '
+          '--held-by "<who>"; filters combine)')
+
+
+def _print_found(found: list, limit: int, filtered: bool = True) -> None:
+    """The facts, newest first, at most `limit` (0: all). A longer list ends
+    with how to narrow it: lists stay short when lookups are filtered."""
     shown = found if limit <= 0 else found[:limit]
     for f in shown:
         print(fact_line(f))
     if not found:
         print("No facts match.")
     elif len(found) > len(shown):
-        print(f"+{len(found) - len(shown)} more (--limit 0 for all; gm-note.sh show <id> for one in full)")
+        more = len(found) - len(shown)
+        if filtered:
+            print(f"+{more} more: add another filter, or --limit 0 for all")
+        else:
+            print(f"+{more} older: narrow it with {NARROW}")
 
 
 def main():
@@ -820,7 +830,7 @@ def main():
     p.add_argument("--text", help="words that must all occur in it")
     p.add_argument("--at", help="where it happened")
     p.add_argument("--plot", help="the plot it belongs to")
-    p.add_argument("--limit", type=int, default=20, help="how many (0: all); newest first")
+    p.add_argument("--limit", type=int, default=10, help="how many (0: all); newest first")
     p = sub.add_parser("beat", help="several facts of one beat at once")
     p.add_argument("facts", nargs="?", help='JSON list: [{"fact": ..., "holders": [...], ...}, ...]; '
                                  'version_of may be "#1" (an earlier fact of this beat). '
@@ -897,13 +907,19 @@ def main():
                                      args.truth, args.category, args.text, args.at,
                                      plot=args.plot)
             else:
-                found = manager.find()[:max(0, args.count)]
+                found = manager.find()
+                if json_mode:
+                    found = found[:max(0, args.count)]
             if json_mode:
                 print(json.dumps(found, indent=2, ensure_ascii=False))
             elif args.action == 'show':
                 print("\n\n".join(fact_details(f) for f in found))
+            elif args.action == 'recent':
+                _print_found(found, max(1, args.count), filtered=False)
             else:
-                _print_found(found, args.limit if args.action == 'find' else 0)
+                given = (args.held_by, args.about, args.secret, args.hidden, args.truth,
+                         args.category, args.text, args.at, args.plot)
+                _print_found(found, args.limit, filtered=any(given))
     except (RuntimeError, ValueError) as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)

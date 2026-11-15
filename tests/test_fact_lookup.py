@@ -93,6 +93,7 @@ def test_cli(notes):
     assert r.returncode == 0, r.stderr
     assert r.stdout.startswith("f5 [2187-10-26 05:35] [WRONG; the truth is f2]")
     assert "+2 more" in r.stdout
-    assert run("recent", "2").stdout.count("\n") == 2
+    recent = run("recent", "2").stdout.splitlines()
+    assert len(recent) == 3 and recent[-1].startswith("+") and "narrow it" in recent[-1]
     assert json.loads(run("show", "f2", "--json").stdout)[0]["versions"] == ["f5"]
     assert run("find", "--held-by", "Nobody").returncode == 1

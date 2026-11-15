@@ -287,11 +287,12 @@ class Brief:
             return []
         newer = [f["id"] for f in facts if f.get("id") in self.shown_ids
                  and self._number(f) > self._number(fresh[0])]
-        lines = ["", "--- LATEST (the newest facts not shown above; more: gm-note.sh recent 15) ---"]
+        from note_manager import NARROW
+        lines = ["", "--- LATEST (the newest facts not shown above) ---"]
         if newer:
             lines.append(f"  newer, above: {', '.join(newer)}")
         lines += [f"  {self._fact_line(f)}" for f in fresh]
-        return lines
+        return lines + [f"  more: {NARROW}"]
 
     # ---------- what the plot sections read ----------
 
