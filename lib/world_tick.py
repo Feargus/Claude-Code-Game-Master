@@ -151,8 +151,6 @@ class WorldTick:
         WorldTickError and keeps nothing if any part is malformed or refused.
         """
         from note_manager import NoteManager
-        from threat_clocks import ThreatClockManager
-        from time_manager import TimeError, parse_duration, parse_time
 
         for i, d in enumerate(developments):
             self._check(d, i)
@@ -177,7 +175,14 @@ class WorldTick:
                 raise WorldTickError(f"development {i + 1}: {' '.join(errors)}")
         written = {"facts": [], "consequences": [], "clocks": []}
         applied = []
+        clock_names = {}
         try:
+            # Two passes: every clock first, so a consequence can wait on a clock
+            # that comes later in the list (the GM writes them in any order).
+            for i, d in enumerate(developments):
+                if d.get("clock"):
+                    clock_names[i] = self._add_clock(i, d["clock"], as_list(d.get("plot")))
+                    written["clocks"].append(clock_names[i])
             for i, d in enumerate(developments):
                 text = str(d.get("fact") or d.get("text")).strip()
                 plots = as_list(d.get("plot"))
@@ -204,28 +209,30 @@ class WorldTick:
                     written["consequences"].append(cid)
                     entry["consequence"] = cid
 
-                clock = d.get("clock")
-                if clock:
-                    tcm = ThreatClockManager(self.world_state_dir)
-                    name = " ".join(clock["name"].split())
-                    try:
-                        tcm.add_clock(
-                            name, int(clock["segments"]),
-                            advance_on=clock.get("on", "time"),
-                            consequence=clock.get("consequence"),
-                            plots=plots, text=clock.get("text"),
-                            due_at=parse_time(clock["due"]) if clock.get("due") else None,
-                            due_in_minutes=(parse_duration(clock["due_in"])
-                                            if clock.get("due_in") else None))
-                    except (TimeError, ValueError) as error:
-                        raise WorldTickError(f"development {i + 1}: clock: {error}") from error
-                    written["clocks"].append(name)
-                    entry["clock"] = name
+                if d.get("clock"):
+                    entry["clock"] = clock_names[i]
                 applied.append(entry)
         except WorldTickError:
             self._undo(written["facts"], written["consequences"], written["clocks"])
             raise
         return applied, written
+
+    def _add_clock(self, i: int, clock: dict[str, Any], plots: list[str]) -> str:
+        """Make development i's clock. Returns its name; raises WorldTickError."""
+        from threat_clocks import ThreatClockManager
+        from time_manager import TimeError, parse_duration, parse_time
+        name = " ".join(clock["name"].split())
+        try:
+            ThreatClockManager(self.world_state_dir).add_clock(
+                name, int(clock["segments"]),
+                advance_on=clock.get("on", "time"),
+                consequence=clock.get("consequence"),
+                plots=plots, text=clock.get("text"),
+                due_at=parse_time(clock["due"]) if clock.get("due") else None,
+                due_in_minutes=(parse_duration(clock["due_in"]) if clock.get("due_in") else None))
+        except (TimeError, ValueError) as error:
+            raise WorldTickError(f"development {i + 1}: clock: {error}") from error
+        return name
 
     def waiting(self, applied: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Consequences waiting on an event that the tick's facts might fulfil

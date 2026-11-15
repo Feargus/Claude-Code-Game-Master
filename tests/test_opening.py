@@ -199,3 +199,20 @@ def test_the_plot_starts_with_its_hook_and_consequences_say_when(world):
     assert _load(camp, "plots.json")["The Writ"]["stands"] == SPEC["plot"]["hook"]
     con = _load(camp, "consequences.json")["active"][0]
     assert con["trigger"] == "the Lantern"   # the match it waits for
+
+
+def test_a_consequence_may_wait_on_a_clock_given_later(world):
+    """Both playtest openings (2026-11-14) were refused because a consequence on
+    "<clock>:1" came before the development that makes the clock. The clocks
+    are made first now, whatever the order."""
+    from lib.world_tick import WorldTick
+    ws, _ = world
+    applied, written = WorldTick(ws).record([
+        {"fact": "A thug is told to find the driver.",
+         "consequence": {"text": "The thug asks at the garage",
+                         "triggers": [{"type": "on_clock", "match": "Repossession:1"}]}},
+        {"fact": "The convoy is hired.",
+         "clock": {"name": "Repossession", "text": "The convoy comes", "segments": 4,
+                   "on": "event"}}])
+    assert written["clocks"] == ["Repossession"] and len(written["consequences"]) == 1
+    assert applied[1]["clock"] == "Repossession"
