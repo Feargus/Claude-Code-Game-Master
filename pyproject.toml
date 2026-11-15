@@ -38,6 +38,14 @@ voice = [
     "elevenlabs>=2.8.1",
 ]
 
+# Semantic recall: facts ranked by meaning (EmbeddingGemma on ONNX Runtime, no PyTorch).
+# The model itself is downloaded by `bash tools/gm-recall.sh setup`.
+recall = [
+    "numpy>=1.26",
+    "onnxruntime>=1.20",
+    "tokenizers>=0.20",
+]
+
 # RAG-based document extraction
 rag = [
     "sentence-transformers>=2.2.0",

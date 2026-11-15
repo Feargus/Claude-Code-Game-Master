@@ -33,6 +33,10 @@ _previous_hook = sys.excepthook
 sys.excepthook = _plain_error
 
 
+# The files whose texts the background job embeds (embedding_store.texts).
+EMBEDDED_FILES = {"facts.json", "locations.json", "plots.json"}
+
+
 class JsonOperations:
     """Safe JSON file operations for world state management"""
 
@@ -93,6 +97,14 @@ class JsonOperations:
                 f"Can't write {filepath}: {e}. That file is as it was before; anything the "
                 f"command saved before this point is kept, so check the result before "
                 f"running it again.") from e
+        if filepath.name in EMBEDDED_FILES:
+            # The texts of facts, places and plots get vectors for semantic recall:
+            # a background job, started when this command ends (embedding_store.py).
+            try:
+                from embedding_store import request
+            except ImportError:                       # imported as lib.json_ops
+                from lib.embedding_store import request
+            request(filepath.parent)
         return True
 
     def update_json(self, filename: str, updates: dict, path: list[str] = None) -> bool:
