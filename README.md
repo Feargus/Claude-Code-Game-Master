@@ -63,7 +63,11 @@ bash tools/gm-recall.sh status         # ready? and how much of the campaign is 
 - **When it works:** after a command records a fact, describes a place or rewrites a plot,
   a background job embeds the new texts (about 6 s to load the model, under a second per
   text). One job runs at a time.
-- **What it needs:** about 0.5 GB of RAM while a job runs. Measured on a Raspberry Pi 4
+- **Fast after the first use:** a helper process keeps the model loaded, so a question by
+  meaning takes about 1.3 s instead of 7. It starts by itself when a command first needs the
+  model and stops after 30 minutes unused; `bash tools/gm-recall.sh stop` ends it at once.
+  It listens on a Unix socket in a RAM folder (`/run/user/<uid>`), no network port.
+- **What it needs:** about 0.5 GB of RAM while the helper or a job runs. Measured on a Raspberry Pi 4
   (4 GB); `uv` and the model download write their caches to your home folder unless told
   otherwise (`UV_CACHE_DIR`, `GM_MODELS_DIR`), worth pointing at a hard disk on a machine
   that runs from an SD card.

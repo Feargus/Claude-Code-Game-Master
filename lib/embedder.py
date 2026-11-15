@@ -15,7 +15,8 @@ Tests set GM_EMBEDDER=fake: vectors from the words' hashes, the same every run,
 so the suite needs neither the packages nor the model.
 
     gm-recall.sh setup      download and check the model files
-    gm-recall.sh status     what is installed, and where
+    gm-recall.sh status     what is installed, and where; whether the helper runs
+    gm-recall.sh stop       stop the helper that keeps the model loaded (embed_helper.py)
 """
 
 import hashlib
@@ -148,8 +149,11 @@ class FakeEmbedder:
 
 
 def get_embedder():
-    """The embedder to use, or None when semantic recall isn't installed.
-    GM_EMBEDDER=fake (tests) or off chooses explicitly."""
+    """The embedder to use, or None when semantic recall isn't installed. It asks
+    the helper process that keeps the model loaded (embed_helper.py), starting it
+    if need be, and loads the model itself only when the helper can't answer.
+    GM_EMBEDDER=fake (tests) or off chooses explicitly; GM_EMBED_HELPER=off skips
+    the helper."""
     choice = os.environ.get("GM_EMBEDDER", "")
     if choice == "off":
         return None
@@ -157,7 +161,10 @@ def get_embedder():
         return FakeEmbedder()
     if packages_missing() or files_missing():
         return None
-    return Embedder()
+    if os.environ.get("GM_EMBED_HELPER") == "off":
+        return Embedder()
+    from embed_helper import HelperEmbedder
+    return HelperEmbedder(MODEL_NAME)
 
 
 # ---------- setup and status ----------

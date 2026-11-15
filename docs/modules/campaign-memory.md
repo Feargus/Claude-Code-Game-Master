@@ -24,6 +24,11 @@ facts, and before that session summaries and arc entries).
   PyTorch. Chosen by a benchmark on a Raspberry Pi 4: about 6 s to load, under a second per
   text, 0.5 GB of RAM. Optional (`uv sync --extra recall`, `gm-recall.sh setup`); without it,
   `--like` ranks by keywords (BM25) and says so.
+- **The helper** (`lib/embed_helper.py`): a process that keeps the model loaded, reached
+  through a Unix socket in a RAM folder. The first command that needs the model starts it;
+  it exits after 30 minutes unused; a command that finds it outdated (other model files or
+  code) replaces it, and one that can't reach it loads the model itself. A question by
+  meaning then takes about 1.3 s instead of 7.
 - **The vectors** (`lib/embedding_store.py`): one per fact, place and plot, in the
   campaign's `embeddings.npz` (derived, not in git). Saving `facts.json`, `locations.json`
   or `plots.json` starts a background job when the command ends; one job runs at a time
