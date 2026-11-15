@@ -34,7 +34,7 @@ sys.excepthook = _plain_error
 
 
 # The files whose texts the background job embeds (embedding_store.texts).
-EMBEDDED_FILES = {"facts.json", "locations.json", "plots.json"}
+EMBEDDED_FILES = {"facts.json", "locations.json", "plots.json", "npcs.json"}
 
 
 class JsonOperations:

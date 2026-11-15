@@ -67,6 +67,14 @@ class LocationManager(EntityManager):
         if refusal:
             print(f"[ERROR] {refusal}")
             return False
+        if not another:                           # somewhere like this exists (recall.py)
+            from embedding_store import location_text
+            from recall import close_in_meaning, meaning_refusal
+            hit = close_in_meaning(self.json_ops, "location", location_text(
+                name, {"description": description, "position": position}))
+            if hit:
+                print(f"[ERROR] {meaning_refusal('location', name, hit)}")
+                return False
         # Create location data
         location_data = {
             'position': position,

@@ -33,6 +33,10 @@ facts, and before that session summaries and arc entries).
   is only a bonus (`--about` +0.10, `--at` +0.05, `--plot` +0.05, recency up to +0.05),
   because those links can be missing. Facts a hard filter removed but that would have
   ranked among the shown ones are named as near-misses, so a gap in the data shows.
+- **Suggestions:** `gm-plot.sh add` lists the recorded facts closest to the new plot; once
+  play has begun, `gm-npc.sh create` and `gm-location.sh add` refuse a record that reads like
+  an existing one (similarity 0.60 or more; a person re-described scored 0.63 to 0.74,
+  different people at most 0.65) unless `--another` is given.
 - **A fact not embedded yet** (the background job is still running) is embedded by the
   query itself, up to 10; beyond that it counts as average.
 

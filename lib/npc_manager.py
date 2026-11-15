@@ -119,6 +119,12 @@ class NPCManager(EntityManager):
                               f"or e.g. --goal, --fears, --background, --physique.")
         except sheet_mod.SheetError as problem:
             errors.append(str(problem))
+        if not errors and not another:            # someone like this exists (recall.py)
+            from embedding_store import npc_text
+            from recall import close_in_meaning, meaning_refusal
+            hit = close_in_meaning(self.json_ops, "npc", npc_text(name, sheet))
+            if hit:
+                errors.append(meaning_refusal("npc", name, hit))
         if errors:
             for error in errors:
                 print(f"[ERROR] {error}")

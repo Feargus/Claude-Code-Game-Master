@@ -230,6 +230,55 @@ def suggest_for_plot(notes, plot_key: str, limit: int = 5) -> dict:
     return {"facts": sorted(facts, key=score, reverse=True)[:limit], "method": method}
 
 
+# ---------- a new person or place: someone like this exists already ----------
+
+SAME_MEANING = 0.60     # measured 2026-11-15: a person re-described scored 0.63-0.74
+                        # against the original; different people at most 0.65, typically 0.37
+
+
+def close_in_meaning(json_ops, kind: str, text: str):
+    """(name, similarity) of the existing person or place (`kind` "npc" or
+    "location") closest in meaning to `text`, when it reaches SAME_MEANING; else
+    None. Only once play has begun (the opening has run): building a world makes
+    many records at once, and each check loads the model (about 7 s)."""
+    if not (json_ops.load_json("campaign-overview.json") or {}).get("opened"):
+        return None
+    from embedder import get_embedder
+    from embedding_store import EmbeddingStore, location_text, npc_text
+    embedder = get_embedder()
+    if embedder is None:
+        return None
+    records = json_ops.load_json("npcs.json" if kind == "npc" else "locations.json") or {}
+    if not records:
+        return None
+    stored = EmbeddingStore(json_ops.world_state_dir).vectors(embedder.name)
+    new = embedder.document(text)
+    best, inline = None, 0
+    for name, record in records.items():
+        if not isinstance(record, dict):
+            continue
+        v = stored.get(f"{kind}:{name}")
+        if v is None and inline < EMBED_AT_ONCE:
+            inline += 1
+            v = embedder.document(npc_text(name, record) if kind == "npc" else
+                                  location_text(name, record))
+        if v is not None:
+            sim = float(v @ new)
+            if best is None or sim > best[1]:
+                best = (name, sim)
+    return best if best and best[1] >= SAME_MEANING else None
+
+
+def meaning_refusal(kind: str, new: str, hit) -> str:
+    what, tool = ("person", "gm-npc.sh show") if kind == "npc" else ("place", "gm-location.sh get")
+    alias = "gm-npc.sh alias" if kind == "npc" else "gm-location.sh alias"
+    who = "who" if kind == "npc" else "which"
+    return (f"'{new}' reads like {hit[0]}, {who} exists already (closeness {hit[1]:.2f}). The same "
+            f"{what} under two names splits what is known about them, so this is refused: look "
+            f"at bash tools/{tool} \"{hit[0]}\". If it is the same {what}, give it the new name "
+            f"as an alias ({alias}). If it really is another {what}, add --another.")
+
+
 # ---------- the scene: what the cards and the brief rank by ----------
 
 class SceneRanker:

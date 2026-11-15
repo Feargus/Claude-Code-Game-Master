@@ -47,10 +47,23 @@ def _hash(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()[:16]
 
 
+def npc_text(name: str, sheet: dict) -> str:
+    """Who someone is, in a line: name, role, background, what they are after."""
+    identity = sheet.get("identity") or {}
+    parts = [identity.get("role"), identity.get("background"),
+             (sheet.get("status") or {}).get("goal"), (sheet.get("personality") or {}).get("want")]
+    return f"{name}: " + "; ".join(str(p) for p in parts if p)
+
+
+def location_text(name: str, place: dict) -> str:
+    """What a place is: its description, or where it is while it has none."""
+    return f"{name}: " + str(place.get("description") or place.get("position") or "").strip()
+
+
 def texts(campaign_dir: Path) -> dict[str, str]:
     """What should have a vector: {key: text}. Facts (attitudes aside: they are
-    adjectives, shown on the cards), places with a description, and plots (what
-    they are about and where they stand)."""
+    adjectives, shown on the cards), places, people, and plots (what they are
+    about and where they stand)."""
     def load(name):
         path = Path(campaign_dir) / name
         try:
@@ -63,8 +76,11 @@ def texts(campaign_dir: Path) -> dict[str, str]:
             if isinstance(f, dict) and f.get("id") and f.get("fact") and not f.get("attitude"):
                 out[f"fact:{f['id']}"] = str(f["fact"])
     for name, loc in (load("locations.json") or {}).items():
-        if isinstance(loc, dict) and str(loc.get("description") or "").strip():
-            out[f"location:{name}"] = f"{name}: {loc['description']}"
+        if isinstance(loc, dict):
+            out[f"location:{name}"] = location_text(name, loc)
+    for name, sheet in (load("npcs.json") or {}).items():
+        if isinstance(sheet, dict):
+            out[f"npc:{name}"] = npc_text(name, sheet)
     for key, plot in (load("plots.json") or {}).items():
         if isinstance(plot, dict):
             parts = [plot.get("description"), plot.get("stands"), plot.get("summary")]

@@ -141,3 +141,37 @@ def test_a_new_plot_is_offered_the_facts_closest_to_it(notes, dcc_world):
     found = [f["id"] for f in suggest_for_plot(n, key)["facts"]]
     assert found[:2] and set(found[:2]) <= {ids["clown"], ids["secret"]}
     assert ids["door"] not in found[:2]
+
+
+# ---------- step e: someone like this exists already ----------
+
+def _open(dcc_world, opened=True):
+    import json
+    path = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "campaign-overview.json"
+    data = json.loads(path.read_text())
+    data["opened"] = "2187-10-26T05:00" if opened else None
+    path.write_text(json.dumps(data))
+
+
+def test_a_person_like_an_existing_one_is_refused_in_play(dcc_world, monkeypatch, capsys):
+    from lib.npc_manager import NPCManager
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    npcs = NPCManager(dcc_world)
+    assert npcs.create_npc("Vex Marrow", "a one-eyed fence who buys stolen crawler loot", nowhere=True)
+    _open(dcc_world)
+    assert not npcs.create_npc("The Fence", "a one-eyed fence who buys stolen crawler loot",
+                               nowhere=True)
+    assert "reads like Vex Marrow" in capsys.readouterr().out
+    assert npcs.create_npc("The Fence", "a one-eyed fence who buys stolen crawler loot",
+                           nowhere=True, another=True)
+    assert npcs.create_npc("Pell", "a baker of glowing bread", nowhere=True)     # nothing like it
+
+
+def test_before_the_opening_nothing_is_checked(dcc_world, monkeypatch):
+    """Building a world makes many records at once; each check would load the model."""
+    from lib.npc_manager import NPCManager
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    _open(dcc_world, opened=False)
+    npcs = NPCManager(dcc_world)
+    assert npcs.create_npc("Vex Marrow", "a one-eyed fence who buys stolen crawler loot", nowhere=True)
+    assert npcs.create_npc("The Fence", "a one-eyed fence who buys stolen crawler loot", nowhere=True)
