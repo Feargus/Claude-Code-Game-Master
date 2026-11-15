@@ -250,8 +250,8 @@ class Brief:
 
     def _belongings(self, belongs, more_hint: str, unplotted: bool = False) -> list[str]:
         """The lines under one plot: its clocks, its waiting consequences, and
-        what the character doesn't know of it. `belongs(plots)` says whether a
-        record with that `plots` list is in it."""
+        what the character doesn't know of it, what fits the scene first.
+        `belongs(plots)` says whether a record with that `plots` list is in it."""
         lines = []
         clocks = {n: c for n, c in (self.json_ops.load_json("threat-clocks.json") or {}).items()
                   if isinstance(c, dict) and belongs(c.get("plots") or [])}
@@ -267,8 +267,9 @@ class Brief:
             then = describe_effects(c.get('effects'))
             lines.append(f"  waiting [{cid}]: {fired}{c.get('consequence', '?')} "
                          f"(when: {self._when(c)})" + (f"; when it fires, {then}" if then else ""))
-        unknown = [f for f in self._facts_newest_first()
-                   if self._unknown_to_character(f) and belongs(f.get("plots") or [])]
+        unknown = self._scene().rank([f for f in self._facts_newest_first()
+                                      if self._unknown_to_character(f)
+                                      and belongs(f.get("plots") or [])])
         if unknown:
             lines.append(f"  {self._character_name()} doesn't know:")
             for f in unknown[:self.SECRETS_PER_PLOT]:
@@ -325,6 +326,20 @@ class Brief:
             names = [h.partition(":")[2] or ("the street" if h == "street" else h) for h in holders]
             text += f" ({', '.join(names)} {'knows' if len(names) == 1 else 'know'})"
         return f"{f.get('id')} {text}"
+
+    def _scene(self):
+        """The scene's ranking (recall.SceneRanker): the current place and the people
+        in the scene. Those that fit best come first."""
+        if getattr(self, "_scene_ranker", None) is None:
+            from entity_manager import npcs_present
+            from recall import SceneRanker
+            overview = self.json_ops.load_json(self.campaign_file) or {}
+            pos = overview.get("player_position") or {}
+            location = pos.get("current_location", "") if isinstance(pos, dict) else ""
+            npcs = self.json_ops.load_json("npcs.json") or {}
+            self._scene_ranker = SceneRanker(self.json_ops, location,
+                                             npcs_present(npcs, location, overview.get("scene")))
+        return self._scene_ranker
 
     def _character_name(self) -> str:
         import sheet as sheet_mod

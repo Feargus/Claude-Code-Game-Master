@@ -83,3 +83,49 @@ def test_the_command(isolated_world_state):
     assert out.stdout.startswith("Facts ranked by keywords") and "Charon" in out.stdout
     gone = run("gm-recall.sh", "recall", "the ferry")
     assert gone.returncode == 1 and "find --like" in gone.stderr
+
+
+# ---------- step d: the cards and the brief rank by the scene ----------
+
+def _here(dcc_world):
+    import json
+    overview = json.loads((Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
+                           / "campaign-overview.json").read_text())
+    return overview["player_position"]["current_location"]
+
+
+def test_the_place_card_shows_what_fits_the_scene_not_only_the_place(dcc_world, monkeypatch):
+    """A fact that matches the scene wins over newer ones that don't, though it
+    wasn't recorded at the place; what the character doesn't know has its own list."""
+    from lib.cards import Cards
+    from lib.location_manager import LocationManager
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    place = _here(dcc_world)
+    LocationManager(dcc_world).set_description(place, "Rusted cranes and stacked crates line the street.")
+    n = NoteManager(dcc_world)
+    old = n.add_fact("lore", "Behind the rusted cranes and stacked crates runs a smuggler's tunnel.",
+                     holders=["player"], nowhere=True)
+    for food in ("a sandwich", "an apple", "some soup"):
+        n.add_fact("session_events", f"Donut ate {food}.", holders=["player"], nowhere=True)
+    hidden = n.add_fact("plot_local", "The crates on the street hide stolen cranes parts.",
+                        holders=["npc:Mordecai"], nowhere=True)
+    card = Cards(n.json_ops).location_card(place)
+    known = [line for line in card if line.startswith("  fits here:")]
+    assert known and known[0].startswith(f"  fits here: {old} ")
+    unknown = [line for line in card if "doesn't know:" in line]
+    assert unknown and unknown[0].split(": ", 1)[1].startswith(hidden)
+
+
+def test_without_vectors_the_place_and_its_people_come_first(dcc_world):
+    """GM_EMBEDDER=off (the default in tests): the bonuses and recency decide."""
+    from lib.recall import SceneRanker
+    n = NoteManager(dcc_world)
+    place = _here(dcc_world)
+    mine = n.add_fact("lore", "The street floods every spring.", holders=["player"],
+                      about=[f"location:{place}"], nowhere=True)
+    newer = n.add_fact("lore", "Something happened far away.", holders=["player"], nowhere=True)
+    ranker = SceneRanker(n.json_ops, place)
+    assert not ranker.by_meaning
+    order = [f["id"] for f in ranker.rank([n._entry(n.json_ops.load_json("facts.json"), x)
+                                           for x in (newer, mine)])]
+    assert order == [mine, newer]

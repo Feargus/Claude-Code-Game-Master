@@ -6,12 +6,13 @@ The commands that change the scene print them, so the GM never has to ask:
 for each person who enters, and `gm-scene.sh` alone the whole scene. The brief
 shows the scene the same way.
 
-A card shows what the record says about its subject, then a few facts, newest
-first (until semantic recall ranks them by what is happening):
+A card shows what the record says about its subject, then a few facts, those that
+fit the scene best first (recall.SceneRanker: by meaning when semantic recall is
+installed, else by the place, the people present and recency):
 
     location card   the description and exits; who is usually found there; the
                     consequences waiting there and the plots that involve it; the facts
-                    that happened there or are about the place
+                    that fit the scene, those the character knows and those they don't
     NPC card        the sheet: who they are and how to play them; their
                     attitudes (towards the player first); what they know that
                     the player doesn't; what they believe that is wrong or only
@@ -66,6 +67,7 @@ class Cards:
         self.overview = json_ops.load_json("campaign-overview.json") or {}
         self.player = sheet_mod.name(json_ops.load_json("character.json") or {}) or "the character"
         self._ids = None
+        self._rankers = {}
 
     # ---------- helpers ----------
 
@@ -75,24 +77,42 @@ class Cards:
             self._ids = WorldIds(self.json_ops)
         return self._ids
 
+    def _ranker(self, location: str = None):
+        """The scene's ranking (recall.SceneRanker): the given place, or the current
+        one, and the people in the scene."""
+        if location is None:
+            pos = self.overview.get("player_position") or {}
+            location = pos.get("current_location", "") if isinstance(pos, dict) else ""
+        if location not in self._rankers:
+            from recall import SceneRanker
+            present = npcs_present(self.npcs, location, self.overview.get("scene"))
+            self._rankers[location] = SceneRanker(self.json_ops, location, present)
+        return self._rankers[location]
+
     def _is_shown(self, fact: dict) -> bool:
         return (bool(fact.get("id")) and fact["id"] in self.shown) \
             or _norm(fact_text(fact)) in self.shown_texts or _norm(fact["fact"]) in self.shown_texts
 
     def _fact_list(self, label: str, facts: list, hint: str, tag=None,
-                   hidden_is_given: bool = False) -> list[str]:
-        """Up to PER_LIST facts under `label`, newest first; one printed already is
-        named by id. Then how many more there are, and the command that lists them.
-        `hidden_is_given`: the label says the player doesn't know them, so the
-        [HIDDEN FROM PLAYER] mark is left out."""
+                   hidden_is_given: bool = False, location: str = None) -> list[str]:
+        """Up to PER_LIST facts under `label`, those that fit the scene best first
+        (recall.SceneRanker), not counting those printed already: a better-fitting
+        one printed above is named by id. Then how many
+        more there are, and the command that lists them. `hidden_is_given`: the
+        label says the player doesn't know them, so the [HIDDEN FROM PLAYER] mark
+        is left out."""
         if not facts:
             return []
-        limit = PER_LIST
-        lines, again = [], []
-        for f in facts[:limit]:
+        facts = self._ranker(location).rank(facts)
+        lines, again, fresh = [], [], []
+        for f in facts:                     # the best not printed yet; better ones printed are named
+            if len(fresh) == PER_LIST:
+                break
             if self._is_shown(f) and f.get("id"):   # one without an id can't be named
                 again.append(f["id"])
-                continue
+            else:
+                fresh.append(f)
+        for f in fresh:
             if f.get("id"):
                 self.shown.add(f["id"])
             extra = tag(f) if tag else ""
@@ -103,15 +123,17 @@ class Cards:
             lines.append(f"  {label}{extra}: {fid}{text}")
         if again:
             lines.append(f"  {label}: also {', '.join(again)} (above)")
-        if len(facts) > limit:
-            lines.append(f"  +{len(facts) - limit} more ({hint})")
+        rest = len(facts) - len(fresh) - len(again)
+        if rest > 0:
+            lines.append(f"  +{rest} more ({hint})")
         return lines
 
     # ---------- the location card ----------
 
     def location_card(self, location: str, waiting: bool = True) -> list[str]:
         """The place as recorded: description, exits, who is usually here, and
-        (with `waiting`) what waits here, then the facts of the place."""
+        (with `waiting`) what waits here, then the facts that fit the scene best:
+        those the character knows, and those they don't."""
         from session_manager import SessionManager
         place = self.locations.get(location)
         moment = current_time(self.json_ops)
@@ -136,11 +158,28 @@ class Cards:
                          f"(if one is actually here: bash tools/gm-scene.sh enter \"<name>\")")
         if waiting:
             lines += self._waiting_here(location)
+        # Not only the facts of the place: whatever fits the scene best, the place's
+        # own facts helped by the bonuses (recall-proposal.md, decision 4). Split by
+        # who knows it, so the GM sees at once what the character can draw on.
         lid = f"location:{location}"
-        here = [f for f in self.facts if not f.get("attitude")
-                and (f.get("at") == lid or lid in (f.get("about") or []))]
-        lines += self._fact_list("here", here, f"gm-note.sh find --at \"{location}\" / "
-                                               f"--about \"location:{location}\"")
+        known, hidden = [], []
+        for f in self.facts:
+            if f.get("attitude"):
+                continue
+            holders = f.get("holders")
+            if holders is None:                   # an old fact: only if it is the place's
+                if f.get("at") == lid or lid in (f.get("about") or []):
+                    known.append(f)
+            elif {"player", "public"} & set(holders):
+                known.append(f)
+            else:
+                hidden.append(f)
+        like = 'gm-note.sh find --like "<what is happening>"'
+        lines += self._fact_list("fits here", known, f'{like} --held-by player --at "{location}"',
+                                 location=location)
+        lines += self._fact_list(f"fits here, {self.player} doesn't know", hidden,
+                                 f'{like} --hidden --at "{location}"', hidden_is_given=True,
+                                 location=location)
         return lines
 
     def _waiting_here(self, location: str) -> list[str]:

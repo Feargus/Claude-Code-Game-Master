@@ -50,7 +50,11 @@ are the spine: what matters is what belongs to a plot. `Brief.SECTIONS`, in orde
 - **YOUR WORLD'S RULES** and **SIGNATURE SYSTEMS**, never cut.
 - **NARRATIVE VOICE**: the style, the world's own words (the glossary's terms) and three
   sample passages, a prose target, not lore.
-- **THE SCENE**: the place's card and a card for each person present.
+- **THE SCENE**: the place's card and a card for each person present. Each list on a card
+  shows the facts that fit the scene best (`recall.SceneRanker`): by meaning when semantic
+  recall is installed, the query being the average of the place's, its last facts' and its
+  plots' vectors (no model is loaded); the place and the people present add bonuses. The
+  place card lists what the character knows that fits, then what they don't.
 - **LATEST**: the five newest facts not printed above, for picking up where play stopped;
   newer ones printed above (often on the place's card) are named by id first.
 

@@ -83,7 +83,8 @@ def test_context_remainder_counts_on_every_truncated_section(tmp_path):
     ctx = SessionManager(ws).get_full_context()
     assert all(f"] Thread {i}:" in ctx for i in range(8))
     assert '+ 2 more: gm-note.sh find --plot "Thread 0" --hidden' in ctx
-    assert "secret fact 7" in ctx and "secret fact 2" not in ctx.split("--- LATEST")[0]
+    assert "secret fact 7" in ctx                            # the five under the plot ...
+    assert all(ctx.count(f"secret fact {i}") == 1 for i in range(1, 8))   # ... each printed once
     assert "term-14" in ctx
     assert all(f"event {i} (when: later)" in ctx for i in range(12))
     assert "Dawn closed it." not in ctx                      # three sample passages

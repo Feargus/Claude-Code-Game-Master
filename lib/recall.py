@@ -201,3 +201,75 @@ def print_found(result: dict, fact_line) -> None:
     if result["not_embedded"]:
         print(f"({result['not_embedded']} facts are not embedded yet and count as average: "
               f"bash tools/gm-recall.sh embed)")
+
+
+# ---------- the scene: what the cards and the brief rank by ----------
+
+class SceneRanker:
+    """Ranks facts by how well they fit the scene, with no model loaded: the query
+    is the average of vectors that exist already (recall-proposal.md §3): the
+    place's description, the last 3 facts recorded here, and the sentence of each
+    open plot that involves the place or someone in the scene. The score adds the
+    same bonuses as find --like, with "here" meaning the place and the people in
+    the scene. Without vectors (semantic recall off, or not embedded yet), the
+    bonuses and recency alone decide: the place's and the people's own facts first,
+    newest first among them."""
+
+    def __init__(self, json_ops, location: str, present=()):
+        from embedder import get_embedder
+        from embedding_store import EmbeddingStore
+        embedder = get_embedder()
+        self.vectors = (EmbeddingStore(json_ops.world_state_dir).vectors(embedder.name)
+                        if embedder else {})
+        facts = json_ops.load_json("facts.json") or {}
+        everything = [f for items in facts.values() if isinstance(items, list)
+                      for f in items if isinstance(f, dict) and f.get("id")]
+        self.newest = max((_number(f) for f in everything), default=0)
+        self.place = f"location:{location}" if location else ""
+        self.here = {self.place} | {f"npc:{n}" for n in present} - {""}
+        plots = json_ops.load_json("plots.json") or {}
+        self.plots_here = {k for k, p in plots.items() if isinstance(p, dict)
+                           and p.get("status", "open") == "open"
+                           and self.here & set(p.get("involves") or [])}
+        parts = [self.vectors.get(self.place)]
+        recent_here = sorted((f for f in everything if self.place and f.get("at") == self.place),
+                             key=_number, reverse=True)[:3]
+        parts += [self.vectors.get(f"fact:{f['id']}") for f in recent_here]
+        parts += [self.vectors.get(f"plot:{k}") for k in sorted(self.plots_here)]
+        parts = [v for v in parts if v is not None]
+        self.query = None
+        if parts:
+            import numpy as np
+            q = np.mean(parts, axis=0)
+            self.query = q / (np.linalg.norm(q) or 1)
+        self._sims = None
+
+    def _similarity(self, fact: dict) -> float:
+        if self.query is None:
+            return 0.0
+        if self._sims is None:
+            self._sims = {k: float(v @ self.query) for k, v in self.vectors.items()
+                          if k.startswith("fact:")}
+            self._average = sum(self._sims.values()) / len(self._sims) if self._sims else 0.0
+        return self._sims.get(f"fact:{fact.get('id')}", self._average)
+
+    def score(self, fact: dict) -> float:
+        bonus = 0.0
+        if self.here & set(fact.get("about") or []):
+            bonus += ABOUT_BONUS
+        if self.place and fact.get("at") == self.place:
+            bonus += AT_BONUS
+        if self.plots_here & set(fact.get("plots") or []):
+            bonus += PLOT_BONUS
+        age = self.newest - _number(fact)
+        if 0 <= age < RECENCY_SPAN:
+            bonus += RECENCY_BONUS * (1 - age / RECENCY_SPAN)
+        return self._similarity(fact) + bonus
+
+    def rank(self, facts: list[dict]) -> list[dict]:
+        """Best fit first; newest first on a tie."""
+        return sorted(facts, key=lambda f: (-self.score(f), -_number(f)))
+
+    @property
+    def by_meaning(self) -> bool:
+        return self.query is not None
