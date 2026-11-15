@@ -37,6 +37,11 @@ facts, and before that session summaries and arc entries).
   play has begun, `gm-npc.sh create` and `gm-location.sh add` refuse a record that reads like
   an existing one (similarity 0.60 or more; a person re-described scored 0.63 to 0.74,
   different people at most 0.65) unless `--another` is given.
+- **Notes after a fact** (`lib/recall_notes.py`): the background job compares each new fact
+  with the open plots (0.45, clearly the best), the people (0.55, and closer than the
+  character and everyone it is linked to) and the consequences waiting on an event (0.50),
+  and leaves notes in `embeddings.notes.json`; the next command that needs a campaign prints
+  them once (`tools/common.sh`), not into `--json` output. A note acted on meanwhile is dropped.
 - **A fact not embedded yet** (the background job is still running) is embedded by the
   query itself, up to 10; beyond that it counts as average.
 

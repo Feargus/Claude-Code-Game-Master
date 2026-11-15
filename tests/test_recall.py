@@ -175,3 +175,67 @@ def test_before_the_opening_nothing_is_checked(dcc_world, monkeypatch):
     npcs = NPCManager(dcc_world)
     assert npcs.create_npc("Vex Marrow", "a one-eyed fence who buys stolen crawler loot", nowhere=True)
     assert npcs.create_npc("The Fence", "a one-eyed fence who buys stolen crawler loot", nowhere=True)
+
+
+# ---------- step f: the background job's notes, printed by the next command ----------
+
+def test_notes_for_a_new_fact_are_printed_once(dcc_world, monkeypatch):
+    """The fixture's old facts share ids, so its first job looks like a bulk
+    embedding (no notes, by design); the notes are made directly here."""
+    from lib import recall_notes
+    from lib.embedder import FakeEmbedder
+    from lib.embedding_store import EmbeddingStore
+    from lib.npc_manager import NPCManager
+    from lib.plot_manager import PlotManager
+    camp = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    NPCManager(dcc_world).create_npc("Vex Marrow", "one-eyed fence buying stolen crawler loot",
+                                     nowhere=True)
+    PlotManager(dcc_world).add("Stolen Loot", "Who buys the stolen crawler loot, and for whom.")
+    fid = NoteManager(dcc_world).add_fact(
+        "session_events", "The one-eyed fence was buying stolen crawler loot again.",
+        holders=["player"], nowhere=True)
+    store = EmbeddingStore(camp)
+    notes = recall_notes.make_notes(camp, [fid], FakeEmbedder(), store.vectors("fake"))
+    recall_notes.add_notes(camp, notes)
+    printed = "\n".join(recall_notes.lines(camp))
+    assert f"{fid} looks part of Stolen Loot" in printed
+    assert f"{fid} reads like it is about npc:Vex Marrow" in printed
+    assert recall_notes.lines(camp) == []             # printed once
+
+
+def test_a_note_acted_on_is_dropped(dcc_world, monkeypatch):
+    from lib import recall_notes
+    camp = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
+    n = NoteManager(dcc_world)
+    fid = n.add_fact("session_events", "Something happened.", holders=["player"], nowhere=True)
+    recall_notes.add_notes(camp, [{"fact": fid, "kind": "about", "target": "npc:Mordecai",
+                                   "score": 0.7}])
+    n.set_about(fid, ["npc:Mordecai"], [])
+    assert recall_notes.lines(camp) == []
+
+
+def test_the_next_command_prints_the_note_but_not_into_json(isolated_world_state):
+    import os
+    import sys
+    root = TOOLS.parent
+
+    def run(*args, embedder="fake"):
+        env = {**os.environ, "GM_EMBEDDER": embedder}
+        return subprocess.run(["bash", str(TOOLS / args[0]), *args[1:]], capture_output=True,
+                              text=True, env=env)
+    run("gm-campaign.sh", "create", "t")
+    run("gm-campaign.sh", "switch", "t")
+    run("gm-npc.sh", "create", "Vex Marrow", "--role", "one-eyed fence buying stolen crawler loot",
+        "--nowhere")
+    run("gm-note.sh", "add", "session_events",
+        "The one-eyed fence was buying stolen crawler loot again.", "--holders", "player",
+        embedder="off")
+    camp = isolated_world_state / "campaigns" / "t"
+    subprocess.run([sys.executable, str(root / "lib" / "embedding_store.py"), "job", str(camp)],
+                   env={**os.environ, "GM_EMBEDDER": "fake"}, check=True)
+    as_json = run("gm-note.sh", "recent", "--json")
+    assert "[NOTE]" not in as_json.stdout                 # JSON stays JSON ...
+    shown = run("gm-time.sh")
+    assert shown.stdout.startswith("[NOTE]") and "npc:Vex Marrow" in shown.stdout   # ... and it waits
+    assert "[NOTE]" not in run("gm-time.sh").stdout       # once

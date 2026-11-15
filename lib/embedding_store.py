@@ -41,6 +41,7 @@ LOCK = "embeddings.lock"
 LOG = "embeddings.log"
 SAVE_EVERY = 5              # entries embedded between saves, so a killed job loses little
 LOG_LINES = 200
+NOTES_AT_MOST = 10          # new facts in one job; more is a first embedding, not play
 
 
 def _hash(text: str) -> str:
@@ -81,6 +82,9 @@ def texts(campaign_dir: Path) -> dict[str, str]:
     for name, sheet in (load("npcs.json") or {}).items():
         if isinstance(sheet, dict):
             out[f"npc:{name}"] = npc_text(name, sheet)
+    character = load("character.json") or {}
+    if character.get("identity"):                  # to compare with (recall_notes.py)
+        out["player"] = npc_text(character["identity"].get("name") or "the character", character)
     for key, plot in (load("plots.json") or {}).items():
         if isinstance(plot, dict):
             parts = [plot.get("description"), plot.get("stands"), plot.get("summary")]
@@ -136,6 +140,7 @@ class EmbeddingStore:
         for key in gone:
             stored.pop(key, None)
         items = list(todo.items())[:limit or None]
+        self.last_embedded = [k for k, _ in items]
         done = 0
         for key, text in items:
             stored[key] = (_hash(text), embedder.document(text))
@@ -191,12 +196,20 @@ def job(campaign_dir) -> int:
         except BlockingIOError:
             return 0
         start = time.time()
+        new_facts = []
         try:
             while True:
                 done = store.update(embedder)
                 total += done
+                new_facts += [k[5:] for k in store.last_embedded if k.startswith("fact:")]
                 if not done:
                     break
+            # Notes for the next command (recall_notes.py); not after a first embedding
+            # of a whole campaign, which would make a note of every fact.
+            if 0 < len(new_facts) <= NOTES_AT_MOST:
+                from recall_notes import add_notes, make_notes
+                add_notes(campaign_dir, make_notes(campaign_dir, new_facts, embedder,
+                                                   store.vectors(embedder.name)))
         except Exception as error:                 # noqa: BLE001 (a background job must log, not crash silently)
             _log(campaign_dir, f"error after {total}: {type(error).__name__}: {error}")
             return 1
