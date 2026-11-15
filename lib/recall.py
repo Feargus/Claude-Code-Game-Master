@@ -203,6 +203,33 @@ def print_found(result: dict, fact_line) -> None:
               f"bash tools/gm-recall.sh embed)")
 
 
+# ---------- a new plot: which recorded facts look part of it ----------
+
+def suggest_for_plot(notes, plot_key: str, limit: int = 5) -> dict:
+    """The facts not in the plot that are closest to what it is about, best first,
+    for the GM to link (recall-proposal.md, step e). Facts about the people and
+    places it involves get the --about bonus. {"facts": [...], "method": ...}."""
+    plot = (notes.json_ops.load_json("plots.json") or {}).get(plot_key) or {}
+    text = f"{plot_key}: " + " ".join(str(plot.get(k)) for k in ("description", "stands", "goal")
+                                      if plot.get(k))
+    facts = [f for f in notes.find() if not f.get("attitude")
+             and plot_key not in (f.get("plots") or [])]
+    if not facts:
+        return {"facts": [], "method": "meaning"}
+    sims, method, _ = similarities(notes.campaign_dir, text, facts)
+    if sims is None:
+        scores = dict(zip((f["id"] for f in facts), bm25(text, [f["fact"] for f in facts]),
+                          strict=True))
+        facts = [f for f in facts if scores[f["id"]] > 0]     # keywords: only what shares a word
+        method = "keywords"
+    else:
+        scores, method = sims, "meaning"
+    involved = set(plot.get("involves") or [])
+    def score(f):
+        return scores.get(f["id"], 0.0) + (ABOUT_BONUS if involved & set(f.get("about") or []) else 0)
+    return {"facts": sorted(facts, key=score, reverse=True)[:limit], "method": method}
+
+
 # ---------- the scene: what the cards and the brief rank by ----------
 
 class SceneRanker:

@@ -129,3 +129,15 @@ def test_without_vectors_the_place_and_its_people_come_first(dcc_world):
     order = [f["id"] for f in ranker.rank([n._entry(n.json_ops.load_json("facts.json"), x)
                                            for x in (newer, mine)])]
     assert order == [mine, newer]
+
+
+# ---------- step e: a new plot is offered the facts that look part of it ----------
+
+def test_a_new_plot_is_offered_the_facts_closest_to_it(notes, dcc_world):
+    from lib.plot_manager import PlotManager
+    from lib.recall import suggest_for_plot
+    n, ids = notes
+    key = PlotManager(dcc_world).add("Circus Debts", "The circus clown and the knives he owes for.")
+    found = [f["id"] for f in suggest_for_plot(n, key)["facts"]]
+    assert found[:2] and set(found[:2]) <= {ids["clown"], ids["secret"]}
+    assert ids["door"] not in found[:2]

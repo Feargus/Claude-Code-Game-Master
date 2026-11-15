@@ -352,6 +352,20 @@ class PlotManager(EntityManager):
         return "\n".join(lines)
 
 
+def _suggest_facts(key: str) -> None:
+    """After gm-plot.sh add: the recorded facts that look part of the new plot."""
+    from note_manager import NoteManager, fact_line
+    from recall import suggest_for_plot
+    result = suggest_for_plot(NoteManager(), key)
+    if not result["facts"]:
+        return
+    how = "by meaning" if result["method"] == "meaning" else "by shared words"
+    print(f"Facts that may be part of it ({how}, best first); link one with "
+          f'bash tools/gm-note.sh plot <id> --add "{key}":')
+    for f in result["facts"]:
+        print("  " + fact_line(f) + (f"  [in: {', '.join(f['plots'])}]" if f.get("plots") else ""))
+
+
 def main() -> int:
     import argparse
     parser = argparse.ArgumentParser(description="Plots")
@@ -393,6 +407,7 @@ def main() -> int:
             key = m.add(args.key, args.description, args.owner, args.goal, args.kind,
                         args.involves, args.follows, args.stands, args.another)
             print(f"[SUCCESS] Plot {key} ({args.kind})")
+            _suggest_facts(key)
         elif args.action == "stands":
             key, before = m.set_stands(args.key, args.stands)
             print(f"[SUCCESS] {key} stands: {args.stands}" + (f" (was: {before})" if before else ""))
