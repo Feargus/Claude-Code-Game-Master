@@ -484,7 +484,8 @@ class Brief:
                            'player_choices', 'npc_relations', 'lore')
 
     def _key_facts(self, per_category=3):
-        """Established facts the GM must keep continuity on. per_category=None = all."""
+        """Established facts the GM must keep continuity on, attitudes aside (the
+        NPC cards show those). per_category=None = all."""
         facts = self.json_ops.load_json("facts.json") or {}
         if not isinstance(facts, dict):
             return []
@@ -495,6 +496,8 @@ class Brief:
                 continue
             chosen = items if per_category is None else items[-per_category:]
             for it in chosen:
+                if isinstance(it, dict) and it.get('attitude'):
+                    continue                # the cards show attitudes, written out
                 txt = fact_text(it)
                 if txt:
                     out.append(txt)

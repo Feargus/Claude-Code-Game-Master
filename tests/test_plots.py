@@ -123,3 +123,18 @@ def test_open_plots_are_sorted_most_pressing_first(world):
     cm.fire(cid, reason="it happened")
     assert plot_order(pm.json_ops) == ["Fired", "Right Here", "Clocked", "Quiet Main",
                                        "Background Noise"]
+
+
+def test_plot_is_the_field_everywhere(world):
+    """The command line says --plot; so do a beat's facts, the opening's and the
+    world tick's developments ("plot": a name or a list). "plots" is refused
+    with the right name, never silently dropped."""
+    from lib.world_tick import WorldTick, WorldTickError
+    notes = NoteManager(world)
+    PlotManager(world).add("The Descent", "Down the stairs.")
+    [fid] = notes.beat([{"fact": "The stairs creak.", "plot": "The Descent"}])
+    assert notes._entry(_load(world, "facts.json"), fid)["plots"] == ["The Descent"]
+    with pytest.raises(ValueError, match='"plot"'):
+        notes.beat([{"fact": "The stairs groan.", "plots": ["The Descent"]}])
+    with pytest.raises(WorldTickError, match='"plot"'):
+        WorldTick(world).record([{"fact": "Far off, a door.", "plots": ["The Descent"]}])

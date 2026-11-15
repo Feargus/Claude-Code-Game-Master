@@ -17,7 +17,7 @@ A development (JSON object):
    "truth": "wrong", "version_of": "f12",   optional: a cover story, a planted lie
    "consequence": {"text": "The tracker finds Fearghas",              optional
                    "triggers": [{"type": "on_location", "match": "Old Iron's Yard"}]},
-   "plot": "Vey Inheritance",   optional: the plot it belongs to, given to all its parts
+   "plot": "Vey Inheritance",   optional: the plot it belongs to (or a list), given to all its parts
    "clock": {"name": "Tracker", "text": "The tracker closes in",      optional; the name
              "segments": 3,                                           is a short key
              "due_in": "3d", "consequence": "The tracker finds Fearghas",
@@ -61,6 +61,9 @@ class WorldTick:
             raise WorldTickError(f"{where} must be a JSON object")
         if not str(d.get("fact") or d.get("text") or "").strip():
             raise WorldTickError(f"{where} needs a \"fact\": what happened off-screen")
+        if "plots" in d:
+            raise WorldTickError(f"{where}: the field is \"plot\" (one name, or a list), "
+                                 f"as on the command line (--plot).")
         con = d.get("consequence")
         if con is not None:
             if not isinstance(con, dict) or not str(con.get("text", "")).strip():
@@ -177,7 +180,7 @@ class WorldTick:
         try:
             for i, d in enumerate(developments):
                 text = str(d.get("fact") or d.get("text")).strip()
-                plots = as_list(d.get("plot")) + as_list(d.get("plots"))
+                plots = as_list(d.get("plot"))
                 fid = notes.add_fact(d.get("category") or DEFAULT_CATEGORY, text,
                                      list_waiting=False, about=as_list(d.get("about")),
                                      plots=plots, offer_plot=False,

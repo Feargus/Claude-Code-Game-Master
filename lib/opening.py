@@ -292,7 +292,7 @@ class Opening:
         if len(developments) != len(spec.get("developments") or []):
             raise OpeningError("Every development is a JSON object")
         for d in developments:                # they belong to the opening's plot
-            if not d.get("plot") and not d.get("plots"):
+            if not d.get("plot"):
                 d["plot"] = plot
         try:
             applied, written = WorldTick(self.wsd).record(developments)

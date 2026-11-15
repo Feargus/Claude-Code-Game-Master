@@ -83,13 +83,13 @@ def current_attitudes(facts: dict) -> dict:
     return {key: f for key, (_, f) in newest.items()}
 
 
-def fact_text(entry, player: str = "the player") -> str:
+def fact_text(entry, player: str = "the character") -> str:
     """A fact's text as the GM should read it, wherever it is shown or searched:
     a secret (holders recorded and empty: nobody knows it) is marked [SECRET], one
     that others know but the player character doesn't is marked [HIDDEN FROM PLAYER],
     a wrong or partial version is marked with the id of the truth. An attitude,
     stored as its adjectives only, is written out: "Mama Seo regards Dogen: fond"
-    (`player` is the name used for the player character)."""
+    (`player` is the player character's name; "the character" if not given)."""
     if not isinstance(entry, dict):
         return str(entry)
     text = str(entry.get('fact', entry.get('text', entry.get('event', ''))))
@@ -644,13 +644,14 @@ class NoteManager:
 
         Each item is a fact as `add` takes it ({"fact", "category", "about",
         "not_about", "holders", "also", "secret", "truth", "version_of", "at",
-        "nowhere"}); `version_of` may name an earlier item of the same call as
+        "nowhere", "plot"}; "plot" is one plot's name or a list, as `--plot` is
+        on the command line, the opening and the world tick); `version_of` may name an earlier item of the same call as
         "#1", "#2", ... (a deception: the truth first, then the false impression
         the fooled one holds). Returns the new ids; raises ValueError and writes
         nothing if any item is refused.
         """
         allowed = {"fact", "category", "about", "not_about", "holders", "also", "secret",
-                   "truth", "version_of", "at", "nowhere", "plots"}
+                   "truth", "version_of", "at", "nowhere", "plot"}
         def as_list(value):
             return None if value is None else [value] if isinstance(value, str) else list(value)
         if not isinstance(items, list) or not items:
@@ -663,6 +664,10 @@ class NoteManager:
                 errors.append(f"{where} needs a \"fact\".")
                 continue
             extra = set(item) - allowed
+            if "plots" in extra:
+                errors.append(f"{where}: the field is \"plot\" (one name, or a list), "
+                              f"as on the command line (--plot).")
+                extra.discard("plots")
             if extra:
                 errors.append(f"{where}: unknown field(s) {', '.join(sorted(extra))}.")
             _, _, more = self._about(item["fact"], as_list(item.get("about")),
@@ -699,7 +704,7 @@ class NoteManager:
                                 secret=bool(item.get("secret")), also=as_list(item.get("also")),
                                 truth=item.get("truth"), version_of=ref or None,
                                 at=item.get("at"), nowhere=bool(item.get("nowhere")),
-                                plots=as_list(item.get("plots")))
+                                plots=as_list(item.get("plot")))
             if not fid:
                 self.remove_facts(written)
                 raise ValueError("A fact was refused (see above); none of this beat was kept.")

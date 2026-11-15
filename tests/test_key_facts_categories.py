@@ -65,7 +65,10 @@ def test_an_npcs_attitude_is_filed_where_key_facts_reads_it(dcc_world):
     facts = NoteManager(dcc_world).json_ops.load_json("facts.json")
     assert "relations" not in facts
     assert any(f.get("attitude") and f["fact"] == "wary, greedy" for f in facts["npc_relations"])
-    assert "Vesper regards the player: wary, greedy" in SessionManager(dcc_world).get_full_context()
+    brief = SessionManager(dcc_world).get_full_context()
+    assert "regards the player" not in brief       # attitudes are on the cards, by name
+    key_facts = brief.split("--- KEY FACTS ---")[-1].split("\n---")[0]
+    assert "wary, greedy" not in key_facts
     root = WRAPPER.parent.parent
     for doc in ("CLAUDE.md", ".claude/skills/gm-social/SKILL.md", ".claude/skills/gm-craft/SKILL.md"):
         assert "gm-note.sh relations" not in (root / doc).read_text(encoding="utf-8"), doc
