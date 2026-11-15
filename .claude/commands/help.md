@@ -61,7 +61,7 @@ Display all available commands and tools.
   gm-consequence.sh What happens later, and what triggers it
   gm-clock.sh       Threat clocks
   gm-plot.sh        Plot threads
-  gm-recall.sh      Long-term memory
+  gm-recall.sh      Semantic recall: setup, status (recall itself: gm-note.sh find --like)
   Source material and search
   gm-search.sh      Search world state and the source book
   gm-context.sh     Scene context with source passages

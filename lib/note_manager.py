@@ -831,6 +831,10 @@ def main():
     p.add_argument("--at", help="where it happened")
     p.add_argument("--plot", help="the plot it belongs to")
     p.add_argument("--limit", type=int, default=10, help="how many (0: all); newest first")
+    p.add_argument("--like", metavar="QUESTION",
+                   help="rank by meaning, best first (recall.py): --held-by, --hidden, --secret, "
+                        "--truth, --category, --text still filter; --about, --at, --plot only "
+                        "raise a fact's rank")
     p = sub.add_parser("beat", help="several facts of one beat at once")
     p.add_argument("facts", nargs="?", help='JSON list: [{"fact": ..., "holders": [...], ...}, ...]; '
                                  'version_of may be "#1" (an earlier fact of this beat). '
@@ -902,6 +906,16 @@ def main():
         elif args.action in ('show', 'find', 'recent'):
             if args.action == 'show':
                 found = manager.show(args.fact_ids)
+            elif args.action == 'find' and args.like:
+                from recall import find_like, print_found
+                result = find_like(manager, args.like, args.limit, args.held_by, args.about,
+                                   args.secret, args.hidden, args.truth, args.category,
+                                   args.text, args.at, plot=args.plot)
+                if json_mode:
+                    print(json.dumps(result, indent=2, ensure_ascii=False))
+                else:
+                    print_found(result, fact_line)
+                return
             elif args.action == 'find':
                 found = manager.find(args.held_by, args.about, args.secret, args.hidden,
                                      args.truth, args.category, args.text, args.at,

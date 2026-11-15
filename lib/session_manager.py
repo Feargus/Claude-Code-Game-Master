@@ -34,7 +34,7 @@ class SessionManager(EntityManager):
         super().__init__(world_state_dir)
 
         # Additional paths specific to session management
-        self._wsd = world_state_dir  # passed through to sibling managers (CampaignMemory)
+        self._wsd = world_state_dir  # passed through to sibling managers
         self.world_state_dir = self.campaign_dir  # Alias for compatibility
 
         # Core files

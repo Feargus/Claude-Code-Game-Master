@@ -33,7 +33,7 @@ def test_plot_facts_still_reach_the_scene(dcc_world):
 
 
 def test_every_advertised_category_has_a_reader(dcc_world):
-    """No category may be a write-only hole: recall reads every one."""
+    """No category may be a write-only hole: recall (find --like) reads every one."""
     help_text = WRAPPER.read_text(encoding="utf-8")
     advertised = set()
     for line in help_text.splitlines():
@@ -44,15 +44,13 @@ def test_every_advertised_category_has_a_reader(dcc_world):
             break
     assert advertised, "could not parse advertised categories from gm-note.sh"
 
-    read_by_key_facts = set()          # the brief reads by plot now, not by category
-    for cat in advertised - read_by_key_facts:
-        # Reachable through campaign memory, which gathers every facts category.
-        NoteManager(dcc_world).add_fact(cat, f"a distinctive {cat} fact about zzyzx")
-    from lib.campaign_memory import CampaignMemory
-    entries = CampaignMemory(dcc_world).gather()
-    sources = {e.get("source", "") for e in entries}
-    for cat in advertised - read_by_key_facts:
-        assert f"facts:{cat}" in sources, f"{cat} is advertised but nothing reads it"
+    from lib.recall import find_like
+    notes = NoteManager(dcc_world)
+    for cat in advertised:
+        notes.add_fact(cat, f"a distinctive {cat} fact about zzyzx", holders=["player"])
+    for cat in advertised:              # recall reads every category (keywords without the model)
+        found = find_like(notes, f"distinctive {cat} zzyzx", limit=3)["facts"]
+        assert any(f.get("category") == cat for f in found), f"{cat} is advertised but nothing reads it"
 
 
 def test_an_npcs_attitude_is_filed_where_key_facts_reads_it(dcc_world):

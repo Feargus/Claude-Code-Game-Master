@@ -95,6 +95,6 @@ presence. The field those tags live in used to have two spellings — see
 
 ## Related
 
-- [Campaign memory](campaign-memory.md) — where "previously on" is built from
+- [Recall by meaning](campaign-memory.md) — `gm-note.sh find --like`, and the vectors behind it
 - [Living world](living-world.md) — clocks and consequences that appear in the brief
 - [A play turn](../flows/play-turn.md) — where in the loop each door is called

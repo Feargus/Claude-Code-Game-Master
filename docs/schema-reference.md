@@ -47,7 +47,7 @@ is named in `world-state/active-campaign.txt`.
 ├── rules.md                 # Optional long-form rules prose (ruleset.rules_doc)
 ├── session-log.md           # Session history — the canonical ledger
 ├── threat-clocks.json       # Named pressure clocks (optional)
-├── campaign-memory.json     # Recall index, rebuilt on save
+├── embeddings.npz           # Vectors for recall by meaning; derived, not in git (embedding_store.py)
 ├── chronicler.json          # Locked art style + in-world artist
 ├── world-tick-log.json      # Between-session tick provenance
 ├── loremaster-cache.json    # Per-location grounded briefs
@@ -325,12 +325,10 @@ punctuation, titles or use an alias, and the player character's name resolves to
 Unknown ids are refused with close matches. Faction and item ids come with those systems.
 `python lib/world_ids.py list` prints every id; `check <id>…` tests some.
 
-Bare strings are tolerated on read (`lib/campaign_memory.py:60` falls back to `str(it)`)
-but managers write the object form.
+Managers write the object form.
 
-**Category names are load-bearing.** `campaign_memory` classifies a fact as book-canon
-only when its category is `plot_world` or `world_building`; everything else is filed as
-our-story. See [campaign memory](modules/campaign-memory.md).
+Categories are provisional; nothing depends on their names any more (KEY FACTS and the
+keyword recall that read them are gone). Recall by meaning: [recall](modules/campaign-memory.md).
 
 ### Common Categories
 
@@ -598,7 +596,6 @@ items otherwise stay mixed in — do not treat a legacy save as a whole-world re
     "ruleset.json": {},
     "world-bible.json": {},
     "threat-clocks.json": {},
-    "campaign-memory.json": {},
     "chronicler.json": {},
     "world-tick-log.json": {},
     "combat_state.json": {},

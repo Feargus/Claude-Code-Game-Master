@@ -45,6 +45,9 @@ STORY_FILES=(
     plots.json
     items.json
     campaign-memory.json
+    embeddings.npz
+    embeddings.log
+    embeddings.lock
     combat_state.json
     threat-clocks.json
     world-tick-log.json

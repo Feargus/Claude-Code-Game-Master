@@ -1,14 +1,12 @@
 #!/bin/bash
-# gm-recall.sh - Semantic recall: the model, and long-term campaign memory
+# gm-recall.sh - Semantic recall: the model and the campaign's embeddings
 #
-#   gm-recall.sh setup                                 # download and check the model (217 MB, once)
-#   gm-recall.sh status                                # is semantic recall ready; how much is embedded
-#   gm-recall.sh embed                                 # embed this campaign's new texts now (the
-#                                                      # background job does this by itself)
-#   gm-recall.sh recall "have we met Remex before?"    # keyword recall over plots and facts
-#   gm-recall.sh recall "dragon" --top-k 8             # default top-k is 5
-#   gm-recall.sh recall "dragon" --provenance our-story
-#   gm-recall.sh refresh                               # recompute the old embeddings (RAG deps only)
+#   gm-recall.sh setup      download and check the model (217 MB, once)
+#   gm-recall.sh status     is semantic recall ready; how much of the campaign is embedded
+#   gm-recall.sh embed      embed the campaign's new texts now (a background job does
+#                           this by itself after each command that records them)
+#
+# Recall itself: gm-note.sh find --like "<question>"
 
 source "$(dirname "$0")/common.sh"
 
@@ -31,4 +29,9 @@ if [ "$1" = "embed" ]; then
     exit $?
 fi
 
-$PYTHON_CMD "$LIB_DIR/campaign_memory.py" "$@"
+if [ "$1" = "recall" ]; then
+    echo "[ERROR] gm-recall.sh recall is gone: gm-note.sh find --like \"<question>\" ranks the facts by meaning." >&2
+    exit 1
+fi
+echo "Usage: gm-recall.sh setup | status | embed   (recall: gm-note.sh find --like \"<question>\")" >&2
+exit 1
