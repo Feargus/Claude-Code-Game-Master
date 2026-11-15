@@ -4,6 +4,7 @@ Campaign management module for GM tools
 Handles multi-campaign support with CRUD operations
 """
 
+import contextlib
 import hashlib
 import json
 import os
@@ -154,16 +155,36 @@ class CampaignManager:
 
         return campaigns
 
+    def _session_file(self) -> Path | None:
+        """Where this Claude Code session keeps the campaign it switched to.
+
+        Two sessions playing different campaigns would otherwise switch the one
+        shared active campaign under each other (2026-11-15: Salt Roads' /gm end
+        found Idle Cycles active). Claude Code gives each session an id
+        (CLAUDE_CODE_SESSION_ID); `switch` records the campaign under it, and
+        this session reads its own. Without an id, or before a switch, the
+        shared active-campaign.txt counts, as before."""
+        sid = os.environ.get("CLAUDE_CODE_SESSION_ID", "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", sid):
+            return None
+        return self.world_state_dir / "sessions" / sid
+
     def get_active(self) -> str | None:
         """
-        Get the currently active campaign name
+        Get the currently active campaign name: this session's own if it
+        switched to one (_session_file), else the shared one.
         Returns None if no active campaign is set
         """
-        if not self.active_file.exists():
-            return None
+        own = self._session_file()
+        for path in ([own] if own and own.exists() else []) + [self.active_file]:
+            if path.exists():
+                return self._existing(path)
+        return None
 
+    def _existing(self, path: Path) -> str | None:
+        """The campaign named in `path`, if it exists."""
         try:
-            campaign_name = self.active_file.read_text().strip()
+            campaign_name = path.read_text().strip()
             # Verify the campaign actually exists
             campaign_path = self.campaigns_dir / campaign_name
             if campaign_path.is_dir():
@@ -185,11 +206,26 @@ class CampaignManager:
 
         try:
             self.active_file.write_text(name)
+            own = self._session_file()
+            if own:
+                own.parent.mkdir(exist_ok=True)
+                own.write_text(name)
+                self._forget_old_sessions(own.parent)
             print(f"[SUCCESS] Active campaign set to: {name}")
             return True
         except OSError as e:
             print(f"[ERROR] Failed to set active campaign: {e}")
             return False
+
+    @staticmethod
+    def _forget_old_sessions(folder: Path, days: int = 30) -> None:
+        """Sessions' records untouched for `days` are long over: delete them."""
+        import time
+        cutoff = time.time() - days * 86400
+        for record in folder.iterdir():
+            with contextlib.suppress(OSError):
+                if record.is_file() and record.stat().st_mtime < cutoff:
+                    record.unlink()
 
     def create(self, name: str, campaign_name: str = None) -> Path | None:
         """

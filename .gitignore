@@ -23,6 +23,7 @@ eggs/
 # A link to the campaign repo's campaigns/ folder (see that repo's README)
 world-state/campaigns
 world-state/active-campaign.txt
+world-state/sessions/
 
 # Source Material (User-provided documents for import)
 source-material/*

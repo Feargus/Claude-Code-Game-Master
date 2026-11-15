@@ -9,7 +9,8 @@
 # Wired via the project's .claude/settings.json `statusLine` setting, so it
 # only overrides the global status line inside this repo.
 
-input=$(cat)  # Claude Code JSON payload on stdin (unused; we read state files)
+input=$(cat)  # Claude Code JSON payload on stdin: only the session id is used
+SESSION_ID=$(printf '%s' "$input" | grep -o '"session_id" *: *"[A-Za-z0-9_-]*"' | head -1 | sed 's/.*"\([A-Za-z0-9_-]*\)"$/\1/')
 
 # Anchor to repo root via this script's location, not cwd.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -48,6 +49,8 @@ divider() {
 }
 
 ACTIVE_FILE="$ROOT/world-state/active-campaign.txt"
+# This session's own campaign, if it switched to one (campaign_manager.py _session_file)
+[ -n "$SESSION_ID" ] && [ -s "$ROOT/world-state/sessions/$SESSION_ID" ] && ACTIVE_FILE="$ROOT/world-state/sessions/$SESSION_ID"
 if [ ! -f "$ACTIVE_FILE" ] || [ ! -s "$ACTIVE_FILE" ]; then
     divider
     printf '%s⚔ %sGM%s  %sno campaign yet%s  %s  %s%s/gm%s %sto begin — build a world, from one sentence, or from a book%s\n' \

@@ -44,8 +44,20 @@ WORLD_STATE_BASE="${GM_WORLD_STATE_BASE:-$PROJECT_ROOT/world-state}"
 # Get active campaign directory
 # Returns the campaign-specific directory if an active campaign is set,
 # otherwise returns empty string and prints error
+# The file naming the active campaign: this Claude Code session's own if it
+# switched to one (campaign_manager.py _session_file), else the shared one.
+active_campaign_file() {
+    local own="$WORLD_STATE_BASE/sessions/${CLAUDE_CODE_SESSION_ID:-none}"
+    if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ] && [ -f "$own" ]; then
+        echo "$own"
+    else
+        echo "$WORLD_STATE_BASE/active-campaign.txt"
+    fi
+}
+
 get_campaign_dir() {
-    local active_file="$WORLD_STATE_BASE/active-campaign.txt"
+    local active_file
+    active_file=$(active_campaign_file)
     if [ -f "$active_file" ]; then
         local campaign_name
         campaign_name=$(cat "$active_file" | tr -d '[:space:]')
@@ -61,7 +73,8 @@ get_campaign_dir() {
 
 # Get the active campaign name (or empty string if none)
 get_active_campaign() {
-    local active_file="$WORLD_STATE_BASE/active-campaign.txt"
+    local active_file
+    active_file=$(active_campaign_file)
     if [ -f "$active_file" ]; then
         local campaign_name
         campaign_name=$(cat "$active_file" | tr -d '[:space:]')
