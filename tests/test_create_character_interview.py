@@ -53,7 +53,7 @@ def test_no_ascii_art_and_phone_friendly():
 
 
 def test_the_save_example_is_a_valid_new_sheet():
-    blobs = [json.loads(m.group(1)) for m in re.finditer(r"create '(\{.*?\})'", _cmd())]
+    blobs = [json.loads(m.group(1)) for m in re.finditer(r"create <<'EOF'\n(\{.*?\})\nEOF", _cmd())]
     assert blobs, "expected a create example"
     for blob in blobs:
         assert "hp" not in blob and "ac" not in blob
