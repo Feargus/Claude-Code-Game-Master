@@ -127,6 +127,10 @@ class CampaignManager:
                         overview = json.load(f)
                     campaign_info["campaign_name"] = overview.get("campaign_name", "Unnamed")
                     campaign_info["current_location"] = overview.get("player_position", {}).get("current_location")
+                    bible = campaign_dir / "world-bible.json"
+                    if bible.exists():
+                        campaign_info["campaign_name"] = (json.loads(bible.read_text(encoding="utf-8"))
+                                                          .get("name") or campaign_info["campaign_name"])
                 except (OSError, json.JSONDecodeError):
                     campaign_info["campaign_name"] = "Unknown"
 
@@ -208,7 +212,7 @@ class CampaignManager:
             (campaign_path / "extracted").mkdir()
 
             # Initialize empty state files
-            self._init_empty_files(campaign_path, campaign_name or f"{name}'s Adventure")
+            self._init_empty_files(campaign_path, campaign_name or name)
 
             print(f"[SUCCESS] Created campaign: {safe_name}")
             return campaign_path
@@ -491,7 +495,8 @@ def main():
                     char = c["character"]
                     who = " ".join(x for x in (char['race'], char['role']) if x)
                     char_info = f"{char['name']}" + (f" ({who})" if who else "") + f" L{char['level']}"
-                print(f"{marker} {c['name']:24}{char_info}")
+                where = f", at {c['current_location']}" if c.get("current_location") else ""
+                print(f"{marker} {c['name']:24}{char_info}{where}")
             print()
             if active:
                 print(f"* = active campaign ({active})")
@@ -509,7 +514,7 @@ def main():
             sys.exit(1)
 
     elif args.action == 'create':
-        campaign_name = args.campaign_name or f"{args.name}'s Adventure"
+        campaign_name = args.campaign_name or args.name
         path = manager.create(args.name, campaign_name)
         if not path:
             sys.exit(1)

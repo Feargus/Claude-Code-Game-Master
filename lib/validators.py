@@ -3,31 +3,25 @@
 Input validation for GM tools: the two checks that are used.
 """
 
-import re
-
 
 class Validators:
     """Input validation for the GM system."""
 
     @staticmethod
     def validate_name(name: str) -> tuple[bool, str | None]:
-        """
-        Validate name/identifier
-        Allows: alphanumeric, spaces, hyphens, apostrophes
+        """A name for a person or place: letters of any alphabet (Kostić, Inês),
+        digits, spaces, hyphens, apostrophes and full stops (Dr. Strand).
+        No colon: it separates the kind from the name in an id (npc:<name>).
         Returns: (is_valid, error_message)
         """
         if not name or not name.strip():
             return False, "Name cannot be empty"
-
-        # Check length
         if len(name) > 100:
             return False, "Name too long (max 100 characters)"
-
-        # Check characters
-        pattern = r"^[a-zA-Z0-9\s\-']+$"
-        if not re.match(pattern, name):
-            return False, "Invalid name. Use only letters, numbers, spaces, hyphens, and apostrophes"
-
+        bad = sorted({c for c in name if not (c.isalnum() or c.isspace() or c in "-'’.")})
+        if bad:
+            return False, (f"Invalid name '{name}': it can't contain {' '.join(bad)}. Use letters, "
+                           "numbers, spaces, hyphens, apostrophes and full stops.")
         return True, None
 
     @staticmethod

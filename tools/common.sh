@@ -128,17 +128,6 @@ escape_json() {
     echo "$text" | $PYTHON_CMD -c "import sys, json; print(json.dumps(sys.stdin.read().strip()))" | sed 's/^"//;s/"$//'
 }
 
-# Validate name/identifier (alphanumeric, spaces, hyphens, apostrophes only)
-validate_name() {
-    local name="$1"
-    local pattern="^[[:alnum:][:space:]'-]+$"
-    if [[ ! "$name" =~ $pattern ]]; then
-        echo "Error: Invalid name. Use only letters, numbers, spaces, hyphens, and apostrophes." >&2
-        return 1
-    fi
-    return 0
-}
-
 # Color output functions (only if terminal supports it)
 if [ -t 1 ] && [ "${TERM}" != "dumb" ]; then
     RED='\033[0;31m'

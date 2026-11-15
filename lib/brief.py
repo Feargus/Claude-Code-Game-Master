@@ -88,7 +88,8 @@ class Brief:
 
         # --- Campaign header ---
         campaign = self.json_ops.load_json(self.campaign_file) or {}
-        campaign_name = campaign.get('name', campaign.get('campaign_name', 'Unknown Campaign'))
+        world = self.json_ops.load_json("world-bible.json") or {}
+        campaign_name = world.get('name') or campaign.get('name') or campaign.get('campaign_name') or 'Unknown Campaign'
         location = campaign.get('player_position', {}).get('current_location', 'Unknown')
         time_of_day = campaign.get('time', {}).get('time_of_day', campaign.get('time_of_day', ''))
         current_date = campaign.get('time', {}).get('current_date', campaign.get('current_date', ''))

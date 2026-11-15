@@ -34,7 +34,7 @@ bash tools/gm-campaign.sh list
 
 ### Display Campaign Menu
 
-Show a numbered list of saved campaigns (name, character, race/role/level, session count, last location), mark the active one, and always end with NEW ADVENTURE. Wait for a number. No fenced boxes; phone-friendly.
+Show a numbered list of saved campaigns (name, character, race/role/level, last location: all in `gm-campaign.sh list`), mark the active one, and always end with NEW ADVENTURE. Wait for a number. No fenced boxes; phone-friendly.
 
 ### Menu Logic
 
@@ -43,7 +43,6 @@ Show a numbered list of saved campaigns (name, character, race/role/level, sessi
 3. **Show for each campaign:**
    - Campaign name
    - Character name, race, role, level
-   - Session count
    - Last known location
 4. **Mark active campaign** with `*` or `►` indicator
 5. **Wait for user selection**
@@ -252,7 +251,7 @@ bash tools/gm-campaign.sh info
 
 ### 2. Display Campaign State
 
-Show campaign name, current location/time/character/session count, and world counts (NPCs, locations, facts, active consequences). No fenced boxes; phone-friendly.
+Show campaign name, current location/time/character, and world counts (NPCs, locations, facts, active consequences). No fenced boxes; phone-friendly.
 
 ### 3. Show Active Consequences
 ```bash
