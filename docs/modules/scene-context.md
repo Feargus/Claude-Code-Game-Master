@@ -50,8 +50,9 @@ are the spine: what matters is what belongs to a plot. `Brief.SECTIONS`, in orde
 - **YOUR WORLD'S RULES** and **SIGNATURE SYSTEMS**, never cut.
 - **NARRATIVE VOICE**: the style, the world's own words (the glossary's terms) and three
   sample passages, a prose target, not lore.
-- **LATEST**: the five newest facts, for picking up where play stopped.
 - **THE SCENE**: the place's card and a card for each person present.
+- **LATEST**: the five newest facts not printed above, for picking up where play stopped;
+  newer ones printed above (often on the place's card) are named by id first.
 
 A fact is printed once; later it is named by id ("also f12"). There is no `--full`, no
 KEY FACTS by category, and no session summary (the session log is gone). `DM_DEBUG_CONTEXT=1`

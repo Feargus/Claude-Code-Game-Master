@@ -110,7 +110,7 @@ bash tools/gm-session.sh context
 ```
 This single command gives you: the plots (with their clocks, waiting consequences and secrets), the character, the campaign's rules, the newest facts, the scene, location and time. Read and internalize ALL of it.
 
-The brief's LATEST lists the newest facts; for more, `bash tools/gm-note.sh recent 15`, `gm-note.sh find` (by who knows it, who it's about, `--plot`) and `gm-note.sh show <id>`. Never read `facts.json` or the other campaign files yourself.
+The brief's LATEST lists the newest facts not shown above it; for more, `bash tools/gm-note.sh recent 15`, `gm-note.sh find` (by who knows it, who it's about, `--plot`) and `gm-note.sh show <id>`. Never read `facts.json` or the other campaign files yourself.
 
 **If there is no character yet** (no `character.json` / the context shows no active PC), don't
 narrate a scene into a void and don't launch the 9-step builder — go to ENTERING A WORLD

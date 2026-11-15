@@ -156,5 +156,6 @@ def test_the_brief_is_ordered_by_plot(world):
     block = brief.split("] The Descent: The timer runs.")[1].split("\n---")[0]
     assert "clock Collapse: 0/3" in block and "The stairs give way (when: Collapse:2" in block
     assert f"{secret} Mordecai rigged the stairs. (Mordecai knows)" in block
-    assert f"also {secret} (above)" in brief.split("--- LATEST")[1]
+    latest = brief.split("--- LATEST")[1]
+    assert f"newer, above: {secret}" in latest and "rigged" not in latest   # named, not printed again
     assert "KEY FACTS" not in brief and "THREAT CLOCKS" not in brief

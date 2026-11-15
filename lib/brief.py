@@ -26,12 +26,13 @@ class Brief:
     # `_section_<name>` returning its lines ([] when it has nothing to show).
     # Ordered by plot (2026-11-15): each open plot with its clocks, the
     # consequences waiting in it and what the character doesn't know of it; then
-    # what belongs to no plot; the character; the world; what just happened; the scene.
+    # what belongs to no plot; the character; the world; the scene; then the
+    # newest facts not shown above, so the cards don't repeat them.
     SECTIONS = ("header", "kit", "play_style", "images", "plots", "unplotted",
                 "character", "party", "wrong_beliefs", "world_rules", "systems", "voice",
-                "latest", "scene")
+                "scene", "latest")
     SECRETS_PER_PLOT = 5     # what the character doesn't know, newest first
-    LATEST = 5               # the newest facts, for what just happened
+    LATEST = 5               # the newest facts not shown above
 
     def __init__(self, session):
         self.session = session
@@ -277,14 +278,19 @@ class Brief:
         return lines
 
     def _section_latest(self) -> list[str]:
-        """The newest facts: what just happened, for picking up where play stopped."""
-        latest = [f for f in self._facts_newest_first() if not f.get("attitude")][:self.LATEST]
-        if not latest:
+        """What just happened, for picking up where play stopped: the newest facts
+        not printed above. The newer ones that were are named by id first, so the
+        order stays readable."""
+        facts = [f for f in self._facts_newest_first() if not f.get("attitude")]
+        fresh = [f for f in facts if f.get("id") not in self.shown_ids][:self.LATEST]
+        if not fresh:
             return []
-        lines = ["", f"--- LATEST (the newest {len(latest)} facts; more: gm-note.sh recent 15) ---"]
-        for f in latest:
-            fid = f.get("id")
-            lines.append(f"  also {fid} (above)" if fid in self.shown_ids else f"  {self._fact_line(f)}")
+        newer = [f["id"] for f in facts if f.get("id") in self.shown_ids
+                 and self._number(f) > self._number(fresh[0])]
+        lines = ["", "--- LATEST (the newest facts not shown above; more: gm-note.sh recent 15) ---"]
+        if newer:
+            lines.append(f"  newer, above: {', '.join(newer)}")
+        lines += [f"  {self._fact_line(f)}" for f in fresh]
         return lines
 
     # ---------- what the plot sections read ----------
@@ -293,10 +299,12 @@ class Brief:
         facts = self.json_ops.load_json("facts.json") or {}
         entries = [f for items in facts.values() if isinstance(items, list)
                    for f in items if isinstance(f, dict) and f.get("id")]
-        def number(f):
-            digits = str(f["id"])[1:]
-            return int(digits) if digits.isdigit() else 0
-        return sorted(entries, key=number, reverse=True)
+        return sorted(entries, key=self._number, reverse=True)
+
+    @staticmethod
+    def _number(f: dict) -> int:
+        digits = str(f.get("id", ""))[1:]
+        return int(digits) if digits.isdigit() else 0
 
     @staticmethod
     def _unknown_to_character(f: dict) -> bool:
@@ -404,9 +412,11 @@ class Brief:
         place is under its plot above."""
         from cards import Cards
         cards = Cards(self.json_ops, shown_ids=self.shown_ids, shown_texts=self.shown_texts)
+        lines = cards.scene(waiting=False)
+        self.shown_ids |= cards.shown                  # LATEST leaves out what the cards printed
         return (["", "--- THE SCENE (play the people as their cards say; they know only "
                      f"what is on their card or shared with {self._character_name()}) ---"]
-                + cards.scene(waiting=False))
+                + lines)
 
     def _section_world_rules(self) -> list[str]:
         lines = []
