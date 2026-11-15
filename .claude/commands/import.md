@@ -105,13 +105,15 @@ Read large spans of `current-document.txt` (the chapters that carry the world's
 voice). Merge authorship:
 
 ```bash
-bash tools/gm-extract.sh draft-bible --fields-json '{
+bash tools/gm-extract.sh draft-bible --fields-json <<'EOF'
+{
   "tone": "...",
   "themes": ["..."],
   "factions": {"nodes": [{"id":"thieves","name":"Thieves of the Maul"},{"id":"yara","name":"Priesthood of Yara"}], "edges": [{"from":"yara","to":"thieves","relation":"preys on / is feared by"}]},
   "geography": {"nodes": [{"id":"maul","name":"The Maul"},{"id":"tower","name":"Elephant Tower"}], "edges": [{"from":"maul","to":"tower","adjacency":"across the temple quarter"}]},
   "signature_systems": ["..."]
-}'
+}
+EOF
 uv run python lib/world_bible.py validate
 ```
 
@@ -131,9 +133,9 @@ CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 ```bash
 bash tools/gm-extract.sh campaign-rules
 CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
-uv run python lib/overview_seed.py "$CAMPAIGN_DIR" \
-  --fields-json '{"campaign_name":"<World>","genre":"...","tone":{"grim":40,"adventure":40,"horror":20}}' \
-  --fix-rules-doc
+uv run python lib/overview_seed.py "$CAMPAIGN_DIR" --fix-rules-doc --fields-json <<'EOF'
+{"campaign_name": "<World>", "genre": "...", "tone": {"grim": 40, "adventure": 40, "horror": 20}}
+EOF
 ```
 
 Write a short `rules.md` if the book has signature systems, then point the kit at it.
@@ -143,10 +145,12 @@ the `game_core` primitives, name them for this world, and persist onto the kit s
 the GM *rolls* them:
 
 ```bash
-bash tools/gm-extract.sh write-systems --systems-json '[
+bash tools/gm-extract.sh write-systems --systems-json <<'EOF'
+[
   {"primitive":"named_track","name":"Menace","config":{"max":6,"thresholds":[{"at":3,"consequence":"men step aside for you"},{"at":6,"consequence":"the city turns out to hunt you"}]}},
-  {"primitive":"price_roll","name":"Sorcery'"'"'s Price","config":{"dice":"1d20","ladder":[{"min_roll":15,"cost":"a night lost to dreams"},{"min_roll":5,"cost":"a year of your life"},{"min_roll":-99,"cost":"something now watches you"}]}}
-]'
+  {"primitive":"price_roll","name":"Sorcery's Price","config":{"dice":"1d20","ladder":[{"min_roll":15,"cost":"a night lost to dreams"},{"min_roll":5,"cost":"a year of your life"},{"min_roll":-99,"cost":"something now watches you"}]}}
+]
+EOF
 ```
 
 Primitives: **named_track** (a Menace/Dread/Corruption meter with threshold beats),
@@ -157,10 +161,12 @@ the hand closes). They ride into every scene as YOUR WORLD'S SIGNATURE SYSTEMS.
 Voice — verbatim excerpts only (the filter drops paraphrase):
 
 ```bash
-bash tools/gm-extract.sh draft-bible --voice-json '{
+bash tools/gm-extract.sh draft-bible --voice-json <<'EOF'
+{
   "style": "...",
   "sample_passages": ["<verbatim 1>", "<verbatim 2>"]
-}'
+}
+EOF
 uv run python lib/world_bible.py validate
 uv run python lib/world_bible.py review
 ```
@@ -198,7 +204,7 @@ bash tools/gm-lore.sh "<place>" --important
 
 Create the PC first: the `/create-character` interview, with the answer to who they
 are (someone from the book, or their own concept), fast or slow as the player chooses. Save with
-`bash tools/gm-player.sh create '<json>'`, adding `--canon "<NPC name>"` for someone from
+`bash tools/gm-player.sh create` with the JSON after it (`<<'EOF'`, the JSON, a line `EOF`), adding `--canon "<NPC name>"` for someone from
 the book; that one NPC is created first (`gm-npc.sh create`, from what the book says),
 and stays out of the opening's people.
 
@@ -216,7 +222,8 @@ nobody interferes (`3d`, `2w`): one clock, grounded in the book's plot, not a ga
 of doom.
 
 ```bash
-bash tools/gm-session.sh opening '{
+bash tools/gm-session.sh opening <<'EOF'
+{
   "time": "<YYYY-MM-DD HH:MM>",
   "place": {"name": "<this room, not a kingdom>", "position": "<where it is>",
             "description": "<what it is like, from the book>"},
@@ -233,10 +240,11 @@ bash tools/gm-session.sh opening '{
   "developments": [
     {"fact": "<what is true here that the book establishes>", "holders": ["<who knows it>"]},
     {"fact": "<what the antagonist is doing>", "holders": [],
-     "clock": {"name": "<short name, one to three words>", "text": "<the antagonist'"'"'s aim>",
+     "clock": {"name": "<short name, one to three words>", "text": "<the antagonist's aim>",
                "segments": 4, "due_in": "<3d>",
                "consequence": "<what happens in the world when it fills>"}}]
-}'
+}
+EOF
 ```
 
 When play walks toward a new name: `gm-search.sh "<name>" --rag-only` for what the book

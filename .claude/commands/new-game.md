@@ -114,7 +114,9 @@ Write only what tonight needs:
    `game_core` primitives (**named_track** meter with threshold beats / **price_roll**
    cost for forbidden power / **reaction_roll** reputation-shifted NPC stance /
    **guarded_payoff** guarded-or-cursed treasure), name them for this world, and
-   persist: `bash tools/gm-extract.sh write-systems --systems-json '[{"primitive":"named_track","name":"Dread","config":{"max":4,"thresholds":[{"at":4,"consequence":"..."}]}}]'`.
+   persist: `bash tools/gm-extract.sh write-systems --systems-json <<'EOF'`, then the list
+   (`[{"primitive":"named_track","name":"Dread","config":{"max":4,"thresholds":[{"at":4,"consequence":"..."}]}}]`)
+   and a line `EOF`.
    They surface as YOUR WORLD'S SIGNATURE SYSTEMS and are rolled, not narrated.
 2c. **Name the world's people, places, creatures and things** — the faces the player
    might actually meet, recognizable, not a gazetteer (about 6–10 people, 4–8 places,
@@ -200,7 +202,8 @@ scene, or point in the timeline — and fit the sketch to it.
 everything through the normal tools, and keeps nothing if any part is refused:
 
 ```bash
-bash tools/gm-session.sh opening '{
+bash tools/gm-session.sh opening <<'EOF'
+{
   "time": "<YYYY-MM-DD HH:MM>",
   "place": {"name": "<the place>", "position": "<where it is>", "description": "<what it is like>"},
   "exits": [{"name": "<what you can see>", "position": "<where it is>",
@@ -216,10 +219,11 @@ bash tools/gm-session.sh opening '{
   "developments": [
     {"fact": "<the premise, or a secret>", "holders": ["<who knows it>"]},
     {"fact": "<what the antagonist is doing>", "holders": [],
-     "clock": {"name": "<short name, one to three words>", "text": "<the antagonist'"'"'s aim>",
+     "clock": {"name": "<short name, one to three words>", "text": "<the antagonist's aim>",
                "segments": 4, "due_in": "<3d>",
                "consequence": "<what happens in the world when it fills>"}}]
-}'
+}
+EOF
 ```
 
 **Give every NPC on the stage a look and a personality** in the opening (the PC gets

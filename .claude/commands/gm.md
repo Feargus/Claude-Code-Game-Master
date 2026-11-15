@@ -90,7 +90,7 @@ archives the outgoing sheet to `fallen/` first.
 **After identity, before you open the scene, ask where/when they want to start.** Offer a
 fitting default (an iconic opening for this world/character) but make it plain they can name
 their own: a specific location, a particular scene, or a point in the timeline. Build the
-opening around **that** start and write it in one call: `bash tools/gm-session.sh opening '<json>'`
+opening around **that** start and write it in one call: `bash tools/gm-session.sh opening <<'EOF'`, the JSON, a line `EOF`
 (the place, its exits, the people there, the plot and its hook, the premise and secrets, the
 antagonist's clock, the start time; the fields and an example: `lib/opening.py` and
 `/new-game` Phase D). Then narrate the first scene from what it prints.
@@ -201,15 +201,17 @@ not "1 wound").
 The world moves while the character is away or resting: the end of a session, a long rest, a week in hiding. Propose a few SMALL developments grounded in the plots, clocks, consequences and NPC goals. Each development is something that **has happened** off-screen, so it is always a fact. If it also sets something in motion, add a consequence with a real trigger (who or where it waits for), and/or a clock for a time limit:
 
 ```bash
-bash tools/gm-session.sh world-tick '[
+bash tools/gm-session.sh world-tick <<'EOF'
+[
   {"fact": "Meridian has posted foreclosure notices across Level 40."},
   {"fact": "Dekker has hired a tracker who hunts the grey sleeve.",
    "consequence": {"text": "The tracker finds Fearghas",
-                   "triggers": [{"type": "on_location", "match": "Old Iron'"'"'s Yard"}]},
+                   "triggers": [{"type": "on_location", "match": "Old Iron's Yard"}]},
    "plot": "Vey Inheritance",
    "clock": {"name": "Tracker", "text": "The tracker closes in", "segments": 3, "due_in": "3d",
              "consequence": "The tracker finds Fearghas"}}
-]'
+]
+EOF
 ```
 
 - `fact` (required): what happened, one line. Optional `"category"` (default `plot_local`, shown under KEY FACTS) and `"about"`: a list of ids (`npc:<name>`, `location:<name>`, `player`) the text doesn't name; names in the text are added by themselves. Optional `"holders"`: who knows it (`npc:<name>`, `street`, `public`, `player`); default nobody, since it happened off-screen. Optional `"at"`: where it happened (a known place); default none. Optional `"truth": "wrong"` or `"partial"` with `"version_of": "<fact id>"`: a cover story, a planted lie.

@@ -13,7 +13,7 @@ usage() {
     echo "       gm-note.sh about <fact id> [--add <id>]... [--remove <id>]..."
     echo "       gm-note.sh plot <fact id> [--add <plot>]... [--remove <plot>]..."
     echo "       gm-note.sh truth <fact id> wrong|partial|true [--version-of <id>]"
-    echo "       gm-note.sh beat '<json list>'               several facts of one beat at once"
+    echo "       gm-note.sh beat <<'EOF' <json list> EOF     several facts of one beat at once"
     echo "                                                    (version_of \"#1\": an earlier fact of it)"
     echo "       gm-note.sh witness <npc> [--at <place>] [--from T] [--to T] [--include <id>]... [--dry-run]"
     echo "                                                    they were there: they learn what happened"

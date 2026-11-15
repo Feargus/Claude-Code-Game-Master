@@ -240,18 +240,19 @@ def main():
     from cli_output import emit, emit_error, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description="Create the player character from a finished interview")
-    parser.add_argument("character", help="the character as JSON, or --stdin to read it")
+    parser.add_argument("character", nargs="?",
+                        help="the character as JSON; left out: read from after the command")
     parser.add_argument("--canon", metavar="NPC", help="the character is this NPC from the campaign")
     parser.add_argument("--replace", action="store_true",
                         help="hand the story to a new PC (archives the current one to fallen/)")
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
 
+    from cli_output import json_input
     try:
-        raw = sys.stdin.read() if args.character == "--stdin" else args.character
-        data = json.loads(raw)
-    except json.JSONDecodeError as error:
-        sys.exit(emit_error(f"invalid JSON: {error}", json_mode))
+        data = json_input(args.character, "the character")
+    except ValueError as error:
+        sys.exit(emit_error(str(error), json_mode))
 
     result = CharacterCreator().create(data, canon=args.canon, replace=args.replace)
     if not result["success"]:

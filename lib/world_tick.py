@@ -273,7 +273,8 @@ def main():
     parser = argparse.ArgumentParser(description="Between-session world tick")
     sub = parser.add_subparsers(dest="action")
     p = sub.add_parser("apply")
-    p.add_argument("developments", help="JSON list of developments")
+    p.add_argument("developments", nargs="?",
+                   help="JSON list of developments; left out: read from after the command")
     p.add_argument("--cap", type=int, default=3)
     sub.add_parser("rollback")
     sub.add_parser("history")
@@ -286,10 +287,11 @@ def main():
 
     wt = WorldTick()
     if args.action == "apply":
+        from cli_output import json_input
         try:
-            devs = json.loads(args.developments)
-        except ValueError:
-            sys.exit(emit_error("developments must be a JSON list", json_mode=json_mode))
+            devs = json_input(args.developments, "the developments")
+        except ValueError as error:
+            sys.exit(emit_error(str(error), json_mode=json_mode))
         if not isinstance(devs, list):
             sys.exit(emit_error("developments must be a JSON list", json_mode=json_mode))
         import contextlib

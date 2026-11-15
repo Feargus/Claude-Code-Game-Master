@@ -10,8 +10,10 @@ shift
 
 case "$ACTION" in
     "create")
-        if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh create '<character json>' [--canon \"<NPC>\"] [--replace]"
+        if [ -z "$1" ] && [ -t 0 ]; then
+            echo "Usage: gm-player.sh create [--canon \"<NPC>\"] [--replace] <<'EOF'"
+            echo "<the character as JSON>"
+            echo "EOF"
             echo ""
             echo "Saves the character from a finished interview (/create-character); anything left out gets a default."
             echo "  --canon NPC   the character is this NPC from the campaign"
@@ -29,7 +31,7 @@ case "$ACTION" in
         echo "Player Character Manager"
         echo "Usage: gm-player.sh <action> [args]"
         echo ""
-        echo "  create '<json>' [--canon N] [--replace] - save a new character from the interview"
+        echo "  create [--canon N] [--replace] <<'EOF' <json> EOF - save a new character from the interview"
         echo "  show [--json]                - the whole sheet (JSON with --json; get is the same)"
         echo "  set --style \"...\" ...        - text fields: identity, look, personality"
         echo "                                 (--race --role --background --affiliation --physique --style"

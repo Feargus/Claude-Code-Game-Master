@@ -336,14 +336,15 @@ def main() -> int:
     from cli_output import emit, emit_error, strip_json_flag, wants_json
     json_mode = wants_json()
     args = strip_json_flag(sys.argv[1:])
-    if len(args) != 1:
-        print("Usage: gm-session.sh opening '<json>'   (the fields: lib/opening.py)",
+    if len(args) > 1:
+        print("Usage: gm-session.sh opening <<'EOF' (the JSON) EOF   (the fields: lib/opening.py)",
               file=sys.stderr)
         return 1
+    from cli_output import json_input
     try:
-        spec = json.loads(args[0])
+        spec = json_input(args[0] if args else None, "the opening")
     except ValueError as error:
-        return emit_error(f"The opening isn't valid JSON: {error}", json_mode=json_mode)
+        return emit_error(str(error), json_mode=json_mode)
     try:
         result = Opening().apply(spec)
     except OpeningError as error:

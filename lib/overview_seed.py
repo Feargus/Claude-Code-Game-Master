@@ -66,14 +66,18 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description="Seed campaign-overview + fix rules_doc")
     parser.add_argument("campaign_dir")
-    parser.add_argument("--fields-json", help="JSON object of overview fields to set")
-    parser.add_argument("--rules-json", help="JSON object for campaign_rules")
+    parser.add_argument("--fields-json", nargs="?", const="-",
+                        help="JSON object of overview fields to set; without a value: "
+                             "read from after the command")
+    parser.add_argument("--rules-json", nargs="?", const="-",
+                        help="JSON object for campaign_rules; without a value: read from after the command")
     parser.add_argument("--fix-rules-doc", action="store_true")
     args = parser.parse_args()
 
     if args.fields_json or args.rules_json:
-        fields = json.loads(args.fields_json) if args.fields_json else None
-        rules = json.loads(args.rules_json) if args.rules_json else None
+        from cli_output import json_input
+        fields = json_input(args.fields_json, "--fields-json") if args.fields_json else None
+        rules = json_input(args.rules_json, "--rules-json") if args.rules_json else None
         seed_overview(args.campaign_dir, fields, rules)
         print("overview seeded")
     if args.fix_rules_doc:

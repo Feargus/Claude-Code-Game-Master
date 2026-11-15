@@ -245,8 +245,12 @@ def main():
     p_bible = sub.add_parser("draft-bible", help="draft/refresh an unconfirmed world-bible.json")
     p_bible.add_argument("campaign_dir")
     p_bible.add_argument("--name", help="the world's name (defaults to the campaign folder)")
-    p_bible.add_argument("--voice-json", help='{"style":...,"sample_passages":[...],"vocab":[...]}')
-    p_bible.add_argument("--fields-json", help="JSON object of creative fields (tone/themes/factions/...)")
+    p_bible.add_argument("--voice-json", nargs="?", const="-",
+                         help='{"style":...,"sample_passages":[...],"vocab":[...]}; '
+                              "without a value: read from after the command")
+    p_bible.add_argument("--fields-json", nargs="?", const="-",
+                         help="JSON object of creative fields (tone/themes/factions/...); "
+                              "without a value: read from after the command")
 
     p_kit = sub.add_parser("draft-ruleset", help="draft ruleset.json from the bible")
     p_kit.add_argument("campaign_dir")
@@ -258,18 +262,20 @@ def main():
     p_sys = sub.add_parser("write-systems",
                            help="persist executable signature systems onto the kit (ruleset.json)")
     p_sys.add_argument("campaign_dir")
-    p_sys.add_argument("--systems-json", required=True,
-                       help='[{"primitive":"named_track","name":"Menace","config":{"max":6,"thresholds":[...]}}]')
+    p_sys.add_argument("--systems-json", nargs="?", const="-", required=True,
+                       help='[{"primitive":"named_track","name":"Menace","config":{"max":6,"thresholds":[...]}}]; '
+                            "without a value: read from after the command")
 
     args = parser.parse_args()
+    from cli_output import json_input
 
     try:
         if args.action == "draft-bible":
             bible = draft_bible(
                 args.campaign_dir,
                 name=args.name,
-                voice=json.loads(args.voice_json) if args.voice_json else None,
-                fields=json.loads(args.fields_json) if args.fields_json else None,
+                voice=json_input(args.voice_json, "--voice-json") if args.voice_json else None,
+                fields=json_input(args.fields_json, "--fields-json") if args.fields_json else None,
             )
             print(f"world-bible.json drafted: {bible['name']} "
                   f"({len(bible['voice']['sample_passages'])} verbatim passages, confirmed=False)")
@@ -278,12 +284,12 @@ def main():
             print(f"ruleset.json drafted: {ruleset['name']} "
                   f"| agents: {ruleset['active_agents']}")
         elif args.action == "write-systems":
-            sysv = write_systems(args.campaign_dir, json.loads(args.systems_json))
+            sysv = write_systems(args.campaign_dir, json_input(args.systems_json, "--systems-json"))
             print(f"kit systems written: {', '.join(s['name'] for s in sysv) or '(none)'}")
         else:
             rules = write_campaign_rules(args.campaign_dir)
             print(f"campaign_rules written: {len(rules['signature_systems'])} signature systems")
-    except (ConfirmedBibleError, FileNotFoundError, FileExistsError) as e:
+    except (ConfirmedBibleError, FileNotFoundError, FileExistsError, ValueError) as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)
 

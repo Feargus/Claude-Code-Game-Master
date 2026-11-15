@@ -824,8 +824,9 @@ def main():
     p.add_argument("--plot", help="the plot it belongs to")
     p.add_argument("--limit", type=int, default=20, help="how many (0: all); newest first")
     p = sub.add_parser("beat", help="several facts of one beat at once")
-    p.add_argument("facts", help='JSON list: [{"fact": ..., "holders": [...], ...}, ...]; '
-                                 'version_of may be "#1" (an earlier fact of this beat)')
+    p.add_argument("facts", nargs="?", help='JSON list: [{"fact": ..., "holders": [...], ...}, ...]; '
+                                 'version_of may be "#1" (an earlier fact of this beat). '
+                                 "Left out: read from after the command (<<'EOF' ... EOF)")
     p = sub.add_parser("witness", help="someone was there: they learn what happened at a place")
     p.add_argument("who")
     p.add_argument("--at", help="the place (default: the current location)")
@@ -873,11 +874,8 @@ def main():
             for cat in manager.list_categories():
                 print(f"  - {cat}")
         elif args.action == 'beat':
-            try:
-                items = json.loads(args.facts)
-            except ValueError as error:
-                raise ValueError(f"The beat isn't valid JSON: {error}") from error
-            written = manager.beat(items)
+            from cli_output import json_input
+            written = manager.beat(json_input(args.facts, "the beat"))
             print(f"[SUCCESS] Recorded {', '.join(written)}")
         elif args.action == 'witness':
             result = manager.witness(args.who, args.at, args.since, args.until,

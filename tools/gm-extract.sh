@@ -84,7 +84,7 @@ Commands:
                             Draft the World Kit (ruleset.json) from the bible
   campaign-rules [campaign] Write the bible's signature systems into
                             campaign-overview.json as campaign_rules
-  write-systems [campaign] --systems-json J
+  write-systems [campaign] --systems-json <<'EOF' <json> EOF
   list                      List the campaigns made from a document
   clean [campaign]          Remove a campaign folder (a failed import)
 

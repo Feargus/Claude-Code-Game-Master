@@ -18,8 +18,8 @@ When death can happen and how it must be telegraphed is in `CLAUDE.md` → Stake
 
    Solo, with no party and no fitting figure: offer the last two only.
 4. **Swap in the new character.** Both ways run the `/create-character` interview:
-   - **A new character:** save with `gm-player.sh create '<json>' --replace`.
-   - **A party member or an existing figure:** a canon character, with that NPC's sheet as the first suggestion; save with `gm-player.sh create '<json>' --canon "<NPC>" --replace`.
+   - **A new character:** save with `gm-player.sh create --replace`, the JSON after it (`<<'EOF'` … `EOF`).
+   - **A party member or an existing figure:** a canon character, with that NPC's sheet as the first suggestion; save with `gm-player.sh create --canon "<NPC>" --replace`, the JSON after it.
 
    Either way the fallen character's sheet goes to `fallen/`, and they become an NPC with what they knew. The new character knows only what they witnessed or were told (`gm-note.sh witness` / `tell`); a canon character keeps what the NPC knew.
 5. **Bridge the fiction:** how and why the story passes to this person. Update the location and the scene (`gm-session.sh move`, `gm-scene.sh enter`), then resume play.
