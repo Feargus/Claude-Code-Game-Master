@@ -34,8 +34,8 @@ from game_time import current_time
 from note_manager import current_attitudes, fact_text
 
 PER_LIST = 3          # facts per list on a card; revisit once semantic recall ranks them
-TEXT_WIDTH = 180      # a fact's text on a card is cut after this many characters
-FIELD_WIDTH = 160     # a sheet field on a card
+# Nothing on a card is cut (2026-11-15): a fact shortened can drop its turn, and the
+# GM can't tell. A fact is printed in full or named by id. To revisit (todo.md).
 
 
 def _norm(text: str) -> str:
@@ -52,9 +52,8 @@ class Cards:
     command's cards print each fact once. `shown_texts` are texts printed before
     the cards (the brief's earlier sections), left out the same way."""
 
-    def __init__(self, json_ops, full: bool = False, shown_ids=(), shown_texts=()):
+    def __init__(self, json_ops, shown_ids=(), shown_texts=()):
         self.json_ops = json_ops
-        self.full = full
         self.shown = set(shown_ids)
         self.shown_texts = {_norm(t) for t in shown_texts if _norm(t)}
         facts = json_ops.load_json("facts.json") or {}
@@ -65,16 +64,10 @@ class Cards:
         self.npcs = json_ops.load_json("npcs.json") or {}
         self.locations = json_ops.load_json("locations.json") or {}
         self.overview = json_ops.load_json("campaign-overview.json") or {}
-        self.player = sheet_mod.name(json_ops.load_json("character.json") or {}) or "the player"
+        self.player = sheet_mod.name(json_ops.load_json("character.json") or {}) or "the character"
         self._ids = None
 
     # ---------- helpers ----------
-
-    def _cut(self, text: str, width: int) -> str:
-        text = str(text or "")
-        if self.full or len(text) <= width:
-            return text
-        return text[:width - 3].rstrip() + "..."
 
     def _world_ids(self):
         if self._ids is None:
@@ -94,7 +87,7 @@ class Cards:
         [HIDDEN FROM PLAYER] mark is left out."""
         if not facts:
             return []
-        limit = len(facts) if self.full else PER_LIST
+        limit = PER_LIST
         lines, again = [], []
         for f in facts[:limit]:
             if self._is_shown(f) and f.get("id"):   # one without an id can't be named
@@ -107,7 +100,7 @@ class Cards:
             if hidden_is_given:
                 text = text.replace("[HIDDEN FROM PLAYER] ", "", 1)
             fid = f"{f['id']} " if f.get("id") else ""
-            lines.append(f"  {label}{extra}: {fid}{self._cut(text, TEXT_WIDTH)}")
+            lines.append(f"  {label}{extra}: {fid}{text}")
         if again:
             lines.append(f"  {label}: also {', '.join(again)} (above)")
         if len(facts) > limit:
@@ -159,7 +152,7 @@ class Cards:
             if any(isinstance(t, dict) and t.get("type") == "on_location"
                    and str(t.get("match", "")).lower() == lid for t in c.get("triggers") or []):
                 lines.append(f"Waiting here: [{str(c.get('id', '?'))[:4]}] "
-                             f"{self._cut(c.get('consequence', ''), TEXT_WIDTH)}")
+                             f"{c.get('consequence', '')}")
         lines += self._plots_of(f"location:{location}", "Plots here")
         return lines
 
@@ -169,7 +162,7 @@ class Cards:
         plots = self.json_ops.load_json("plots.json") or {}
         keys = [k for k in plot_order(self.json_ops, plots) if cid in (plots[k].get("involves") or [])]
         return [f"{label}: [{plots[k].get('kind', '?')}] {k}: "
-                f"{self._cut(plots[k].get('stands') or plots[k].get('description', ''), 120)}"
+                f"{plots[k].get('stands') or plots[k].get('description', '')}"
                 for k in keys]
 
     # ---------- the NPC card ----------
@@ -220,33 +213,32 @@ class Cards:
         identity = npc.get("identity") or {}
         personality = npc.get("personality") or {}
         status = npc.get("status") or {}
-        who = identity.get("role") or self._cut(identity.get("background") or "", 100)
+        who = identity.get("role") or identity.get("background") or ""
         head = [x for x in (who,
                             f"Big Five {personality['big_five']}" if personality.get("big_five") else "",
                             personality.get("demeanor")) if x]
         lines = [f"{name}" + (f" ({'; '.join(head)})" if head else "") + ":"]
         look = sheet_mod.look_line(npc)
         if look:
-            lines.append(f"  look: {self._cut(look, FIELD_WIDTH)}")
+            lines.append(f"  look: {look}")
         for label, value in (("voice", personality.get("voice")),
                              ("tells", personality.get("tells")),
                              ("wants", personality.get("want")),
                              ("after now", status.get("goal")),
                              ("fears", personality.get("fears"))):
             if value:
-                lines.append(f"  {label}: {self._cut(value, FIELD_WIDTH)}")
-        if self.full:
-            for label, value in (("needs", personality.get("need")),
-                                 ("values", personality.get("values")),
-                                 ("affiliation", identity.get("affiliation"))):
-                if value:
-                    lines.append(f"  {label}: {value}")
+                lines.append(f"  {label}: {value}")
+        for label, value in (("needs", personality.get("need")),
+                             ("values", personality.get("values")),
+                             ("affiliation", identity.get("affiliation"))):
+            if value:
+                lines.append(f"  {label}: {value}")
         if not look and not personality:
             lines.append("  only a sketch: give them a look and a voice before playing them "
                          "(gm-npc.sh set ...)")
         visible = sheet_mod.visible_items(npc)
         if visible:
-            lines.append(f"  gear: {self._cut(', '.join(visible), FIELD_WIDTH)}")
+            lines.append(f"  gear: {', '.join(visible)}")
         if status.get("conditions"):
             lines.append(f"  conditions: {', '.join(status['conditions'])}")
         return lines

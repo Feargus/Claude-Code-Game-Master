@@ -102,7 +102,7 @@ def test_the_brief_plays_people_from_their_sheets(world):
     assert "Tod (a mechanic; Big Five O1 C2 E-1 A1 N0; patient):" in people
     assert "  look: stooped, oil to the elbows" in people and "  wants: a way out" in people
     assert "  gear: wrench" in people and "shiv" not in people          # concealed
-    assert "needs" not in people                                       # only with --full
+    assert "  needs: to forgive himself" in people                     # the card shows all (no --full)
     assert "Gear (what others can see): pipe" in brief
 
 
@@ -181,3 +181,15 @@ def test_an_attitude_is_a_flagged_fact_and_the_newest_counts(world, capsys):
     person = brief[brief.index("Tod Brask (a pit mechanic"):]
     assert person.splitlines()[1] == "  towards Lullaby: Fond, grudging"
     assert "regards" not in person.split("\n\n")[0]     # not listed again as a fact
+
+
+def test_nothing_on_a_card_or_in_a_fact_list_is_cut(world):
+    """A fact cut short can drop its turn, and the GM can't tell (2026-11-15)."""
+    from lib.cards import Cards
+    from lib.note_manager import NoteManager, fact_line
+    ws, camp = world
+    long = "Tod fixed the pump " + "and then, slowly, " * 20 + "it was a lie."
+    fid = NoteManager(ws).add_fact("session_events", long, holders=["player"], at="The Pens")
+    notes = NoteManager(ws)
+    assert long in fact_line(notes._entry(notes.json_ops.load_json("facts.json"), fid))
+    assert long in "\n".join(Cards(notes.json_ops).location_card("The Pens"))

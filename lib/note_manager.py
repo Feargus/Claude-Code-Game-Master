@@ -717,12 +717,10 @@ class NoteManager:
         return list((self.json_ops.load_json("facts.json") or {}).keys())
 
 
-def fact_line(f: dict, width: int = 160) -> str:
-    """One fact on one line: id, game time, the marked text (cut), who it's about
-    and who knows it."""
+def fact_line(f: dict) -> str:
+    """One fact on one line: id, game time, the marked text in full (a fact cut
+    short can drop its turn), who it's about and who knows it."""
     text = fact_text(f)
-    if len(text) > width:
-        text = text[:width - 1].rstrip() + "…"
     when = str(f.get('game_time', '')).replace('T', ' ')
     known = f.get('holders')
     who = ("who knows it isn't recorded" if known is None else
