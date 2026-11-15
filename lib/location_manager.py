@@ -22,21 +22,19 @@ class LocationManager(EntityManager):
         self.locations_file = "locations.json"
 
     @staticmethod
-    def _report_added(name: str, position: str, aliases) -> None:
-        """What add_location prints once the place is saved."""
-        from world_ids import alias_hint
-        print(f"[SUCCESS] Added location: {name} ({position})")
-        if aliases:
-            print(f"  Also called: {', '.join(aliases)}")
-        elif alias_hint("location", name):
-            print(alias_hint("location", name))
+    def _report_added(name: str, position: str, aliases, description: str) -> None:
+        """What add_location prints once the place is saved: one line, "(sketch)"
+        while it has no description (a move there says what to do)."""
+        called = f"; also called {', '.join(aliases)}" if aliases else ""
+        print(f"[SUCCESS] Added location: {name} ({position}){called}"
+              + ("" if description else " (sketch)"))
 
     def add_location(self, name: str, position: str, description: str = "", aliases=None,
                      another: bool = False) -> bool:
         """
         Add a new location. `position`: where it is ("two streets down from
         Lantern Row"); `description`: what it is like, a sentence or two. A place
-        named in the story but not yet seen can be a bare place, without one:
+        named in the story but not yet seen can be a sketch, without one:
         `gm-session.sh move` refuses it until it is described (set_description),
         so a place is on disk before it is narrated. `aliases`: shorter names the story will use ("the Yard"
         for "Old Iron's Yard"), each checked (world_ids.check_alias). A name close
@@ -81,10 +79,7 @@ class LocationManager(EntityManager):
 
         # Save to file
         if self._add_entity(self.locations_file, name, location_data):
-            self._report_added(name, position, location_data.get('aliases'))
-            if not description:
-                print(f"  A bare place: describe it before the story goes there "
-                      f"(bash tools/gm-location.sh describe \"{name}\" \"<a sentence or two>\").")
+            self._report_added(name, position, location_data.get('aliases'), description)
             return True
         return False
 

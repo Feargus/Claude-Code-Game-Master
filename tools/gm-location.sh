@@ -10,7 +10,7 @@ if [ "$#" -lt 1 ]; then
     echo "  add <name> <position> [<description>] [--alias <short name>]... [--another]"
     echo "                                     - Add a new location: where it is, and what it"
     echo "                                       is like in a sentence or two. Without one it is"
-    echo "                                       a bare place: a move there waits until it is"
+    echo "                                       a sketch: a move there waits until it is"
     echo "                                       described (on disk before it is narrated). Aliases: shorter"
     echo "                                       names the story will use, e.g. \"the Yard\""
     echo "  alias <name> <alias>... [--remove <alias>]"

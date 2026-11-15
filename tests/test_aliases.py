@@ -65,13 +65,17 @@ def test_a_clashing_alias_refuses_the_npc(world, capsys):
     assert "Ishbel Rue" not in json.loads((camp / "npcs.json").read_text())
 
 
-def test_the_nudge_only_for_names_of_several_words(world, capsys):
+def test_creating_prints_one_line_with_the_aliases(world, capsys):
+    """Creating says what was made, in one line, "(sketch)" while no look or
+    personality is given; hints wait until the record is first used (2026-11-15)."""
     ws, _ = world
     manager = NPCManager(ws)
-    manager.create_npc("Sister Lacuna", "a scrub-priest", "hostile", nowhere=True)
-    assert 'gm-npc.sh alias "Sister Lacuna"' in capsys.readouterr().out
-    manager.create_npc("Tally", "a sentry", "friendly", nowhere=True)
-    assert "alias" not in capsys.readouterr().out
+    manager.create_npc("Sister Lacuna", "a scrub-priest", nowhere=True, aliases=["Lacuna"])
+    out = capsys.readouterr().out.strip().splitlines()
+    assert out == ["[SUCCESS] Created NPC: Sister Lacuna - a scrub-priest; usually found: "
+                   "no usual place; also called Lacuna (sketch)"]
+    manager.create_npc("Tally", "a sentry", nowhere=True, fields={"physique": "small"})
+    assert "(sketch)" not in capsys.readouterr().out
 
 
 def test_add_and_remove_aliases_later(world):
@@ -96,7 +100,7 @@ def test_places_get_aliases_too(world, capsys):
     assert _ids(camp).mentioned("Priests came to the Yard at dawn.") == ["location:Old Iron's Yard"]
     assert LocationManager(ws).add_location("The Mercy Line stairwells", "down from Lanternside", "Wet stairs.",
                                             aliases=["the Mercy Line"])
-    assert "Also called: the Mercy Line" in capsys.readouterr().out
+    assert "also called the Mercy Line" in capsys.readouterr().out
     assert not LocationManager(ws).add_location("Yard Two", "nearby", "A yard.", aliases=["the Yard"])
     assert "already names location:Old Iron's Yard" in capsys.readouterr().out
 

@@ -87,7 +87,7 @@ class NPCManager(EntityManager):
         a goal, a fear, a look, the Big Five. A name close to an existing NPC's
         (world_ids.close_names) is refused unless `another` says it is someone else.
         """
-        from world_ids import WorldIds, alias_hint, close_name_refusal
+        from world_ids import WorldIds, close_name_refusal
         places, errors = self._usual_places(locations)
         aliases = [a.strip() for a in aliases or [] if a.strip()]
         ids = WorldIds(self.json_ops)
@@ -126,18 +126,16 @@ class NPCManager(EntityManager):
         if not self._add_entity(self.npcs_file, name, sheet):
             return False
 
+        # One line. What is still missing is said where it is first needed: the
+        # NPC card when they enter, the roll that needs stats, the fact that names
+        # them while they're not in the scene.
         where = ', '.join(places) if places else 'no usual place'
+        called = f"; also called {', '.join(sheet['identity']['aliases'])}" if aliases else ""
+        sketch = "" if sheet.get("look") or sheet.get("personality") else " (sketch)"
         print(f"[SUCCESS] Created NPC: {name}" + (f" - {role}" if role else "")
-              + f"; usually found: {where}")
-        if aliases:
-            print(f"  Also called: {', '.join(sheet['identity']['aliases'])}")
-        elif alias_hint("npc", name):
-            print(alias_hint("npc", name))
+              + f"; usually found: {where}{called}{sketch}")
         if attitude:
             self._first_feeling(name, attitude)
-        if not places:
-            print(f"  If {name} has a usual place: bash tools/gm-npc.sh tag-location \"{name}\" \"<place>\"")
-        print(f"  Not in the scene yet: bash tools/gm-scene.sh enter \"{name}\" if they're here.")
         self._witness_hint(name)
         return True
 

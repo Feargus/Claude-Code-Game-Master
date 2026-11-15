@@ -175,6 +175,12 @@ def merged(entry: dict[str, Any], attrs=None, skills=None, remove_skills=None,
     return out
 
 
+def is_sketch(entry: dict[str, Any]) -> bool:
+    """A mob without attributes or wounds yet: it can't be rolled or fought."""
+    return not ((entry.get("stats") or {}).get("attributes")
+                and "wounds" in (entry.get("body") or {}))
+
+
 def describe(name: str, entry: dict[str, Any]) -> str:
     """One readable block."""
     stats = entry.get("stats") or {}
@@ -306,8 +312,12 @@ def main() -> int:
             entry = merged(current, parse_pairs(args.attr, "attr"), parse_pairs(args.skill, "skill"),
                            args.remove_skill, args.wounds, args.note)
             warnings = mobs.save(args.name, entry, create)
-            print(f"[SUCCESS] {'Added' if create else 'Updated'} mob:")
-            print(describe(mobs._key(mobs.campaign(), args.name), entry))
+            key = mobs._key(mobs.campaign(), args.name)
+            if create and is_sketch(entry):       # a roll will say what it needs
+                print(f"[SUCCESS] Added mob: {key} (sketch)")
+            else:
+                print(f"[SUCCESS] {'Added' if create else 'Updated'} mob:")
+                print(describe(key, entry))
             for w in warnings:
                 print(f"  [WARNING] {w}")
         else:

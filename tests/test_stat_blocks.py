@@ -3,6 +3,7 @@ are saved, and enemies in a fight that read their wounds from them (--as). In pl
 the GM wrote these into npcs.json and mobs.json by hand."""
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -167,3 +168,13 @@ def test_cli(world):
     assert "street thug" in run("stat_block.py", "list").stdout
     r = run("combat_manager.py", "add-enemy", "Mastiff", "--as", "Mastiff")
     assert r.returncode == 0 and "Mastiff: ○○○○○○" in r.stdout
+
+
+def test_a_mob_without_stats_is_added_as_a_sketch(dcc_world):
+    """Adding a mob with no stats prints one line; the roll says what it needs."""
+    root = Path(__file__).resolve().parent.parent
+    env = {**os.environ, "GM_WORLD_STATE_BASE": str(Path(dcc_world))}
+    r = subprocess.run([sys.executable, str(root / "lib" / "stat_block.py"), "add", "Hollow",
+                        "--note", "a husk"], capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert r.stdout.strip() == "[SUCCESS] Added mob: Hollow (sketch)"

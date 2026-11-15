@@ -38,7 +38,7 @@ def test_a_place_can_be_bare_until_the_story_goes_there(dcc_world, capsys):
     from lib.session_manager import SessionManager
     locations = LocationManager(dcc_world)
     assert locations.add_location("The Kettle", "two streets down")
-    assert "A bare place: describe it before" in capsys.readouterr().out
+    assert "(sketch)" in capsys.readouterr().out
     assert _load(dcc_world, "locations.json")["The Kettle"]["description"] == ""
     with pytest.raises(ValueError, match="no description yet"):
         SessionManager(dcc_world).move_party("The Kettle")
@@ -49,7 +49,7 @@ def test_a_place_can_be_bare_until_the_story_goes_there(dcc_world, capsys):
 
 def test_the_command_takes_the_description(dcc_world):
     result = _tool(dcc_world, "gm-location.sh", "add", "The Kettle", "two streets down")
-    assert result.returncode == 0 and "A bare place" in result.stdout, result.stdout + result.stderr
+    assert result.returncode == 0 and "(sketch)" in result.stdout, result.stdout + result.stderr
     result = _tool(dcc_world, "gm-location.sh", "add", "The Annex", "two streets down",
                    "A capsule hostel.", "--alias", "the hostel")
     assert result.returncode == 0, result.stdout + result.stderr

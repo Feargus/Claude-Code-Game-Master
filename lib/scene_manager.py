@@ -118,8 +118,10 @@ class SceneManager:
 
     def describe(self) -> str:
         here = self.present()
+        import sheet as sheet_mod
+        character = sheet_mod.name(self.json_ops.load_json("character.json") or {}) or "the character"
         lines = [f"Scene: {self.location() or '(no location)'}",
-                 f"Present: {', '.join(here) if here else 'nobody but the player'}"]
+                 f"Present: {', '.join(here) if here else f'nobody but {character}'}"]
         usual = self.usually_here()
         if usual:
             lines.append(f"Usually found here, not in the scene: {', '.join(usual)} "

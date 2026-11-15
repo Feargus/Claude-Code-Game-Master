@@ -343,16 +343,6 @@ def close_name_refusal(close: list[str], kind: str, name: str) -> str:
             f"{what}, add --another.")
 
 
-def alias_hint(kind: str, name: str) -> str:
-    """The nudge after creating an NPC or a place without aliases, or '' when
-    the name is a single word (nothing shorter to call it)."""
-    if len(normalize_entity_name(name).split()) < 2:
-        return ""
-    tool = {"npc": "gm-npc.sh", "location": "gm-location.sh"}[kind]
-    return (f"  Facts find {name} only by the full name. If the story will use a shorter "
-            f"one: bash tools/{tool} alias \"{name}\" \"<short name>\"")
-
-
 def check_player_aliases(json_ops, character: dict[str, Any], given: bool,
                          canon: str = None) -> list[str]:
     """The aliases of a player character that is being created, tidied, or
