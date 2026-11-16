@@ -18,9 +18,9 @@ class PDFExtractor:
         self.pdfplumber_available = False
 
         try:
-            import PyPDF2
+            import pypdf
             self.pypdf_available = True
-            self.PyPDF2 = PyPDF2
+            self.pypdf = pypdf
         except ImportError:
             pass
 
@@ -32,7 +32,7 @@ class PDFExtractor:
             pass
 
         if not self.pypdf_available and not self.pdfplumber_available:
-            print("Warning: No PDF libraries available. Install PyPDF2 or pdfplumber.")
+            print("Warning: No PDF libraries available. Install pypdf or pdfplumber.")
 
     def extract(self, filepath: str) -> str:
         """
@@ -54,16 +54,16 @@ class PDFExtractor:
             except Exception as e:
                 print(f"pdfplumber extraction failed: {e}")
                 if self.pypdf_available:
-                    print("Falling back to PyPDF2...")
+                    print("Falling back to pypdf...")
 
-        # Fall back to PyPDF2
+        # Fall back to pypdf
         if self.pypdf_available:
             try:
-                return self._extract_with_pypdf2(filepath)
+                return self._extract_with_pypdf(filepath)
             except Exception as e:
-                print(f"PyPDF2 extraction failed: {e}")
+                print(f"pypdf extraction failed: {e}")
 
-        raise RuntimeError("No PDF extraction library available. Install PyPDF2 or pdfplumber.")
+        raise RuntimeError("No PDF extraction library available. Install pypdf or pdfplumber.")
 
     def _extract_with_pdfplumber(self, filepath: str) -> str:
         """Extract text using pdfplumber."""
@@ -81,11 +81,11 @@ class PDFExtractor:
 
         return ''.join(text)
 
-    def _extract_with_pypdf2(self, filepath: str) -> str:
-        """Extract text using PyPDF2."""
+    def _extract_with_pypdf(self, filepath: str) -> str:
+        """Extract text using pypdf (the maintained successor of PyPDF2)."""
         text = []
         with open(filepath, 'rb') as file:
-            pdf_reader = self.PyPDF2.PdfReader(file)
+            pdf_reader = self.pypdf.PdfReader(file)
             num_pages = len(pdf_reader.pages)
 
             for page_num in range(num_pages):

@@ -27,7 +27,7 @@ classifiers = [
 dependencies = [
     "anthropic>=0.76.0",
     "pdfplumber>=0.11.9",
-    "pypdf2>=3.0.1",
+    "pypdf>=5.0",
     "python-docx>=1.2.0",
     "python-dotenv>=1.0.0",
 ]
