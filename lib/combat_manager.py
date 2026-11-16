@@ -36,6 +36,14 @@ class CombatManager(EntityManager):
         return bool(self._load().get('combatants'))
 
     def start(self) -> dict[str, Any]:
+        """A new, empty fight. Refused (ValueError) while one with enemies is
+        running: starting over used to wipe it without a word, and `end` then
+        paid no XP for those already taken out."""
+        running = [c['name'] for c in self._load().get('combatants') or []]
+        if running:
+            raise ValueError(
+                f"A fight is running ({', '.join(running)}). Add to it with add-enemy, or end "
+                f"it first: gm-combat.sh end (it pays XP for those taken out).")
         data = {'active': True, 'combatants': []}
         self._save(data)
         return data
@@ -174,7 +182,10 @@ def main():
     m = CombatManager()
     out = None
     if args.action == 'start':
-        out = m.start()
+        try:
+            out = m.start()
+        except ValueError as error:
+            sys.exit(emit_error(str(error), json_mode=json_mode))
     elif args.action == 'add-enemy':
         try:
             out = m.add_combatant(args.name, args.wounds, args.sheet)
