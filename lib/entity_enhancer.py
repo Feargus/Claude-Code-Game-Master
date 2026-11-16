@@ -107,7 +107,13 @@ class EntityEnhancer:
                 if not CampaignVectorStore.is_available():
                     return False
 
-                self._vector_store = CampaignVectorStore(str(self.campaign_dir))
+                store = CampaignVectorStore(str(self.campaign_dir))
+                # A half-indexed book is not searched: what isn't indexed yet would
+                # quietly be missing (gm-extract.sh wait).
+                self.not_ready = store.not_ready()
+                if self.not_ready:
+                    return False
+                self._vector_store = store
                 self._embedder = get_embedder()
                 return self._embedder is not None
             except ImportError as e:
@@ -215,7 +221,8 @@ class EntityEnhancer:
             List of passage dicts with 'text', 'distance', 'metadata'
         """
         if not self._ensure_rag():
-            print("[ERROR] RAG not available - no vector store found")
+            print(f"[ERROR] {getattr(self, 'not_ready', '') or 'The book search is off: bash tools/gm-recall.sh status'}",
+                  file=sys.stderr)
             return []
 
         # Check if vector store has data
@@ -278,7 +285,8 @@ class EntityEnhancer:
             List of passage dicts with 'text', 'distance', 'metadata'
         """
         if not self._ensure_rag():
-            print("[ERROR] RAG not available - no vector store found")
+            print(f"[ERROR] {getattr(self, 'not_ready', '') or 'The book search is off: bash tools/gm-recall.sh status'}",
+                  file=sys.stderr)
             return []
 
         # Check if vector store has data

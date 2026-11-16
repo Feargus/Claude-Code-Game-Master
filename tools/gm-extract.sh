@@ -73,8 +73,12 @@ Preparing a book for play (/import)
 
 Commands:
   prepare <file> [name]     Make the book searchable: the campaign folder, the text
-                            in source/, the RAG index, chunk files for the World
-                            Index's extractor agents. Name defaults to the filename.
+                            in source/, its pieces, and the index of them, made in
+                            the background (a book indexed before is copied in
+                            seconds). Name defaults to the filename.
+  wait [campaign]           Wait until the book is indexed (up to 9 minutes a call;
+                            run it again while it says so). Nothing that searches
+                            the book runs before.
   draft-bible [campaign] [--name N] [--voice-json J] [--fields-json J]
                             Draft/refresh the campaign's world-bible.json from
                             current-document.txt (chapter map + verbatim-filtered
@@ -154,8 +158,8 @@ prepare_document() {
     fi
 
     echo
-    echo "Document prepared: the book becomes searchable as it is indexed in the background"
-    echo "(gm-search.sh \"...\" --rag-only; progress: bash tools/gm-recall.sh status)."
+    echo "Document prepared. Before anything searches the book, wait until it is indexed:"
+    echo "  bash tools/gm-extract.sh wait \"<campaign>\"   (run it again while it says so)"
     echo "Next: /import goes on with the door question and the roster of sketches (Step 5.5)."
 }
 
@@ -249,6 +253,16 @@ list_campaigns() {
 case "$1" in
     prepare)
         prepare_document "$2" "$3"
+        ;;
+
+    wait)
+        # The book's index is made in the background; nothing that searches the
+        # book runs before it is complete (lib/rag/vector_store.py). Waits up to
+        # 9 minutes (a command may run for 10), then says whether to call it again.
+        campaign_name=$(require_campaign "$2" "wait") || exit 1
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
+        $PYTHON_CMD "$LIB_DIR/rag/vector_store.py" wait "$CAMPAIGN_DIR"
+        exit $?
         ;;
 
 

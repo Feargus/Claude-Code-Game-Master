@@ -7,7 +7,9 @@ Book indexing: a campaign's source book cut into pieces, made searchable by mean
    (the model reads at most 512 tokens per text; 3,000 characters lost a quarter)
 3. Store the pieces (vectors/chunks.json)
 4. A background job embeds them with the facts' model (vector_store.index_job):
-   about 15 minutes for a novel on a Raspberry Pi 4; searches work on what is done
+   about 15 to 30 minutes for a novel on a Raspberry Pi 4. Nothing that searches the
+   book runs before it is done (gm-extract.sh wait). A book indexed for one campaign
+   is copied for the next, in seconds (vector_store.from_shared).
 
 No categorization: all pieces are stored alike and found by closeness to the question.
 """
@@ -49,28 +51,39 @@ class RAGExtractor:
         chunks = self._split_into_chunks(raw_text)
         print(f"  {len(chunks)} pieces of about {self.chunk_size:,} characters")
         print("Step 3: Storing the pieces...")
-        self.vector_store.set_chunks(
-            chunks, [{"chunk_index": i, "document": self._document_name} for i in range(len(chunks))],
-            [f"doc_{i:04d}" for i in range(len(chunks))])
-        if self.embedder is not None:
-            print("Step 4: Embedding the pieces...")
-            self.vector_store.index(self.embedder)
-            indexing = "done"
-        elif start_index_job(self.campaign_dir):
-            minutes = max(1, round(len(chunks) * 4 / 60))
-            print(f"Step 4: Embedding the pieces in the background (about {minutes} min); "
-                  f"searches work on what is done. Progress: bash tools/gm-recall.sh status")
-            indexing = "in the background"
+        from lib.rag.vector_store import book_key
+        key = book_key(raw_text, self.chunk_size)
+        if self.embedder is None and self.vector_store.from_shared(key):
+            self.vector_store.set_source(key, self._document_name)
+            print("Step 4: already indexed for an earlier campaign: copied.")
+            indexing = "done (from an earlier campaign)"
         else:
-            print("Step 4: skipped: semantic recall isn't installed (bash tools/gm-recall.sh "
-                  "status); the pieces are stored and will be embedded once it is")
-            indexing = "waiting for semantic recall"
+            self.vector_store.set_chunks(
+                chunks, [{"chunk_index": i, "document": self._document_name} for i in range(len(chunks))],
+                [f"doc_{i:04d}" for i in range(len(chunks))])
+            self.vector_store.set_source(key, self._document_name)
+            indexing = self._index(len(chunks))
         self._extraction_metadata = {
             "source_file": str(filepath), "document_name": self._document_name,
             "extraction_date": datetime.now().isoformat(), "total_chars": len(raw_text),
             "total_chunks": len(chunks), "chunk_size": self.chunk_size, "indexing": indexing,
         }
         return self._extraction_metadata
+
+    def _index(self, pieces: int) -> str:
+        if self.embedder is not None:
+            print("Step 4: Embedding the pieces...")
+            self.vector_store.index(self.embedder)
+            self.vector_store.share()
+            return "done"
+        if start_index_job(self.campaign_dir):
+            minutes = max(1, round(pieces * 4 / 60))
+            print(f"Step 4: Embedding the pieces in the background, about {minutes} min. Nothing "
+                  f"that searches the book runs before it is done: bash tools/gm-extract.sh wait")
+            return "in the background"
+        print("Step 4: skipped: semantic recall isn't installed (bash tools/gm-recall.sh "
+              "status); the pieces are stored and will be embedded once it is")
+        return "waiting for semantic recall"
 
     def query(
         self,

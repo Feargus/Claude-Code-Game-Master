@@ -103,3 +103,79 @@ def test_the_enhancer_searches_the_book(book, monkeypatch, tmp_path):
     passages = EntityEnhancer(str(ws)).search_raw("bread from the baker", n_results=1)
     assert passages and "baker" in passages[0]["text"]
     assert Path(camp, "vectors", "chunks.json").exists()
+
+
+# ---------- a book is indexed once, and only a finished index is used ----------
+
+def test_a_second_campaign_from_the_same_book_copies_the_index(book, tmp_path, monkeypatch):
+    from lib.rag import vector_store
+    path, camp = book
+    monkeypatch.setenv("GM_WORLD_STATE_BASE", str(tmp_path / "ws"))
+    RAGExtractor(str(camp), chunk_size=200, embedder=FakeEmbedder()).extract_from_document(path)
+    store = CampaignVectorStore(str(camp))
+    shared = vector_store.shared_dir(store.source_key())
+    assert (shared / "book.npz").exists()
+    # the shared copy is checked against the model: make it look like the real one's
+    model, vectors = store._vectors()
+    from lib.embedder import MODEL_NAME
+    store._save(MODEL_NAME, vectors)
+    store.share()
+    second = tmp_path / "second"
+    second.mkdir()
+    meta = RAGExtractor(str(second), chunk_size=200).extract_from_document(path)
+    assert meta["indexing"] == "done (from an earlier campaign)"
+    assert CampaignVectorStore(str(second)).complete()
+
+
+def test_a_half_indexed_book_is_refused_with_what_to_do(book, monkeypatch):
+    path, camp = book
+    monkeypatch.setenv("GM_EMBEDDER", "off")
+    RAGExtractor(str(camp), chunk_size=200).extract_from_document(path)
+    message = CampaignVectorStore(str(camp)).not_ready()
+    assert "still being indexed (0 of" in message and "gm-extract.sh wait" in message
+
+
+def test_wait_says_done_or_to_call_again(book, monkeypatch):
+    from lib.rag import vector_store
+    path, camp = book
+    monkeypatch.setenv("GM_EMBEDDER", "off")
+    RAGExtractor(str(camp), chunk_size=200).extract_from_document(path)
+    monkeypatch.setattr(vector_store.CampaignVectorStore, "is_available", staticmethod(lambda: True))
+    monkeypatch.setattr(vector_store, "start_index_job", lambda d: False)
+    assert vector_store.wait(str(camp), minutes=0) == 2               # still indexing
+    CampaignVectorStore(str(camp)).index(FakeEmbedder())
+    assert vector_store.wait(str(camp), minutes=0) == 0               # done
+
+
+def test_the_loremaster_finds_the_chapter_by_meaning(book, monkeypatch):
+    from lib.rag.coarse_index import CoarseIndex
+    path, camp = book
+    RAGExtractor(str(camp), chunk_size=200, embedder=FakeEmbedder()).extract_from_document(path)
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    index = CoarseIndex(embedder="meaning", store=CampaignVectorStore(str(camp)))
+    index.build(Path(path).read_text())
+    pointers = index.query("bread from the baker before dawn")
+    assert index.method == "meaning"
+    assert "baker" in index.load_chapter(pointers[0]["index"])["text"]
+    monkeypatch.setenv("GM_EMBEDDER", "off")                          # no model: keywords
+    assert index.query("baker bread") and index.method == "keyword"
+
+
+def test_the_loremaster_refuses_a_half_indexed_book(book, monkeypatch, tmp_path):
+    import json
+
+    from lib.loremaster import Loremaster, LoremasterError
+    from lib.rag import vector_store
+    path, _ = book
+    ws = tmp_path / "ws"
+    camp = ws / "campaigns" / "c"
+    camp.mkdir(parents=True)
+    (ws / "active-campaign.txt").write_text("c")
+    (camp / "campaign-overview.json").write_text(json.dumps({}))
+    monkeypatch.setenv("GM_EMBEDDER", "off")
+    RAGExtractor(str(camp), chunk_size=200).extract_from_document(path)
+    import importlib  # the Loremaster imports it as rag.vector_store
+    for module in (vector_store, importlib.import_module("rag.vector_store")):
+        monkeypatch.setattr(module.CampaignVectorStore, "is_available", staticmethod(lambda: True))
+    with pytest.raises(LoremasterError, match="gm-extract.sh wait"):
+        Loremaster(str(ws), book_text=BOOK)

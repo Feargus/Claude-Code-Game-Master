@@ -59,6 +59,17 @@ CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 
 **If this block exits non-zero, STOP.** Do not draft a bible. Do not build a stage.
 
+Then wait until the book is indexed. It is indexed in the background (about 15 to 30
+minutes for a novel on a Raspberry Pi; seconds if this book was indexed for an earlier
+campaign), and nothing that searches it runs before:
+
+```bash
+bash tools/gm-extract.sh wait "<campaign-name>"
+```
+
+It waits up to 9 minutes. While it says "Still indexing", tell the player how far it is
+in a line, and run it again; go on only when it says the book is indexed.
+
 The book is now searchable. That is enough of a "world" to start.
 
 ---

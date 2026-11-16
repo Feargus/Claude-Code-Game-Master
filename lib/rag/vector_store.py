@@ -18,7 +18,13 @@ Distances are cosine distances (1 - similarity), as chromadb's were, so the
 thresholds that read them (entity_enhancer.py) stay as they were.
 
     vector_store.py index <campaign folder>     the background job
+    vector_store.py wait <campaign folder>      wait (up to 9 minutes) until it is done
     vector_store.py status <campaign folder>    how much of the book is indexed
+
+A book is indexed once: the finished index is kept in world-state/book-index/<key>/
+(the key: the book's text and how it is cut), and a later campaign from the same
+book copies it in seconds. Nothing that needs the index uses a half-done one: the
+readers refuse it with what to do (`not_ready`), and /import waits for it.
 """
 
 import contextlib
@@ -34,9 +40,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 CHUNKS = "chunks.json"
 VECTORS = "book.npz"
+SOURCE = "source.json"      # which book (its key in the shared index)
 LOCK = "index.lock"
 LOG = "index.log"
 SAVE_EVERY = 10
+SHARED = "book-index"       # world-state/book-index/<key>/: a book indexed once, for every campaign
+ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def book_key(text: str, chunk_size: int) -> str:
+    """The same book, cut the same way, has the same key."""
+    import hashlib
+    return hashlib.sha256(f"{chunk_size}|{text}".encode()).hexdigest()[:16]
+
+
+def shared_dir(key: str) -> Path:
+    base = Path(os.environ.get("GM_WORLD_STATE_BASE") or ROOT / "world-state")
+    return base / SHARED / key
 
 
 class CampaignVectorStore:
@@ -182,6 +202,64 @@ class CampaignVectorStore:
         """(pieces embedded, pieces in all)."""
         return self.count(), len(self.chunks())
 
+    def complete(self) -> bool:
+        done, total = self.progress()
+        return total > 0 and done == total
+
+    def not_ready(self) -> str:
+        """'' when the book can be searched; else why not and what to do."""
+        done, total = self.progress()
+        if not total:
+            return "This campaign has no book indexed (gm-extract.sh prepare)."
+        if done < total:
+            return (f"The book is still being indexed ({done} of {total} pieces). Wait for it: "
+                    f"bash tools/gm-extract.sh wait")
+        return ""
+
+    # ---------- the shared index: a book is indexed once ----------
+
+    def set_source(self, key: str, document: str) -> None:
+        self.vectors_dir.mkdir(parents=True, exist_ok=True)
+        _write(self.vectors_dir / SOURCE, json.dumps({"key": key, "document": document}))
+
+    def source_key(self) -> str:
+        path = self.vectors_dir / SOURCE
+        try:
+            return json.loads(path.read_text(encoding="utf-8")).get("key", "") if path.exists() else ""
+        except ValueError:
+            return ""
+
+    def from_shared(self, key: str) -> bool:
+        """Copy the book's finished index from an earlier campaign, if there is one
+        made with the current model. True when copied."""
+        import shutil
+
+        from embedder import MODEL_NAME
+        source = CampaignVectorStore.__new__(CampaignVectorStore)
+        source.campaign_dir, source.vectors_dir, source._cache = None, shared_dir(key), None
+        source.collection_name = self.collection_name
+        if not source.complete() or source._vectors()[0] != MODEL_NAME:
+            return False
+        self.vectors_dir.mkdir(parents=True, exist_ok=True)
+        for name in (CHUNKS, VECTORS):
+            shutil.copyfile(source.vectors_dir / name, self.vectors_dir / (name + ".tmp"))
+            os.replace(self.vectors_dir / (name + ".tmp"), self.vectors_dir / name)
+        self._cache = None
+        return True
+
+    def share(self) -> bool:
+        """Put this campaign's finished index where later campaigns find it."""
+        import shutil
+        key = self.source_key()
+        if not key or not self.complete():
+            return False
+        target = shared_dir(key)
+        target.mkdir(parents=True, exist_ok=True)
+        for name in (CHUNKS, VECTORS, SOURCE):
+            shutil.copyfile(self.vectors_dir / name, target / (name + ".tmp"))
+            os.replace(target / (name + ".tmp"), target / name)
+        return True
+
     def clear(self) -> None:
         for name in (CHUNKS, VECTORS):
             with contextlib.suppress(FileNotFoundError):
@@ -230,7 +308,53 @@ def index_job(campaign_dir) -> int:
             return 1
         _log(store, f"indexed {done} pieces in {time.time() - start:.0f} s "
                     f"({store.count()} of {len(store.chunks())})")
+        if store.share():
+            _log(store, f"shared for later campaigns: {shared_dir(store.source_key())}")
     return 0
+
+
+def _job_running(store: CampaignVectorStore) -> bool:
+    import fcntl
+    if not (store.vectors_dir / LOCK).exists():
+        return False
+    with open(store.vectors_dir / LOCK, "a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(lock, fcntl.LOCK_UN)
+    return False
+
+
+def wait(campaign_dir, minutes: float = 9.0) -> int:
+    """Wait until the book is indexed, at most `minutes` (a command may run for 10
+    at most). Starts the job again if none is running (after a restart). 0: done;
+    2: still indexing, call again; 1: it can't be indexed."""
+    store = CampaignVectorStore(campaign_dir)
+    if not store.chunks():
+        print("[ERROR] This campaign has no book to index (gm-extract.sh prepare).", file=sys.stderr)
+        return 1
+    if not CampaignVectorStore.is_available():
+        print("[ERROR] The book can't be indexed: semantic recall isn't installed "
+              "(bash tools/gm-recall.sh status).", file=sys.stderr)
+        return 1
+    deadline, start = time.time() + minutes * 60, store.count()
+    began = time.time()
+    while True:
+        store._cache = None
+        done, total = store.progress()
+        if done >= total:
+            print(f"[SUCCESS] The book is indexed: {total} pieces.")
+            return 0
+        if not _job_running(store):
+            start_index_job(campaign_dir)
+        if time.time() >= deadline:
+            rate = (done - start) / max(1.0, time.time() - began)
+            left = f", about {round((total - done) / rate / 60)} min left" if rate > 0 else ""
+            print(f"Still indexing: {done} of {total} pieces{left}. "
+                  f"Run bash tools/gm-extract.sh wait again.")
+            return 2
+        time.sleep(10)
 
 
 def start_index_job(campaign_dir) -> bool:
@@ -265,6 +389,8 @@ def status_line(campaign_dir) -> str:
 def main() -> int:
     if len(sys.argv) == 3 and sys.argv[1] == "index":
         return index_job(sys.argv[2])
+    if len(sys.argv) in (3, 4) and sys.argv[1] == "wait":
+        return wait(sys.argv[2], float(sys.argv[3]) if len(sys.argv) == 4 else 9.0)
     if len(sys.argv) == 3 and sys.argv[1] == "status":
         print(status_line(sys.argv[2]) or "This campaign has no book indexed.")
         return 0

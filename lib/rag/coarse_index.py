@@ -3,9 +3,11 @@
 Coarse chapter index — points INTO the retained book text, it is not the fidelity.
 
 Its only job is to find the right CHAPTER, which the long-context reader then
-loads in full (the piece-level search by meaning is vector_store.py). The scorer is
-pluggable: a dependency-free keyword scorer by default, or "meaning" for semantic
-recall's model (embedder.py), which falls back to keywords when it isn't installed. Query templates branch by
+loads in full. By meaning when it can (2026-11-16): the book's indexed pieces
+(vector_store.py) closest to the question vote for the chapters they come from, so
+no extra index is needed and a chapter longer than the model reads is no problem.
+By keywords (word overlap, no model) when the campaign's book has no index or
+semantic recall isn't installed. Query templates branch by
 content type so a novel import stops dragging retrieval toward D&D stat-block
 vocabulary.
 """
@@ -38,25 +40,48 @@ def _keyword_score(query: str, text: str) -> float:
 class CoarseIndex:
     """A chapter-granularity index that returns POINTERS, never chunk blobs."""
 
-    def __init__(self, embedder: str = "keyword"):
-        self.embedder = embedder  # pluggable: "keyword" (default) or "meaning"
+    PIECES = 12                 # the closest pieces that vote for their chapters
+
+    def __init__(self, embedder: str = "keyword", store=None):
+        self.embedder = embedder  # "keyword" (default) or "meaning"
+        self.store = store        # the book's pieces and vectors, for "meaning"
         self.chapters: list[dict[str, Any]] = []
+        self.method = "keyword"   # what the last query ranked by
 
     def build(self, text: str) -> int:
         self.chapters = segment_into_chapters(text)
         return len(self.chapters)
 
     def _score(self, query: str, text: str) -> float:
-        if self.embedder == "keyword":
-            return _keyword_score(query, text)
+        return _keyword_score(query, text)
+
+    def _query_meaning(self, query: str, top_k: int) -> list[dict[str, Any]]:
+        """Chapters by the pieces closest to the question: each of the PIECES best
+        adds its similarity to the chapter it lies in. [] when nothing maps."""
         from embedder import get_embedder
-        emb = get_embedder()
-        if emb is None:                              # semantic recall not installed
-            return _keyword_score(query, text)
-        return float(emb.query(query) @ emb.document(text))
+        embedder = get_embedder()
+        if embedder is None:
+            return []
+        found = self.store.query_by_text(query, embedder, n_results=self.PIECES)
+        votes: dict[int, float] = {}
+        for text, distance in zip(found["documents"], found["distances"], strict=True):
+            head = text.strip()[:120]
+            for c in self.chapters:
+                if head and head in c["text"]:
+                    votes[c["index"]] = votes.get(c["index"], 0.0) + (1.0 - distance)
+                    break
+        ranked = sorted(votes.items(), key=lambda kv: -kv[1])[:top_k]
+        by_index = {c["index"]: c for c in self.chapters}
+        return [{"index": i, "title": by_index[i]["title"], "score": round(s, 3)} for i, s in ranked]
 
     def query(self, query: str, content_type: str = "literary", top_k: int = 3) -> list[dict[str, Any]]:
         """Return ranked CHAPTER POINTERS {index, title, score} — not the text."""
+        if self.embedder == "meaning" and self.store is not None:
+            pointers = self._query_meaning(query, top_k)
+            if pointers:
+                self.method = "meaning"
+                return pointers
+        self.method = "keyword"
         templated = _template(query, content_type)
         scored = [(self._score(templated, c["text"]), c) for c in self.chapters]
         scored.sort(key=lambda t: t[0], reverse=True)

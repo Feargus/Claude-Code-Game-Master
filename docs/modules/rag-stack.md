@@ -28,9 +28,17 @@ Two independent retrieval paths over the same book. They do not share an index.
 `gm-extract.sh prepare` (from `/import`) extracts the text, cuts it into pieces and stores
 them in seconds; a background job (`vector_store.index_job`: one at a time, a lock) embeds
 them, saving every 10, so it resumes where it stopped. About 4 s per piece on a Raspberry
-Pi 4: some 15 minutes for a novel (the test book, *The Hound of the Baskervilles*, 373,000
-characters, 303 pieces), longer for a big module. A search before it is done uses the
-pieces embedded so far; `gm-recall.sh status` shows how far it is.
+Pi 4: 15 to 30 minutes for a novel (the test book, *The Hound of the Baskervilles*, 373,000
+characters, 303 pieces), longer for a big module.
+
+**Nothing that needs the index uses a half-done one.** `/import` waits for it
+(`gm-extract.sh wait`, up to 9 minutes a call, run again while it says so), and the readers
+refuse a half-indexed book with what to do: the search (`entity_enhancer.py`), the scene
+passages and the Loremaster.
+
+**A book is indexed once.** The finished index is kept in `world-state/book-index/<key>/`
+(the key: the book's text and how it is cut; not in git), and a later campaign from the
+same book copies it in seconds.
 
 Pieces are embedded as documents and questions as queries (the model's own prompts). A
 search compares the question with every piece directly: a few thousand take milliseconds,
@@ -47,12 +55,16 @@ the model files) and sets `RAG_AVAILABLE`. Callers degrade rather than fail (see
 [scene context](scene-context.md)): a campaign with no book, semantic recall not installed,
 and a query that finds nothing look alike from outside. `gm-recall.sh status` tells them apart.
 
-## The chapter index defaults to keyword scoring, deliberately
+## The chapter index finds chapters by meaning, keywords as the fallback
 
-`CoarseIndex(embedder=…)` defaults to `"keyword"` (word overlap, no model), so building
-the chapter index never needs the model. `"meaning"` scores with the facts' model instead,
-falling back to keywords when semantic recall isn't installed. No caller passes it: the
-Loremaster constructs `CoarseIndex()` bare.
+The Loremaster (`gm-lore.sh`) finds the chapter a place belongs to, then reads it whole. By
+meaning since 2026-11-16: the 12 indexed pieces closest to the question vote for the
+chapters they lie in (their similarity added up), so it needs no index of its own, and a
+chapter longer than the model reads is no problem. On the test book, "the swamp where
+ponies sink" finds Chapter 7 (the pony in the Grimpen Mire) by meaning and Chapter 3 by
+keywords. Keywords (word overlap, no model) are the fallback when the campaign's book has
+no index or semantic recall isn't installed; a half-indexed book is refused. The brief says
+which ran (`found_by`).
 
 ## Query templating is the anti-D&D lever
 
