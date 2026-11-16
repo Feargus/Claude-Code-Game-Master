@@ -38,7 +38,7 @@ is named in `world-state/active-campaign.txt`.
 ├── character.json           # Player character sheet (FLAT shape)
 ├── npcs.json                # All NPCs
 ├── locations.json           # All locations
-├── facts.json               # World facts by category
+├── facts.json               # World facts, one list
 ├── plots.json               # Plot hooks and quests
 ├── items.json               # Items (from imports)
 ├── consequences.json        # Pending/resolved events + firing provenance
@@ -275,24 +275,21 @@ Dungeon rooms (stored in `locations.json`) may include:
 
 ## facts.json
 
-A dictionary with category keys, each containing an array of fact **objects**.
+One list of fact **objects**, in the order they were recorded (`lib/facts.py`: every
+script reads and writes the file through it). Until 2026-11-16 the file held one list per
+category; nothing read the categories any more, and a file in that form is refused.
 
 ```json
-{
-  "world_building": [
-    {"id": "f1", "fact": "The kingdom has been at peace for 100 years",
-     "game_time": "2187-10-23T04:30", "timestamp": "2026-01-28T21:50:30Z"}
-  ],
-  "session_events": [
-    {"id": "f2", "fact": "The party met the king on day 1", "about": ["npc:King Harald"],
-     "holders": ["player", "npc:King Harald"], "timestamp": "..."}
-  ]
-}
+[
+  {"id": "f1", "fact": "The kingdom has been at peace for 100 years",
+   "game_time": "2187-10-23T04:30", "timestamp": "2026-01-28T21:50:30Z"},
+  {"id": "f2", "fact": "The party met the king on day 1", "about": ["npc:King Harald"],
+   "holders": ["player", "npc:King Harald"], "timestamp": "..."}
+]
 ```
 
-- `id`: `f1`, `f2`, … unique across all categories, so other records can point to a fact.
-  `gm-note.sh` numbers any fact without one (older facts, or facts the import scripts
-  write directly), oldest first, the next time it records a fact.
+- `id`: `f1`, `f2`, … counted up, so other records can point to a fact and the list is in
+  id order.
 - `game_time`: the in-game time when the fact was recorded, copied from
   `campaign-overview.json`. Missing on facts from before it existed.
 - `timestamp`: the real-world time it was recorded.
@@ -420,8 +417,7 @@ A `tell` effect (`--tells <fact id> --to <holder>`, checked when added) adds hol
 the fact through `gm-note.sh tell`'s own path, so their `on_learn` consequences fire too
 and are listed in `effects_done`. Someone who already knows learns nothing, which is what
 ends a chain. Rollback doesn't remove the holders.
-Both `kill` commands also record the death as a fact
-(category `session_events`). A dead NPC carries `status: "dead"`, `cause`, `died_at` and
+Both `kill` commands also record the death as a fact. A dead NPC carries `status: "dead"`, `cause`, `died_at` and
 `died_game_time`.
 
 A fired consequence also carries `last_fired_key` (the scene key that fired it) and stays
@@ -589,7 +585,7 @@ items otherwise stay mixed in — do not treat a legacy save as a whole-world re
     "campaign-overview.json": {},
     "npcs.json": {},
     "locations.json": {},
-    "facts.json": {},
+    "facts.json": [],
     "plots.json": {},
     "items.json": {},
     "consequences.json": {},

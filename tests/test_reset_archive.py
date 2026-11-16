@@ -187,7 +187,7 @@ def test_hard_reset_with_yes_clears_without_archiving(fixture_campaign, archive)
     result = run_reset("hard", "--yes")
     assert result.returncode == 0, result.stderr
 
-    assert (fixture_campaign / "facts.json").read_text(encoding="utf-8").strip() == "{}"
+    assert (fixture_campaign / "facts.json").read_text(encoding="utf-8").strip() == "[]"
     assert not (fixture_campaign / "character.json").exists()
     assert not list(archive.glob(f"{FIXTURE_NAME}-*")), "hard reset must not archive"
 

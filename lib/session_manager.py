@@ -227,9 +227,6 @@ class SessionManager(EntityManager):
         """Count items in a JSON file"""
         data = self.json_ops.load_json(filename)
         if isinstance(data, dict):
-            # For facts.json, sum all category counts
-            if filename == "facts.json":
-                return sum(len(v) for v in data.values() if isinstance(v, list))
             return len(data)
         if isinstance(data, list):
             return len(data)

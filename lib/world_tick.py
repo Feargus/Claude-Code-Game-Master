@@ -11,7 +11,6 @@ the last one can be rolled back.
 
 A development (JSON object):
   {"fact": "Dekker has hired a tracker who hunts the grey sleeve.",   required
-   "category": "plot_local",                                          optional
    "about": ["npc:Dekker"],     optional; names in the fact are added anyway
    "holders": ["npc:Dekker"],   optional; default nobody (it happened off-screen)
    "truth": "wrong", "version_of": "f12",   optional: a cover story, a planted lie
@@ -32,11 +31,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import facts as fact_file
 from consequence_manager import ConsequenceManager
-
-# Default fact category for an off-screen development.
-# Provisional, like all categories (design-notes.md, "World state").
-DEFAULT_CATEGORY = "plot_local"
 
 
 class WorldTickError(ValueError):
@@ -61,6 +57,9 @@ class WorldTick:
             raise WorldTickError(f"{where} must be a JSON object")
         if not str(d.get("fact") or d.get("text") or "").strip():
             raise WorldTickError(f"{where} needs a \"fact\": what happened off-screen")
+        if "category" in d:
+            raise WorldTickError(f"{where}: facts have no category any more; leave "
+                                 f"\"category\" out.")
         if "plots" in d:
             raise WorldTickError(f"{where}: the field is \"plot\" (one name, or a list), "
                                  f"as on the command line (--plot).")
@@ -170,7 +169,7 @@ class WorldTick:
             if errors:
                 raise WorldTickError(f"development {i + 1}: {'; '.join(errors)}")
             _, _, _, errors = notes._check_version(
-                notes.json_ops.load_json("facts.json") or {}, d.get("truth"), d.get("version_of"))
+                fact_file.load(notes.json_ops), d.get("truth"), d.get("version_of"))
             if errors:
                 raise WorldTickError(f"development {i + 1}: {' '.join(errors)}")
         written = {"facts": [], "consequences": [], "clocks": []}
@@ -186,8 +185,7 @@ class WorldTick:
             for i, d in enumerate(developments):
                 text = str(d.get("fact") or d.get("text")).strip()
                 plots = as_list(d.get("plot"))
-                fid = notes.add_fact(d.get("category") or DEFAULT_CATEGORY, text,
-                                     list_waiting=False, about=as_list(d.get("about")),
+                fid = notes.add_fact(text, list_waiting=False, about=as_list(d.get("about")),
                                      plots=plots, offer_plot=False,
                                      holders=as_list(d.get("holders")),
                                      truth=d.get("truth"), version_of=d.get("version_of"),

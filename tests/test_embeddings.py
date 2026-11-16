@@ -39,7 +39,7 @@ def test_the_choice_of_embedder(monkeypatch):
 def test_new_and_changed_texts_get_vectors(dcc_world, monkeypatch):
     monkeypatch.setenv("GM_EMBEDDER", "fake")              # updates at once, in this process
     notes = NoteManager(dcc_world)
-    fid = notes.add_fact("session_events", "The stairwell door is braced open.", holders=["player"])
+    fid = notes.add_fact("The stairwell door is braced open.", holders=["player"])
     store = EmbeddingStore(_camp(dcc_world))
     vectors = store.vectors("fake")
     assert f"fact:{fid}" in vectors and len(vectors) == len(texts(_camp(dcc_world)))
@@ -56,7 +56,7 @@ def test_new_and_changed_texts_get_vectors(dcc_world, monkeypatch):
 
 
 def test_off_writes_nothing(dcc_world):
-    NoteManager(dcc_world).add_fact("session_events", "Nothing to embed.", holders=["player"])
+    NoteManager(dcc_world).add_fact("Nothing to embed.", holders=["player"])
     assert not (_camp(dcc_world) / STORE).exists()
 
 

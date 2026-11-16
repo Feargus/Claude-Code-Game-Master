@@ -27,8 +27,7 @@ def _active(world):
 
 
 def _fact_texts(world):
-    return [f["fact"] for items in _load(world, "facts.json").values()
-            for f in items if isinstance(f, dict)]
+    return [f["fact"] for f in _load(world, "facts.json") if isinstance(f, dict)]
 
 
 DEVS = [
@@ -38,16 +37,14 @@ DEVS = [
                      "triggers": [{"type": "on_location", "match": "Floor 2 Junction"}]},
      "clock": {"name": "Tracker", "text": "The tracker closes in", "segments": 3, "on": "event",
                "consequence": "The tracker finds Fearghas"}},
-    {"fact": "Auntie Ro kept her stall shut for a day.", "category": "npc_relations"},
+    {"fact": "Auntie Ro kept her stall shut for a day."},
 ]
 
 
 def test_every_development_becomes_a_fact(dcc_world):
     applied = WorldTick(dcc_world).apply(DEVS)
     assert [a["text"] for a in applied] == [d["fact"] for d in DEVS]
-    facts = _load(dcc_world, "facts.json")
-    assert any(f["fact"] == DEVS[0]["fact"] for f in facts["plot_local"])  # default category
-    assert any(f["fact"] == DEVS[2]["fact"] for f in facts["npc_relations"])
+    assert set(_fact_texts(dcc_world)) >= {d["fact"] for d in DEVS}
     assert all(a["fact"].startswith("f") for a in applied)
 
 

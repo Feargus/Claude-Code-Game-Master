@@ -433,7 +433,7 @@ class CampaignManager:
         facts_path = campaign_path / "facts.json"
         if not preserve_existing or not facts_path.exists():
             with open(facts_path, 'w', encoding='utf-8') as f:
-                json.dump({}, f, indent=2)
+                json.dump([], f, indent=2)                # one list of facts (facts.py)
 
         # consequences.json
         consequences_path = campaign_path / "consequences.json"

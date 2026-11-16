@@ -42,7 +42,7 @@ def test_recording_a_fact_leaves_a_damaged_facts_file_alone(dcc_world):
     facts = _campaign(dcc_world) / "facts.json"
     left = _cut_short(facts)
     result = subprocess.run(
-        ["bash", str(ROOT / "tools" / "gm-note.sh"), "lore", "A fact after the damage.",
+        ["bash", str(ROOT / "tools" / "gm-note.sh"), "A fact after the damage.",
          "--nowhere"],
         capture_output=True, text=True, env=dict(os.environ, GM_WORLD_STATE_BASE=dcc_world))
     assert result.returncode == 1
@@ -104,7 +104,7 @@ def test_a_command_stops_when_it_cannot_write(dcc_world):
     campaign.chmod(0o555)                                # nothing can be created in it
     try:
         result = subprocess.run(
-            ["bash", str(ROOT / "tools" / "gm-note.sh"), "lore", "A fact that can't be written.",
+            ["bash", str(ROOT / "tools" / "gm-note.sh"), "A fact that can't be written.",
              "--nowhere"],
             capture_output=True, text=True, env=dict(os.environ, GM_WORLD_STATE_BASE=dcc_world))
     finally:

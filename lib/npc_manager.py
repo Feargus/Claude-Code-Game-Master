@@ -16,12 +16,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 import sheet as sheet_mod
 from entity_manager import EntityManager, is_dead, is_party_member, usual_places
 from game_time import stored_time
-from note_manager import ATTITUDE_CATEGORY as FEELING_CATEGORY  # noqa: F401 (kept for callers)
 from note_manager import check_attitude
 
-# Category of the fact `kill` records. Provisional: categories are due for rework
-# (design-notes.md, "World state").
-DEATH_FACT_CATEGORY = "session_events"
+
 class NPCManager(EntityManager):
     """The active campaign's NPCs."""
 
@@ -151,9 +148,7 @@ class NPCManager(EntityManager):
         notes = NoteManager(self.base_dir)
         fid = notes.set_attitude(name, attitude, "player")
         player = sheet_mod.name(self.json_ops.load_json("character.json") or {}) or "the player"
-        entry = next(f for f in notes.json_ops.load_json("facts.json")[FEELING_CATEGORY]
-                     if f["id"] == fid)
-        print(f"  Attitude {fid}: {fact_text(entry, player)}")
+        print(f"  Attitude {fid}: {fact_text(notes.show([fid])[0], player)}")
 
     def _witness_hint(self, name: str) -> None:
         """A new NPC may have seen what happened here before they had a name (Lord
@@ -304,7 +299,7 @@ class NPCManager(EntityManager):
 
         from note_manager import NoteManager
         fact_id = NoteManager(self.base_dir).add_fact(
-            DEATH_FACT_CATEGORY, f"{key} died" + (f": {cause}" if cause else "."))
+            f"{key} died" + (f": {cause}" if cause else "."))
         from consequence_manager import ConsequenceManager
         fired = ConsequenceManager(self.base_dir).fire_event(
             'on_death', f"npc:{key}", f"{key} died" + (f" ({cause})" if cause else ""))
@@ -480,9 +475,7 @@ def main():
                     print("No attitude recorded.")
             else:
                 fid = notes.set_attitude(args.name, args.adjectives, args.towards)
-                entry = next(f for f in notes.json_ops.load_json("facts.json")[FEELING_CATEGORY]
-                             if f["id"] == fid)
-                print(f"[SUCCESS] Attitude {fid}: {fact_text(entry, player)}")
+                print(f"[SUCCESS] Attitude {fid}: {fact_text(notes.show([fid])[0], player)}")
         except ValueError as error:
             print(f"[ERROR] {error}", file=sys.stderr)
             sys.exit(1)

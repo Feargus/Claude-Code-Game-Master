@@ -11,6 +11,7 @@ from typing import Any
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
+import facts as fact_file
 from campaign_manager import CampaignManager
 from cli_output import emit, emit_error
 from entity_aliases import resolve_entity_name
@@ -31,28 +32,11 @@ class WorldSearcher:
         active_dir = campaign_mgr.get_active_campaign_dir()
         self.json_ops = JsonOperations(str(active_dir))
 
-    def search_facts(self, query: str) -> dict[str, list[dict]]:
-        """Search facts by category or content"""
-        facts = self.json_ops.load_json('facts.json')
-        results = {}
+    def search_facts(self, query: str) -> list[dict]:
+        """The facts whose text contains the query, oldest first."""
         query_lower = query.lower()
-
-        for category, fact_list in facts.items():
-            if not isinstance(fact_list, list):
-                continue
-            # Check category name
-            if query_lower in category.lower():
-                results[category] = fact_list
-            else:
-                # Check fact content
-                matching_facts = [
-                    fact for fact in fact_list
-                    if isinstance(fact, dict) and query_lower in fact.get('fact', '').lower()
-                ]
-                if matching_facts:
-                    results[category] = matching_facts
-
-        return results
+        return [fact for fact in fact_file.load(self.json_ops)
+                if query_lower in str(fact.get('fact', '')).lower()]
 
     def search_npcs(self, query: str) -> dict[str, dict]:
         """Search NPCs by name or description"""
@@ -251,11 +235,6 @@ class WorldSearcher:
             return [c for c in active if trigger.lower() in c.get('trigger', '').lower()]
         return active
 
-    def get_facts_by_category(self, category: str) -> list[dict]:
-        """Get all facts in a specific category"""
-        facts = self.json_ops.load_json('facts.json')
-        return facts.get(category, [])
-
     def _format_text(self, text: str, full: bool = False, limit: int = 220) -> str:
         """Optionally truncate long text for token-efficient output."""
         if full or not text:
@@ -271,9 +250,8 @@ class WorldSearcher:
         if results.get('facts'):
             print("\nFACTS:")
             found_anything = True
-            for category, facts in results['facts'].items():
-                for fact in facts:
-                    print(f"  [{category}] {fact_text(fact)}")
+            for fact in results['facts']:
+                print(f"  {fact.get('id')} {fact_text(fact)}")
 
         if results.get('npcs'):
             print("\nNPCs:")

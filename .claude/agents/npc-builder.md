@@ -53,7 +53,7 @@ Build logical additions that:
     --fears "[fears, exploitable flaws]" --affiliation "[crew, corp, gang]"
   ```
   The Big Five: openness, conscientiousness, extraversion, agreeableness, neuroticism, each −3 to +3, 0 the average person.
-- What they know or hide (a secret, a plot hook, a relationship): a fact they hold, `bash tools/gm-note.sh <category> "[the fact, names written out]" --holders "npc:[Name]"`
+- What they know or hide (a secret, a plot hook, a relationship): a fact they hold, `bash tools/gm-note.sh "[the fact, names written out]" --holders "npc:[Name]"`
 - How they feel about the player is written during play, as facts; not your job
 - Usual places: `bash tools/gm-npc.sh tag-location "[Name]" "[Location name]"...` (known locations only, by their full name)
 - Confirm success

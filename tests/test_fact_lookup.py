@@ -26,19 +26,17 @@ def notes(tmp_path):
         "npcs.json": {"Wren": npc("Wren", aliases=["the kid"]),
                       "Seraphine Halcyon-Vey": npc("Seraphine Halcyon-Vey", aliases=["Seraphine"])},
         "locations.json": {},
-        "facts.json": {
-            "plot_local": [
-                {"id": "f1", "fact": "The Spine is ninety levels tall.", "holders": ["public"]},
-                {"id": "f2", "fact": "Seraphine ordered the scrub.", "holders": [],
-                 "about": ["npc:Seraphine Halcyon-Vey"]},
-                {"id": "f3", "fact": "Wren saw Seraphine at the rail.", "holders": ["npc:Wren"],
-                 "about": ["npc:Wren", "npc:Seraphine Halcyon-Vey"]},
-                {"id": "f4", "fact": "The Lantern is the street's town hall.", "holders": ["street"]}],
-            "session_events": [
-                {"id": "f5", "fact": "Seraphine is a stranger to Fearghas.", "holders": ["player"],
-                 "about": ["npc:Seraphine Halcyon-Vey", "player"], "truth": "wrong",
-                 "version_of": "f2", "game_time": "2187-10-26T05:35"},
-                {"id": "f6", "fact": "An old fact, from before holders."}]},
+        "facts.json": [
+            {"id": "f1", "fact": "The Spine is ninety levels tall.", "holders": ["public"]},
+            {"id": "f2", "fact": "Seraphine ordered the scrub.", "holders": [],
+             "about": ["npc:Seraphine Halcyon-Vey"]},
+            {"id": "f3", "fact": "Wren saw Seraphine at the rail.", "holders": ["npc:Wren"],
+             "about": ["npc:Wren", "npc:Seraphine Halcyon-Vey"]},
+            {"id": "f4", "fact": "The Lantern is the street's town hall.", "holders": ["street"]},
+            {"id": "f5", "fact": "Seraphine is a stranger to Fearghas.", "holders": ["player"],
+             "about": ["npc:Seraphine Halcyon-Vey", "player"], "truth": "wrong",
+             "version_of": "f2", "game_time": "2187-10-26T05:35"},
+            {"id": "f6", "fact": "An old fact, from before holders."}],
     }
     for name, payload in files.items():
         (camp / name).write_text(json.dumps(payload))
@@ -65,7 +63,7 @@ def test_find_by_about_secret_hidden_truth_text(notes):
     assert ids(manager.find(about=["Seraphine"], hidden=True)) == ["f3", "f2"]
     assert ids(manager.find(secret=True)) == ["f2"]
     assert ids(manager.find(truth="wrong")) == ["f5"]
-    assert ids(manager.find(category="plot_local", text="seraphine RAIL")) == ["f3"]
+    assert ids(manager.find(text="seraphine RAIL")) == ["f3"]
     assert ids(manager.find()) == ["f6", "f5", "f4", "f3", "f2", "f1"]
     with pytest.raises(ValueError, match="Nothing called 'Nobody'"):
         manager.find(held_by=["Nobody"])

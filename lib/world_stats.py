@@ -12,6 +12,7 @@ from typing import Any
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
+import facts as fact_file
 from campaign_manager import CampaignManager
 from json_ops import JsonOperations
 from schemas import PLOT_KINDS
@@ -59,9 +60,7 @@ class WorldStats:
         counts["locations"] = len(locations) if isinstance(locations, dict) else 0
 
         # Facts
-        facts = self.json_ops.load_json("facts.json")
-        if isinstance(facts, dict):
-            counts["facts"] = sum(len(v) for v in facts.values() if isinstance(v, list))
+        counts["facts"] = len(fact_file.load(self.json_ops))
 
         # Consequences
         consequences = self.json_ops.load_json("consequences.json")
@@ -137,13 +136,6 @@ class WorldStats:
             ]
             details["locations_total"] = len(locations)
 
-        # Facts by category
-        facts = self.json_ops.load_json("facts.json")
-        if facts:
-            details["fact_categories"] = {
-                cat: len(items) for cat, items in sorted(facts.items())[:5]
-            }
-
         # Active consequences (first 3)
         consequences = self.json_ops.load_json("consequences.json")
         if consequences.get("active"):
@@ -205,9 +197,6 @@ class WorldStats:
                 print(f"  ... and {overview['details']['locations_total'] - 10} more")
 
         print(f"\nFacts: {counts['facts']}")
-        if detailed and "details" in overview and "fact_categories" in overview["details"]:
-            for cat, count in overview["details"]["fact_categories"].items():
-                print(f"  - {cat}: {count} facts")
 
         print(f"\nConsequences: {counts['consequences_active']} active, {counts['consequences_resolved']} resolved")
         if detailed and "details" in overview and "active_consequences" in overview["details"]:

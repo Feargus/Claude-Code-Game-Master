@@ -14,7 +14,7 @@ NPCs correctly START with little: a name, a role, a usual place — that is the 
 ```bash
 bash tools/gm-npc.sh set "[name]" --big-five "O1 C-1 E2 A-2 N1" --voice "[how they talk]" \
   --tells "[a gesture, a habit]" --want "[what they want]" --fears "[what they fear]"
-bash tools/gm-note.sh <category> "[what they hide]" --holders "npc:[name]"
+bash tools/gm-note.sh "[what they hide]" --holders "npc:[name]"
 ```
 The Big Five: openness, conscientiousness, extraversion, agreeableness, neuroticism, each −3 to +3, 0 the average person (A− hostile, N+ anxious and volatile, N− calm under pressure). A label alone makes people generic; the voice, a tell and a want make them memorable. The secret is a fact only they hold: the brief shows it under them as something they know, and marks it hidden from the player.
 Only on real contact — do not pre-flesh NPCs the player never engages. Once set, it rides into every future scene they're in.
@@ -36,7 +36,7 @@ Modifiers for the player: unreasonable request −5; good rapport +2.
 **No roll needed:** public info, normal commerce at listed prices, casual talk, giving things freely.
 
 ## 4. Persist NPC memory
-What happened is a fact, with the NPC among its holders (they were there). When it changes how they regard the player, record the new attitude, adjectives only: `bash tools/gm-npc.sh attitude "[name]" "wary, resentful"`. What they remember, owe or hide is a fact only they hold: `bash tools/gm-note.sh npc_relations "[what]" --holders npc:[name] --about player`. Reactions compound across sessions, because the brief shows these under them.
+What happened is a fact, with the NPC among its holders (they were there). When it changes how they regard the player, record the new attitude, adjectives only: `bash tools/gm-npc.sh attitude "[name]" "wary, resentful"`. What they remember, owe or hide is a fact only they hold: `bash tools/gm-note.sh "[what]" --holders npc:[name] --about player`. Reactions compound across sessions, because the brief shows these under them.
 
 ## 4b. Who now knows what
 A conversation is where most knowledge moves. Anything said in the scene that matters goes in as a fact: its default holders are the player and everyone in the scene (`gm-scene.sh`), so an eavesdropper not in the scene needs `--also "npc:[name]"`. When the player tells an NPC something already recorded (or the NPC lets slip one of their facts), `bash tools/gm-note.sh tell <fact id> <holder>...`. A lie the player tells is a wrong version: the truth (if recorded) stays as it is, the lie is a fact the listener holds, `--truth wrong --version-of <truth id>`.

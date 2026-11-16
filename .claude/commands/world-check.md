@@ -74,32 +74,17 @@ for name, data in npcs.items():
 " "$CAMPAIGN_DIR"
 ```
 
-### Step 4: Plot Structure Check
+### Step 4: Plots and facts
 ```bash
+bash tools/gm-plot.sh list
 CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 uv run python -c "
 import json
 import sys
 
-campaign_dir = sys.argv[1]
-with open(f'{campaign_dir}/facts.json', 'r') as f:
-    facts = json.load(f)
-
-print('📜 PLOT STRUCTURE:')
-
-# Check for three-tier plots
-plot_categories = ['plot_local', 'plot_regional', 'plot_world']
-for category in plot_categories:
-    if category in facts:
-        count = len(facts[category])
-        print(f'✅ {category}: {count} facts')
-    else:
-        print(f'❌ {category}: Missing')
-
-# Check for other fact categories
-other_categories = [k for k in facts.keys() if 'plot_' not in k]
-if other_categories:
-    print(f'📚 Other fact categories: {other_categories}')
+facts = json.load(open(f'{sys.argv[1]}/facts.json'))    # one list of facts
+in_a_plot = sum(1 for f in facts if f.get('plots'))
+print(f'📜 FACTS: {len(facts)}, of which {in_a_plot} belong to a plot')
 " "$CAMPAIGN_DIR"
 ```
 
@@ -223,7 +208,8 @@ Campaign: $(bash tools/gm-campaign.sh active)
 echo "📊 QUICK STATS:"
 echo "   Locations: $(uv run python -c "import json; print(len(json.load(open('$CAMPAIGN_DIR/locations.json'))))")"
 echo "   NPCs: $(uv run python -c "import json; print(len(json.load(open('$CAMPAIGN_DIR/npcs.json'))))")"
-echo "   Active Plots: $(uv run python -c "import json; f=json.load(open('$CAMPAIGN_DIR/facts.json')); print(len([k for k in f.keys() if 'plot_' in k]))")"
+echo "   Open plots: $(uv run python -c "import json; print(sum(1 for p in json.load(open('$CAMPAIGN_DIR/plots.json')).values() if p.get('status', 'open') == 'open'))")"
+echo "   Facts: $(uv run python -c "import json; print(len(json.load(open('$CAMPAIGN_DIR/facts.json'))))")"
 echo "   Consequences: $(uv run python -c "import json; print(len(json.load(open('$CAMPAIGN_DIR/consequences.json')).get('active', [])))")"
 
 echo "

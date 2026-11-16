@@ -12,6 +12,7 @@ from typing import Any
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
+import facts as fact_file
 from entity_manager import EntityManager, npcs_present
 from game_time import STORED_FORMAT
 
@@ -560,12 +561,7 @@ class ConsequenceManager(EntityManager):
 
     def _find_fact(self, fact_id: str) -> dict[str, Any]:
         """The fact with this id, or {}."""
-        facts = self.json_ops.load_json("facts.json") or {}
-        for items in facts.values():
-            for f in items if isinstance(items, list) else []:
-                if isinstance(f, dict) and f.get('id') == fact_id:
-                    return f
-        return {}
+        return fact_file.by_id(fact_file.load(self.json_ops), fact_id) or {}
 
     def _find_active(self, data: dict[str, Any], consequence_id: str):
         """The active consequence whose id is or starts with `consequence_id`.
@@ -618,13 +614,11 @@ class ConsequenceManager(EntityManager):
 
     def _give_plots(self, fact_id: str, plots) -> None:
         """Add plots to a recorded fact (the fact that fired a consequence)."""
-        facts = self.json_ops.load_json("facts.json") or {}
-        for items in facts.values():
-            for f in items if isinstance(items, list) else []:
-                if isinstance(f, dict) and f.get('id') == fact_id:
-                    f['plots'] = list(dict.fromkeys(list(f.get('plots') or []) + list(plots)))
-                    self.json_ops.save_json("facts.json", facts)
-                    return
+        facts = fact_file.load(self.json_ops)
+        fact = fact_file.by_id(facts, fact_id)
+        if fact is not None:
+            fact['plots'] = list(dict.fromkeys(list(fact.get('plots') or []) + list(plots)))
+            fact_file.save(self.json_ops, facts)
 
     def get_provenance(self) -> list[dict[str, Any]]:
         """Return the 'why did this fire' log (newest last)."""

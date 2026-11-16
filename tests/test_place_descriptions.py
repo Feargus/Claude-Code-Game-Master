@@ -112,9 +112,9 @@ def test_the_brief_asks_for_a_missing_description(dcc_world):
 
 
 def test_gm_note_takes_an_optional_add(dcc_world):
-    result = _tool(dcc_world, "gm-note.sh", "add", "plot_local", "The Kettle smells of feet.",
+    result = _tool(dcc_world, "gm-note.sh", "add", "The Kettle smells of feet.",
                    "--secret")
     assert result.returncode == 0, result.stdout + result.stderr
     facts = _load(dcc_world, "facts.json")
-    assert "add" not in facts
-    assert facts["plot_local"][-1]["fact"] == "The Kettle smells of feet."
+    assert facts[-1]["fact"] == "The Kettle smells of feet."
+    assert all(f["fact"] != "add" for f in facts)

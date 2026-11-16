@@ -31,6 +31,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import facts as fact_file
 from entity_manager import EntityManager, npcs_present
 from game_time import STORED_FORMAT, stored_time
 from schemas import PLOT_KIND_ORDER, PLOT_KINDS, PLOT_STATUSES
@@ -129,12 +130,9 @@ def plot_order(json_ops, plots: dict[str, Any] | None = None) -> list[str]:
             due[key] = min(due.get(key, (2, "", 0.0)), rank)
 
     newest: dict[str, str] = {}
-    facts = json_ops.load_json("facts.json") or {}
-    for items in facts.values() if isinstance(facts, dict) else []:
-        for f in items if isinstance(items, list) else []:
-            if isinstance(f, dict):
-                for key in f.get("plots") or []:
-                    newest[key] = max(newest.get(key, ""), str(f.get("game_time") or ""))
+    for f in fact_file.load(json_ops):
+        for key in f.get("plots") or []:
+            newest[key] = max(newest.get(key, ""), str(f.get("game_time") or ""))
 
     def rank(key):
         p = plots[key]
@@ -341,12 +339,11 @@ class PlotManager(EntityManager):
         for c in store.get("active", []):
             if key in (c.get("plots") or []):
                 lines.append(f"consequence [{str(c.get('id'))[:4]}] {c.get('consequence', '')}")
-        facts = [f for items in (self.json_ops.load_json("facts.json") or {}).values()
-                 if isinstance(items, list) for f in items
-                 if isinstance(f, dict) and key in (f.get("plots") or [])]
+        facts = [f for f in fact_file.newest_first(fact_file.load(self.json_ops))
+                 if key in (f.get("plots") or [])]
         if facts:
             lines.append("facts, newest first:")
-            lines += [f"  {fact_line(f)}" for f in reversed(facts)][:10]
+            lines += [f"  {fact_line(f)}" for f in facts[:10]]
             if len(facts) > 10:
                 lines.append(f"  +{len(facts) - 10} more (gm-note.sh find --plot \"{key}\")")
         return "\n".join(lines)

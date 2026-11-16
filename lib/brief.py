@@ -12,6 +12,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import facts as fact_file
 from consequence_manager import describe_effects
 from entity_manager import is_party_member
 from note_manager import fact_text
@@ -298,15 +299,9 @@ class Brief:
     # ---------- what the plot sections read ----------
 
     def _facts_newest_first(self) -> list[dict]:
-        facts = self.json_ops.load_json("facts.json") or {}
-        entries = [f for items in facts.values() if isinstance(items, list)
-                   for f in items if isinstance(f, dict) and f.get("id")]
-        return sorted(entries, key=self._number, reverse=True)
+        return fact_file.newest_first(fact_file.load(self.json_ops))
 
-    @staticmethod
-    def _number(f: dict) -> int:
-        digits = str(f.get("id", ""))[1:]
-        return int(digits) if digits.isdigit() else 0
+    _number = staticmethod(fact_file.number)
 
     @staticmethod
     def _unknown_to_character(f: dict) -> bool:
@@ -527,9 +522,7 @@ class Brief:
     def _wrong_beliefs(self):
         """Lines for what the player character holds that is wrong or partial,
         each with the truth beside it, so the GM narrates from the belief."""
-        facts = self.json_ops.load_json("facts.json") or {}
-        entries = [f for items in facts.values() if isinstance(items, list)
-                   for f in items if isinstance(f, dict)]
+        entries = fact_file.load(self.json_ops)
         by_id = {f.get('id'): f for f in entries}
         out = []
         for f in entries:

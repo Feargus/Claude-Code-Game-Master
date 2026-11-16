@@ -18,7 +18,7 @@ def test_long_lists_say_how_to_narrow_them(isolated_world_state):
     subprocess.run(["bash", str(TOOLS / "gm-campaign.sh"), "switch", "t"], capture_output=True)
     notes = NoteManager()
     for i in range(12):
-        notes.add_fact("session_events", f"Thing {i} happened.", holders=["player"])
+        notes.add_fact(f"Thing {i} happened.", holders=["player"])
     recent = _run("recent").stdout.strip().splitlines()
     assert len(recent) == 11 and recent[-1].startswith("+2 older: narrow it with gm-note.sh find --about")
     found = _run("find", "--text", "happened").stdout.strip().splitlines()

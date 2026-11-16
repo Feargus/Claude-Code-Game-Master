@@ -39,8 +39,7 @@ def camp(isolated_world_state):
 
 
 def _facts(directory):
-    return {f["id"]: f for items in json.loads((directory / "facts.json").read_text()).values()
-            for f in items}
+    return {f["id"]: f for f in json.loads((directory / "facts.json").read_text())}
 
 
 def _consequences(directory):
@@ -51,8 +50,8 @@ def test_a_canon_character_takes_what_the_npc_knew(camp):
     ws, directory = camp
     assert CharacterCreator().create({"identity": {"name": "Lullaby"}})["success"]
     notes = NoteManager(str(ws))
-    seen = notes.add_fact("session_events", "Lullaby hummed; Tod Brask listened.")
-    secret = notes.add_fact("plot_local", "Tod Brask keeps a key in his boot.",
+    seen = notes.add_fact("Lullaby hummed; Tod Brask listened.")
+    secret = notes.add_fact("Tod Brask keeps a key in his boot.",
                             holders=["npc:Tod Brask"])
     (directory / "consequences.json").write_text(json.dumps({"active": [
         {"id": "c1", "consequence": "x", "triggers": [{"type": "on_npc", "match": "npc:Tod Brask"}]},
@@ -77,7 +76,7 @@ def test_a_canon_character_takes_what_the_npc_knew(camp):
     assert c2["effects"][0]["holders"] == ["player", "npc:Benno"]
     # The rewritten trigger fires: Benno learns something about Tod, who is the player now.
     later = NoteManager(str(ws))
-    later.add_fact("session_events", "Tod Brask limps.", holders=["npc:Benno"])
+    later.add_fact("Tod Brask limps.", holders=["npc:Benno"])
     assert c2_id in {c["id"] for c in later.last_fired}
     assert any("c1 waited for npc:Tod Brask" in n for n in result["warnings"])
 
@@ -100,7 +99,7 @@ def test_a_canon_character_takes_what_the_npc_knew(camp):
 def test_a_new_character_after_a_death_starts_knowing_nothing(camp):
     ws, directory = camp
     CharacterCreator().create({"identity": {"name": "Lullaby"}})
-    fact = NoteManager(str(ws)).add_fact("session_events", "Lullaby lost its leg.",
+    fact = NoteManager(str(ws)).add_fact("Lullaby lost its leg.",
                                          holders=["player"])
     assert CharacterCreator().create({"identity": {"name": "Vex"}}, replace=True)["success"]
     assert _facts(directory)[fact]["holders"] == ["npc:Lullaby"]

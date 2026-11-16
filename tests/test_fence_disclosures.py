@@ -56,7 +56,7 @@ def test_world_tick_applies_five_and_warns_on_overflow(dcc_world, capsys):
     assert len(applied) == 5
     facts = json.loads((Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "facts.json"
                         ).read_text(encoding="utf-8"))
-    assert any("fifth development" in f["fact"] for f in facts["plot_local"])
+    assert any("fifth development" in f["fact"] for f in facts)
     err = capsys.readouterr().err
     assert "fifth development" in err
     assert "cap 3" in err
@@ -70,8 +70,8 @@ def test_context_remainder_counts_on_every_truncated_section(tmp_path):
     listed; there is no --full (2026-11-15)."""
     plots = {f"Thread {i}": {"description": f"thread {i}", "kind": "main", "status": "open"}
              for i in range(8)}
-    facts = {"plot_local": [{"id": f"f{i}", "fact": f"secret fact {i}", "holders": [],
-                             "plots": ["Thread 0"]} for i in range(1, 8)]}
+    facts = [{"id": f"f{i}", "fact": f"secret fact {i}", "holders": [],
+              "plots": ["Thread 0"]} for i in range(1, 8)]
     vocab = [f"term-{i}" for i in range(15)]
     bible = {"voice": {"style": "terse", "vocab": vocab,
                        "sample_passages": ["The sea remembered.", "The dead walked.",

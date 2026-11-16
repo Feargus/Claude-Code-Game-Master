@@ -74,23 +74,23 @@ def test_links_are_stored_on_the_side_where_they_are_made(world, capsys):
     pm = PlotManager(world)
     pm.add("The Descent", "Down the stairs.", involves=["Princess Donut"])
     notes = NoteManager(world)
-    fid = notes.add_fact("plot_local", "The stairs are rigged.", plots=["the descent"],
+    fid = notes.add_fact("The stairs are rigged.", plots=["the descent"],
                          nowhere=True)
     assert notes._entry(_load(world, "facts.json"), fid)["plots"] == ["The Descent"]
     assert [f["id"] for f in notes.find(plot="The Descent")] == [fid]
     capsys.readouterr()
-    other = notes.add_fact("plot_local", "Donut hissed at the stairs.", nowhere=True)
+    other = notes.add_fact("Donut hissed at the stairs.", nowhere=True)
     assert f'Part of The Descent? bash tools/gm-note.sh plot {other} --add "The Descent"' \
         in capsys.readouterr().out
     assert notes.set_plots(other, add=["The Descent"]) == ["The Descent"]
-    assert not notes.add_fact("plot_local", "x", plots=["No Such Plot"], nowhere=True)
+    assert not notes.add_fact("x", plots=["No Such Plot"], nowhere=True)
 
     cm = ConsequenceManager(world)
     cid = cm.add_consequence("The stairs collapse", "someone kicks the rig", trigger_type="on_event",
                              match="someone kicks the rig", plots=["The Descent"],
                              effects=[{"type": "start_clock", "name": "Collapse", "segments": 2,
                                        "on": "event", "consequence": "The floor goes"}])
-    trigger = notes.add_fact("plot_local", "Carl kicked the rig.", nowhere=True, offer_plot=False)
+    trigger = notes.add_fact("Carl kicked the rig.", nowhere=True, offer_plot=False)
     cm.fire(cid, by_fact=trigger)
     clocks = ThreatClockManager(world)
     assert clocks.get_clocks()["Collapse"]["plots"] == ["The Descent"]        # from the consequence
@@ -150,7 +150,7 @@ def test_the_brief_is_ordered_by_plot(world):
     ConsequenceManager(world).add_consequence("The stairs give way", "Collapse:2",
                                               triggers=[{"type": "on_clock", "match": "Collapse:2"}],
                                               plots=["The Descent"])
-    secret = notes.add_fact("plot_local", "Mordecai rigged the stairs.", holders=["npc:Mordecai"],
+    secret = notes.add_fact("Mordecai rigged the stairs.", holders=["npc:Mordecai"],
                             plots=["The Descent"])
     brief = SessionManager(world).get_full_context()
     block = brief.split("] The Descent: The timer runs.")[1].split("\n---")[0]

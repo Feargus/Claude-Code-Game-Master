@@ -34,7 +34,7 @@ facts, and before that session summaries and arc entries).
   or `plots.json` starts a background job when the command ends; one job runs at a time
   (a lock), embeds what is new or changed and exits.
 - **The ranking** (`lib/recall.py`): who knows a fact is a hard filter (`--held-by`,
-  `--hidden`, `--secret`, `--truth`, `--category`, `--text`); what comes from matching words
+  `--hidden`, `--secret`, `--truth`, `--text`); what comes from matching words
   is only a bonus (`--about` +0.10, `--at` +0.05, `--plot` +0.05, recency up to +0.05),
   because those links can be missing. Facts a hard filter removed but that would have
   ranked among the shown ones are named as near-misses, so a gap in the data shows.

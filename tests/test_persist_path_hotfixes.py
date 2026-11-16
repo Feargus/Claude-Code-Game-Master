@@ -66,9 +66,8 @@ def _live_campaign_with_facts():
     """The live campaign dir, if it exists AND already has a facts.json.
 
     The unpinned test below is the only one that reaches the live tree, and it
-    may only READ it: `gm-note.sh categories` builds a NoteManager, which
-    creates facts.json when it is missing. With the file already there the run
-    writes nothing at all."""
+    may only READ it: `gm-time.sh show` prints the game time and writes nothing
+    (it reads no facts either, so a live campaign in an older form still does)."""
     if not LIVE_ACTIVE_FILE.exists():
         return None
     name = LIVE_ACTIVE_FILE.read_text().strip()
@@ -79,7 +78,7 @@ def _live_campaign_with_facts():
 # --- 1. the wrappers work from any working directory --------------------------
 
 @pytest.mark.parametrize("argv", [
-    ("tools/gm-note.sh", "categories"),
+    ("tools/gm-note.sh", "recent", "1"),
     ("tools/gm-time.sh", "set", "2187-10-26 19:30"),
 ], ids=["gm-note", "gm-time"])
 def test_wrapper_runs_from_foreign_cwd(active_fixture_campaign, foreign_cwd, argv):
@@ -111,12 +110,12 @@ def test_wrapper_runs_from_foreign_cwd_without_the_env_pin(foreign_cwd, monkeypa
     reports no active campaign and litters a world-state/ tree behind it.
 
     This is the one test that reaches the live world-state, and only to read:
-    `categories` prints and exits."""
+    `gm-time.sh show` prints and exits."""
     monkeypatch.delenv("GM_WORLD_STATE_BASE", raising=False)
     before = LIVE_ACTIVE_FILE.read_bytes()
     before_mtime = LIVE_ACTIVE_FILE.stat().st_mtime_ns
 
-    result = _run_from(foreign_cwd, "tools/gm-note.sh", "categories")
+    result = _run_from(foreign_cwd, "tools/gm-time.sh", "show")
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "No active campaign" not in result.stdout + result.stderr
@@ -131,7 +130,7 @@ def test_the_live_world_state_is_never_touched(active_fixture_campaign, foreign_
     before = LIVE_ACTIVE_FILE.read_bytes() if LIVE_ACTIVE_FILE.exists() else None
     before_mtime = LIVE_ACTIVE_FILE.stat().st_mtime_ns if LIVE_ACTIVE_FILE.exists() else None
 
-    assert _run_from(foreign_cwd, "tools/gm-note.sh", "categories").returncode == 0
+    assert _run_from(foreign_cwd, "tools/gm-note.sh", "recent", "1").returncode == 0
     assert _run_from(foreign_cwd, "tools/gm-time.sh", "set", "2187-10-26 19:30").returncode == 0
 
     after = LIVE_ACTIVE_FILE.read_bytes() if LIVE_ACTIVE_FILE.exists() else None

@@ -19,11 +19,11 @@ def notes(dcc_world, monkeypatch):
     monkeypatch.setenv("GM_EMBEDDER", "fake")
     n = NoteManager(dcc_world)
     ids = {
-        "clown": n.add_fact("session_events", "The sad clown juggled knives at the circus gate.",
+        "clown": n.add_fact("The sad clown juggled knives at the circus gate.",
                             holders=["player"]),
-        "door": n.add_fact("session_events", "The stairwell door is braced open with a crate.",
+        "door": n.add_fact("The stairwell door is braced open with a crate.",
                            holders=["player"]),
-        "secret": n.add_fact("plot_local", "The circus clown works for Mordecai.",
+        "secret": n.add_fact("The circus clown works for Mordecai.",
                              holders=["npc:Mordecai"]),
     }
     return n, ids
@@ -58,7 +58,7 @@ def test_a_fact_not_embedded_yet_is_embedded_by_the_query(notes, monkeypatch):
     """Recorded after the background job ran: the query embeds it itself."""
     n, ids = notes
     monkeypatch.setenv("GM_EMBEDDER", "off")                     # no update this time
-    late = n.add_fact("session_events", "A juggler in greasepaint waits by the tent.",
+    late = n.add_fact("A juggler in greasepaint waits by the tent.",
                       holders=["player"])
     monkeypatch.setenv("GM_EMBEDDER", "fake")
     result = find_like(n, "juggler greasepaint tent", limit=1)
@@ -77,7 +77,7 @@ def test_the_command(isolated_world_state):
         return subprocess.run(["bash", str(TOOLS / args[0]), *args[1:]], capture_output=True, text=True)
     run("gm-campaign.sh", "create", "t")
     run("gm-campaign.sh", "switch", "t")
-    run("gm-note.sh", "add", "session_events", "The ferry is called Charon.", "--holders", "player")
+    run("gm-note.sh", "add", "The ferry is called Charon.", "--holders", "player")
     out = run("gm-note.sh", "find", "--like", "the ferry")
     assert out.returncode == 0, out.stderr
     assert out.stdout.startswith("Facts ranked by keywords") and "Charon" in out.stdout
@@ -103,11 +103,11 @@ def test_the_place_card_shows_what_fits_the_scene_not_only_the_place(dcc_world, 
     place = _here(dcc_world)
     LocationManager(dcc_world).set_description(place, "Rusted cranes and stacked crates line the street.")
     n = NoteManager(dcc_world)
-    old = n.add_fact("lore", "Behind the rusted cranes and stacked crates runs a smuggler's tunnel.",
+    old = n.add_fact("Behind the rusted cranes and stacked crates runs a smuggler's tunnel.",
                      holders=["player"], nowhere=True)
     for food in ("a sandwich", "an apple", "some soup"):
-        n.add_fact("session_events", f"Donut ate {food}.", holders=["player"], nowhere=True)
-    hidden = n.add_fact("plot_local", "The crates on the street hide stolen cranes parts.",
+        n.add_fact(f"Donut ate {food}.", holders=["player"], nowhere=True)
+    hidden = n.add_fact("The crates on the street hide stolen cranes parts.",
                         holders=["npc:Mordecai"], nowhere=True)
     card = Cards(n.json_ops).location_card(place)
     known = [line for line in card if line.startswith("  fits here:")]
@@ -121,9 +121,9 @@ def test_without_vectors_the_place_and_its_people_come_first(dcc_world):
     from lib.recall import SceneRanker
     n = NoteManager(dcc_world)
     place = _here(dcc_world)
-    mine = n.add_fact("lore", "The street floods every spring.", holders=["player"],
+    mine = n.add_fact("The street floods every spring.", holders=["player"],
                       about=[f"location:{place}"], nowhere=True)
-    newer = n.add_fact("lore", "Something happened far away.", holders=["player"], nowhere=True)
+    newer = n.add_fact("Something happened far away.", holders=["player"], nowhere=True)
     ranker = SceneRanker(n.json_ops, place)
     assert not ranker.by_meaning
     order = [f["id"] for f in ranker.rank([n._entry(n.json_ops.load_json("facts.json"), x)
@@ -192,8 +192,7 @@ def test_notes_for_a_new_fact_are_printed_once(dcc_world, monkeypatch):
     NPCManager(dcc_world).create_npc("Vex Marrow", "one-eyed fence buying stolen crawler loot",
                                      nowhere=True)
     PlotManager(dcc_world).add("Stolen Loot", "Who buys the stolen crawler loot, and for whom.")
-    fid = NoteManager(dcc_world).add_fact(
-        "session_events", "The one-eyed fence was buying stolen crawler loot again.",
+    fid = NoteManager(dcc_world).add_fact("The one-eyed fence was buying stolen crawler loot again.",
         holders=["player"], nowhere=True)
     store = EmbeddingStore(camp)
     notes = recall_notes.make_notes(camp, [fid], FakeEmbedder(), store.vectors("fake"))
@@ -208,7 +207,7 @@ def test_a_note_acted_on_is_dropped(dcc_world, monkeypatch):
     from lib import recall_notes
     camp = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
     n = NoteManager(dcc_world)
-    fid = n.add_fact("session_events", "Something happened.", holders=["player"], nowhere=True)
+    fid = n.add_fact("Something happened.", holders=["player"], nowhere=True)
     recall_notes.add_notes(camp, [{"fact": fid, "kind": "about", "target": "npc:Mordecai",
                                    "score": 0.7}])
     n.set_about(fid, ["npc:Mordecai"], [])
@@ -228,8 +227,7 @@ def test_the_next_command_prints_the_note_but_not_into_json(isolated_world_state
     run("gm-campaign.sh", "switch", "t")
     run("gm-npc.sh", "create", "Vex Marrow", "--role", "one-eyed fence buying stolen crawler loot",
         "--nowhere")
-    run("gm-note.sh", "add", "session_events",
-        "The one-eyed fence was buying stolen crawler loot again.", "--holders", "player",
+    run("gm-note.sh", "add", "The one-eyed fence was buying stolen crawler loot again.", "--holders", "player",
         embedder="off")
     camp = isolated_world_state / "campaigns" / "t"
     subprocess.run([sys.executable, str(root / "lib" / "embedding_store.py"), "job", str(camp)],

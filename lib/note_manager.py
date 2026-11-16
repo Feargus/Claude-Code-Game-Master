@@ -10,42 +10,12 @@ from pathlib import Path
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
+import facts as fact_file
 from campaign_manager import CampaignManager
 from game_time import STORED_FORMAT, stored_time
 from json_ops import JsonOperations
 
-
-def assign_missing_ids(facts: dict) -> dict:
-    """Give every fact an id ("f1", "f2", ...), so other records can point to it.
-
-    Facts without one (written before ids existed, or by the import scripts,
-    which write facts.json directly) are numbered in the order they were
-    recorded, after the highest existing id. A bare string becomes
-    {"fact": <string>}. Changes `facts` in place and returns it.
-    """
-    entries = []
-    highest = 0
-    for _category, items in facts.items():
-        if not isinstance(items, list):
-            continue
-        for i, item in enumerate(items):
-            if not isinstance(item, dict):
-                item = {'fact': str(item)}
-                items[i] = item
-            fid = str(item.get('id', ''))
-            if fid.startswith('f') and fid[1:].isdigit():
-                highest = max(highest, int(fid[1:]))
-            elif 'id' not in item:
-                entries.append(item)
-    entries.sort(key=lambda item: str(item.get('timestamp', '')))
-    for item in entries:
-        highest += 1
-        item['id'] = f"f{highest}"
-    return facts
-
-
 TRUTH_VALUES = ("partial", "wrong")  # a missing `truth` means true
-ATTITUDE_CATEGORY = "npc_relations"
 
 
 def check_attitude(raw) -> tuple:
@@ -69,18 +39,16 @@ def _person(cid: str, player: str) -> str:
     return player if cid == "player" else cid.partition(":")[2] or cid
 
 
-def current_attitudes(facts: dict) -> dict:
+def current_attitudes(facts: list) -> dict:
     """{(holder id, about id): fact} for the newest attitude of each pair: the one
     that counts. Older ones stay as the record of how it changed."""
     newest = {}
-    for items in facts.values():
-        for f in items if isinstance(items, list) else []:
-            if isinstance(f, dict) and f.get('attitude') and f.get('holders') and f.get('about'):
-                key = (f['holders'][0], f['about'][0])
-                number = int(str(f.get('id', 'f0'))[1:] or 0) if str(f.get('id', ''))[1:].isdigit() else 0
-                if key not in newest or number > newest[key][0]:
-                    newest[key] = (number, f)
-    return {key: f for key, (_, f) in newest.items()}
+    for f in facts:
+        if f.get('attitude') and f.get('holders') and f.get('about'):
+            key = (f['holders'][0], f['about'][0])
+            if key not in newest or fact_file.number(f) > fact_file.number(newest[key]):
+                newest[key] = f
+    return newest
 
 
 def fact_text(entry, player: str = "the character") -> str:
@@ -109,18 +77,6 @@ def fact_text(entry, player: str = "the character") -> str:
     return text
 
 
-def next_fact_id(facts: dict) -> str:
-    """The id the next fact gets. Expects every fact to have one already."""
-    highest = 0
-    for items in facts.values():
-        if isinstance(items, list):
-            for item in items:
-                fid = str(item.get('id', '')) if isinstance(item, dict) else ''
-                if fid.startswith('f') and fid[1:].isdigit():
-                    highest = max(highest, int(fid[1:]))
-    return f"f{highest + 1}"
-
-
 class NoteManager:
     """Manage campaign facts and notes."""
 
@@ -136,9 +92,8 @@ class NoteManager:
         self.json_ops = JsonOperations(str(self.campaign_dir))
 
         # Ensure facts file exists
-        facts_path = self.campaign_dir / "facts.json"
-        if not facts_path.exists():
-            self.json_ops.save_json("facts.json", {})
+        if not (self.campaign_dir / fact_file.FILE).exists():
+            fact_file.save(self.json_ops, [])
 
     def _about(self, fact: str, about=None, not_about=None):
         """(about ids, ids found in the text, errors) for a new fact.
@@ -190,11 +145,12 @@ class NoteManager:
         default = ids.present()
         return default + [h for h in extra if h not in default], errors
 
-    def add_fact(self, category: str, fact: str, list_waiting: bool = True,
+    def add_fact(self, fact: str, *, list_waiting: bool = True,
                  about=None, not_about=None, holders=None, secret: bool = False,
                  also=None, truth=None, version_of=None, at=None, nowhere: bool = False,
                  auto_at: bool = True, plots=None, offer_plot: bool = True) -> str:
-        """Add a fact to the specified category. Returns its id, or "" on failure.
+        """Record a fact. Returns its id, or "" on failure. Everything but the
+        text is given by name (a fact has no category any more: facts.py).
 
         Each fact carries an id, the in-game time it was recorded (`game_time`,
         copied from campaign-overview.json; left out if the campaign has none)
@@ -215,8 +171,8 @@ class NoteManager:
         errors += more
         holder_ids, more = self._holders(holders, secret, also)
         errors += more
-        truth, version_of, version_notes, more = self._check_version(
-            self.json_ops.load_json("facts.json") or {}, truth, version_of)
+        facts = fact_file.load(self.json_ops)
+        truth, version_of, version_notes, more = self._check_version(facts, truth, version_of)
         errors += more
         from plot_manager import resolve_plots
         plot_keys, more = resolve_plots(self.json_ops, plots)
@@ -226,13 +182,7 @@ class NoteManager:
                 print(f"[ERROR] {error}", file=sys.stderr)
             print("[ERROR] Fact not recorded.", file=sys.stderr)
             return ""
-        facts = self.json_ops.load_json("facts.json")
-        assign_missing_ids(facts)
-
-        if category not in facts:
-            facts[category] = []
-
-        fact_id = next_fact_id(facts)
+        fact_id = fact_file.next_id(facts)
         entry = {'id': fact_id, 'fact': fact}
         if about_ids:
             entry['about'] = about_ids
@@ -249,13 +199,10 @@ class NoteManager:
         if game_time:
             entry['game_time'] = game_time
         entry['timestamp'] = datetime.now(UTC).isoformat()
-        facts[category].append(entry)
+        facts.append(entry)
+        fact_file.save(self.json_ops, facts)
 
-        if not self.json_ops.save_json("facts.json", facts):
-            print("[ERROR] Failed to save fact")
-            return ""
-
-        print(f"[SUCCESS] Recorded fact {fact_id} in {category}: {fact}")
+        print(f"[SUCCESS] Recorded fact {fact_id}: {fact}")
         if about_ids:
             which = "all" if found == about_ids else ", ".join(found)
             note = (f" ({which} found in the text; drop a wrong one with "
@@ -299,17 +246,16 @@ class NoteManager:
         adjectives, error = check_attitude(adjectives)
         if error or not adjectives:
             raise ValueError(error or "Give the attitude: one or more adjectives (\"wary\").")
-        facts = self.json_ops.load_json("facts.json") or {}
-        assign_missing_ids(facts)
-        fact_id = next_fact_id(facts)
+        facts = fact_file.load(self.json_ops)
+        fact_id = fact_file.next_id(facts)
         entry = {'id': fact_id, 'fact': adjectives, 'attitude': True,
                  'about': [whom], 'holders': [who]}
         game_time = stored_time(self.json_ops)
         if game_time:
             entry['game_time'] = game_time
         entry['timestamp'] = datetime.now(UTC).isoformat()
-        facts.setdefault(ATTITUDE_CATEGORY, []).append(entry)
-        self.json_ops.save_json("facts.json", facts)
+        facts.append(entry)
+        fact_file.save(self.json_ops, facts)
         return fact_id
 
     def attitudes(self, owner: str) -> dict:
@@ -319,7 +265,7 @@ class NoteManager:
         if error:
             raise ValueError(error)
         return {whom: f for (holder, whom), f in
-                current_attitudes(self.json_ops.load_json("facts.json") or {}).items()
+                current_attitudes(fact_file.load(self.json_ops)).items()
                 if holder == who}
 
     def _offer_plot(self, fact_id: str, ids) -> None:
@@ -338,7 +284,7 @@ class NoteManager:
         removing, more = resolve_plots(self.json_ops, remove)
         if errors + more:
             raise ValueError(" ".join(errors + more))
-        facts = self.json_ops.load_json("facts.json")
+        facts = fact_file.load(self.json_ops)
         entry = self._entry(facts, fact_id)
         keys = [k for k in entry.get('plots', []) if k not in removing]
         keys += [k for k in adding if k not in keys]
@@ -346,7 +292,7 @@ class NoteManager:
             entry['plots'] = keys
         else:
             entry.pop('plots', None)
-        self.json_ops.save_json("facts.json", facts)
+        fact_file.save(self.json_ops, facts)
         return keys
 
     def set_about(self, fact_id: str, add=None, remove=None) -> list:
@@ -358,7 +304,7 @@ class NoteManager:
         removing, more = ids.resolve_all(remove)
         if errors + more:
             raise ValueError("; ".join(errors + more))
-        facts = self.json_ops.load_json("facts.json")
+        facts = fact_file.load(self.json_ops)
         entry = self._entry(facts, fact_id)
         about = [i for i in entry.get('about', []) if i not in removing]
         about += [i for i in adding if i not in about]
@@ -366,7 +312,7 @@ class NoteManager:
             entry['about'] = about
         else:
             entry.pop('about', None)
-        self.json_ops.save_json("facts.json", facts)
+        fact_file.save(self.json_ops, facts)
         return about
 
     def _named_but_absent(self, fact_id: str, about_ids, holder_ids) -> None:
@@ -402,7 +348,7 @@ class NoteManager:
             'on_learn', values, f"{', '.join(new_holders)} learned {fact_id}: {entry['fact']}")
         return self.last_fired
 
-    def _check_version(self, facts: dict, truth=None, version_of=None, fact_id=None):
+    def _check_version(self, facts: list, truth=None, version_of=None, fact_id=None):
         """(truth, version_of, notes, errors) for a fact, checked.
 
         `truth`: None (true), partial or wrong. `version_of`: the fullest true
@@ -436,13 +382,12 @@ class NoteManager:
     def set_truth(self, fact_id: str, truth=None, version_of=None, keep_version=True) -> dict:
         """Mark a recorded fact true (None), partial or wrong, and/or link it to
         the fullest true version. Returns the entry; raises ValueError."""
-        facts = self.json_ops.load_json("facts.json")
+        facts = fact_file.load(self.json_ops)
         entry = self._entry(facts, fact_id)
         if keep_version and version_of is None:
             version_of = entry.get('version_of')
         truth, version_of, notes, errors = self._check_version(facts, truth, version_of, fact_id)
-        if any(f.get('version_of') == fact_id for items in facts.values() if isinstance(items, list)
-               for f in items if isinstance(f, dict)) and (truth == 'wrong' or version_of):
+        if any(f.get('version_of') == fact_id for f in facts) and (truth == 'wrong' or version_of):
             errors.append(f"Other facts are versions of {fact_id}; it is their truth.")
         if errors:
             raise ValueError(" ".join(errors))
@@ -451,14 +396,13 @@ class NoteManager:
                 entry[key] = value
             else:
                 entry.pop(key, None)
-        self.json_ops.save_json("facts.json", facts)
+        fact_file.save(self.json_ops, facts)
         for note in notes:
             print(f"  {note}")
         return entry
 
-    def _entry(self, facts: dict, fact_id: str) -> dict:
-        entry = next((f for items in facts.values() if isinstance(items, list)
-                      for f in items if isinstance(f, dict) and f.get('id') == fact_id), None)
+    def _entry(self, facts: list, fact_id: str) -> dict:
+        entry = fact_file.by_id(facts, fact_id)
         if entry is None:
             raise ValueError(f"No fact '{fact_id}'.")
         return entry
@@ -470,31 +414,25 @@ class NoteManager:
         adding, errors = WorldIds(self.json_ops).resolve_all(holders, holders=True)
         if errors:
             raise ValueError("; ".join(errors))
-        facts = self.json_ops.load_json("facts.json")
+        facts = fact_file.load(self.json_ops)
         entry = self._entry(facts, fact_id)
         known = entry.setdefault('holders', [])
         new = [h for h in adding if h not in known]
         self.last_fired = []
         if new:
             known.extend(new)
-            self.json_ops.save_json("facts.json", facts)
+            fact_file.save(self.json_ops, facts)
             self._learned(fact_id, entry, new)
         return new
 
     def remove_facts(self, fact_ids) -> int:
         """Delete the facts with these ids (undoing a world tick). Returns how many."""
         ids = set(fact_ids)
-        facts = self.json_ops.load_json("facts.json")
-        removed = 0
-        for category, items in facts.items():
-            if not isinstance(items, list):
-                continue
-            kept = [f for f in items if not (isinstance(f, dict) and f.get('id') in ids)]
-            removed += len(items) - len(kept)
-            facts[category] = kept
-        if removed:
-            self.json_ops.save_json("facts.json", facts)
-        return removed
+        facts = fact_file.load(self.json_ops)
+        kept = [f for f in facts if f.get('id') not in ids]
+        if len(kept) != len(facts):
+            fact_file.save(self.json_ops, kept)
+        return len(facts) - len(kept)
 
     def _list_waiting(self, fact_id: str) -> None:
         """Show the consequences waiting on an event, so the GM can judge whether
@@ -509,14 +447,9 @@ class NoteManager:
     # ---------- looking facts up ----------
 
     def _all(self) -> list:
-        """Every fact with its category, newest first (by the number in its id)."""
-        facts = self.json_ops.load_json("facts.json") or {}
-        entries = [dict(f, category=cat) for cat, items in facts.items()
-                   if isinstance(items, list) for f in items if isinstance(f, dict)]
-        def number(f):
-            fid = str(f.get('id', ''))
-            return int(fid[1:]) if fid[1:].isdigit() else 0
-        return sorted(entries, key=number, reverse=True)
+        """Every fact, newest first (by the number in its id); copies, so a
+        lookup can mark them without changing the file's."""
+        return [dict(f) for f in fact_file.newest_first(fact_file.load(self.json_ops))]
 
     def show(self, fact_ids) -> list:
         """The facts with these ids, each with `versions`: the ids of the facts
@@ -533,7 +466,7 @@ class NoteManager:
         return out
 
     def find(self, held_by=None, about=None, secret=False, hidden=False, truth=None,
-             category=None, text=None, at=None, since=None, until=None, plot=None) -> list:
+             text=None, at=None, since=None, until=None, plot=None) -> list:
         """Facts matching every filter given, newest first.
 
         held_by: holder ids (or names); each must know it, and a fact held by
@@ -576,8 +509,6 @@ class NoteManager:
             if hidden and (known is None or {'player', 'public'} & set(known)):
                 continue
             if truth and f.get('truth') != truth:
-                continue
-            if category and f.get('category') != category:
                 continue
             if words and not all(w in str(f.get('fact', '')).lower() for w in words):
                 continue
@@ -642,21 +573,22 @@ class NoteManager:
     def beat(self, items) -> list:
         """Several facts of one beat at once, all checked before any is written.
 
-        Each item is a fact as `add` takes it ({"fact", "category", "about",
-        "not_about", "holders", "also", "secret", "truth", "version_of", "at",
-        "nowhere", "plot"}; "plot" is one plot's name or a list, as `--plot` is
-        on the command line, the opening and the world tick); `version_of` may name an earlier item of the same call as
+        Each item is a fact as `add` takes it ({"fact", "about", "not_about",
+        "holders", "also", "secret", "truth", "version_of", "at", "nowhere",
+        "plot"}; "plot" is one plot's name or a list, as `--plot` is on the
+        command line, the opening and the world tick); `version_of` may name an
+        earlier item of the same call as
         "#1", "#2", ... (a deception: the truth first, then the false impression
         the fooled one holds). Returns the new ids; raises ValueError and writes
         nothing if any item is refused.
         """
-        allowed = {"fact", "category", "about", "not_about", "holders", "also", "secret",
+        allowed = {"fact", "about", "not_about", "holders", "also", "secret",
                    "truth", "version_of", "at", "nowhere", "plot"}
         def as_list(value):
             return None if value is None else [value] if isinstance(value, str) else list(value)
         if not isinstance(items, list) or not items:
             raise ValueError("A beat is a JSON list of facts.")
-        facts = self.json_ops.load_json("facts.json") or {}
+        facts = fact_file.load(self.json_ops)
         errors = []
         for n, item in enumerate(items, 1):
             where = f"fact #{n}"
@@ -664,6 +596,9 @@ class NoteManager:
                 errors.append(f"{where} needs a \"fact\".")
                 continue
             extra = set(item) - allowed
+            if "category" in extra:
+                errors.append(f"{where}: facts have no category any more; leave \"category\" out.")
+                extra.discard("category")
             if "plots" in extra:
                 errors.append(f"{where}: the field is \"plot\" (one name, or a list), "
                               f"as on the command line (--plot).")
@@ -697,8 +632,7 @@ class NoteManager:
             ref = str(item.get("version_of") or "")
             if ref.startswith("#"):
                 ref = written[int(ref[1:]) - 1]
-            fid = self.add_fact(item.get("category") or "session_events", item["fact"],
-                                list_waiting=False, about=as_list(item.get("about")),
+            fid = self.add_fact(item["fact"], list_waiting=False, about=as_list(item.get("about")),
                                 not_about=as_list(item.get("not_about")),
                                 holders=as_list(item.get("holders")),
                                 secret=bool(item.get("secret")), also=as_list(item.get("also")),
@@ -711,10 +645,6 @@ class NoteManager:
             written.append(fid)
         self._list_waiting(", ".join(written))
         return written
-
-    def list_categories(self) -> list:
-        """List all fact categories."""
-        return list((self.json_ops.load_json("facts.json") or {}).keys())
 
 
 def fact_line(f: dict) -> str:
@@ -734,7 +664,7 @@ def fact_line(f: dict) -> str:
 
 def fact_details(f: dict) -> str:
     """A fact in full, with its truth and its versions."""
-    lines = [f"{f.get('id')} ({f.get('category')}, {str(f.get('game_time') or 'no game time').replace('T', ' ')})",
+    lines = [f"{f.get('id')} ({str(f.get('game_time') or 'no game time').replace('T', ' ')})",
              f"  {fact_text(f)}"]
     if f.get('at'):
         lines.append(f"  at: {f['at']}")
@@ -777,8 +707,8 @@ def main():
     parser = argparse.ArgumentParser(description="Facts")
     sub = parser.add_subparsers(dest="action")
     p = sub.add_parser("add", help="record a fact")
-    p.add_argument("category")
     p.add_argument("fact")
+    p.add_argument("more", nargs="*", help=argparse.SUPPRESS)   # the old form: <category> <fact>
     p.add_argument("--about", action="append", default=[],
                    help="who or what it concerns (repeatable): player, npc:<name>, location:<name>")
     p.add_argument("--not-about", dest="not_about", action="append", default=[],
@@ -816,7 +746,6 @@ def main():
     p.add_argument("fact_id")
     p.add_argument("--add", action="append", default=[])
     p.add_argument("--remove", action="append", default=[])
-    sub.add_parser("categories")
     p = sub.add_parser("show", help="facts in full, by id")
     p.add_argument("fact_ids", nargs="+")
     p = sub.add_parser("find", help="facts by who knows them, who they are about, ...")
@@ -826,14 +755,13 @@ def main():
     p.add_argument("--secret", action="store_true", help="nobody knows it")
     p.add_argument("--hidden", action="store_true", help="the player doesn't know it")
     p.add_argument("--truth", choices=list(TRUTH_VALUES))
-    p.add_argument("--category")
     p.add_argument("--text", help="words that must all occur in it")
     p.add_argument("--at", help="where it happened")
     p.add_argument("--plot", help="the plot it belongs to")
     p.add_argument("--limit", type=int, default=10, help="how many (0: all); newest first")
     p.add_argument("--like", metavar="QUESTION",
                    help="rank by meaning, best first (recall.py): --held-by, --hidden, --secret, "
-                        "--truth, --category, --text still filter; --about, --at, --plot only "
+                        "--truth, --text still filter; --about, --at, --plot only "
                         "raise a fact's rank")
     p = sub.add_parser("beat", help="several facts of one beat at once")
     p.add_argument("facts", nargs="?", help='JSON list: [{"fact": ..., "holders": [...], ...}, ...]; '
@@ -859,7 +787,16 @@ def main():
     try:
         manager = NoteManager()
         if args.action == 'add':
-            if not manager.add_fact(args.category, args.fact,
+            if args.more:
+                raise ValueError(
+                    f"A fact has no category any more: gm-note.sh \"<the fact>\" [--about ...]. "
+                    f"Got {1 + len(args.more)} texts, the first \"{args.fact}\"; nothing was recorded.")
+            if len(args.fact.split()) < 2:
+                raise ValueError(
+                    f"A fact is a sentence, and \"{args.fact}\" is one word; nothing was recorded. "
+                    f"gm-note.sh \"<the fact>\", or one of: tell, about, plot, truth, beat, "
+                    f"witness, show, find, recent.")
+            if not manager.add_fact(args.fact,
                                     about=args.about, not_about=args.not_about,
                                     holders=args.holders, secret=args.secret,
                                     also=args.also, truth=args.truth,
@@ -882,9 +819,6 @@ def main():
         elif args.action == 'about':
             about = manager.set_about(args.fact_id, args.add, args.remove)
             print(f"{args.fact_id} about: {', '.join(about) or '(nothing)'}")
-        elif args.action == 'categories':
-            for cat in manager.list_categories():
-                print(f"  - {cat}")
         elif args.action == 'beat':
             from cli_output import json_input
             written = manager.beat(json_input(args.facts, "the beat"))
@@ -909,7 +843,7 @@ def main():
             elif args.action == 'find' and args.like:
                 from recall import find_like, print_found
                 result = find_like(manager, args.like, args.limit, args.held_by, args.about,
-                                   args.secret, args.hidden, args.truth, args.category,
+                                   args.secret, args.hidden, args.truth,
                                    args.text, args.at, plot=args.plot)
                 if json_mode:
                     print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -918,8 +852,7 @@ def main():
                 return
             elif args.action == 'find':
                 found = manager.find(args.held_by, args.about, args.secret, args.hidden,
-                                     args.truth, args.category, args.text, args.at,
-                                     plot=args.plot)
+                                     args.truth, args.text, args.at, plot=args.plot)
             else:
                 found = manager.find()
                 if json_mode:
@@ -932,7 +865,7 @@ def main():
                 _print_found(found, max(1, args.count), filtered=False)
             else:
                 given = (args.held_by, args.about, args.secret, args.hidden, args.truth,
-                         args.category, args.text, args.at, args.plot)
+                         args.text, args.at, args.plot)
                 _print_found(found, args.limit, filtered=any(given))
     except (RuntimeError, ValueError) as e:
         print(f"[ERROR] {e}", file=sys.stderr)

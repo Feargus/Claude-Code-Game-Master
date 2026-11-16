@@ -29,6 +29,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import facts as fact_file
 import sheet as sheet_mod
 from entity_manager import npcs_present, npcs_usually_at
 from game_time import current_time
@@ -43,11 +44,6 @@ def _norm(text: str) -> str:
     return " ".join(str(text).split())
 
 
-def _number(fact: dict) -> int:
-    fid = str(fact.get("id", ""))
-    return int(fid[1:]) if fid[1:].isdigit() else 0
-
-
 class Cards:
     """Cards for one campaign. Keeps track of the facts it has printed, so one
     command's cards print each fact once. `shown_texts` are texts printed before
@@ -57,10 +53,8 @@ class Cards:
         self.json_ops = json_ops
         self.shown = set(shown_ids)
         self.shown_texts = {_norm(t) for t in shown_texts if _norm(t)}
-        facts = json_ops.load_json("facts.json") or {}
-        self.facts = sorted((f for items in facts.values() if isinstance(items, list)
-                             for f in items if isinstance(f, dict) and f.get("fact")),
-                            key=_number, reverse=True)
+        facts = fact_file.load(json_ops)
+        self.facts = fact_file.newest_first([f for f in facts if f.get("fact")])
         self.attitudes = current_attitudes(facts)
         self.npcs = json_ops.load_json("npcs.json") or {}
         self.locations = json_ops.load_json("locations.json") or {}

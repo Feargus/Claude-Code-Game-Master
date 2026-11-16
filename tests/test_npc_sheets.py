@@ -75,7 +75,7 @@ def test_set_items_party_and_show(world, capsys):
     sheet = _npcs(camp)["Tod"]
     assert sheet["status"] == {"goal": "get out", "party_member": True}
     assert sheet["items"] == {"gear": [{"name": "torque wrench"}], "inventory": [{"name": "a chip"}]}
-    NoteManager(ws).add_fact("relations", "Tod trusts Lullaby now.", holders=["npc:Tod"],
+    NoteManager(ws).add_fact("Tod trusts Lullaby now.", holders=["npc:Tod"],
                              about=["npc:Tod", "player"])
     capsys.readouterr()
     shown = manager.show("Tod")
@@ -140,7 +140,7 @@ def test_a_person_can_start_as_a_sketch(world):
     assert "personality" not in sheet and "look" not in sheet
     assert sheet["status"] == {"goal": "pass the ones others would fail"}
     assert "only a sketch" in manager.show("Ruth Okonedo")
-    fid = NoteManager(ws).add_fact("plot_local", "Ruth died in booth 3.", nowhere=True)
+    fid = NoteManager(ws).add_fact("Ruth died in booth 3.", nowhere=True)
     assert "npc:Ruth Okonedo" in NoteManager(ws)._entry(
         NoteManager(ws).json_ops.load_json("facts.json"), fid)["about"]
     manager.set_fields("Ruth Okonedo", {"voice": "dry, patient"})
@@ -189,7 +189,7 @@ def test_nothing_on_a_card_or_in_a_fact_list_is_cut(world):
     from lib.note_manager import NoteManager, fact_line
     ws, camp = world
     long = "Tod fixed the pump " + "and then, slowly, " * 20 + "it was a lie."
-    fid = NoteManager(ws).add_fact("session_events", long, holders=["player"], at="The Pens")
+    fid = NoteManager(ws).add_fact(long, holders=["player"], at="The Pens")
     notes = NoteManager(ws)
     assert long in fact_line(notes._entry(notes.json_ops.load_json("facts.json"), fid))
     assert long in "\n".join(Cards(notes.json_ops).location_card("The Pens"))

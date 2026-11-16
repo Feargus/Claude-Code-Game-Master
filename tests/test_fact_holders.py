@@ -27,7 +27,7 @@ def _cdir(world):
 
 def _fact(world, fid):
     facts = json.loads((_cdir(world) / "facts.json").read_text(encoding="utf-8"))
-    return next(f for items in facts.values() for f in items
+    return next(f for f in facts
                 if isinstance(f, dict) and f.get("id") == fid)
 
 
@@ -39,7 +39,7 @@ def _edit_npcs(world, change):
 
 
 def test_default_is_the_player_and_who_is_present(dcc_world, capsys):
-    fid = NoteManager(dcc_world).add_fact("session_events", "The crate was empty")
+    fid = NoteManager(dcc_world).add_fact("The crate was empty")
     assert _fact(dcc_world, fid)["holders"] == PARTY
     assert "known to: player, npc:Carl" in capsys.readouterr().out
 
@@ -48,40 +48,40 @@ def test_npcs_in_the_scene_count_and_the_dead_do_not(dcc_world):
     from tests.scene_helpers import put_in_scene
     put_in_scene(_cdir(dcc_world), "Mordecai")
     _edit_npcs(dcc_world, lambda npcs: npcs["Mongo"].update(status="dead"))
-    fid = NoteManager(dcc_world).add_fact("session_events", "x")
+    fid = NoteManager(dcc_world).add_fact("x")
     holders = _fact(dcc_world, fid)["holders"]
     assert "npc:Mordecai" in holders and "npc:Mongo" not in holders
 
 
 def test_holders_replace_the_default(dcc_world):
-    fid = NoteManager(dcc_world).add_fact("lore", "x", holders=["Mordecai", "street"])
+    fid = NoteManager(dcc_world).add_fact("x", holders=["Mordecai", "street"])
     assert _fact(dcc_world, fid)["holders"] == ["npc:Mordecai", "street"]
 
 
 def test_also_adds_to_the_default(dcc_world):
     nm = NoteManager(dcc_world)
-    fid = nm.add_fact("lore", "x", also=["Mordecai", "Carl"])
+    fid = nm.add_fact("x", also=["Mordecai", "Carl"])
     assert _fact(dcc_world, fid)["holders"] == PARTY + ["npc:Mordecai"]
-    assert nm.add_fact("lore", "x", also=["Carl"], holders=["Carl"]) == ""
-    assert nm.add_fact("lore", "x", also=["Carl"], secret=True) == ""
+    assert nm.add_fact("x", also=["Carl"], holders=["Carl"]) == ""
+    assert nm.add_fact("x", also=["Carl"], secret=True) == ""
 
 
 def test_secret_means_nobody(dcc_world, capsys):
     nm = NoteManager(dcc_world)
-    fid = nm.add_fact("lore", "The vault code is 0451", secret=True)
+    fid = nm.add_fact("The vault code is 0451", secret=True)
     assert _fact(dcc_world, fid)["holders"] == []
     assert "known to: nobody (a secret)" in capsys.readouterr().out
-    assert nm.add_fact("lore", "x", holders=["Carl"], secret=True) == ""
+    assert nm.add_fact("x", holders=["Carl"], secret=True) == ""
 
 
 def test_a_place_cannot_know(dcc_world, capsys):
-    assert NoteManager(dcc_world).add_fact("lore", "x", holders=["location:Bone Garden"]) == ""
+    assert NoteManager(dcc_world).add_fact("x", holders=["location:Bone Garden"]) == ""
     assert "a place can't know" in capsys.readouterr().err
 
 
 def test_tell_adds_only_the_new(dcc_world):
     nm = NoteManager(dcc_world)
-    fid = nm.add_fact("lore", "x", secret=True)
+    fid = nm.add_fact("x", secret=True)
     assert nm.tell(fid, ["Mordecai", "public"]) == ["npc:Mordecai", "public"]
     assert nm.tell(fid, ["npc:mordecai", "Carl"]) == ["npc:Carl"]   # Mordecai knew already
     assert _fact(dcc_world, fid)["holders"] == ["npc:Mordecai", "public", "npc:Carl"]
@@ -95,7 +95,7 @@ def test_tell_adds_only_the_new(dcc_world):
 def test_tell_works_on_old_facts_without_holders(dcc_world):
     facts_file = _cdir(dcc_world) / "facts.json"
     facts = json.loads(facts_file.read_text(encoding="utf-8"))
-    facts["lore"] = [{"id": "f900", "fact": "old", "timestamp": "2026-01-01"}]
+    facts.append({"id": "f900", "fact": "old", "timestamp": "2026-01-01"})
     facts_file.write_text(json.dumps(facts))
     assert NoteManager(dcc_world).tell("f900", ["Carl"]) == ["npc:Carl"]
 
@@ -120,29 +120,29 @@ def test_cli(dcc_world):
     run = lambda *a: subprocess.run(  # noqa: E731
         [sys.executable, str(root / "lib" / "note_manager.py"), *a],
         capture_output=True, text=True, cwd=str(Path(dcc_world).parent))
-    r = run("add", "lore", "The code is 0451", "--secret")
+    r = run("add", "The code is 0451", "--secret")
     assert r.returncode == 0, r.stderr
-    fid = r.stdout.split("Recorded fact ")[1].split()[0]
+    fid = r.stdout.split("Recorded fact ")[1].split()[0].rstrip(":")
     r = run("tell", fid, "Mordecai", "street")
     assert r.returncode == 0 and "npc:Mordecai, street now know(s) it" in r.stdout
     r = run("tell", fid, "Mordecai")
     assert "knew it already" in r.stdout
-    r = run("add", "lore", "x", "--holders", "Carl", "--holders", "player")
+    r = run("add", "Carl saw it", "--holders", "Carl", "--holders", "player")
     assert r.returncode == 0 and "known to: npc:Carl, player" in r.stdout
 
 
 def test_a_named_npc_outside_the_scene_is_pointed_out(dcc_world, capsys):
     nm = NoteManager(dcc_world)
-    fid = nm.add_fact("session_events", "Mordecai and Carl argued about the map")
+    fid = nm.add_fact("Mordecai and Carl argued about the map")
     out = capsys.readouterr().out
     assert "Named but not in the scene: Mordecai." in out       # Carl is in the party
     assert 'gm-scene.sh enter "Mordecai"' in out and f"tell {fid} npc:Mordecai" in out
-    nm.add_fact("lore", "Mordecai once ran a bar", secret=True)
-    nm.add_fact("lore", "Mordecai once ran a bar", holders=["street"])
+    nm.add_fact("Mordecai once ran a bar", secret=True)
+    nm.add_fact("Mordecai once ran a bar", holders=["street"])
     assert "Named but not in the scene" not in capsys.readouterr().out
 
 
 def test_the_dead_are_not_pointed_out(dcc_world, capsys):
     _edit_npcs(dcc_world, lambda npcs: npcs["Mordecai"].update(status={"state": "dead"}))
-    NoteManager(dcc_world).add_fact("lore", "Mordecai was buried")
+    NoteManager(dcc_world).add_fact("Mordecai was buried")
     assert "Named but not in the scene" not in capsys.readouterr().out

@@ -72,10 +72,10 @@ def texts(campaign_dir: Path) -> dict[str, str]:
         except ValueError:
             return {}
     out = {}
-    for items in (load("facts.json") or {}).values():
-        for f in items if isinstance(items, list) else []:
-            if isinstance(f, dict) and f.get("id") and f.get("fact") and not f.get("attitude"):
-                out[f"fact:{f['id']}"] = str(f["fact"])
+    facts = load("facts.json")
+    for f in facts if isinstance(facts, list) else []:       # one list (facts.py)
+        if isinstance(f, dict) and f.get("id") and f.get("fact") and not f.get("attitude"):
+            out[f"fact:{f['id']}"] = str(f["fact"])
     for name, loc in (load("locations.json") or {}).items():
         if isinstance(loc, dict):
             out[f"location:{name}"] = location_text(name, loc)

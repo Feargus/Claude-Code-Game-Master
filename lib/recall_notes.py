@@ -43,9 +43,9 @@ def _load(path: Path):
 
 
 def _facts(campaign_dir: Path) -> dict:
-    data = _load(campaign_dir / "facts.json") or {}
-    return {f["id"]: f for items in data.values() if isinstance(items, list)
-            for f in items if isinstance(f, dict) and f.get("id")}
+    data = _load(campaign_dir / "facts.json")
+    return {f["id"]: f for f in (data if isinstance(data, list) else [])
+            if isinstance(f, dict) and f.get("id")}
 
 
 def _waiting(campaign_dir: Path) -> list[dict]:

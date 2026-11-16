@@ -21,6 +21,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import facts as fact_file
 import sheet as sheet_mod
 
 
@@ -56,20 +57,15 @@ def move_id(json_ops, old: str, new: str) -> list[str]:
     consequences (triggers, tell effects). Returns notes for the GM about
     anything that no longer makes sense."""
     notes = []
-    facts = json_ops.load_json("facts.json") or {}
+    facts = fact_file.load(json_ops)
     changed = 0
-    for items in facts.values():
-        if not isinstance(items, list):
-            continue
-        for fact in items:
-            if not isinstance(fact, dict):
-                continue
-            for field in ("holders", "about"):
-                if old in (fact.get(field) or []):
-                    fact[field] = _swap(fact[field], old, new)
-                    changed += 1
+    for fact in facts:
+        for field in ("holders", "about"):
+            if old in (fact.get(field) or []):
+                fact[field] = _swap(fact[field], old, new)
+                changed += 1
     if changed:
-        json_ops.save_json("facts.json", facts)
+        fact_file.save(json_ops, facts)
 
     store = json_ops.load_json("consequences.json") or {}
     changed = 0

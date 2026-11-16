@@ -20,12 +20,12 @@ CAMPAIGN = "dungeon-crawler-carl"
 
 def _fact(world, fid):
     facts = json.loads((Path(world) / "campaigns" / CAMPAIGN / "facts.json").read_text(encoding="utf-8"))
-    return next(f for items in facts.values() for f in items
+    return next(f for f in facts
                 if isinstance(f, dict) and f.get("id") == fid)
 
 
 def _secret(world, text="Tandy killed the priest"):
-    return NoteManager(world).add_fact("session_events", text, secret=True)
+    return NoteManager(world).add_fact(text, secret=True)
 
 
 def test_bad_tell_effects_are_refused(dcc_world):

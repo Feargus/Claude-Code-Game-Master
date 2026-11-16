@@ -122,7 +122,7 @@ READ_VERBS = [
     ("tools/gm-player.sh", "show"),
     ("tools/gm-npc.sh", "list"),
     ("tools/gm-session.sh", "status"),
-    ("tools/gm-note.sh", "categories"),
+    ("tools/gm-note.sh", "recent", "1"),
     ("tools/gm-search.sh", "carl", "--world-only"),
     ("tools/gm-plot.sh", "list"),
     ("tools/gm-campaign.sh", "list"),

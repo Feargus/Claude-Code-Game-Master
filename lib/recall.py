@@ -4,7 +4,7 @@
 `gm-note.sh find --like "<question>"`. Ranking follows recall-proposal.md (§2, §8):
 
 - **Who knows it is a hard filter** (`--held-by`, `--hidden`, `--secret`, `--truth`,
-  `--category`, `--text`, `--since`/`--until`): those are recorded, not guessed.
+  `--text`, `--since`/`--until`): those are recorded, not guessed.
 - **What comes from matching words is a bonus, never a filter.** `about` and `at`
   are found by names in the text, and plots are linked by hand, so all three can
   be missing ("the clown came back" isn't linked to Pagliacci). With `--like`,
@@ -33,9 +33,9 @@ EMBED_AT_ONCE = 10      # facts not embedded yet that a query embeds itself; the
 NEAR_MISSES = 3
 
 
-def _number(fact: dict) -> int:
-    digits = str(fact.get("id", ""))[1:]
-    return int(digits) if digits.isdigit() else 0
+import facts as fact_file  # noqa: E402 (after the path line above, like every lib import)
+
+_number = fact_file.number
 
 
 # ---------- keyword score (the fallback) ----------
@@ -116,7 +116,7 @@ def _bonus(fact: dict, abouts, place, plot_key, newest: int) -> float:
 
 
 REASONS = {"held_by": "not held by {v}", "hidden": "the character knows it",
-           "secret": "someone knows it", "truth": "not {v}", "category": "not in {v}",
+           "secret": "someone knows it", "truth": "not {v}",
            "text": "lacks the words of --text", "since": "before {v}", "until": "after {v}"}
 
 
@@ -130,13 +130,13 @@ def _why_out(notes, fact: dict, hard: dict) -> str:
 
 
 def find_like(notes, question: str, limit: int = 10, held_by=None, about=None, secret=False,
-              hidden=False, truth=None, category=None, text=None, at=None, since=None,
+              hidden=False, truth=None, text=None, at=None, since=None,
               until=None, plot=None) -> dict:
     """{"facts": ranked facts (each with "score"), "method": "meaning" or "keywords",
     "near_misses": [(id, reason)], "not_embedded": n}. Raises ValueError for an
     unknown id, as find does."""
     hard = {"held_by": held_by, "secret": secret, "hidden": hidden, "truth": truth,
-            "category": category, "text": text, "since": since, "until": until}
+            "text": text, "since": since, "until": until}
     allowed = notes.find(**hard)              # resolves and checks the hard filters
     # The soft ones, resolved the same way find does (an unknown name is still an error).
     from world_ids import WorldIds
@@ -297,9 +297,7 @@ class SceneRanker:
         embedder = get_embedder()
         self.vectors = (EmbeddingStore(json_ops.world_state_dir).vectors(embedder.name)
                         if embedder else {})
-        facts = json_ops.load_json("facts.json") or {}
-        everything = [f for items in facts.values() if isinstance(items, list)
-                      for f in items if isinstance(f, dict) and f.get("id")]
+        everything = [f for f in fact_file.load(json_ops) if f.get("id")]
         self.newest = max((_number(f) for f in everything), default=0)
         self.place = f"location:{location}" if location else ""
         self.here = {self.place} | {f"npc:{n}" for n in present} - {""}

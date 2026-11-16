@@ -125,7 +125,7 @@ What good expansion tends to include:
 
 ### Facts:
 ```bash
-./tools/gm-note.sh "[category]" "[fact]" [--about npc:<name>]
+./tools/gm-note.sh "[fact]" [--about npc:<name>]
 ```
 
 ### Consequences:

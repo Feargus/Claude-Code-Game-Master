@@ -157,7 +157,7 @@ reset_world() {
     echo "  ✓ Locations cleared"
 
     # Reset Facts
-    echo '{}' > "$FACTS_FILE"
+    echo '[]' > "$FACTS_FILE"
     echo "  ✓ Facts cleared"
 
     # Reset Consequences

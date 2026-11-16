@@ -91,10 +91,9 @@ def test_the_opening_makes_ordinary_records(world):
     assert plot["involves"] == ["npc:Dekker", "npc:Seraphine Halcyon-Vey", "location:Lanternside"]
     clocks = _load(camp, "threat-clocks.json")
     assert clocks["The Foreclosure"]["plots"] == ["The Writ"]        # the opening's plot
-    assert all(f.get("plots") == ["The Writ"] for items in _load(camp, "facts.json").values()
-               for f in items if not f.get("attitude"))
+    assert all(f.get("plots") == ["The Writ"] for f in _load(camp, "facts.json") if not f.get("attitude"))
 
-    facts = [f for items in _load(camp, "facts.json").values() for f in items]
+    facts = _load(camp, "facts.json")
     assert {f["fact"]: f["holders"] for f in facts} == {
         SPEC["developments"][0]["fact"]: ["street", "npc:Auntie Ro"],
         SPEC["developments"][1]["fact"]: ["npc:Auntie Ro"],

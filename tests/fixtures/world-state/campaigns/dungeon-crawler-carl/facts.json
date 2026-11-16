@@ -1,770 +1,812 @@
-{
-  "session_events": [
-    {
-      "fact": "Tandy formed an alliance with Carl and Princess Donut in the Tutorial Guild Hall. They agreed to work together to survive the dungeon.",
-      "timestamp": "2026-01-28T21:50:30Z"
-    },
-    {
-      "fact": "Tandy, Carl, and Donut defeated 3 Giant Cave Crickets in the Cricket Nest. Tandy did a sassy supermodel walk before the finishing blow (and missed, but Donut cleaned up). First combat victory!",
-      "timestamp": "2026-01-28T22:21:54Z"
-    },
-    {
-      "fact": "Tandy killed The Butcher in a pit trap fight. Took cleaver hit but rage absorbed damage. Donut delivered finishing blow. Looted badge, gold, and flask of oil.",
-      "timestamp": "2026-01-29T00:29:04Z"
-    },
-    {
-      "fact": "The Butcher is dead. Party took trap corridor, used pit trap as arena for final fight. Rage and teamwork won the day.",
-      "timestamp": "2026-01-29T00:46:53Z"
-    },
-    {
-      "fact": "Party fought 3 Giant Centipedes in West Tunnel. Mongo critically poisoned and downed. Tandy nat-20 threw one centipede into another. Carl stabilized Mongo. Retreated to safe room.",
-      "timestamp": "2026-01-29T01:20:00Z"
-    },
-    {
-      "fact": "Tandy's signature battle cries: 'THE MOUNTAIN REMEMBERS' and 'FACE DEATH ITSELF'",
-      "timestamp": "2026-01-29T01:30:04Z"
-    },
-    {
-      "fact": "Party gave Potion of Healing to Brennan, mending his leg. Learned about the Hive Mother - Floor Boss weak to fire. Departed safe room heading for Junction.",
-      "timestamp": "2026-01-29T18:51:14Z"
-    },
-    {
-      "fact": "Tandy rallied crawlers at Junction with NAT 20 Intimidation. Recruited 11 additional fighters including Grok (orc veteran), Thresh, Kira (ranger), and others. Total force now 18 crawlers preparing to face the Hive Mother.",
-      "timestamp": "2026-01-29T19:15:19Z"
-    },
-    {
-      "fact": "BOSS DEFEATED: Tandy killed the Hive Mother by ripping her head in half with her own fangs. Battle cry: FACE DEATH ITSELF. Rallied 18 crawlers, lost 6 in the fight. Floor 2 stairs now unlocked.",
-      "timestamp": "2026-01-29T19:36:59Z"
-    },
-    {
-      "fact": "Tandy gave Queen's Fang to Mongo (via Donut). The tiny dinosaur now wields a poison dagger in his beak.",
-      "timestamp": "2026-01-30T01:22:10Z"
-    },
-    {
-      "fact": "Tandy claimed Hive Mother Chitin x3, Royal Jelly Flask, and 80gp from boss loot. Party descended to Floor 3.",
-      "timestamp": "2026-01-30T01:23:05Z"
-    },
-    {
-      "fact": "Tandy chose Path of the Berserker at Level 3. Gained Frenzy ability.",
-      "timestamp": "2026-01-30T01:24:33Z"
-    },
-    {
-      "fact": "Party sprinted through night ruins to village. Nightstalkers attacked - lost 6 of 11 survivors. Tandy took 8 damage. Arrived at village with 12 total (7 core + 5 survivors).",
-      "timestamp": "2026-01-30T01:31:51Z"
-    },
-    {
-      "fact": "Tandy dismissed the 5 Hive Mother survivors at Over City Village, telling them to go their own way. Party chose rest over recruitment.",
-      "timestamp": "2026-01-30T01:38:48Z"
-    },
-    {
-      "fact": "Party took long rest at the Broken Column Inn. Paid 27gp for stabling, meals, baths, and rooms. All recovered to full HP.",
-      "timestamp": "2026-01-30T01:40:17Z"
-    },
-    {
-      "fact": "Tandy chose SASQUATCH as his race on Floor 3. Transformed from 4ft Mountain Dwarf into 9ft Sasquatch. Massive stat gains: STR 17→23, CON 16→22, DEX 13→15. Lost intelligence (8→5) and charisma (10→9). Now covered in brown fur with massive feet and fangs. Unlocked Smush mastery (can train to 20).",
-      "timestamp": "2026-01-30T11:52:43Z"
-    },
-    {
-      "fact": "Tandy chose LIVING SIEGE WEAPON as his class. Massive stat gains: STR 23→27, CON 22→28. Intelligence dropped to 1 (barely sentient). Gained abilities: Human Shield, Fastball Special, Rampage, Siege Engine. Smush and Bash skills both at 10. Tandy is now a 9ft tall living battering ram who thinks in trajectories and impact physics.",
-      "timestamp": "2026-01-30T12:12:56Z"
-    },
-    {
-      "fact": "Party executed first successful Fastball Special - Tandy threw Carl at a Terror Clown's back, dealing 36 damage and killing it instantly. Carl survived the landing.",
-      "timestamp": "2026-01-30T21:21:04Z"
-    },
-    {
-      "fact": "Tandy threw Donut to befriend caged dragon Prometheus. Performed sasquatch mating dance as distraction while Prometheus broke free. Threw Carl at Grimaldi. Dragon breathed 57 fire damage on Level 85 City Boss. Escaped burning Big Top. Prometheus now allied with party.",
-      "timestamp": "2026-02-01T23:16:50Z"
-    },
-    {
-      "fact": "Tandy's sasquatch mating dance became a legendary distraction tactic. Carl was thrown at a City Boss while wearing clown skin.",
-      "timestamp": "2026-02-01T23:20:15Z"
-    },
-    {
-      "fact": "Party flew on Prometheus the dragon from circus ruins to Desperado Club - dramatic aerial entrance witnessed by 847 million viewers",
-      "timestamp": "2026-02-02T12:52:58.893314+00:00"
-    },
-    {
-      "fact": "Tandy performed flashmob Mating Dance of Doom on Prometheus (rolled 2 Performance) - catastrophically bad but viewers loved it",
-      "timestamp": "2026-02-02T12:58:00.391395+00:00"
-    },
-    {
-      "fact": "Party rode Prometheus the dragon back to Over City Village at dusk, making a spectacular entrance",
-      "timestamp": "2026-02-02T14:06:44.781459+00:00"
-    },
-    {
-      "fact": "Tandy led a flash mob Mating Dance of Doom atop Prometheus in the village square - Performance 14 - crowd joined in",
-      "timestamp": "2026-02-02T14:14:01.595679+00:00"
-    },
-    {
-      "fact": "Celebrated at the Desperado Club - free drinks for humiliating Grimaldi",
-      "timestamp": "2026-02-02T14:18:56.818790+00:00"
-    },
-    {
-      "fact": "Long rest at The Broken Column Inn - HP fully restored",
-      "timestamp": "2026-02-02T14:20:27.055922+00:00"
-    },
-    {
-      "fact": "Party mounted Prometheus to hunt weakened Grimaldi at his resurrection point",
-      "timestamp": "2026-02-02T14:28:07.642362+00:00"
-    },
-    {
-      "fact": "BOSS KILL: Grimaldi the Ringmaster (Level 85 City Boss) defeated via dragonfire while Tandy and Donut performed the Mating Dance of Doom. Threw Carl through the ceiling to signal Prometheus. Party gained 8585 gold, leveled from 3 to 5.",
-      "timestamp": "2026-02-02T17:56:08.664227+00:00"
-    },
-    {
-      "fact": "Tandy led another flash mob Mating Dance of Doom in Over City Village square after defeating Grimaldi. Carl, Donut, and Mongo joined in. Performance 7 - rough start but crowd joined anyway.",
-      "timestamp": "2026-02-04T19:53:06.901786+00:00"
-    },
-    {
-      "fact": "Party took long rest at The Broken Column Inn after Grimaldi victory and celebration dance. Prometheus settled outside the village walls.",
-      "timestamp": "2026-02-04T20:12:11.228785+00:00"
-    },
-    {
-      "fact": "Party mounted Prometheus and scouted the swordsmen warehouse from the air. Spotted the building east of the Silk Road market - large warehouse with inactive swordsmen guards, second floor where Remex is hiding.",
-      "timestamp": "2026-02-05T19:37:54.245387+00:00"
-    },
-    {
-      "fact": "Tandy directed Donut to touch the Psi-Fang to Remex's soul crystal",
-      "timestamp": "2026-02-05T22:50:41.752151+00:00"
-    },
-    {
-      "fact": "Psi-Fang connected to soul crystal - partial success. Crystal energy is compatible but overwhelmed Donut (3 psychic damage). Psionic pulse alerted swordsmen below.",
-      "timestamp": "2026-02-05T22:51:02.253240+00:00"
-    },
-    {
-      "fact": "Tandy braced stairwell (Athletics 22). Carl and Donut searched second shelf - found Pus the remote detonator. Swordsmen advancing from below.",
-      "timestamp": "2026-02-05T23:06:35.728549+00:00"
-    },
-    {
-      "fact": "Tandy used Fastball Special to throw Carl through the thin wooden wall into Miss Quill's workshop (the room with the Sheol Glass Reaper Case). Athletics 29. Still bracing stairwell with his body.",
-      "timestamp": "2026-02-05T23:20:27.841217+00:00"
-    },
-    {
-      "fact": "Party executed the plan: Carl grabbed the Sheol Glass Reaper Case, opened it near the soul crystal, Tandy pressed the detonator. Contained explosion destroyed the crystal, freed Remex, deactivated all swordsmen.",
-      "timestamp": "2026-02-05T23:25:11.214816+00:00"
-    },
-    {
-      "fact": "The Sheol Glass Reaper Case cannot be stored in crawler inventory (system error). Must be physically carried. Tandy has been carrying it by hand.",
-      "timestamp": "2026-02-06T13:05:45.751018+00:00"
-    },
-    {
-      "fact": "Party decided to fly Prometheus directly to warehouse stairwell. Tandy carrying Sheol Glass case. Donut piloting. Mordecai aboard.",
-      "timestamp": "2026-02-06T20:35:01.963866+00:00"
-    },
-    {
-      "fact": "Landed Prometheus on warehouse rooftop. Met Katia. Performed Mating Dance of Doom from rooftop to distract crowd of 20+ desperate crawlers below. Performance: 12. Crowd partially pacified — most stopped fighting to watch, some still desperate.",
-      "timestamp": "2026-02-06T20:42:26.048910+00:00"
-    },
-    {
-      "fact": "Tandy Fastball Special'd Carl from rooftop at crossbow crawler threatening Prometheus. Athletics 19 vs AC 13 - HIT. 21 damage. Crossbow guy launched into two conspirators. All three down. Crowd fully pacified through mix of entertainment and terror.",
-      "timestamp": "2026-02-06T20:46:49.590625+00:00"
-    },
-    {
-      "fact": "Tandy performed Mating Dance of Doom then SWALLOWED the Sheol Glass Reaper Case whole (CON check 18 vs DC 15). Case is now inside Tandy's stomach - glowing through his fur.",
-      "timestamp": "2026-02-08T13:28:30.714632+00:00"
-    },
-    {
-      "fact": "Party fell off warehouse rooftop (nat 1 Athletics). Tandy took 8 fall damage. Landed at street level near stairwell door.",
-      "timestamp": "2026-02-08T13:28:31.301994+00:00"
-    }
-  ],
-  "plot_local": [
-    {
-      "fact": "The Butcher guards the center path to the Floor 1 stairs. He's a failed crawler turned monster - slow but deadly, vulnerable to fire, follows patrol patterns. Left path has traps, right path is unknown (nobody returns).",
-      "timestamp": "2026-01-28T22:38:19Z"
-    },
-    {
-      "fact": "Imani's crew was 7 strong, now reduced to 3 (Imani, Skitch, Brennan). Lost to stalkers and traps on Floor 2.",
-      "timestamp": "2026-01-29T01:30:04Z"
-    },
-    {
-      "fact": "First magic pulse hit - stairwell handle activated. 20 minutes until pulse 2. Prometheus still on rooftop, cannot fit through stairwell.",
-      "timestamp": "2026-02-08T13:28:34.583277+00:00"
-    }
-  ],
-  "plot_world": [
-    {
-      "fact": "The Dungeon is a universe-spanning entertainment system. Every 18 years, worlds are harvested and their inhabitants become 'crawlers'. The universe watches them fight through 18 floors. Survivors free their world; failure means destruction.",
-      "timestamp": "2026-01-28T22:46:43Z"
-    },
-    {
-      "fact": "Earth (Carl and Donut's world) was recently harvested. Billions of potential crawlers. This is Season 18 of Dungeon Crawler World.",
-      "timestamp": "2026-01-28T22:46:44Z"
-    },
-    {
-      "fact": "Failed crawlers can be 'recruited' by the dungeon and transformed into monsters. The Butcher is one such example.",
-      "timestamp": "2026-01-28T22:46:45Z"
-    },
-    {
-      "fact": "Floor 2: The Warrens has 12 safe rooms (some claimed), ~2,847 crawlers remaining. Floor Boss unknown, must be defeated to unlock stairs to Floor 3.",
-      "timestamp": "2026-01-29T00:46:53Z"
-    },
-    {
-      "fact": "Floor 3 (The Over City) has day/night cycle. Night is DEADLY - Nightstalkers and worse roam the ruins. Village guards only work during day. Always seek shelter before dark.",
-      "timestamp": "2026-01-30T01:33:37Z"
-    },
-    {
-      "fact": "Tandy transformed from Mountain Dwarf to Sasquatch and selected Living Siege Weapon class on Floor 3. Now has STR 27, CON 28, INT 1. Can throw allies safely (Fastball Special), use enemies as weapons/shields, and charge through groups (Rampage).",
-      "timestamp": "2026-01-30T21:21:02Z"
-    },
-    {
-      "fact": "Prometheus the Ancient Red Dragon was freed from 300 years of captivity in Grimaldi's Circus. He is now allied with Princess Donut and the party.",
-      "timestamp": "2026-02-01T23:20:13Z"
-    }
-  ],
-  "npc_relations": [
-    {
-      "fact": "Party sat with Remex the Grand as he died. Tandy showed unexpected tenderness. Donut was silent. Carl stayed. A quiet, dignified end.",
-      "timestamp": "2026-02-05T23:32:01.658631+00:00"
-    }
-  ],
-  "combat": [
-    {
-      "fact": "Fastball Special from warehouse rooftop. Carl thrown at hostile crawler with crossbow. 21 damage, target eliminated. Collateral: two adjacent conspirators knocked prone.",
-      "timestamp": "2026-02-06T20:46:49.636387+00:00"
-    }
-  ],
-  "npc_memories": [
-    {
-      "id": "f1",
-      "fact": "Now equipped with improvised chitin armor (+2 AC). Armed with a rusty short sword.",
-      "about": [
-        "npc:Carl",
-        "player"
-      ],
-      "holders": [
-        "npc:Carl"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f2",
-      "fact": "Allied with Tandy. Equipped with improvised chitin armor (+2 AC) and rusty short sword. Wounded in cricket fight but rested. Former US Coast Guard, capable fighter.",
-      "about": [
-        "npc:Carl",
-        "player"
-      ],
-      "holders": [
-        "npc:Carl"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f3",
-      "fact": "Descended to Floor 2 with Tandy. Threw Princess Donut for killing blow on the Butcher. Currently negotiating with Mongo's crew.",
-      "about": [
-        "npc:Carl",
-        "player"
-      ],
-      "holders": [
-        "npc:Carl"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f4",
-      "fact": "Wore clown skin disguise. Was thrown at Level 85 City Boss. Eyebrows burned off. Dignity destroyed.",
-      "about": [
-        "npc:Carl",
-        "player"
-      ],
-      "holders": [
-        "npc:Carl"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f5",
-      "fact": "Participated in flash mob Mating Dance of Doom atop Prometheus. Mental state: questionable.",
-      "about": [
-        "npc:Carl",
-        "player"
-      ],
-      "holders": [
-        "npc:Carl"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f6",
-      "fact": "Fastball Special'd from warehouse rooftop into crossbow crawler. Eliminated threat. Signature scream. Dignity remains absent.",
-      "about": [
-        "npc:Carl",
-        "player"
-      ],
-      "holders": [
-        "npc:Carl"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f7",
-      "fact": "Fell off warehouse rooftop with Tandy. Unhurt. Watching Tandy glow with swallowed WMD case. Stairwell door just activated.",
-      "about": [
-        "npc:Carl",
-        "player"
-      ],
-      "holders": [
-        "npc:Carl"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f8",
-      "fact": "Allied with Tandy. Has Cracked Glowstone. Discovered she can cast magic (golden light bolts). Very impressed by Tandy's supermodel walk. Calls Carl her 'servant'.",
-      "about": [
-        "npc:Princess Donut",
-        "player"
-      ],
-      "holders": [
-        "npc:Princess Donut"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f9",
-      "fact": "Descended to Floor 2. Delivered killing blow on the Butcher with magic bolt attack. Very proud of herself. Currently claiming the warmest spot in Mongo's safe room.",
-      "about": [
-        "npc:Princess Donut",
-        "player"
-      ],
-      "holders": [
-        "npc:Princess Donut"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f10",
-      "fact": "Won Mongo the Mongoliensis as her pet\\! He immediately bit her on the nose. His title is Royal Steed. She's very proud despite the biting.",
-      "about": [
-        "npc:Princess Donut",
-        "player"
-      ],
-      "holders": [
-        "npc:Princess Donut"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f11",
-      "fact": "Received the Hive Mother's Psi-Fang as a trophy. Very pleased with herself. The fang whispers to her.",
-      "about": [
-        "npc:Princess Donut",
-        "player"
-      ],
-      "holders": [
-        "npc:Princess Donut"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f12",
-      "fact": "Cast Animal Friendship on Prometheus. Now rides atop the dragon head like a queen. Has a dragon.",
-      "about": [
-        "npc:Princess Donut",
-        "player"
-      ],
-      "holders": [
-        "npc:Princess Donut"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f13",
-      "fact": "Descended into the Laughing Crypt with the party to confront Grimaldi. Left Prometheus guarding the exit.",
-      "about": [
-        "npc:Princess Donut",
-        "player"
-      ],
-      "holders": [
-        "npc:Princess Donut"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f14",
-      "fact": "Stowed Robe of Eyes for pulse prep. Confiscated Queen's Fang from Mongo. Rated Carl's Fastball landing 7/10.",
-      "about": [
-        "npc:Princess Donut",
-        "player"
-      ],
-      "holders": [
-        "npc:Princess Donut"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f15",
-      "fact": "Fell off rooftop, landed on feet. Prometheus left on rooftop above. Stairwell door activated by first pulse.",
-      "about": [
-        "npc:Princess Donut",
-        "player"
-      ],
-      "holders": [
-        "npc:Princess Donut"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f16",
-      "fact": "Located at the Tutorial Guild Hall, ready to greet new crawlers",
-      "about": [
-        "npc:Mordecai",
-        "player"
-      ],
-      "holders": [
-        "npc:Mordecai"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f17",
-      "fact": "Party visited after containing the Remex soul crystal. Mordecai now in Incubus form on Floor 3 - tuxedo, bat wings, Level 50. No longer rat hooligan appearance.",
-      "about": [
-        "npc:Mordecai",
-        "player"
-      ],
-      "holders": [
-        "npc:Mordecai"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f18",
-      "fact": "Squeeks is friendly toward the player.",
-      "about": [
-        "npc:Squeeks",
-        "player"
-      ],
-      "holders": [
-        "npc:Squeeks"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f19",
-      "fact": "Rescued from Giant Cave Crickets by the party. Grateful. Provided Tutorial Map and intel about the Butcher. Located at Cricket Nest.",
-      "about": [
-        "npc:Squeeks",
-        "player"
-      ],
-      "holders": [
-        "npc:Squeeks"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f20",
-      "fact": "The Butcher is hostile toward the player.",
-      "about": [
-        "npc:The Butcher",
-        "player"
-      ],
-      "holders": [
-        "npc:The Butcher"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f21",
-      "fact": "Won by Princess Donut. Bit her on the nose immediately. Has been trained to wait for \"sic em\" before charging.",
-      "about": [
-        "npc:Mongo",
-        "player"
-      ],
-      "holders": [
-        "npc:Mongo"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f22",
-      "fact": "Nearly killed by centipede poison in first real combat. Stabilized by Carl. Learning that murder-charging has consequences.",
-      "about": [
-        "npc:Mongo",
-        "player"
-      ],
-      "holders": [
-        "npc:Mongo"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f23",
-      "fact": "Survived near-death by centipede poison. Fully healed in safe room. Still murderously enthusiastic.",
-      "about": [
-        "npc:Mongo",
-        "player"
-      ],
-      "holders": [
-        "npc:Mongo"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f24",
-      "fact": "Rested and recovered to 7/8 HP.",
-      "about": [
-        "npc:Mongo",
-        "player"
-      ],
-      "holders": [
-        "npc:Mongo"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f25",
-      "fact": "Received Queen's Fang from Tandy. Now wields the poison dagger in his beak. Somehow even more terrifying.",
-      "about": [
-        "npc:Mongo",
-        "player"
-      ],
-      "holders": [
-        "npc:Mongo"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f26",
-      "fact": "Long rest at the Broken Column Inn. Recovered to full HP (8/8). Enjoyed the stables - ate something questionable.",
-      "about": [
-        "npc:Mongo",
-        "player"
-      ],
-      "holders": [
-        "npc:Mongo"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f27",
-      "fact": "Queen's Fang confiscated for pulse prep. Screeched betrayal at the sky. Still angry about it.",
-      "about": [
-        "npc:Mongo",
-        "player"
-      ],
-      "holders": [
-        "npc:Mongo"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f28",
-      "fact": "Hit ground beak-first after rooftop fall. Tried to bite a cobblestone. Still angry about Queen's Fang confiscation.",
-      "about": [
-        "npc:Mongo",
-        "player"
-      ],
-      "holders": [
-        "npc:Mongo"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f29",
-      "fact": "Encountered at Floor 2 Junction. Independent crawler, wary of alliances.",
-      "about": [
-        "npc:Imani",
-        "player"
-      ],
-      "holders": [
-        "npc:Imani"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f30",
-      "fact": "Rescued from Cave Stalkers by Tandy's party. Lost most of her crew. Offered alliance to survive Floor 2.",
-      "about": [
-        "npc:Imani",
-        "player"
-      ],
-      "holders": [
-        "npc:Imani"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f31",
-      "fact": "Alliance formed with Tandy's party. Now traveling together through Floor 2.",
-      "about": [
-        "npc:Imani",
-        "player"
-      ],
-      "holders": [
-        "npc:Imani"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f32",
-      "fact": "Spotted lurking near Floor 2 Junction. Trades information and small items.",
-      "about": [
-        "npc:Skitch",
-        "player"
-      ],
-      "holders": [
-        "npc:Skitch"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f33",
-      "fact": "Rescued from Cave Stalkers. Arm wounded but bandaged. Terrified and fascinated by Mongo.",
-      "about": [
-        "npc:Skitch",
-        "player"
-      ],
-      "holders": [
-        "npc:Skitch"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f34",
-      "fact": "Now allied with Tandy's party. Claims to know secret paths through the Warrens.",
-      "about": [
-        "npc:Skitch",
-        "player"
-      ],
-      "holders": [
-        "npc:Skitch"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f35",
-      "fact": "Brennan is friendly toward the player.",
-      "about": [
-        "npc:Brennan",
-        "player"
-      ],
-      "holders": [
-        "npc:Brennan"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f36",
-      "fact": "Alliance formed with Tandy's party. Broken leg - requires carrying to travel.",
-      "about": [
-        "npc:Brennan",
-        "player"
-      ],
-      "holders": [
-        "npc:Brennan"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f37",
-      "fact": "Leg healed by Tandy's potion. Can walk again. Deeply grateful and loyal to the party.",
-      "about": [
-        "npc:Brennan",
-        "player"
-      ],
-      "holders": [
-        "npc:Brennan"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f38",
-      "fact": "Grok is friendly toward the player.",
-      "about": [
-        "npc:Grok",
-        "player"
-      ],
-      "holders": [
-        "npc:Grok"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f39",
-      "fact": "Met Tandy's party at the Desperado Club. Witnessed Tandy's transformation to Sasquatch. Recommended buying explosives from Pustule.",
-      "about": [
-        "npc:Gryx",
-        "player"
-      ],
-      "holders": [
-        "npc:Gryx"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f40",
-      "fact": "Pustule is friendly toward the player.",
-      "about": [
-        "npc:Pustule",
-        "player"
-      ],
-      "holders": [
-        "npc:Pustule"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f41",
-      "fact": "Prometheus is friendly toward the player.",
-      "about": [
-        "npc:Prometheus",
-        "player"
-      ],
-      "holders": [
-        "npc:Prometheus"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f42",
-      "fact": "Freed from Grimaldi's Circus. Allied with party. Currently at circus outskirts with the group.",
-      "about": [
-        "npc:Prometheus",
-        "player"
-      ],
-      "holders": [
-        "npc:Prometheus"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f43",
-      "fact": "Encountered by Tandy's party. Told his story - wife Quill, the swordsmen army, the overloading crystal. Party chose to listen rather than attack. Crystal pulsing, agitated.",
-      "about": [
-        "npc:Remex the Grand",
-        "player"
-      ],
-      "holders": [
-        "npc:Remex the Grand"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f44",
-      "fact": "Soul crystal contained by Sheol Glass Reaper Case. Energy streamed into Remex, freeing him from centuries of tethered existence. Chains dissolved. Remex transformed - no longer zombified.",
-      "about": [
-        "npc:Remex the Grand",
-        "player"
-      ],
-      "holders": [
-        "npc:Remex the Grand"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    },
-    {
-      "id": "f45",
-      "fact": "Passed away peacefully surrounded by Tandy's party. Tandy placed a hand on his head as he faded. Final words were gratitude. Died free, unchained, after centuries of torment.",
-      "about": [
-        "npc:Remex the Grand",
-        "player"
-      ],
-      "holders": [
-        "npc:Remex the Grand"
-      ],
-      "converted": "from the NPC's events in npcs.json"
-    }
-  ]
-}
+[
+  {
+    "id": "f1",
+    "fact": "Now equipped with improvised chitin armor (+2 AC). Armed with a rusty short sword.",
+    "about": [
+      "npc:Carl",
+      "player"
+    ],
+    "holders": [
+      "npc:Carl"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f2",
+    "fact": "Allied with Tandy. Equipped with improvised chitin armor (+2 AC) and rusty short sword. Wounded in cricket fight but rested. Former US Coast Guard, capable fighter.",
+    "about": [
+      "npc:Carl",
+      "player"
+    ],
+    "holders": [
+      "npc:Carl"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f3",
+    "fact": "Descended to Floor 2 with Tandy. Threw Princess Donut for killing blow on the Butcher. Currently negotiating with Mongo's crew.",
+    "about": [
+      "npc:Carl",
+      "player"
+    ],
+    "holders": [
+      "npc:Carl"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f4",
+    "fact": "Wore clown skin disguise. Was thrown at Level 85 City Boss. Eyebrows burned off. Dignity destroyed.",
+    "about": [
+      "npc:Carl",
+      "player"
+    ],
+    "holders": [
+      "npc:Carl"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f5",
+    "fact": "Participated in flash mob Mating Dance of Doom atop Prometheus. Mental state: questionable.",
+    "about": [
+      "npc:Carl",
+      "player"
+    ],
+    "holders": [
+      "npc:Carl"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f6",
+    "fact": "Fastball Special'd from warehouse rooftop into crossbow crawler. Eliminated threat. Signature scream. Dignity remains absent.",
+    "about": [
+      "npc:Carl",
+      "player"
+    ],
+    "holders": [
+      "npc:Carl"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f7",
+    "fact": "Fell off warehouse rooftop with Tandy. Unhurt. Watching Tandy glow with swallowed WMD case. Stairwell door just activated.",
+    "about": [
+      "npc:Carl",
+      "player"
+    ],
+    "holders": [
+      "npc:Carl"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f8",
+    "fact": "Allied with Tandy. Has Cracked Glowstone. Discovered she can cast magic (golden light bolts). Very impressed by Tandy's supermodel walk. Calls Carl her 'servant'.",
+    "about": [
+      "npc:Princess Donut",
+      "player"
+    ],
+    "holders": [
+      "npc:Princess Donut"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f9",
+    "fact": "Descended to Floor 2. Delivered killing blow on the Butcher with magic bolt attack. Very proud of herself. Currently claiming the warmest spot in Mongo's safe room.",
+    "about": [
+      "npc:Princess Donut",
+      "player"
+    ],
+    "holders": [
+      "npc:Princess Donut"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f10",
+    "fact": "Won Mongo the Mongoliensis as her pet\\! He immediately bit her on the nose. His title is Royal Steed. She's very proud despite the biting.",
+    "about": [
+      "npc:Princess Donut",
+      "player"
+    ],
+    "holders": [
+      "npc:Princess Donut"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f11",
+    "fact": "Received the Hive Mother's Psi-Fang as a trophy. Very pleased with herself. The fang whispers to her.",
+    "about": [
+      "npc:Princess Donut",
+      "player"
+    ],
+    "holders": [
+      "npc:Princess Donut"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f12",
+    "fact": "Cast Animal Friendship on Prometheus. Now rides atop the dragon head like a queen. Has a dragon.",
+    "about": [
+      "npc:Princess Donut",
+      "player"
+    ],
+    "holders": [
+      "npc:Princess Donut"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f13",
+    "fact": "Descended into the Laughing Crypt with the party to confront Grimaldi. Left Prometheus guarding the exit.",
+    "about": [
+      "npc:Princess Donut",
+      "player"
+    ],
+    "holders": [
+      "npc:Princess Donut"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f14",
+    "fact": "Stowed Robe of Eyes for pulse prep. Confiscated Queen's Fang from Mongo. Rated Carl's Fastball landing 7/10.",
+    "about": [
+      "npc:Princess Donut",
+      "player"
+    ],
+    "holders": [
+      "npc:Princess Donut"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f15",
+    "fact": "Fell off rooftop, landed on feet. Prometheus left on rooftop above. Stairwell door activated by first pulse.",
+    "about": [
+      "npc:Princess Donut",
+      "player"
+    ],
+    "holders": [
+      "npc:Princess Donut"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f16",
+    "fact": "Located at the Tutorial Guild Hall, ready to greet new crawlers",
+    "about": [
+      "npc:Mordecai",
+      "player"
+    ],
+    "holders": [
+      "npc:Mordecai"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f17",
+    "fact": "Party visited after containing the Remex soul crystal. Mordecai now in Incubus form on Floor 3 - tuxedo, bat wings, Level 50. No longer rat hooligan appearance.",
+    "about": [
+      "npc:Mordecai",
+      "player"
+    ],
+    "holders": [
+      "npc:Mordecai"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f18",
+    "fact": "Squeeks is friendly toward the player.",
+    "about": [
+      "npc:Squeeks",
+      "player"
+    ],
+    "holders": [
+      "npc:Squeeks"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f19",
+    "fact": "Rescued from Giant Cave Crickets by the party. Grateful. Provided Tutorial Map and intel about the Butcher. Located at Cricket Nest.",
+    "about": [
+      "npc:Squeeks",
+      "player"
+    ],
+    "holders": [
+      "npc:Squeeks"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f20",
+    "fact": "The Butcher is hostile toward the player.",
+    "about": [
+      "npc:The Butcher",
+      "player"
+    ],
+    "holders": [
+      "npc:The Butcher"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f21",
+    "fact": "Won by Princess Donut. Bit her on the nose immediately. Has been trained to wait for \"sic em\" before charging.",
+    "about": [
+      "npc:Mongo",
+      "player"
+    ],
+    "holders": [
+      "npc:Mongo"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f22",
+    "fact": "Nearly killed by centipede poison in first real combat. Stabilized by Carl. Learning that murder-charging has consequences.",
+    "about": [
+      "npc:Mongo",
+      "player"
+    ],
+    "holders": [
+      "npc:Mongo"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f23",
+    "fact": "Survived near-death by centipede poison. Fully healed in safe room. Still murderously enthusiastic.",
+    "about": [
+      "npc:Mongo",
+      "player"
+    ],
+    "holders": [
+      "npc:Mongo"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f24",
+    "fact": "Rested and recovered to 7/8 HP.",
+    "about": [
+      "npc:Mongo",
+      "player"
+    ],
+    "holders": [
+      "npc:Mongo"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f25",
+    "fact": "Received Queen's Fang from Tandy. Now wields the poison dagger in his beak. Somehow even more terrifying.",
+    "about": [
+      "npc:Mongo",
+      "player"
+    ],
+    "holders": [
+      "npc:Mongo"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f26",
+    "fact": "Long rest at the Broken Column Inn. Recovered to full HP (8/8). Enjoyed the stables - ate something questionable.",
+    "about": [
+      "npc:Mongo",
+      "player"
+    ],
+    "holders": [
+      "npc:Mongo"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f27",
+    "fact": "Queen's Fang confiscated for pulse prep. Screeched betrayal at the sky. Still angry about it.",
+    "about": [
+      "npc:Mongo",
+      "player"
+    ],
+    "holders": [
+      "npc:Mongo"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f28",
+    "fact": "Hit ground beak-first after rooftop fall. Tried to bite a cobblestone. Still angry about Queen's Fang confiscation.",
+    "about": [
+      "npc:Mongo",
+      "player"
+    ],
+    "holders": [
+      "npc:Mongo"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f29",
+    "fact": "Encountered at Floor 2 Junction. Independent crawler, wary of alliances.",
+    "about": [
+      "npc:Imani",
+      "player"
+    ],
+    "holders": [
+      "npc:Imani"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f30",
+    "fact": "Rescued from Cave Stalkers by Tandy's party. Lost most of her crew. Offered alliance to survive Floor 2.",
+    "about": [
+      "npc:Imani",
+      "player"
+    ],
+    "holders": [
+      "npc:Imani"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f31",
+    "fact": "Alliance formed with Tandy's party. Now traveling together through Floor 2.",
+    "about": [
+      "npc:Imani",
+      "player"
+    ],
+    "holders": [
+      "npc:Imani"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f32",
+    "fact": "Spotted lurking near Floor 2 Junction. Trades information and small items.",
+    "about": [
+      "npc:Skitch",
+      "player"
+    ],
+    "holders": [
+      "npc:Skitch"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f33",
+    "fact": "Rescued from Cave Stalkers. Arm wounded but bandaged. Terrified and fascinated by Mongo.",
+    "about": [
+      "npc:Skitch",
+      "player"
+    ],
+    "holders": [
+      "npc:Skitch"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f34",
+    "fact": "Now allied with Tandy's party. Claims to know secret paths through the Warrens.",
+    "about": [
+      "npc:Skitch",
+      "player"
+    ],
+    "holders": [
+      "npc:Skitch"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f35",
+    "fact": "Brennan is friendly toward the player.",
+    "about": [
+      "npc:Brennan",
+      "player"
+    ],
+    "holders": [
+      "npc:Brennan"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f36",
+    "fact": "Alliance formed with Tandy's party. Broken leg - requires carrying to travel.",
+    "about": [
+      "npc:Brennan",
+      "player"
+    ],
+    "holders": [
+      "npc:Brennan"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f37",
+    "fact": "Leg healed by Tandy's potion. Can walk again. Deeply grateful and loyal to the party.",
+    "about": [
+      "npc:Brennan",
+      "player"
+    ],
+    "holders": [
+      "npc:Brennan"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f38",
+    "fact": "Grok is friendly toward the player.",
+    "about": [
+      "npc:Grok",
+      "player"
+    ],
+    "holders": [
+      "npc:Grok"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f39",
+    "fact": "Met Tandy's party at the Desperado Club. Witnessed Tandy's transformation to Sasquatch. Recommended buying explosives from Pustule.",
+    "about": [
+      "npc:Gryx",
+      "player"
+    ],
+    "holders": [
+      "npc:Gryx"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f40",
+    "fact": "Pustule is friendly toward the player.",
+    "about": [
+      "npc:Pustule",
+      "player"
+    ],
+    "holders": [
+      "npc:Pustule"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f41",
+    "fact": "Prometheus is friendly toward the player.",
+    "about": [
+      "npc:Prometheus",
+      "player"
+    ],
+    "holders": [
+      "npc:Prometheus"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f42",
+    "fact": "Freed from Grimaldi's Circus. Allied with party. Currently at circus outskirts with the group.",
+    "about": [
+      "npc:Prometheus",
+      "player"
+    ],
+    "holders": [
+      "npc:Prometheus"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f43",
+    "fact": "Encountered by Tandy's party. Told his story - wife Quill, the swordsmen army, the overloading crystal. Party chose to listen rather than attack. Crystal pulsing, agitated.",
+    "about": [
+      "npc:Remex the Grand",
+      "player"
+    ],
+    "holders": [
+      "npc:Remex the Grand"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f44",
+    "fact": "Soul crystal contained by Sheol Glass Reaper Case. Energy streamed into Remex, freeing him from centuries of tethered existence. Chains dissolved. Remex transformed - no longer zombified.",
+    "about": [
+      "npc:Remex the Grand",
+      "player"
+    ],
+    "holders": [
+      "npc:Remex the Grand"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f45",
+    "fact": "Passed away peacefully surrounded by Tandy's party. Tandy placed a hand on his head as he faded. Final words were gratitude. Died free, unchained, after centuries of torment.",
+    "about": [
+      "npc:Remex the Grand",
+      "player"
+    ],
+    "holders": [
+      "npc:Remex the Grand"
+    ],
+    "converted": "from the NPC's events in npcs.json"
+  },
+  {
+    "id": "f46",
+    "fact": "Tandy formed an alliance with Carl and Princess Donut in the Tutorial Guild Hall. They agreed to work together to survive the dungeon.",
+    "timestamp": "2026-01-28T21:50:30Z"
+  },
+  {
+    "id": "f47",
+    "fact": "Tandy, Carl, and Donut defeated 3 Giant Cave Crickets in the Cricket Nest. Tandy did a sassy supermodel walk before the finishing blow (and missed, but Donut cleaned up). First combat victory!",
+    "timestamp": "2026-01-28T22:21:54Z"
+  },
+  {
+    "id": "f48",
+    "fact": "The Butcher guards the center path to the Floor 1 stairs. He's a failed crawler turned monster - slow but deadly, vulnerable to fire, follows patrol patterns. Left path has traps, right path is unknown (nobody returns).",
+    "timestamp": "2026-01-28T22:38:19Z"
+  },
+  {
+    "id": "f49",
+    "fact": "The Dungeon is a universe-spanning entertainment system. Every 18 years, worlds are harvested and their inhabitants become 'crawlers'. The universe watches them fight through 18 floors. Survivors free their world; failure means destruction.",
+    "timestamp": "2026-01-28T22:46:43Z"
+  },
+  {
+    "id": "f50",
+    "fact": "Earth (Carl and Donut's world) was recently harvested. Billions of potential crawlers. This is Season 18 of Dungeon Crawler World.",
+    "timestamp": "2026-01-28T22:46:44Z"
+  },
+  {
+    "id": "f51",
+    "fact": "Failed crawlers can be 'recruited' by the dungeon and transformed into monsters. The Butcher is one such example.",
+    "timestamp": "2026-01-28T22:46:45Z"
+  },
+  {
+    "id": "f52",
+    "fact": "Tandy killed The Butcher in a pit trap fight. Took cleaver hit but rage absorbed damage. Donut delivered finishing blow. Looted badge, gold, and flask of oil.",
+    "timestamp": "2026-01-29T00:29:04Z"
+  },
+  {
+    "id": "f53",
+    "fact": "The Butcher is dead. Party took trap corridor, used pit trap as arena for final fight. Rage and teamwork won the day.",
+    "timestamp": "2026-01-29T00:46:53Z"
+  },
+  {
+    "id": "f54",
+    "fact": "Floor 2: The Warrens has 12 safe rooms (some claimed), ~2,847 crawlers remaining. Floor Boss unknown, must be defeated to unlock stairs to Floor 3.",
+    "timestamp": "2026-01-29T00:46:53Z"
+  },
+  {
+    "id": "f55",
+    "fact": "Party fought 3 Giant Centipedes in West Tunnel. Mongo critically poisoned and downed. Tandy nat-20 threw one centipede into another. Carl stabilized Mongo. Retreated to safe room.",
+    "timestamp": "2026-01-29T01:20:00Z"
+  },
+  {
+    "id": "f56",
+    "fact": "Tandy's signature battle cries: 'THE MOUNTAIN REMEMBERS' and 'FACE DEATH ITSELF'",
+    "timestamp": "2026-01-29T01:30:04Z"
+  },
+  {
+    "id": "f57",
+    "fact": "Imani's crew was 7 strong, now reduced to 3 (Imani, Skitch, Brennan). Lost to stalkers and traps on Floor 2.",
+    "timestamp": "2026-01-29T01:30:04Z"
+  },
+  {
+    "id": "f58",
+    "fact": "Party gave Potion of Healing to Brennan, mending his leg. Learned about the Hive Mother - Floor Boss weak to fire. Departed safe room heading for Junction.",
+    "timestamp": "2026-01-29T18:51:14Z"
+  },
+  {
+    "id": "f59",
+    "fact": "Tandy rallied crawlers at Junction with NAT 20 Intimidation. Recruited 11 additional fighters including Grok (orc veteran), Thresh, Kira (ranger), and others. Total force now 18 crawlers preparing to face the Hive Mother.",
+    "timestamp": "2026-01-29T19:15:19Z"
+  },
+  {
+    "id": "f60",
+    "fact": "BOSS DEFEATED: Tandy killed the Hive Mother by ripping her head in half with her own fangs. Battle cry: FACE DEATH ITSELF. Rallied 18 crawlers, lost 6 in the fight. Floor 2 stairs now unlocked.",
+    "timestamp": "2026-01-29T19:36:59Z"
+  },
+  {
+    "id": "f61",
+    "fact": "Tandy gave Queen's Fang to Mongo (via Donut). The tiny dinosaur now wields a poison dagger in his beak.",
+    "timestamp": "2026-01-30T01:22:10Z"
+  },
+  {
+    "id": "f62",
+    "fact": "Tandy claimed Hive Mother Chitin x3, Royal Jelly Flask, and 80gp from boss loot. Party descended to Floor 3.",
+    "timestamp": "2026-01-30T01:23:05Z"
+  },
+  {
+    "id": "f63",
+    "fact": "Tandy chose Path of the Berserker at Level 3. Gained Frenzy ability.",
+    "timestamp": "2026-01-30T01:24:33Z"
+  },
+  {
+    "id": "f64",
+    "fact": "Party sprinted through night ruins to village. Nightstalkers attacked - lost 6 of 11 survivors. Tandy took 8 damage. Arrived at village with 12 total (7 core + 5 survivors).",
+    "timestamp": "2026-01-30T01:31:51Z"
+  },
+  {
+    "id": "f65",
+    "fact": "Floor 3 (The Over City) has day/night cycle. Night is DEADLY - Nightstalkers and worse roam the ruins. Village guards only work during day. Always seek shelter before dark.",
+    "timestamp": "2026-01-30T01:33:37Z"
+  },
+  {
+    "id": "f66",
+    "fact": "Tandy dismissed the 5 Hive Mother survivors at Over City Village, telling them to go their own way. Party chose rest over recruitment.",
+    "timestamp": "2026-01-30T01:38:48Z"
+  },
+  {
+    "id": "f67",
+    "fact": "Party took long rest at the Broken Column Inn. Paid 27gp for stabling, meals, baths, and rooms. All recovered to full HP.",
+    "timestamp": "2026-01-30T01:40:17Z"
+  },
+  {
+    "id": "f68",
+    "fact": "Tandy chose SASQUATCH as his race on Floor 3. Transformed from 4ft Mountain Dwarf into 9ft Sasquatch. Massive stat gains: STR 17→23, CON 16→22, DEX 13→15. Lost intelligence (8→5) and charisma (10→9). Now covered in brown fur with massive feet and fangs. Unlocked Smush mastery (can train to 20).",
+    "timestamp": "2026-01-30T11:52:43Z"
+  },
+  {
+    "id": "f69",
+    "fact": "Tandy chose LIVING SIEGE WEAPON as his class. Massive stat gains: STR 23→27, CON 22→28. Intelligence dropped to 1 (barely sentient). Gained abilities: Human Shield, Fastball Special, Rampage, Siege Engine. Smush and Bash skills both at 10. Tandy is now a 9ft tall living battering ram who thinks in trajectories and impact physics.",
+    "timestamp": "2026-01-30T12:12:56Z"
+  },
+  {
+    "id": "f70",
+    "fact": "Tandy transformed from Mountain Dwarf to Sasquatch and selected Living Siege Weapon class on Floor 3. Now has STR 27, CON 28, INT 1. Can throw allies safely (Fastball Special), use enemies as weapons/shields, and charge through groups (Rampage).",
+    "timestamp": "2026-01-30T21:21:02Z"
+  },
+  {
+    "id": "f71",
+    "fact": "Party executed first successful Fastball Special - Tandy threw Carl at a Terror Clown's back, dealing 36 damage and killing it instantly. Carl survived the landing.",
+    "timestamp": "2026-01-30T21:21:04Z"
+  },
+  {
+    "id": "f72",
+    "fact": "Tandy threw Donut to befriend caged dragon Prometheus. Performed sasquatch mating dance as distraction while Prometheus broke free. Threw Carl at Grimaldi. Dragon breathed 57 fire damage on Level 85 City Boss. Escaped burning Big Top. Prometheus now allied with party.",
+    "timestamp": "2026-02-01T23:16:50Z"
+  },
+  {
+    "id": "f73",
+    "fact": "Prometheus the Ancient Red Dragon was freed from 300 years of captivity in Grimaldi's Circus. He is now allied with Princess Donut and the party.",
+    "timestamp": "2026-02-01T23:20:13Z"
+  },
+  {
+    "id": "f74",
+    "fact": "Tandy's sasquatch mating dance became a legendary distraction tactic. Carl was thrown at a City Boss while wearing clown skin.",
+    "timestamp": "2026-02-01T23:20:15Z"
+  },
+  {
+    "id": "f75",
+    "fact": "Party flew on Prometheus the dragon from circus ruins to Desperado Club - dramatic aerial entrance witnessed by 847 million viewers",
+    "timestamp": "2026-02-02T12:52:58.893314+00:00"
+  },
+  {
+    "id": "f76",
+    "fact": "Tandy performed flashmob Mating Dance of Doom on Prometheus (rolled 2 Performance) - catastrophically bad but viewers loved it",
+    "timestamp": "2026-02-02T12:58:00.391395+00:00"
+  },
+  {
+    "id": "f77",
+    "fact": "Party rode Prometheus the dragon back to Over City Village at dusk, making a spectacular entrance",
+    "timestamp": "2026-02-02T14:06:44.781459+00:00"
+  },
+  {
+    "id": "f78",
+    "fact": "Tandy led a flash mob Mating Dance of Doom atop Prometheus in the village square - Performance 14 - crowd joined in",
+    "timestamp": "2026-02-02T14:14:01.595679+00:00"
+  },
+  {
+    "id": "f79",
+    "fact": "Celebrated at the Desperado Club - free drinks for humiliating Grimaldi",
+    "timestamp": "2026-02-02T14:18:56.818790+00:00"
+  },
+  {
+    "id": "f80",
+    "fact": "Long rest at The Broken Column Inn - HP fully restored",
+    "timestamp": "2026-02-02T14:20:27.055922+00:00"
+  },
+  {
+    "id": "f81",
+    "fact": "Party mounted Prometheus to hunt weakened Grimaldi at his resurrection point",
+    "timestamp": "2026-02-02T14:28:07.642362+00:00"
+  },
+  {
+    "id": "f82",
+    "fact": "BOSS KILL: Grimaldi the Ringmaster (Level 85 City Boss) defeated via dragonfire while Tandy and Donut performed the Mating Dance of Doom. Threw Carl through the ceiling to signal Prometheus. Party gained 8585 gold, leveled from 3 to 5.",
+    "timestamp": "2026-02-02T17:56:08.664227+00:00"
+  },
+  {
+    "id": "f83",
+    "fact": "Tandy led another flash mob Mating Dance of Doom in Over City Village square after defeating Grimaldi. Carl, Donut, and Mongo joined in. Performance 7 - rough start but crowd joined anyway.",
+    "timestamp": "2026-02-04T19:53:06.901786+00:00"
+  },
+  {
+    "id": "f84",
+    "fact": "Party took long rest at The Broken Column Inn after Grimaldi victory and celebration dance. Prometheus settled outside the village walls.",
+    "timestamp": "2026-02-04T20:12:11.228785+00:00"
+  },
+  {
+    "id": "f85",
+    "fact": "Party mounted Prometheus and scouted the swordsmen warehouse from the air. Spotted the building east of the Silk Road market - large warehouse with inactive swordsmen guards, second floor where Remex is hiding.",
+    "timestamp": "2026-02-05T19:37:54.245387+00:00"
+  },
+  {
+    "id": "f86",
+    "fact": "Tandy directed Donut to touch the Psi-Fang to Remex's soul crystal",
+    "timestamp": "2026-02-05T22:50:41.752151+00:00"
+  },
+  {
+    "id": "f87",
+    "fact": "Psi-Fang connected to soul crystal - partial success. Crystal energy is compatible but overwhelmed Donut (3 psychic damage). Psionic pulse alerted swordsmen below.",
+    "timestamp": "2026-02-05T22:51:02.253240+00:00"
+  },
+  {
+    "id": "f88",
+    "fact": "Tandy braced stairwell (Athletics 22). Carl and Donut searched second shelf - found Pus the remote detonator. Swordsmen advancing from below.",
+    "timestamp": "2026-02-05T23:06:35.728549+00:00"
+  },
+  {
+    "id": "f89",
+    "fact": "Tandy used Fastball Special to throw Carl through the thin wooden wall into Miss Quill's workshop (the room with the Sheol Glass Reaper Case). Athletics 29. Still bracing stairwell with his body.",
+    "timestamp": "2026-02-05T23:20:27.841217+00:00"
+  },
+  {
+    "id": "f90",
+    "fact": "Party executed the plan: Carl grabbed the Sheol Glass Reaper Case, opened it near the soul crystal, Tandy pressed the detonator. Contained explosion destroyed the crystal, freed Remex, deactivated all swordsmen.",
+    "timestamp": "2026-02-05T23:25:11.214816+00:00"
+  },
+  {
+    "id": "f91",
+    "fact": "Party sat with Remex the Grand as he died. Tandy showed unexpected tenderness. Donut was silent. Carl stayed. A quiet, dignified end.",
+    "timestamp": "2026-02-05T23:32:01.658631+00:00"
+  },
+  {
+    "id": "f92",
+    "fact": "The Sheol Glass Reaper Case cannot be stored in crawler inventory (system error). Must be physically carried. Tandy has been carrying it by hand.",
+    "timestamp": "2026-02-06T13:05:45.751018+00:00"
+  },
+  {
+    "id": "f93",
+    "fact": "Party decided to fly Prometheus directly to warehouse stairwell. Tandy carrying Sheol Glass case. Donut piloting. Mordecai aboard.",
+    "timestamp": "2026-02-06T20:35:01.963866+00:00"
+  },
+  {
+    "id": "f94",
+    "fact": "Landed Prometheus on warehouse rooftop. Met Katia. Performed Mating Dance of Doom from rooftop to distract crowd of 20+ desperate crawlers below. Performance: 12. Crowd partially pacified — most stopped fighting to watch, some still desperate.",
+    "timestamp": "2026-02-06T20:42:26.048910+00:00"
+  },
+  {
+    "id": "f95",
+    "fact": "Tandy Fastball Special'd Carl from rooftop at crossbow crawler threatening Prometheus. Athletics 19 vs AC 13 - HIT. 21 damage. Crossbow guy launched into two conspirators. All three down. Crowd fully pacified through mix of entertainment and terror.",
+    "timestamp": "2026-02-06T20:46:49.590625+00:00"
+  },
+  {
+    "id": "f96",
+    "fact": "Fastball Special from warehouse rooftop. Carl thrown at hostile crawler with crossbow. 21 damage, target eliminated. Collateral: two adjacent conspirators knocked prone.",
+    "timestamp": "2026-02-06T20:46:49.636387+00:00"
+  },
+  {
+    "id": "f97",
+    "fact": "Tandy performed Mating Dance of Doom then SWALLOWED the Sheol Glass Reaper Case whole (CON check 18 vs DC 15). Case is now inside Tandy's stomach - glowing through his fur.",
+    "timestamp": "2026-02-08T13:28:30.714632+00:00"
+  },
+  {
+    "id": "f98",
+    "fact": "Party fell off warehouse rooftop (nat 1 Athletics). Tandy took 8 fall damage. Landed at street level near stairwell door.",
+    "timestamp": "2026-02-08T13:28:31.301994+00:00"
+  },
+  {
+    "id": "f99",
+    "fact": "First magic pulse hit - stairwell handle activated. 20 minutes until pulse 2. Prometheus still on rooftop, cannot fit through stairwell.",
+    "timestamp": "2026-02-08T13:28:34.583277+00:00"
+  }
+]
