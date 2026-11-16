@@ -372,9 +372,10 @@ class PlayerManager(EntityManager):
             return {'success': True, 'name': char_name, 'credits': current}
         new = current + amount
         if new < 0:
-            print(f"[WARNING] {char_name} only has {current} credits (tried to spend "
-                  f"{abs(amount)}). Set to 0.")
-            new = 0
+            # Refused: this used to set the credits to 0 and report the whole sum
+            # as spent, so the GM narrated a purchase the character couldn't pay.
+            return self._refuse(f"{char_name} has {current} credits, not the {abs(amount)} "
+                                f"this would spend. Nothing was spent.")
         possessions['credits'] = new
         if not self._save_character(char):
             return {'success': False}
@@ -432,6 +433,9 @@ class PlayerManager(EntityManager):
             return {'success': False}
         possessions = sheet_mod.section(char, "possessions")
         before = int(possessions.get('credits', 0) or 0)
+        if credit_amount < 0:
+            return self._refuse("Loot is a gain: --credits can't be negative. Spending is "
+                                "gm-player.sh credits -N.")
         for entry in items:
             sheet_mod.add_item(char, 'inventory', entry)
         if credit_amount:
