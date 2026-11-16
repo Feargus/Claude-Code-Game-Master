@@ -84,7 +84,10 @@ class JsonOperations:
         so a command could go on and report success.
         """
         filepath = self._resolve_path(filename)
-        temp_path = filepath.with_suffix('.tmp')
+        # Its own temp file per process: two commands writing at once must not
+        # move each other's half-written file into place (tools/common.sh makes
+        # commands take turns; this is for whatever runs without the wrappers).
+        temp_path = filepath.with_suffix(f'.{os.getpid()}.tmp')
 
         try:
             with open(temp_path, 'w', encoding='utf-8') as f:

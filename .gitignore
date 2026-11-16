@@ -25,6 +25,7 @@ eggs/
 world-state/campaigns
 world-state/active-campaign.txt
 world-state/sessions/
+world-state/locks/
 world-state/book-index/
 
 # Source Material (User-provided documents for import)

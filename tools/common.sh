@@ -237,3 +237,45 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
     source "$PROJECT_ROOT/.env"
     set +a
 fi
+
+# One command at a time per campaign. Every command reads the campaign's files,
+# changes them and writes them back, so two running at once would both start
+# from the same old file, and the later write would erase the earlier one
+# (Claude Code does start independent commands side by side). The outermost
+# wrapper takes the lock for its whole run. A wrapper it calls (gm-session.sh
+# move runs gm-time.sh and gm-consequence.sh) finds GM_LOCK_HELD set and doesn't
+# wait for its own parent. The lock is a file kept open on descriptor 9, so it is
+# released when the command ends, however it ends. Commands only wait for each
+# other, as a rule a fraction of a second; after GM_LOCK_WAIT seconds one gives up.
+# GM_FLOCK names the program that locks (default flock); where there is none
+# (macOS), lib/command_lock.py takes the same lock. A wrapper that never changes
+# the campaign's records sets GM_COMMAND_LOCK=no before loading this file.
+take_campaign_lock() {
+    if [ -z "$WORLD_STATE_DIR" ] || [ -n "${GM_LOCK_HELD:-}" ] || [ "${GM_COMMAND_LOCK:-}" = "no" ]; then
+        return 0
+    fi
+    local wait="${GM_LOCK_WAIT:-30}"
+    mkdir -p "$WORLD_STATE_BASE/locks"
+    exec 9>"$WORLD_STATE_BASE/locks/$(basename "$WORLD_STATE_DIR").lock"
+    if command -v "${GM_FLOCK:-flock}" >/dev/null 2>&1; then
+        "${GM_FLOCK:-flock}" -w "$wait" 9
+    else
+        $PYTHON_CMD "$LIB_DIR/command_lock.py" "$wait"
+    fi || {
+        error "Another command has been working on this campaign for more than $wait seconds. Nothing was done: run this one again when that one has finished."
+        exit 1
+    }
+    GM_LOCK_MINE=1
+    export GM_LOCK_HELD=1
+}
+
+# For a command that then only waits for minutes (gm-extract.sh wait): give the
+# lock back first, so play isn't held up meanwhile.
+release_campaign_lock() {
+    if [ -n "${GM_LOCK_MINE:-}" ]; then
+        exec 9>&-
+        unset GM_LOCK_MINE GM_LOCK_HELD
+    fi
+}
+
+take_campaign_lock

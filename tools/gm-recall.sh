@@ -10,6 +10,10 @@
 #
 # Recall itself: gm-note.sh find --like "<question>"
 
+# Nothing here changes the campaign's records, and setup and embed run for
+# minutes: it neither waits for other commands nor makes them wait (common.sh,
+# the command lock).
+GM_COMMAND_LOCK=no
 source "$(dirname "$0")/common.sh"
 
 case "$1" in

@@ -261,6 +261,7 @@ case "$1" in
         # 9 minutes (a command may run for 10), then says whether to call it again.
         campaign_name=$(require_campaign "$2" "wait") || exit 1
         CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
+        release_campaign_lock     # it only waits: other commands needn't wait for it
         $PYTHON_CMD "$LIB_DIR/rag/vector_store.py" wait "$CAMPAIGN_DIR"
         exit $?
         ;;
