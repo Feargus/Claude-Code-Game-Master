@@ -54,6 +54,8 @@ def test_firing_tells(dcc_world):
     hit = cm.fire(cid)
     assert _fact(dcc_world, fid)["holders"] == ["npc:Mordecai", "street"]
     assert hit["effects_done"] == [f"npc:Mordecai, street now know(s) {fid}"]
+    assert cm.fire(cid) == {}                                  # it fires once
+    cm.rearm(cid)
     again = cm.fire(cid)
     assert again["effects_done"] == [f"npc:Mordecai, street knew {fid} already"]
 
@@ -79,22 +81,21 @@ def test_the_ladder_climbs_by_itself(dcc_world):
     assert "The hunt" in tcm.get_clocks()
 
 
-def test_a_loop_stops_when_nobody_learns_anything_new(dcc_world):
-    """`anyone learns` fires again at each learning; its own tell then finds
-    everyone knowing already, and the chain ends."""
+def test_a_consequence_that_tells_does_not_set_itself_off_again(dcc_world):
+    """`anyone learns f` with an effect that tells f on: it has fired when its own
+    telling is learned, so the chain ends there (it used to fire a second time
+    and find everyone knowing already)."""
     fid = _secret(dcc_world)
     cm = ConsequenceManager(dcc_world)
     gossip = cm.add_consequence("Gossip spreads", "y", trigger_type="on_learn",
                                 match=f"anyone learns {fid}",
                                 effects=[{"type": "tell", "fact": fid, "holders": ["street"]}])
     notes = NoteManager(dcc_world)
-    notes.tell(fid, ["Mordecai"])            # fires gossip -> street learns -> gossip again -> stop
+    notes.tell(fid, ["Mordecai"])            # fires gossip -> street learns -> nothing more
     assert _fact(dcc_world, fid)["holders"] == ["npc:Mordecai", "street"]
     first = notes.last_fired[0]
     assert first["id"] == gossip
-    assert first["effects_done"][0] == f"street now know(s) {fid}"
-    assert f"that fired [{gossip}]" in first["effects_done"][1]
-    assert "knew" in first["effects_done"][2]
+    assert first["effects_done"] == [f"street now know(s) {fid}"]
 
 
 def test_cli_tells_flags(dcc_world):

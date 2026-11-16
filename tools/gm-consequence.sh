@@ -10,12 +10,14 @@ Usage: gm-consequence.sh <action> [args]
 Actions:
   add "<what happens>" "<trigger in words>" [triggers] [effects]
                                  - Add a consequence
-  tick                           - Fire consequences matching the current scene (auto on move/time)
+  tick                           - Fire the waiting consequences that match the current scene
+                                   (auto on move/time). A consequence fires once.
   check                          - List pending consequences
   fire <id> [--by <fact id>] [--reason "..."]
                                  - Fire a consequence by hand (its condition happened)
-  resolve <id>                   - Resolve a consequence (once it has played out)
-  log / rollback                 - Why things fired / undo the last firing
+  resolve <id>                   - Resolve a fired consequence (once it has played out)
+  rearm <id>                     - A fired consequence waits again (the moment was wrong)
+  log                            - Why things fired
   list-resolved                  - List resolved consequences
   (an id may be shortened to a unique prefix, e.g. the 4 characters the brief shows)
 
@@ -96,8 +98,12 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/consequence_manager.py" log
         ;;
 
-    rollback)
-        $PYTHON_CMD "$LIB_DIR/consequence_manager.py" rollback
+    rearm)
+        if [ "$#" -lt 1 ]; then
+            echo "Usage: gm-consequence.sh rearm <id>"
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/consequence_manager.py" rearm "$@"
         ;;
 
     fire)
@@ -122,7 +128,7 @@ case "$ACTION" in
 
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: add, check, tick, log, rollback, fire, resolve, list-resolved"
+        echo "Valid actions: add, check, tick, log, rearm, fire, resolve, list-resolved"
         exit 1
         ;;
 esac

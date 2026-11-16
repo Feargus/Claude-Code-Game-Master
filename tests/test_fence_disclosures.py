@@ -37,7 +37,7 @@ def test_tick_four_matches_fires_all_four(tmp_path):
     assert len({c["id"] for c in result["fired"]}) == 4
     assert all("match_reason" in c for c in result["fired"])
     data = json.loads((camp / "consequences.json").read_text(encoding="utf-8"))
-    stamped = [c for c in data["active"] if c.get("last_fired_key")]
+    stamped = [c for c in data["active"] if c.get("fired")]
     assert len(stamped) == 4
     fired_ids = {c["id"] for c in result["fired"]}
     assert {c["id"] for c in stamped} == fired_ids

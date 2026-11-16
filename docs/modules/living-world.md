@@ -59,58 +59,22 @@ parsed. `gm-clock.sh add` also gained `--consequence` / `--linked-plot`, which `
 had always accepted and the parser could never pass — so hand-made clocks were
 structurally incapable of carrying the payload.
 
-## Firing does not resolve
+## Waiting, fired, resolved
 
-`tick()` stamps `last_fired_key` = `location|time|date` on newly fired consequences and
-leaves them **active**. The stamp is an annotation, not a suppressor: a second tick in
-the same scene still reports the match as already-fired (no re-stamp, no new provenance).
-Walking away and coming back **re-arms it**, because the key changed.
+A consequence fires **once**. Firing writes `fired` (the reason, the real time, the game
+time, the fact that set it off) onto it and leaves it in `active`; from then on it matches
+no trigger, whatever its triggers and however long it stays. The brief lists it as `FIRED`
+until `gm-consequence.sh resolve` moves it to `resolved`. `gm-consequence.sh rearm` removes
+`fired`, so it waits again (the moment was wrong, or it should happen once more); what its
+effects did stays done.
 
-Every match fires: there is no limit per check, since a consequence left out would also
-miss its effects (a clock it starts) until the next check at the same place, which may
-never come. If several fire at once, the GM decides how they play out or vetoes one.
-`check_pending(..., world_state)` returns every match.
+Until 2026-11-16 firing only stamped the scene (`last_fired_key`), so an unresolved
+consequence fired again when the time of day changed, or when a second trigger matched.
 
-- The GM can veto a firing narratively and nothing needs undoing; the consequence is
-  still there.
-- A consequence only leaves `active` via explicit `resolve <id>` or by expiring. A
-  campaign that never resolves accumulates a permanently pending list.
+## The log of firings
 
-## How triggers match, and one check that misfires
-
-Structured triggers (`--trigger-type on_location|on_npc|on_time|on_death|on_clock|on_event`
-with `--match`, repeatable for several triggers, any one of which fires the consequence).
-`on_location` and `on_npc` hold ids (`location:<key>`, `npc:<key>`, see `lib/world_ids.py`),
-checked when the consequence is added and compared exactly with the current location and
-the NPCs present (2026-11-08; before, any substring matched, so "Ro" fired for Old Iron).
-`on_time` holds a time-of-day word and fires exactly in its hours on the game clock
-(`noon` 11:00–12:59; 2026-11-08, before which `noon` also fired in the Afternoon). `on_death`,
-`on_clock` and `on_event` are the exceptions, event triggers never checked on the scene:
-`on_death` fires once, inside `gm-npc.sh kill` / `gm-player.sh kill`; `on_clock` fires once
-per segment, inside `gm-clock.sh advance` or the time update that moves the clock;
-`on_learn` fires when a fact gets a holder (`gm-note.sh` and `gm-note.sh tell`);
-`on_event` is matched by the GM, since
-every fact recorded with `gm-note.sh` lists the consequences waiting on an event, and the
-GM fires a fitting one with `gm-consequence.sh fire <id> --by <fact id>`. There is no word
-matching: a consequence added with only a free-text trigger gets it as its `on_event`
-trigger, and older entries with only free text are read that way (removed 2026-11-06:
-upstream's fallback scored word overlap against the scene, firing on mere mentions and
-missing paraphrases).
-
-There is no expiry (removed 2026-11-07): `--expiry` was a word match against the scene
-that a date never passed. A time limit is a clock.
-
-## Provenance and the one-beat undo
-
-Every firing appends to `provenance` in `consequences.json` (`gm-consequence.sh log`), and
-`tick()` writes a `_snapshot` of the pre-fire lists. `rollback` restores that snapshot —
-but the snapshot is overwritten by the next tick, so **rollback is exactly one beat deep**.
-
-`WorldTick` keeps a separate, deeper log (`world-tick-log.json`) and rolls back by removing
-the facts, consequences and clocks it added. `apply` writes every proposal; the cap of 3 is a
-warning that names what overflowed, not a silent drop. A malformed or refused part undoes
-the whole tick, and if the log write fails, `WorldTick.apply` undoes what it just wrote
-rather than leaving un-rollbackable state.
+Every firing appends to `provenance` in `consequences.json` (`gm-consequence.sh log`).
+There is no rollback: git is the undo.
 
 ## Presence is shared: the scene list
 

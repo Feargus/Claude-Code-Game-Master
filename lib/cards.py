@@ -184,8 +184,8 @@ class Cards:
         for c in store.get("active", []) if isinstance(store, dict) else []:
             if any(isinstance(t, dict) and t.get("type") == "on_location"
                    and str(t.get("match", "")).lower() == lid for t in c.get("triggers") or []):
-                lines.append(f"Waiting here: [{str(c.get('id', '?'))[:4]}] "
-                             f"{c.get('consequence', '')}")
+                label = "Fired here, not resolved yet" if c.get("fired") else "Waiting here"
+                lines.append(f"{label}: [{str(c.get('id', '?'))[:4]}] {c.get('consequence', '')}")
         lines += self._plots_of(f"location:{location}", "Plots here")
         return lines
 

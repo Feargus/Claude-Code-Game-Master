@@ -58,7 +58,7 @@ def test_tell_fires_for_the_fact_and_for_anyone(dcc_world):
     nm.tell(fid, ["Mordecai"])                       # knew it already: nothing fires
     assert nm.last_fired == []
     nm.tell(fid, ["street"])
-    assert {c["id"] for c in nm.last_fired} == {other, leak}
+    assert {c["id"] for c in nm.last_fired} == {other}      # the leak fired once: it is out
 
 
 def test_about_fires_for_any_fact_about_them(dcc_world):

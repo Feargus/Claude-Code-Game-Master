@@ -18,7 +18,16 @@ from game_time import STORED_FORMAT
 
 
 class ConsequenceManager(EntityManager):
-    """Manage consequence/event tracking. Inherits from EntityManager for common functionality."""
+    """The campaign's consequences: things waiting to happen.
+
+    A consequence is in one of three states:
+      waiting    in `active`, no `fired`: its triggers are checked;
+      fired      in `active`, with `fired` (why, and when in the game): it happened
+                 and is to be played out. It matches no trigger any more, so it
+                 fires once, whatever its triggers and however long it stays;
+      resolved   moved to `resolved`: played out.
+    `rearm` puts a fired one back to waiting (the moment was wrong).
+    """
 
     def __init__(self, world_state_dir: str = None):
         super().__init__(world_state_dir)
@@ -169,8 +178,7 @@ class ConsequenceManager(EntityManager):
         time (str, the time-of-day word, used when there is no game_time),
         events (list[str]), date (str).
 
-        Firing does NOT remove a consequence — the GM vetoes for timing or resolves
-        it explicitly; the tick layer stamps last_fired_key so a beat doesn't stutter.
+        A consequence that has fired matches nothing (see the class).
         """
         data = self.json_ops.load_json(self.consequences_file)
         active = data.get('active', [])
@@ -180,7 +188,7 @@ class ConsequenceManager(EntityManager):
 
         matched = []
         for c in active:
-            reason = self._matches_now(c, world_state)
+            reason = '' if c.get('fired') else self._matches_now(c, world_state)
             if reason:
                 hit = dict(c)
                 hit['match_reason'] = reason
@@ -439,89 +447,48 @@ class ConsequenceManager(EntityManager):
         return ''
 
     def tick(self, world_state: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
-        """Evaluate all active consequences; fire every one that matches and is new here.
+        """Fire every waiting consequence a state trigger of which matches now.
 
-        Same scene (location|time|date) will not re-stamp a consequence that already
-        fired on this ctx_key — it is reported as already-fired, not suppressed.
         There is no limit on how many fire at once: one left out would miss its
         effects (a clock it starts) until the next check at the same place, which
-        may never come. Newly fired items get last_fired_key + provenance; the GM
-        may still veto narratively — they stay active either way.
+        may never come. A consequence fires once: afterwards it is `fired` and
+        matches nothing, until the GM resolves it or arms it again (`rearm`).
+        Returns {"fired": [...]}, each with `match_reason`.
         """
         data = self.json_ops.load_json(self.consequences_file)
-        active = data.get('active', [])
-        # Pre-fire snapshot for one-beat rollback (shallow copies; fields are scalar).
-        pre_active = [dict(c) for c in active]
-        pre_resolved = [dict(c) for c in data.get('resolved', [])]
-        ctx_key = "|".join([
-            str(world_state.get('location', '')),
-            str(world_state.get('time', '')),
-            str(world_state.get('date', '')),
-        ]).lower()
-
-        matches = []
-        for c in active:
-            reason = self._matches_now(c, world_state)
+        fired = []
+        for c in data.get('active', []):
+            reason = '' if c.get('fired') else self._matches_now(c, world_state)
             if reason:
-                matches.append((c, reason))
-
-        already_fired, fired = [], []
-        for c, reason in matches:
-            if c.get('last_fired_key') == ctx_key:
-                already_fired.append(dict(c, match_reason=reason, already_fired=True))
-            else:
-                c['last_fired_key'] = ctx_key  # stamp the live object (in active)
-                fired.append(dict(c, match_reason=reason))
-
+                fired.append(self._stamp_fired(data, c, reason))
         if fired:
-            data['active'] = active
-            # Provenance ("why did this fire") + one-beat rollback snapshot.
-            data['_snapshot'] = {'active': pre_active, 'resolved': pre_resolved}
-            now = self.json_ops.get_timestamp()
-            prov = data.setdefault('provenance', [])
-            for hit in fired:
-                prov.append({
-                    'id': hit['id'],
-                    'consequence': hit['consequence'],
-                    'reason': hit['match_reason'],
-                    'ctx_key': ctx_key,
-                    'fired_at': now,
-                })
             self.json_ops.save_json(self.consequences_file, data)
         self._carry_out(fired)
-        return {
-            'fired': fired,
-            'already_fired': already_fired,
-        }
+        return {'fired': fired}
 
     def _stamp_fired(self, data: dict[str, Any], consequence: dict[str, Any],
-                     reason: str, ctx_key: str) -> dict[str, Any]:
-        """Mark `consequence` (a live object in data['active']) as fired and log why.
-
-        Shared by event triggers and manual firing. The caller snapshots and saves.
-        """
-        consequence['last_fired_key'] = ctx_key
-        prov = data.setdefault('provenance', [])
-        prov.append({
-            'id': consequence['id'],
-            'consequence': consequence['consequence'],
-            'reason': reason,
-            'ctx_key': ctx_key,
-            'fired_at': self.json_ops.get_timestamp(),
-        })
-        hit = dict(consequence)
-        hit['match_reason'] = reason
-        return hit
-
-    @staticmethod
-    def _snapshot(data: dict[str, Any]) -> None:
-        """Keep the pre-fire state for a one-beat rollback."""
-        data['_snapshot'] = {'active': [dict(c) for c in data.get('active', [])],
-                             'resolved': [dict(c) for c in data.get('resolved', [])]}
+                     reason: str, by_fact: str = None) -> dict[str, Any]:
+        """Mark `consequence` (a live object in data['active']) as fired and log
+        why. The caller saves. Returns a copy with `match_reason`."""
+        from game_time import stored_time
+        now = self.json_ops.get_timestamp()
+        consequence['fired'] = {'reason': reason, 'at': now}
+        game_time = stored_time(self.json_ops)
+        if game_time:
+            consequence['fired']['game_time'] = game_time
+        if by_fact:
+            consequence['fired']['fact'] = by_fact
+        entry = {'id': consequence['id'], 'consequence': consequence['consequence'],
+                 'reason': reason, 'fired_at': now}
+        if by_fact:
+            entry['fact'] = by_fact
+        data.setdefault('provenance', []).append(entry)
+        return dict(consequence, match_reason=reason)
 
     def fire_event(self, ttype: str, value, reason: str) -> list[dict[str, Any]]:
         """An event happened (e.g. on_death, 'Wren'): fire every active consequence
-        with a trigger of that type whose match equals `value` (case-insensitive).
+        waiting consequence with a trigger of that type whose match equals `value`
+        (case-insensitive; one that has fired already doesn't fire again).
         `value` may be a list of descriptions of the same event (on_learn: "npc:Wren
         learns f42", "anyone learns f42", ...); a consequence fires once even if
         several fit. Called by the command that makes the change. Returns the fired
@@ -531,14 +498,12 @@ class ConsequenceManager(EntityManager):
         values = [str(v).lower() for v in (value if isinstance(value, (list, tuple)) else [value])]
         hits = []
         for c in data.get('active', []):
-            matched = next((m for t in self.structured_triggers(c) if t['type'] == ttype
-                            for m in [str(t['match']).lower()] if m in values), None)
-            if matched:
-                hits.append((c, matched))
+            if not c.get('fired') and any(t['type'] == ttype and str(t['match']).lower() in values
+                                          for t in self.structured_triggers(c)):
+                hits.append(c)
         if not hits:
             return []
-        self._snapshot(data)
-        fired = [self._stamp_fired(data, c, reason, f"event|{ttype}|{m}") for c, m in hits]
+        fired = [self._stamp_fired(data, c, reason) for c in hits]
         self.json_ops.save_json(self.consequences_file, data)
         self._carry_out(fired)
         return fired
@@ -553,7 +518,7 @@ class ConsequenceManager(EntityManager):
         out = []
         for c in data.get('active', []):
             events = [t['match'] for t in self.structured_triggers(c) if t['type'] == 'on_event']
-            if events:
+            if events and not c.get('fired'):
                 hit = dict(c)
                 hit['awaits'] = ' / '.join(events)
                 out.append(hit)
@@ -585,14 +550,21 @@ class ConsequenceManager(EntityManager):
              by_fact: str = None) -> dict[str, Any]:
         """The GM fires a consequence by hand (its condition happened in the story).
 
-        `by_fact` names the recorded fact that fulfilled it; the provenance log
-        keeps the link. Firing is not resolving: it stays active until `resolve`.
+        `by_fact` names the recorded fact that fulfilled it; the consequence and
+        the log keep the link. Firing is not resolving: it is to be played out,
+        then resolved. One that has fired already is refused.
         Returns the fired consequence, or {} if refused.
         """
         data = self.json_ops.load_json(self.consequences_file)
         c, error = self._find_active(data, consequence_id)
         if not c:
             print(f"[ERROR] {error}", file=sys.stderr)
+            return {}
+        if c.get('fired'):
+            print(f"[ERROR] [{c['id']}] has fired already ({c['fired'].get('reason', '?')}). "
+                  f"Play it out and resolve it (gm-consequence.sh resolve {c['id']}); to let "
+                  f"it happen again, arm it first: gm-consequence.sh rearm {c['id']}",
+                  file=sys.stderr)
             return {}
         fact = {}
         if by_fact:
@@ -602,10 +574,7 @@ class ConsequenceManager(EntityManager):
                 return {}
         if not reason:
             reason = f"fact {by_fact}: {fact['fact']}" if fact else "fired by the GM"
-        self._snapshot(data)
-        hit = self._stamp_fired(data, c, reason, f"manual|{c['id']}")
-        if by_fact:
-            data['provenance'][-1]['fact'] = by_fact
+        hit = self._stamp_fired(data, c, reason, by_fact)
         self.json_ops.save_json(self.consequences_file, data)
         if by_fact and c.get('plots'):
             self._give_plots(by_fact, c['plots'])     # the fact belongs where it led
@@ -625,20 +594,19 @@ class ConsequenceManager(EntityManager):
         data = self.json_ops.load_json(self.consequences_file)
         return data.get('provenance', [])
 
-    def rollback_last(self) -> bool:
-        """Undo the most recent reactive beat (restore active/resolved to pre-fire)."""
+    def rearm(self, consequence_id: str) -> dict[str, Any]:
+        """A fired consequence waits again: the moment was wrong (the GM's veto),
+        or it is meant to happen once more. What its effects did stays done (a
+        clock it started runs on). Returns the consequence; raises ValueError."""
         data = self.json_ops.load_json(self.consequences_file)
-        snap = data.get('_snapshot')
-        if not snap:
-            print("[ERROR] No reactive beat to roll back")
-            return False
-        data['active'] = snap.get('active', data.get('active', []))
-        data['resolved'] = snap.get('resolved', data.get('resolved', []))
-        data['_snapshot'] = None
-        if self.json_ops.save_json(self.consequences_file, data):
-            print("[SUCCESS] Rolled back the last reactive beat")
-            return True
-        return False
+        c, error = self._find_active(data, consequence_id)
+        if not c:
+            raise ValueError(error)
+        if not c.get('fired'):
+            raise ValueError(f"[{c['id']}] hasn't fired: it is waiting already.")
+        del c['fired']
+        self.json_ops.save_json(self.consequences_file, data)
+        return c
 
     def tick_from_session(self) -> dict[str, list[dict[str, Any]]]:
         """Build world_state from current campaign state, then tick()."""
@@ -729,6 +697,10 @@ def describe_effects(effects) -> str:
     return "; ".join(parts)
 
 
+AFTER_FIRING = ("it fires once: play it out, then gm-consequence.sh resolve <id>; "
+                "wrong moment: gm-consequence.sh rearm <id>")
+
+
 def print_fired(fired: list[dict[str, Any]]) -> None:
     """Human output for consequences fired by an event or by hand."""
     if not fired:
@@ -736,7 +708,7 @@ def print_fired(fired: list[dict[str, Any]]) -> None:
     print(f"[REACTIVITY] fired these {len(fired)}")
     for c in fired:
         print(f"  [{c['id']}] {c['consequence']}")
-        print(f"      ↳ fired because: {c['match_reason']} (resolve it once it has played out)")
+        print(f"      ↳ fired because: {c['match_reason']} ({AFTER_FIRING})")
         for line in c.get('effects_done', []):
             print(f"      ↳ {line}")
 
@@ -753,23 +725,12 @@ def print_waiting(fact_id: str, waiting: list[dict[str, Any]]) -> None:
 
 
 def _print_tick_report(result: dict[str, list[dict[str, Any]]]) -> None:
-    """Human CLI for tick(): what fired, and what had already fired here."""
+    """Human CLI for tick(): what fired."""
     fired = result.get('fired') or []
-    already = result.get('already_fired') or []
-    if not (fired or already):
+    if not fired:
         print("[REACTIVITY] (nothing triggered here)")
         return
-    print(f"[REACTIVITY] fired these {len(fired)}")
-    for c in fired:
-        print(f"  [{c['id']}] {c['consequence']}")
-        print(f"      ↳ fired because: {c['match_reason']} (veto if the timing's wrong)")
-        for line in c.get('effects_done', []):
-            print(f"      ↳ {line}")
-    if already:
-        print("  already fired here:")
-        for c in already:
-            print(f"  [{c['id']}] {c['consequence']}")
-            print(f"      ↳ {c.get('match_reason', '')} (already fired here)")
+    print_fired(fired)
 
 
 def main():
@@ -814,9 +775,9 @@ def main():
     # Tick (reactivity): fire matching consequences for the current scene
     subparsers.add_parser('tick', help='Fire consequences whose triggers match the current scene')
 
-    # Provenance + rollback
-    subparsers.add_parser('log', help='Show the reactive firing provenance log')
-    subparsers.add_parser('rollback', help='Undo the most recent reactive beat')
+    subparsers.add_parser('log', help='Why each consequence fired')
+    rearm_parser = subparsers.add_parser('rearm', help='A fired consequence waits again')
+    rearm_parser.add_argument('id', help='Consequence ID (a unique prefix is enough)')
 
     # Fire by hand
     fire_parser = subparsers.add_parser('fire', help='Fire a consequence by hand (its condition happened)')
@@ -901,6 +862,10 @@ def main():
             print(f"{len(pending)} pending consequences:")
             for c in pending:
                 then = describe_effects(c.get('effects'))
+                if c.get('fired'):
+                    print(f"  [{c['id']}] FIRED, not resolved yet: {c['consequence']} "
+                          f"(because: {c['fired'].get('reason', '?')})")
+                    continue
                 print(f"  [{c['id']}] {c['consequence']} (triggers: {c['trigger']})"
                       + (f"; when it fires, {then}" if then else ""))
 
@@ -917,9 +882,13 @@ def main():
                 print(f"  [{p['id']}] {p['consequence']}")
                 print(f"      ↳ {p['reason']} @ {p['fired_at']}")
 
-    elif args.action == 'rollback':
-        if not manager.rollback_last():
+    elif args.action == 'rearm':
+        try:
+            c = manager.rearm(args.id)
+        except ValueError as error:
+            print(f"[ERROR] {error}", file=sys.stderr)
             sys.exit(1)
+        print(f"[SUCCESS] [{c['id']}] waits again: {c['consequence']} (triggers: {c['trigger']})")
 
     elif args.action == 'fire':
         hit = manager.fire(args.id, args.reason, args.by_fact)

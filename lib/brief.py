@@ -264,9 +264,12 @@ class Brief:
         waiting = [c for c in self._open_consequences() if belongs(c.get("plots") or [])]
         for c in waiting:
             cid = str(c.get('id', '?'))[:4]
-            fired = "FIRED, not resolved yet: " if c.get("last_fired_key") else ""
+            if c.get("fired"):       # it happened: to be played out, then resolved
+                lines.append(f"  FIRED, not resolved yet [{cid}]: {c.get('consequence', '?')} "
+                             f"(because: {c['fired'].get('reason', '?')})")
+                continue
             then = describe_effects(c.get('effects'))
-            lines.append(f"  waiting [{cid}]: {fired}{c.get('consequence', '?')} "
+            lines.append(f"  waiting [{cid}]: {c.get('consequence', '?')} "
                          f"(when: {self._when(c)})" + (f"; when it fires, {then}" if then else ""))
         unknown = self._scene().rank([f for f in self._facts_newest_first()
                                       if self._unknown_to_character(f)

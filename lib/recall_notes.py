@@ -117,7 +117,7 @@ def _still_open(campaign_dir: Path, note: dict) -> bool:
         return not fact.get("plots")
     if note["kind"] == "about":
         return note["target"] not in (fact.get("about") or [])
-    return any(c.get("id") == note["target"] and not c.get("last_fired_key")
+    return any(c.get("id") == note["target"] and not c.get("fired")
                for c in _waiting(campaign_dir))
 
 

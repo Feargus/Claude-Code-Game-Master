@@ -111,12 +111,10 @@ def plot_order(json_ops, plots: dict[str, Any] | None = None) -> list[str]:
 
     fired: dict[str, str] = {}
     store = json_ops.load_json("consequences.json") or {}
-    when_fired = {p.get("id"): p.get("fired_at", "") for p in store.get("provenance") or []
-                  if isinstance(p, dict)} if isinstance(store, dict) else {}
     for c in store.get("active", []) if isinstance(store, dict) else []:
-        if isinstance(c, dict) and c.get("last_fired_key"):
+        if isinstance(c, dict) and c.get("fired"):
             for key in c.get("plots") or []:
-                fired[key] = max(fired.get(key, ""), str(when_fired.get(c.get("id"), "")))
+                fired[key] = max(fired.get(key, ""), str(c["fired"].get("at", "")))
 
     due: dict[str, tuple] = {}
     for clock in (json_ops.load_json("threat-clocks.json") or {}).values():

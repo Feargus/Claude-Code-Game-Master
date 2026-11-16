@@ -381,10 +381,8 @@ Tracks events that will trigger in the future.
   ],
 
   "provenance": [
-    {"id": "…", "consequence": "…", "reason": "why it matched",
-     "ctx_key": "location|time|date", "fired_at": "ISO timestamp"}
-  ],
-  "_snapshot": {"active": [], "resolved": []}
+    {"id": "…", "consequence": "…", "reason": "why it matched", "fired_at": "ISO timestamp"}
+  ]
 }
 ```
 
@@ -411,18 +409,18 @@ a later learning until it is resolved.
 A `start_clock` effect runs however the consequence fires (scene check, event, or by hand),
 after `consequences.json` is saved; a clock of that name that already exists is left as it
 is. The fired consequence comes back with `effects_done` (what happened, in words; not
-saved). `gm-consequence.sh rollback` does not remove a clock an effect started.
+saved).
 
 A `tell` effect (`--tells <fact id> --to <holder>`, checked when added) adds holders to
 the fact through `gm-note.sh tell`'s own path, so their `on_learn` consequences fire too
 and are listed in `effects_done`. Someone who already knows learns nothing, which is what
-ends a chain. Rollback doesn't remove the holders.
+ends a chain.
 Both `kill` commands also record the death as a fact. A dead NPC carries `status: "dead"`, `cause`, `died_at` and
 `died_game_time`.
 
-A fired consequence also carries `last_fired_key` (the scene key that fired it) and stays
-in `active` — firing is not resolving. `_snapshot` is the **one-beat** rollback buffer,
-overwritten by the next tick. See [the living world](modules/living-world.md).
+A fired consequence carries `fired` (`reason`, `at`, `game_time`, and `fact` when a fact
+set it off) and stays in `active` until it is resolved; it matches no trigger any more.
+`gm-consequence.sh rearm` removes `fired`. See [the living world](modules/living-world.md).
 
 **Structured triggers** (`triggers`) are additive and
 optional. Entries written before 2026-11-06 store a single trigger as top-level
