@@ -78,4 +78,4 @@ returns immediately with no read. Two tiers of output (since 2026-08-13):
 ## Related
 
 - [Scene context](scene-context.md): the start brief and the cards
-- [RAG stack](rag-stack.md): the search over a campaign's source book
+- [Book search](rag-stack.md): the search over a campaign's source book

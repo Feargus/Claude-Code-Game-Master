@@ -47,7 +47,7 @@ STEP 1 already got the player's confirmation in chat.
 
 This will:
 - Copy the campaign directory to `world-state/archive/[campaign]-[timestamp]/`, minus
-  `vectors/` (the ChromaDB index is rebuilt from the source document on the next prepare)
+  `vectors/` (the book's pieces and vectors, rebuilt from the source document on the next prepare)
 - Clear the story files listed above, keeping the source, the world and the kit
 - Abort without resetting if the copy fails (the archive is the safety net)
 

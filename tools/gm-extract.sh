@@ -134,12 +134,12 @@ prepare_document() {
         exit 1
     fi
 
-    # Check for RAG dependencies (sentence-transformers, chromadb)
-    if ! $PYTHON_CMD -c "import sentence_transformers; import chromadb" 2>/dev/null; then
-        echo "Error: RAG dependencies not installed."
+    # The book search embeds with semantic recall's model (lib/embedder.py)
+    if ! $PYTHON_CMD "$LIB_DIR/embedder.py" status 2>/dev/null | grep -q "Semantic recall: ready"; then
+        echo "Error: the book search needs semantic recall."
         echo ""
-        echo "Install with: uv pip install 'gm-claude[rag]'"
-        echo "  or: uv pip install sentence-transformers chromadb"
+        echo "Install with: uv sync --extra recall"
+        echo "  then:       bash tools/gm-recall.sh setup   (the model, 217 MB)"
         exit 1
     fi
 
@@ -154,7 +154,8 @@ prepare_document() {
     fi
 
     echo
-    echo "Document prepared: the book is searchable (gm-search.sh \"...\" --rag-only)."
+    echo "Document prepared: the book becomes searchable as it is indexed in the background"
+    echo "(gm-search.sh \"...\" --rag-only; progress: bash tools/gm-recall.sh status)."
     echo "Next: /import goes on with the door question and the roster of sketches (Step 5.5)."
 }
 

@@ -2,11 +2,10 @@
 """
 Coarse chapter index — points INTO the retained book text, it is not the fidelity.
 
-The old pipeline routed all fidelity through weak all-MiniLM 3000-char chunks.
-This demotes embeddings to a COARSE index whose only job is to find the right
-CHAPTER, which the long-context reader then loads in full. The embedder is
-pluggable (config-selected) and defaults to a dependency-free keyword scorer so
-indexing/querying never requires loading a heavy model. Query templates branch by
+Its only job is to find the right CHAPTER, which the long-context reader then
+loads in full (the piece-level search by meaning is vector_store.py). The scorer is
+pluggable: a dependency-free keyword scorer by default, or "meaning" for semantic
+recall's model (embedder.py), which falls back to keywords when it isn't installed. Query templates branch by
 content type so a novel import stops dragging retrieval toward D&D stat-block
 vocabulary.
 """
@@ -40,7 +39,7 @@ class CoarseIndex:
     """A chapter-granularity index that returns POINTERS, never chunk blobs."""
 
     def __init__(self, embedder: str = "keyword"):
-        self.embedder = embedder  # pluggable: "keyword" (default) or a model name
+        self.embedder = embedder  # pluggable: "keyword" (default) or "meaning"
         self.chapters: list[dict[str, Any]] = []
 
     def build(self, text: str) -> int:
@@ -50,14 +49,11 @@ class CoarseIndex:
     def _score(self, query: str, text: str) -> float:
         if self.embedder == "keyword":
             return _keyword_score(query, text)
-        # A real embedder is loaded lazily only when configured (kept out of tests).
-        # Falls back to keyword scoring when RAG deps are missing.
-        try:
-            from rag.embedder import LocalEmbedder
-            emb = LocalEmbedder(self.embedder)
-            return float(emb.similarity(emb.embed(query), emb.embed(text)))
-        except ImportError:
+        from embedder import get_embedder
+        emb = get_embedder()
+        if emb is None:                              # semantic recall not installed
             return _keyword_score(query, text)
+        return float(emb.query(query) @ emb.document(text))
 
     def query(self, query: str, content_type: str = "literary", top_k: int = 3) -> list[dict[str, Any]]:
         """Return ranked CHAPTER POINTERS {index, title, score} — not the text."""

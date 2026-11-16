@@ -65,7 +65,7 @@ prints an approximate token count to stderr without changing the output.
 ## RAG is optional everywhere, and fails to empty
 
 `SceneContext.build` wraps the entire enhancer call in a bare `except Exception: pass`
-(`lib/scene_context.py:56-64`). A campaign with no vector store, a missing `chromadb`, or
+(`lib/scene_context.py:56-64`). A campaign with no indexed book, semantic recall not installed, or
 a runtime error inside the enhancer all produce the same thing: `passages: []` and
 `rag_available: false`. Play continues on world state alone.
 

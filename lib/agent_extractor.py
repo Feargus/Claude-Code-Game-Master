@@ -90,10 +90,9 @@ class AgentExtractor:
         # Check RAG availability - required, no fallback
         if not check_rag_available():
             missing = get_missing_deps()
-            print("ERROR: RAG dependencies not installed.")
+            print("ERROR: the book search needs semantic recall.")
             print(f"Missing: {', '.join(missing)}")
-            print("Install with: uv pip install -e '.[rag]'")
-            print("Or: pip install sentence-transformers chromadb")
+            print("Install with: uv sync --extra recall, then bash tools/gm-recall.sh setup")
             sys.exit(1)
 
         # Import RAG components (safe now that we checked availability)

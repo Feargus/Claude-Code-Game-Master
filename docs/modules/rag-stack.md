@@ -1,58 +1,58 @@
 ---
 type: Module
-title: RAG stack
-description: Two retrieval systems over the source book — 3000-char embedded chunks and a chapter-granularity index — plus the parts of each that are inert.
+title: Book search
+description: Two retrieval paths over a campaign's source book: pieces of 1,500 characters searched by meaning (the facts' model), and a chapter index the Loremaster reads whole chapters from.
 sources:
   - { resource: /lib/rag/__init__.py }
   - { resource: /lib/rag/rag_extractor.py }
   - { resource: /lib/rag/vector_store.py }
-  - { resource: /lib/rag/embedder.py }
   - { resource: /lib/rag/coarse_index.py }
+  - { resource: /lib/embedder.py }
   - { resource: /lib/entity_enhancer.py }
-generated: { by: gk-a8r14q, at: 2026-08-14T18:01:43Z }
-verified: { by: claude-fable-5, at: 2026-08-13T15:15:46Z }
 ---
 
-# RAG stack
+# Book search
 
-Two independent retrieval paths over the same book, built at different times for
-different jobs. Both are live; they do not share an index.
+Two independent retrieval paths over the same book. They do not share an index.
 
-| | **Chunk store** | **Coarse index** |
+| | **Pieces** | **Chapter index** |
 |---|---|---|
-| Unit | 3000-char chunks (`RAGExtractor.DEFAULT_CHUNK_SIZE`) | whole chapters |
-| Storage | ChromaDB, persisted per campaign under `vectors/` | rebuilt in memory per instance, never persisted |
-| Embeddings | real — `all-MiniLM-L6-v2` via sentence-transformers | **none by default** (see below) |
-| Returns | passage text | pointers `{index, title, score}` |
+| Unit | pieces of about 1,500 characters, cut at headings and paragraphs (`RAGExtractor.DEFAULT_CHUNK_SIZE`) | whole chapters |
+| Storage | the campaign's `vectors/`: `chunks.json` (the texts) and `book.npz` (the vectors, 16-bit) | rebuilt in memory per instance, never persisted |
+| Embeddings | EmbeddingGemma-300m, the facts' model (`lib/embedder.py`, through the helper process) | **none by default** (see below) |
+| Returns | passage text, with cosine distances | pointers `{index, title, score}` |
 | Feeds | `/enhance`, `gm-search --rag-only`, scene passages | [the Loremaster](campaign-memory.md) |
 
-`coarse_index.py`'s docstring frames the chunk store as "the old pipeline" it demotes.
-Read that as *intent*, not status: the chunk store is what `/import` builds and what
-every runtime passage lookup still goes through.
+## Indexing (rebuilt 2026-11-16)
 
-## The whole stack is optional, and its absence is silent
+`gm-extract.sh prepare` (from `/import`) extracts the text, cuts it into pieces and stores
+them in seconds; a background job (`vector_store.index_job`: one at a time, a lock) embeds
+them, saving every 10, so it resumes where it stopped. About 4 s per piece on a Raspberry
+Pi 4: some 15 minutes for a novel (the test book, *The Hound of the Baskervilles*, 373,000
+characters, 303 pieces), longer for a big module. A search before it is done uses the
+pieces embedded so far; `gm-recall.sh status` shows how far it is.
 
-`lib/rag/__init__.py` probes for `sentence-transformers` and `chromadb` at import and sets
-`RAG_AVAILABLE`; the class exports simply do not exist when deps are missing. Callers
-degrade rather than fail — see the bare `except` in
-[scene context](scene-context.md). Net effect: **a missing dependency, an unvectorized
-campaign, and a genuinely irrelevant query are indistinguishable from the outside.** Check
-`RAG_AVAILABLE` before concluding a campaign has no material.
+Pieces are embedded as documents and questions as queries (the model's own prompts). A
+search compares the question with every piece directly: a few thousand take milliseconds,
+so there is no database (this replaced chromadb and sentence-transformers). Distances are
+cosine distances, 1 − similarity, as before, so `entity_enhancer.py`'s thresholds stand.
 
-## The coarse index defaults to keyword scoring, deliberately
+The pieces were 3,000 characters before: the model reads at most 512 tokens per text, so a
+quarter of each was lost.
 
-`CoarseIndex(embedder=…)` defaults to `"keyword"` — set-intersection word counting, no
-model, no vectors — so building the chapter index never requires loading a heavy model.
-Passing a sentence-transformers model name gets real embedding similarity, falling back to
-keyword scoring only when the RAG deps are missing.
+## The whole stack is optional, and its absence is quiet
 
-(Until 2026-08-13 the non-keyword path was dead — it imported a class that didn't exist
-with a call shape that didn't match, and a bare `except Exception` silently returned the
-keyword score for every configuration. If embedder tuning appears to do nothing on an old
-checkout, that is why.)
+`lib/rag/__init__.py` checks whether semantic recall is installed (the `recall` extra and
+the model files) and sets `RAG_AVAILABLE`. Callers degrade rather than fail (see
+[scene context](scene-context.md)): a campaign with no book, semantic recall not installed,
+and a query that finds nothing look alike from outside. `gm-recall.sh status` tells them apart.
 
-Note that no caller currently passes a non-keyword embedder — the Loremaster constructs
-`CoarseIndex()` bare — so keyword scoring is still what runs in practice.
+## The chapter index defaults to keyword scoring, deliberately
+
+`CoarseIndex(embedder=…)` defaults to `"keyword"` (word overlap, no model), so building
+the chapter index never needs the model. `"meaning"` scores with the facts' model instead,
+falling back to keywords when semantic recall isn't installed. No caller passes it: the
+Loremaster constructs `CoarseIndex()` bare.
 
 ## Query templating is the anti-D&D lever
 

@@ -25,9 +25,9 @@ juggling and the default output is quiet.
 As of 2026-08-13 the suite passes fully. **Any failure means something real broke.**
 
 
-The one skip is dependency-gated: `test_creation_grounding.py:127` skips without
-`sentence_transformers`. Install the `rag` extra to run it —
-`uv run --extra dev --extra rag pytest`.
+The skips are dependency-gated: the tests that run the real model skip without the
+`recall` extra and the model files (`uv sync --extra dev --extra recall`, then
+`bash tools/gm-recall.sh setup`).
 
 ## Everything state-related runs against a hermetic campaign copy
 

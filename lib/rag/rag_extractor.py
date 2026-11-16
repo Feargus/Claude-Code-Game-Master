@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-RAG Extractor - Document Vectorization for /enhance
+Book indexing: a campaign's source book cut into pieces, made searchable by meaning.
 
-Simple pipeline:
-1. Extract text from document
-2. Split into chunks
-3. Embed chunks locally
-4. Store in campaign-specific vector store
+1. Extract the text from the document (PDF, DOCX, TXT, ...)
+2. Split it into pieces of about 1,500 characters, at headings and paragraphs
+   (the model reads at most 512 tokens per text; 3,000 characters lost a quarter)
+3. Store the pieces (vectors/chunks.json)
+4. A background job embeds them with the facts' model (vector_store.index_job):
+   about 15 minutes for a novel on a Raspberry Pi 4; searches work on what is done
 
-No categorization - all chunks are stored uniformly and queried by semantic similarity.
+No categorization: all pieces are stored alike and found by closeness to the question.
 """
 
 import re
@@ -16,107 +17,59 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from lib.rag.embedder import LocalEmbedder
-from lib.rag.vector_store import CampaignVectorStore
+from lib.rag.vector_store import CampaignVectorStore, start_index_job
 
 
 class RAGExtractor:
-    """Document vectorization for semantic search."""
+    """Book indexing for semantic search."""
 
-    DEFAULT_CHUNK_SIZE = 3000
+    DEFAULT_CHUNK_SIZE = 1500
 
-    def __init__(
-        self,
-        campaign_dir: str,
-        chunk_size: int = None,
-        embedder: LocalEmbedder | None = None,
-    ):
-        """
-        Initialize the RAG extractor for a campaign.
-
-        Args:
-            campaign_dir: Path to the campaign folder
-            chunk_size: Target size for text chunks (default 3000 chars)
-            embedder: Optional embedder instance (creates one if not provided)
-        """
+    def __init__(self, campaign_dir: str, chunk_size: int = None, embedder=None):
+        """`embedder`: one to index with at once (tests); without it, a background
+        job does the indexing (start_index_job)."""
         self.campaign_dir = Path(campaign_dir)
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
-
-        # Initialize components
-        self.embedder = embedder or LocalEmbedder()
+        self.embedder = embedder
         self.vector_store = CampaignVectorStore(campaign_dir)
-
-        # Track extraction state
         self._document_name: str | None = None
         self._extraction_metadata: dict = {}
 
-    def extract_from_document(
-        self,
-        filepath: str,
-        clear_existing: bool = False
-    ) -> dict[str, Any]:
-        """
-        Extract text from a document and store as vectors.
-
-        Args:
-            filepath: Path to the document (PDF, DOCX, TXT, etc.)
-            clear_existing: Whether to clear existing vectors first (default: False)
-
-        Returns:
-            Dict with extraction stats
-        """
+    def extract_from_document(self, filepath: str, clear_existing: bool = False) -> dict[str, Any]:
+        """Cut the document into pieces and store them; the vectors are made in the
+        background (or here, with the embedder given). Replaces an earlier book."""
         filepath = Path(filepath)
         self._document_name = filepath.stem
-
-        print(f"RAG Extraction: {filepath.name}")
+        print(f"Book indexing: {filepath.name}")
         print("=" * 50)
-
-        # Clear existing vectors if explicitly requested
-        if clear_existing:
-            print("Clearing existing vectors...")
-            self.vector_store.clear()
-        else:
-            existing_count = self.vector_store.count()
-            if existing_count > 0:
-                print(f"Preserving {existing_count} existing vectors (use clear_existing=True to reset)")
-
-        # Step 1: Extract raw text
         print("Step 1: Extracting text from document...")
         raw_text = self._extract_text(filepath)
         print(f"  Extracted {len(raw_text):,} characters")
-
-        # Step 2: Split into chunks
-        print("Step 2: Splitting into chunks...")
+        print("Step 2: Splitting into pieces...")
         chunks = self._split_into_chunks(raw_text)
-        print(f"  Created {len(chunks)} chunks")
-
-        # Step 3: Embed all chunks
-        print("Step 3: Embedding chunks...")
-        embeddings = self.embedder.embed_batch(
-            chunks,
-            batch_size=32,
-            show_progress=True
-        )
-        print(f"  Embedded {len(embeddings)} chunks")
-
-        # Step 4: Store in vector database
-        print("Step 4: Storing in vector database...")
-        self._store_chunks(chunks, embeddings)
-
-        stats = self.vector_store.get_stats()
-        print(f"  Stored {stats['total_chunks']} chunks total")
-
-        # Save extraction metadata
+        print(f"  {len(chunks)} pieces of about {self.chunk_size:,} characters")
+        print("Step 3: Storing the pieces...")
+        self.vector_store.set_chunks(
+            chunks, [{"chunk_index": i, "document": self._document_name} for i in range(len(chunks))],
+            [f"doc_{i:04d}" for i in range(len(chunks))])
+        if self.embedder is not None:
+            print("Step 4: Embedding the pieces...")
+            self.vector_store.index(self.embedder)
+            indexing = "done"
+        elif start_index_job(self.campaign_dir):
+            minutes = max(1, round(len(chunks) * 4 / 60))
+            print(f"Step 4: Embedding the pieces in the background (about {minutes} min); "
+                  f"searches work on what is done. Progress: bash tools/gm-recall.sh status")
+            indexing = "in the background"
+        else:
+            print("Step 4: skipped: semantic recall isn't installed (bash tools/gm-recall.sh "
+                  "status); the pieces are stored and will be embedded once it is")
+            indexing = "waiting for semantic recall"
         self._extraction_metadata = {
-            "source_file": str(filepath),
-            "document_name": self._document_name,
-            "extraction_date": datetime.now().isoformat(),
-            "total_chars": len(raw_text),
-            "total_chunks": len(chunks),
-            "chunk_size": self.chunk_size,
+            "source_file": str(filepath), "document_name": self._document_name,
+            "extraction_date": datetime.now().isoformat(), "total_chars": len(raw_text),
+            "total_chunks": len(chunks), "chunk_size": self.chunk_size, "indexing": indexing,
         }
-
-        print("\nExtraction complete!")
         return self._extraction_metadata
 
     def query(
@@ -134,9 +87,10 @@ class RAGExtractor:
         Returns:
             List of chunk dicts with 'text', 'metadata', 'distance'
         """
+        from embedder import get_embedder
         results = self.vector_store.query_by_text(
             query_text,
-            self.embedder,
+            self.embedder or get_embedder(),
             n_results=n_results
         )
 
@@ -227,23 +181,6 @@ class RAGExtractor:
 
         return chunks
 
-    def _store_chunks(self, chunks: list[str], embeddings):
-        """Store chunks in the vector store with basic metadata."""
-        metadatas = []
-        for i in range(len(chunks)):
-            metadatas.append({
-                "chunk_index": i,
-                "document": self._document_name or "unknown",
-            })
-
-        # Store all chunks
-        self.vector_store.add_chunks(
-            chunks=chunks,
-            embeddings=[emb.tolist() for emb in embeddings],
-            metadatas=metadatas,
-            ids=[f"doc_{i:04d}" for i in range(len(chunks))]
-        )
-
 
 def main():
     """CLI for RAG extraction."""
@@ -264,7 +201,7 @@ def main():
     print()
 
     extractor = RAGExtractor(campaign_dir)
-    extractor.extract_from_document(filepath, clear_existing=True)
+    extractor.extract_from_document(filepath)
 
     print("\n" + "=" * 50)
     print("Stats:")

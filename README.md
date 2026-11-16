@@ -112,7 +112,7 @@ Campaign data lives in `world-state/campaigns/`, which git ignores: **back it up
 ## Development
 
 ```bash
-uv sync --extra rag --extra dev   # install test and book-search dependencies
+uv sync --extra recall --extra dev   # tests, semantic recall and the book search
 uv run pytest                     # run the tests
 ```
 

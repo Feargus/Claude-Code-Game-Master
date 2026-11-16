@@ -30,8 +30,11 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent
-# gm-extract.sh prepare stops before resolving the path without these (the rag extra).
-HAS_RAG = all(find_spec(m) is not None for m in ("sentence_transformers", "chromadb"))
+# gm-extract.sh prepare stops before resolving the path without semantic recall
+# (the recall extra and the model), which the book search embeds with.
+HAS_RAG = all(find_spec(m) is not None for m in ("numpy", "onnxruntime", "tokenizers")) and \
+    all((PROJECT_ROOT / "models" / "embeddinggemma-300m-q4" / f).exists()
+        for f in ("model_q4.onnx", "model_q4.onnx_data", "tokenizer.json"))
 LIVE_ACTIVE_FILE = PROJECT_ROOT / "world-state" / "active-campaign.txt"
 FIXTURE_CAMPAIGN = Path(__file__).parent / "fixtures" / "world-state" / "campaigns" / "dungeon-crawler-carl"
 
@@ -245,7 +248,7 @@ def test_extract_prepare_finds_a_project_root_relative_document(
         assert (isolated_world_state / "campaigns" / "cwd-anchoring-canon").is_dir()
 
 
-@pytest.mark.skipif(not HAS_RAG, reason="needs the rag extra: gm-extract.sh prepare "
+@pytest.mark.skipif(not HAS_RAG, reason="needs semantic recall: gm-extract.sh prepare "
                                         "checks for it before it resolves the path")
 def test_extract_prepare_prefers_the_callers_copy_when_both_anchors_have_one(
     isolated_world_state, foreign_cwd, project_root_scratch, live_world_state_untouched

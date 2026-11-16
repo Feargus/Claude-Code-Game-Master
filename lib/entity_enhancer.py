@@ -101,15 +101,15 @@ class EntityEnhancer:
         """
         if self._vector_store is None:
             try:
-                from lib.rag.embedder import LocalEmbedder
+                from embedder import get_embedder
                 from lib.rag.vector_store import CampaignVectorStore
 
                 if not CampaignVectorStore.is_available():
                     return False
 
                 self._vector_store = CampaignVectorStore(str(self.campaign_dir))
-                self._embedder = LocalEmbedder()
-                return True
+                self._embedder = get_embedder()
+                return self._embedder is not None
             except ImportError as e:
                 print(f"[ERROR] RAG components not available: {e}")
                 return False

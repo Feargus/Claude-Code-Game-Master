@@ -20,7 +20,11 @@ case "$1" in
     status)
         $PYTHON_CMD "$LIB_DIR/embedder.py" status || exit 1
         $PYTHON_CMD "$LIB_DIR/embed_helper.py" status
-        [ -n "$(get_active_campaign)" ] && $PYTHON_CMD "$LIB_DIR/embedding_store.py" status
+        if [ -n "$(get_active_campaign)" ]; then
+            $PYTHON_CMD "$LIB_DIR/embedding_store.py" status
+            line=$($PYTHON_CMD "$LIB_DIR/rag/vector_store.py" status "$(get_campaign_dir)")
+            [ "$line" != "This campaign has no book indexed." ] && echo "$line"
+        fi
         exit 0
         ;;
     stop)

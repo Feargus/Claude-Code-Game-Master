@@ -6,7 +6,7 @@
 
 * [Recall by meaning, and the Loremaster](campaign-memory.md) - How the GM finds a fact by what it means (semantic recall over facts, places and plots), and the cached deep read over a campaign's source book.
 * [Game core and World Kit](game-core-and-world-kit.md) - The system-agnostic engine and the per-campaign ruleset that configures it — and the two separate rule surfaces a world actually plays by.
-* [RAG stack](rag-stack.md) - Two retrieval systems over the source book — 3000-char embedded chunks and a chapter-granularity index — plus the parts of each that are inert.
+* [Book search](rag-stack.md) - Two retrieval paths over a campaign's source book: pieces searched by meaning with the facts' model, and a chapter index for the Loremaster.
 * [Scene context — the two doors](scene-context.md) - What the harness pushes to the model each beat, and why "context" means two different things depending on which tool you call.
 * [The entity graph and name resolution](entity-graph.md) - Why entities cross-reference by name, how the alias resolver keeps that from breaking, and the ordered repair passes an import runs before the gate.
 * [The living world — consequences, clocks, world tick](living-world.md) - The three systems that make the world move on its own, and which of them are actually wired to fire.

@@ -95,8 +95,8 @@ should_prompt() {
     return 0
 }
 
-# Copy the campaign into $1, skipping vectors/ — the ChromaDB index is tens of
-# megabytes and is rebuilt from the source document on the next prepare.
+# Copy the campaign into $1, skipping vectors/ — the book's vectors are tens of
+# megabytes and are rebuilt from the source document on the next prepare.
 # Fails (rather than reporting an empty success) if there was nothing to copy.
 copy_campaign_to_archive() {
     local dest="$1" entry copied=0

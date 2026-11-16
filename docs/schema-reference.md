@@ -54,7 +54,7 @@ is named in `world-state/active-campaign.txt`.
 ├── saves/                   # Snapshot saves
 ├── fallen/                  # Archived sheets of dead PCs
 ├── images/                  # Generated scene images + _gen-log.jsonl
-├── chunks/ · vectors/       # RAG source chunks and the ChromaDB index
+├── chunks/ · vectors/       # the book's pieces (chunks.json) and their vectors (book.npz)
 └── extracted/               # Legacy census-import staging
 ```
 

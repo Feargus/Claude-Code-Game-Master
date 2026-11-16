@@ -38,7 +38,8 @@ voice = [
     "elevenlabs>=2.8.1",
 ]
 
-# Semantic recall: facts ranked by meaning (EmbeddingGemma on ONNX Runtime, no PyTorch).
+# Semantic recall: facts ranked by meaning, and the book search (EmbeddingGemma on ONNX
+# Runtime, no PyTorch).
 # The model itself is downloaded by `bash tools/gm-recall.sh setup`.
 recall = [
     "numpy>=1.26",
@@ -46,16 +47,10 @@ recall = [
     "tokenizers>=0.20",
 ]
 
-# RAG-based document extraction
-rag = [
-    "sentence-transformers>=2.2.0",
-    "chromadb>=0.4.0",
-]
-
-# Full installation (all features)
+# Full installation (all features; the book search comes with `recall`)
 full = [
     "gm-claude[voice]",
-    "gm-claude[rag]",
+    "gm-claude[recall]",
 ]
 
 # Development dependencies
