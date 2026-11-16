@@ -94,7 +94,19 @@ Two rolls that each reach a useful part of the goal, without any bonus passed be
 
 ## Improvised skills and statuses
 
-Rare actions don't need a permanent skill. When nothing in the index fits, check `improvised-skills.md` in the active campaign's folder, then invent a skill on the spot: name, category, anchor, a one-line description, and the applications used. Add it to that file with status `improvised`, creating the file if needed. New applications for existing skills go there the same way.
+Rare actions don't need a permanent skill. When nothing in the index fits, check `improvised-skills.md` in the active campaign's folder, then invent a skill on the spot: name, anchor, a one-line description, and the applications used. Add it to that file before rolling it, creating the file if needed, in the form the skill files here use:
+
+```
+## Ratcatching
+
+*Anchor: AGI · Status: improvised*
+
+Catching small fast things alive.
+
+- A grab in the dark: **AGI**, DFT, ITU
+```
+
+The roll script reads the name, the anchor and the status from there. New applications of an existing skill go under that skill's name, without the Anchor line.
 
 Never edit the skill files in this folder during play. They hold the canon skills, and only the player changes them.
 
@@ -129,6 +141,7 @@ bash tools/gm-skill-contest.sh --active-dc 20 "nerve toxin" --reactive Fearghas 
 ```
 
 - **Names:** the player (by name, or just `player`), an NPC, or a mob (`gm-mob.sh list`). The player and NPCs are found by their aliases too, like everywhere else. Mobs have no personality, and their instances are interchangeable. Mobs you invent belong to the campaign.
+- **Skill and anchor:** the script refuses a skill that is neither in the index nor in the campaign's `improvised-skills.md` (it names the skills you may have meant), a banned one, and a roll whose three attributes don't include the skill's anchor. Fix the roll and run it again; a refused roll rolled nothing.
 - **Unknown name or no stats:** the script refuses. Give them stats, then roll again; never edit the JSON by hand. `gm-mob.sh list` shows the repo's example mobs: they are the scale.
   ```
   bash tools/gm-npc.sh stats "Rook" --attr STR=12 --attr AGI=11 --attr default=10 \

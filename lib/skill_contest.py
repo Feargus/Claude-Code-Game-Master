@@ -32,6 +32,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 import sheet as sheet_mod
+import skills as skill_list
 from campaign_manager import CampaignManager
 from json_ops import JsonOperations
 from sheet import ATTRIBUTES
@@ -210,13 +211,24 @@ def _edges(name: str, attributes: list[str], pairs: list[list[str]] | None) -> l
 
 def build_side(campaign_dir: Path, spec: list[str], advantages: list[list[str]] | None,
                disadvantages: list[list[str]] | None) -> dict[str, Any]:
-    """Turn `NAME SKILL ATTR ATTR ATTR` into a side that is ready to roll."""
+    """Turn `NAME SKILL ATTR ATTR ATTR` into a side that is ready to roll.
+
+    The skill must be one that exists (skills.py: canon, or improvised in this
+    campaign), and its anchor must be among the three dice. A name that isn't a
+    skill used to roll as untrained without a word, so a slip of the pen cost
+    the character their skill value, and the wrong name was then learned."""
     name, skill, *attributes = spec
     attributes = [attribute.upper() for attribute in attributes]
 
     for attribute in attributes:
         if attribute not in ATTRIBUTES:
             raise ContestError(f"Unknown attribute '{attribute}'. Use one of: {', '.join(ATTRIBUTES)}.")
+    try:
+        known = skill_list.find(campaign_dir, skill)
+        skill_list.check_anchor(known, attributes)
+    except skill_list.SkillError as error:
+        raise ContestError(str(error)) from error
+    skill = known["name"]                    # as the list spells it, however it was typed
     advantages = _edges(name, attributes, advantages)
     disadvantages = _edges(name, attributes, disadvantages)
 
@@ -344,7 +356,7 @@ def main() -> int:
     try:
         print(format_result(run_contest(args)))
     except ContestError as error:
-        print(f"Error: {error}", file=sys.stderr)
+        print(f"[ERROR] {error}", file=sys.stderr)
         return 1
     return 0
 

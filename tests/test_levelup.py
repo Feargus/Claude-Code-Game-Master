@@ -54,8 +54,10 @@ def test_grow_applies_exactly_one_level(campaign, isolated_world_state):
     for attribute, skills, why in [("DEX", ["Long guns", "Stealth"], "Unknown attribute"),
                                    ("NRV", ["Long guns", "Stealth"], "no die"),
                                    ("AGI", ["Long guns"], "exactly two"),
-                                   ("AGI", ["Stealth", "stealth"], "exactly two")]:
+                                   ("AGI", ["Stealth", "stealth"], "exactly two"),
+                                   ("AGI", ["Long guns", "Sneaking"], "No skill 'Sneaking'")]:
         assert why in mgr.grow(attribute, skills, "Cat eyes", "x")["error"]
+    assert "Sneaking" not in _sheet(campaign)["stats"]["skills"]       # a refusal changes nothing
     assert "perk" in mgr.grow("AGI", ["Long guns", "Stealth"], "", "")["error"]
     result = mgr.grow("agi", ["long guns", "stealth"], "Cat eyes", "+2 Awareness at night, -2 by day")
     assert result["success"] and result["level"] == 1
@@ -115,6 +117,9 @@ def test_a_new_skill_starts_at_one(campaign, isolated_world_state):
     mgr = PlayerManager(str(isolated_world_state))
     assert mgr.raise_stat("skill", "Medicine")["current"] == 1
     assert mgr.raise_stat("skill", "default")["success"] is False
+    # A name that is no skill would sit on the sheet where no roll finds it.
+    assert "Did you mean: Medicine" in mgr.raise_stat("skill", "First aid")["error"]
+    assert "First aid" not in _sheet(campaign)["stats"]["skills"]
 
 
 def test_perks_are_name_and_function(campaign, isolated_world_state):

@@ -246,19 +246,20 @@ def test_log_gives_each_part_its_own_line_and_separates_rolls(campaign):
 
 
 def test_a_missing_skill_counts_minus_three_and_is_logged_as_untrained(campaign):
-    args = _args("--active", "Fearghas", "Medicine", "DFT", "AGI", "ITU",
+    args = _args("--active", "Fearghas", "Handguns", "DFT", "AGI", "ITU",
                  "--reactive-dc", "10", "door")
     result = run_contest(args, ScriptedDice(5, 5, 5))
     assert result["active_total"] == 15 - 3
     entry = _log_blocks(campaign)[0]
-    assert entry["active"]["skill"] == "Medicine"
+    assert entry["active"]["skill"] == "Handguns"
     assert entry["active"]["untrained"] is True
 
 
 def test_a_mob_has_its_common_skills_at_zero_without_listing_them(campaign):
     """The street thug (repo mob) lists no Awareness and no Netrunning: common 0, untrained −3."""
-    for skill, value, untrained in (("Awareness", 0, False), ("Netrunning", -3, True)):
-        args = _args("--active", "street thug", skill, "ITU", "ITU", "ITU",
+    for skill, anchor, value, untrained in (("Awareness", "ITU", 0, False),
+                                            ("Netrunning", "LOG", -3, True)):
+        args = _args("--active", "street thug", skill, anchor, anchor, anchor,
                      "--reactive-dc", "10", "noise")
         result = run_contest(args, ScriptedDice(5, 5, 5))
         assert result["active_total"] == 15 + value
@@ -271,7 +272,7 @@ def test_a_listed_skill_is_logged_as_trained(campaign):
 
 
 def test_a_sheet_can_set_its_own_untrained_value(campaign):
-    args = _args(*SHOOT, "--reactive", "cockroach", "Tech", "AGI", "ITU", "NRV")
+    args = _args(*SHOOT, "--reactive", "cockroach", "Tech", "LOG", "ITU", "NRV")
     result = run_contest(args, ScriptedDice(5, 5, 5, 3, 3, 3))
     assert result["reactive_total"] == 9 - 3
 
@@ -279,9 +280,8 @@ def test_a_sheet_can_set_its_own_untrained_value(campaign):
 def test_default_is_not_a_skill(campaign):
     """A skill called "default" is never looked up as the sheet's default."""
     args = _args(*SHOOT, "--reactive", "cockroach", "default", "AGI", "ITU", "NRV")
-    result = run_contest(args, ScriptedDice(5, 5, 5, 3, 3, 3))
-    assert result["reactive_total"] == 9 - 3
-    assert _log_blocks(campaign)[0]["reactive"]["untrained"] is True
+    with pytest.raises(ContestError, match="'default' is not a skill"):
+        run_contest(args, ScriptedDice(5, 5, 5, 3, 3, 3))
 
 
 def test_advantage_reasons_are_logged(campaign):
@@ -300,10 +300,10 @@ def test_advantage_reasons_are_logged(campaign):
 @pytest.mark.parametrize("words, message", [
     (("--active-dc", "10", "a", "--reactive-dc", "10", "b"), "Both sides are DCs"),
     (("--active-dc", "10", "gas", *DODGE, "--active-adv", "STR", "rested"), "A DC doesn't roll"),
-    (("--active", "Nobody", "Tech", "DFT", "AGI", "ITU", *DODGE), "Unknown name"),
-    (("--active", "Auntie Ro", "Tech", "DFT", "AGI", "ITU", *DODGE), "no stats yet"),
+    (("--active", "Nobody", "Tech", "DFT", "LOG", "ITU", *DODGE), "Unknown name"),
+    (("--active", "Auntie Ro", "Tech", "DFT", "LOG", "ITU", *DODGE), "no stats yet"),
     (("--active", "Fearghas", "Long guns", "DEX", "AGI", "ITU", *DODGE), "Unknown attribute"),
-    (("--active", "Fearghas", "Long guns", "NRV", "AGI", "ITU", *DODGE), "no usable die"),
+    (("--active", "Fearghas", "Long guns", "DFT", "NRV", "ITU", *DODGE), "no usable die"),
     ((*SHOOT, *DODGE, "--active-adv", "STR", "rested"), "isn't rolling it"),
     ((*SHOOT, *DODGE, "--mod", "lots", "feint"), "whole number"),
     ((*SHOOT, "--reactive", "Fearghas", "Long guns", "DFT", "AGI", "ITU"), "both sides"),
@@ -315,7 +315,7 @@ def test_refusals(campaign, words, message):
 
 def test_a_refused_contest_leaves_no_trace(campaign):
     with pytest.raises(ContestError):
-        run_contest(_args("--active", "Nobody", "Tech", "DFT", "AGI", "ITU", *DODGE))
+        run_contest(_args("--active", "Nobody", "Tech", "DFT", "LOG", "ITU", *DODGE))
     assert not (campaign / "skill-contest.log").exists()
 
 
@@ -335,7 +335,7 @@ def test_wrapper_prints_only_the_quality(campaign):
 
 
 def test_wrapper_reports_errors_on_stderr(campaign):
-    result = _run("--active", "Nobody", "Tech", "DFT", "AGI", "ITU", *DODGE)
+    result = _run("--active", "Nobody", "Tech", "DFT", "LOG", "ITU", *DODGE)
     assert result.returncode == 1
     assert "Unknown name" in result.stderr and result.stdout == ""
 
@@ -409,3 +409,69 @@ def test_the_player_can_be_called_player(campaign):
     with pytest.raises(ContestError, match=r"The player is 'Fearghas' \(or just: player\)"):
         run_contest(_args("--active", "Fergus", "Long guns", "DFT", "AGI", "ITU",
                           "--reactive-dc", "10", "door"), ScriptedDice(5, 5, 5))
+
+
+# --- The skill must exist, and its anchor must be rolled (skills.py) ---
+
+def test_a_name_that_is_no_skill_is_refused_and_teaches_nothing(campaign):
+    """"Lockpicking" (the skill is Larceny) used to roll as untrained without a
+    word; four close rolls later the sheet had Lockpicking 1 and 10 XP."""
+    before = (campaign / "character.json").read_text()
+    with pytest.raises(ContestError) as refused:
+        run_contest(_args("--active", "Fearghas", "Lockpicking", "DFT", "DFT", "ITU",
+                          "--reactive-dc", "15", "cheap lock"), ScriptedDice(5, 5, 5))
+    message = str(refused.value)
+    assert "No skill 'Lockpicking'" in message and "Larceny" in message
+    assert "improvised-skills.md" in message and "## Lockpicking" in message
+    assert (campaign / "character.json").read_text() == before
+    assert not (campaign / "skill-contest.log").exists()
+
+
+def test_a_skill_is_rolled_and_logged_as_the_list_spells_it(campaign):
+    """However it is typed, it is the skill on the sheet: "long  GUNS" has value 2."""
+    result = run_contest(_args("--active", "Fearghas", "long  GUNS", "DFT", "AGI", "ITU",
+                               "--reactive-dc", "18", "door"), ScriptedDice(5, 5, 5))
+    assert result["active_total"] == 15 + 2
+    assert _log_blocks(campaign)[0]["active"]["skill"] == "Long guns"
+    sheet = json.loads((campaign / "character.json").read_text())
+    assert list(sheet["progress"]["practice"]) == ["Long guns"]
+
+
+def test_a_roll_without_the_skills_anchor_is_refused(campaign):
+    with pytest.raises(ContestError, match="Long guns is anchored on DFT"):
+        run_contest(_args("--active", "Fearghas", "Long guns", "AGI", "AGI", "ITU", *DODGE),
+                    ScriptedDice(*[1] * 6))
+    with pytest.raises(ContestError, match="Evasion is anchored on AGI"):     # either side
+        run_contest(_args(*SHOOT, "--reactive", "Dekker", "Evasion", "ITU", "ITU", "NRV"),
+                    ScriptedDice(*[1] * 6))
+    assert not (campaign / "skill-contest.log").exists()
+
+
+def test_an_improvised_skill_of_the_campaign_rolls(campaign):
+    (campaign / "improvised-skills.md").write_text(
+        "# Improvised skills\n\n## Ratcatching\n\n*Anchor: AGI · Status: improvised*\n\n"
+        "Catching small fast things alive.\n\n- A grab: **AGI**, DFT, ITU\n", encoding="utf-8")
+    args = _args("--active", "Fearghas", "ratcatching", "AGI", "DFT", "ITU",
+                 "--reactive-dc", "13", "a rat")
+    result = run_contest(args, ScriptedDice(5, 5, 5))
+    assert result["active_total"] == 15 - 3                     # untrained until learned
+    assert _log_blocks(campaign)[0]["active"]["skill"] == "Ratcatching"
+    with pytest.raises(ContestError, match="Ratcatching is anchored on AGI"):
+        run_contest(_args("--active", "Fearghas", "Ratcatching", "DFT", "DFT", "ITU",
+                          "--reactive-dc", "13", "a rat"), ScriptedDice(5, 5, 5))
+
+
+def test_an_improvised_skill_needs_an_anchor_and_a_banned_one_is_refused(campaign):
+    (campaign / "improvised-skills.md").write_text(
+        "## Ratcatching\nstatus: improvised\n\n## Mind reading\n*Anchor: EMP · Status: banned*\n"
+        "\n## Larceny\n*Anchor: STR · Status: improvised*\n", encoding="utf-8")
+    with pytest.raises(ContestError, match="Ratcatching has no anchor yet"):
+        run_contest(_args("--active", "Fearghas", "Ratcatching", "AGI", "DFT", "ITU",
+                          "--reactive-dc", "13", "a rat"), ScriptedDice(5, 5, 5))
+    with pytest.raises(ContestError, match="'Mind reading' is banned"):
+        run_contest(_args("--active", "Fearghas", "Mind reading", "DFT", "AGI", "ITU",
+                          "--reactive-dc", "13", "a guard"), ScriptedDice(5, 5, 5))
+    # A campaign can't redefine a canon skill: Larceny stays anchored on DFT.
+    with pytest.raises(ContestError, match="Larceny is anchored on DFT"):
+        run_contest(_args("--active", "Fearghas", "Larceny", "AGI", "AGI", "ITU",
+                          "--reactive-dc", "13", "a lock"), ScriptedDice(5, 5, 5))

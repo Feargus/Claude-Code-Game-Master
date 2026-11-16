@@ -27,19 +27,18 @@ Everything is checked before it is saved; the GM never edits these files by hand
 
 import difflib
 import json
-import re
 import sys
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import skills as skill_list
 from sheet import ATTRIBUTES, SheetError, check_die
 from sheet import check as sheet_check
+from skills import IMPROVISED_FILE
 
-SKILLS_FILE = Path(__file__).parent.parent / ".claude" / "skills" / "gm-skills" / "SKILL.md"
-REPO_MOBS = Path(__file__).parent.parent / ".claude" / "skills" / "gm-skills" / "mobs.json"
-IMPROVISED_FILE = "improvised-skills.md"
+REPO_MOBS = skill_list.SKILLS_DIR / "mobs.json"
 COMMON_VALUE = 0   # a common skill an NPC or mob doesn't list, unless it has a default
 USUAL_DIE = (4, 24)  # outside: a warning, not a refusal (power creep is fine)
 
@@ -49,32 +48,14 @@ class StatError(ValueError):
 
 
 def canon_skills() -> list[str]:
-    """The canon skills, from the index table at the end of gm-skills/SKILL.md."""
-    text = SKILLS_FILE.read_text(encoding="utf-8")
-    index = text.split("## Index", 1)[-1]
-    names = []
-    for line in index.splitlines():
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) >= 3 and cells[0] and cells[0] not in ("Skill",) and not set(cells[0]) <= {"-"}:
-            names.append(cells[0])
-    return names
+    """The canon skills, in the order of the gm-skills index (skills.py reads it)."""
+    return [skill["name"] for skill in skill_list.canon().values()]
 
 
 def common_skills() -> list[str]:
     """The skills every new character starts with at 0 or more: the index rows
     marked in the Common column."""
-    index = SKILLS_FILE.read_text(encoding="utf-8").split("## Index", 1)[-1]
-    names = []
-    for line in index.splitlines():
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) >= 5 and cells[3].lower() == "yes":
-            names.append(cells[0])
-    return names
-
-
-def _improvised(campaign_dir: Path | None) -> str:
-    path = Path(campaign_dir) / IMPROVISED_FILE if campaign_dir else None
-    return path.read_text(encoding="utf-8") if path and path.exists() else ""
+    return [skill["name"] for skill in skill_list.canon().values() if skill["common"]]
 
 
 def parse_pairs(pairs, what: str) -> dict[str, int]:
@@ -123,18 +104,22 @@ def check(block: dict[str, Any], campaign_dir: Path | None = None) -> list[str]:
             warnings.append(f"{key} d{size} is outside the usual d{USUAL_DIE[0]}–d{USUAL_DIE[1]} "
                             f"(fine if meant).")
     known = canon_skills()
-    improvised = _improvised(campaign_dir).lower()
+    table = skill_list.table(campaign_dir)       # the same list the dice script checks
     for name, value in ((block.get("stats") or {}).get("skills") or {}).items():
         if not isinstance(value, int):
             raise StatError(f"{name}: a skill value is a whole number, not {value!r}.")
-        if name == "default" or name in known:
+        entry = table.get(" ".join(name.split()).lower())
+        if name == "default" or (entry and entry["status"] != "banned"):
             continue
-        if re.search(r"(?<!\w)" + re.escape(name.lower()) + r"(?!\w)", improvised):
+        if entry:
+            warnings.append(f"'{name}' is banned in this campaign ({IMPROVISED_FILE}): "
+                            f"it can't be rolled.")
             continue
         close = difflib.get_close_matches(name, known, n=1, cutoff=0.6)
         hint = f" Did you mean {close[0]}?" if close else ""
-        warnings.append(f"'{name}' is not a canon skill.{hint} If it is improvised, add it to "
-                        f"the campaign's {IMPROVISED_FILE} (gm-skills, Improvised skills).")
+        warnings.append(f"'{name}' is not a canon skill.{hint} It can't be rolled until it is a "
+                        f"skill: if it is improvised, add it to the campaign's {IMPROVISED_FILE} "
+                        f"(gm-skills, Improvised skills).")
     wounds = (block.get("body") or {}).get("wounds")
     if wounds is not None and (not isinstance(wounds, int) or wounds < 1):
         raise StatError(f"wounds: at least 1, not {wounds!r}.")

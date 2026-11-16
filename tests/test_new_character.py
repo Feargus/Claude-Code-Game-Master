@@ -144,6 +144,7 @@ def test_left_out_attributes_are_named_in_the_human_output(campaign):
     (_named("Mara", stats={"attributes": {"AGI": 1}}), "die size"),
     (_named("Mara", body={"cyberware": [{"name": "Tail", "zone": "tail"}]}), "Unknown zone"),
     (_named("Mara", stats={"skills": {"default": 2}}), "not a skill"),
+    (_named("Mara", stats={"skills": {"Lockpicking": 2}}), "No skill 'Lockpicking'. Did you mean: Larceny"),
     (_named("Mara", stats={"skills": {"Handguns": -1}}), "Leave an untrained skill off the sheet"),
     (dict(_named("Mara"), untrained=["Handguns"]), "not a common skill"),
     (dict(_named("Mara", stats={"skills": {"Brawling": 1}}), untrained=["brawling"]), "both"),

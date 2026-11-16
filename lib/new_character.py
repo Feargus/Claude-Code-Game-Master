@@ -25,10 +25,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import body
 import sheet as sheet_mod
+import skills as skill_list
 from entity_manager import EntityManager
 from handover import hand_over
 from sheet import ATTRIBUTES
-from stat_block import canon_skills, common_skills
+from stat_block import common_skills
 from world_kit import WorldKit
 
 DEFAULT_ATTRIBUTE = 12
@@ -54,16 +55,18 @@ def _attributes(given: dict[str, Any]) -> dict[str, int]:
     return {attribute: stats.get(attribute, DEFAULT_ATTRIBUTE) for attribute in ATTRIBUTES}
 
 
-def _skills(given: dict[str, Any], untrained: list[str]) -> dict[str, int]:
+def _skills(given: dict[str, Any], untrained: list[str], campaign_dir=None) -> dict[str, int]:
     """The interview's skills, plus every common skill at 0 unless it is listed in
     `untrained` (a pacifist who never threw a punch). A skill left off the sheet is
-    untrained; the sheet never holds a negative value."""
-    canon = {name.lower(): name for name in canon_skills()}
+    untrained; the sheet never holds a negative value. Every skill must exist
+    (skills.py: canon, or improvised in this campaign): a rolled skill is found
+    on the sheet by its name, so one under a wrong name would never count."""
     skills = {}
     for name, value in given.items():
-        name = canon.get(str(name).lower(), str(name))
-        if name.lower() == "default":
-            raise CharacterError("'default' is not a skill.")
+        try:
+            name = skill_list.find(campaign_dir, name)["name"]
+        except skill_list.SkillError as error:
+            raise CharacterError(str(error)) from error
         if not isinstance(value, int) or value < 0:
             raise CharacterError(f"{name}: a skill on the sheet is a whole number of 0 or more, "
                                  f"not {value!r}. Leave an untrained skill off the sheet.")
@@ -153,7 +156,7 @@ def build_character(data: dict[str, Any], kit: WorldKit) -> tuple[dict[str, Any]
     character = sheet_mod.merge(data, {
         "identity": identity,
         "stats": {"attributes": _attributes(given_attributes),
-                  "skills": _skills(stats.get("skills") or {}, untrained),
+                  "skills": _skills(stats.get("skills") or {}, untrained, kit.campaign_dir),
                   "traits": _named(stats.get("traits"), "traits"),
                   "perks": _named(stats.get("perks"), "perks"),
                   "luck": luck,

@@ -164,11 +164,12 @@ class PlayerManager(EntityManager):
                 'next_level_xp': next_level_xp(char), 'growth_due': due}
 
     def _skill_key(self, skills: dict[str, int], name: str) -> str:
-        key = next((k for k in skills if k.lower() == name.lower()), None)
-        if key is None:
-            from stat_block import canon_skills
-            key = next((k for k in canon_skills() if k.lower() == name.lower()), name)
-        return key
+        """The skill's key on the sheet: as the sheet has it, else as the skill
+        list spells it. Raises SkillError for a name that is no skill (skills.py),
+        so growth can't put a skill on the sheet that no roll would ever find."""
+        import skills as skill_list
+        known = skill_list.find(self.campaign_dir, name)["name"]
+        return next((k for k in skills if k.lower() == known.lower()), known)
 
     def raise_stat(self, kind: str, target: str) -> dict[str, Any]:
         """A correction: one attribute one die size up, or one skill +1 (a skill
@@ -191,7 +192,10 @@ class PlayerManager(EntityManager):
             if target.strip().lower() == 'default':
                 return self._refuse("'default' is not a skill")
             table = stats.setdefault('skills', {})
-            key = self._skill_key(table, target.strip())
+            try:
+                key = self._skill_key(table, target.strip())
+            except ValueError as error:
+                return self._refuse(str(error))
             old = table.get(key)
             table[key] = new = 1 if old is None else old + 1
         if not self._save_character(char):
@@ -237,8 +241,12 @@ class PlayerManager(EntityManager):
         names = [str(x).strip() for x in skills or []]
         if len(names) != 2 or names[0].lower() == names[1].lower():
             return self._refuse("Growth raises exactly two different skills (--skill twice).")
-        if any(n.lower() == 'default' for n in names):
-            return self._refuse("'default' is not a skill.")
+        try:
+            names = [self._skill_key(table, n) for n in names]
+        except ValueError as error:
+            return self._refuse(str(error))
+        if names[0] == names[1]:
+            return self._refuse("Growth raises exactly two different skills (--skill twice).")
         perks = stats.setdefault('perks', {})
         if not str(perk or '').strip() or not str(effect or '').strip():
             return self._refuse('Growth brings one new perk: --perk "<name>" "<what it does>".')
@@ -248,8 +256,7 @@ class PlayerManager(EntityManager):
 
         attributes[key] += 1
         changes = [f"{key} d{attributes[key] - 1} -> d{attributes[key]}"]
-        for n in names:
-            skill = self._skill_key(table, n)
+        for skill in names:
             old = table.get(skill)
             table[skill] = 1 if old is None or old < 1 else old + 1
             changes.append(f"{skill} {old if old is not None else 'new'} -> {table[skill]}")
