@@ -53,7 +53,7 @@ Numbers are first guesses: play decides whether they are right.
 ## 3. The building blocks
 
 Built so far: **the counter** (with a rate, hysteresis, overflow and streaks),
-**states** and **the roll**, with results that act. The others (a roll, a plane, a bag, a budget,
+**states**, **the plane** and **the roll**, with results that act. The others (a roll, a plane, a bag, a budget,
 states, and the options rate, hysteresis, overflow and streak) come in later steps
 (rules-proposal.md in the campaign repo). Until then, model with counters, and put
 what a counter can't do into the rule's `notes`: the GM reads them in the brief.
@@ -289,6 +289,58 @@ A corporation's alert, held by factions, with no way back from the top:
 }
 ```
 
+### The plane: two values read together
+
+Two axes, and the results belong to **regions** of the plane, not to each axis
+alone. Two separate counters would do if each mattered by itself; a plane is for
+when the combination matters.
+
+```json
+{
+  "name": "Humanity", "block": "plane", "held_by": "player",
+  "axes": {"Chrome": [0, 10], "Anchor": [0, 10]}, "start": {"Chrome": 0, "Anchor": 5},
+  "rates": {"Anchor": {"by": -1, "every": "14d", "toward": 0}},
+  "summary": "How much of the character is machine (Chrome), and how much still ties them to people (Anchor).",
+  "when": "Chrome: +1 or +2 for each piece of cyberware put in. Anchor: +1 for time with the people who matter to them, -1 for letting them down. Unless tended, the anchor fades.",
+  "regions": [
+    {"name": "Steady", "where": "Chrome <= Anchor", "text": "The character is themselves, chrome and all."},
+    {"name": "Drifting", "where": "Chrome > Anchor and Chrome < Anchor + 4",
+     "text": "Moments of coldness: the character notices they didn't feel what they should have."},
+    {"name": "Cyberpsychosis", "where": "Chrome >= Anchor + 4",
+     "text": "Under stress the character may lash out.",
+     "effects": [{"condition": "Unstable"}], "when_off": [{"condition": "Unstable", "add": false}],
+     "gm": "Call for a Composure roll at each violent moment."}
+  ]
+}
+```
+
+- **`where`**: comparisons joined by `and`, each an axis, then `<`, `<=`, `>`, `>=` or
+  `==`, then a number or the other axis plus or minus a number. Regions may overlap;
+  every region the point is in is on, and shows.
+- **A change moves one axis:** `gm-rule.sh change "Humanity" --axis Chrome +1`, or the
+  effect `{"change": "Humanity", "axis": "Chrome", "by": 1}`. Entering a region runs its
+  effects, leaving it its `when_off`; `on_rule` waits on a region:
+  `"Humanity:Cyberpsychosis"`.
+- **`rates`**: each axis can have a rate of its own, as a counter's.
+- **`start`**: each axis's starting value (default: its lowest).
+
+Alignment, held by the character and NPCs:
+
+```json
+{
+  "name": "Alignment", "block": "plane", "held_by": ["player", "npc"],
+  "axes": {"Law": [-3, 3], "Good": [-3, 3]}, "start": {"Law": 0, "Good": 0},
+  "summary": "What someone's deeds say about them: order against freedom, others against self.",
+  "when": "A deed that clearly keeps or breaks a law or an oath moves Law; one that clearly helps or harms others at a cost moves Good.",
+  "regions": [
+    {"name": "Paladin", "where": "Law >= 2 and Good >= 2", "text": "The temple's blessings answer them."},
+    {"name": "Tyrant", "where": "Law >= 2 and Good <= -2", "text": "Officials defer to them and hate them for it."},
+    {"name": "Wildfire", "where": "Law <= -2 and Good <= -2", "text": "No inn keeps their room; dogs bark at them."},
+    {"name": "Folk hero", "where": "Law <= -2 and Good >= 2", "text": "The poor hide them; the watch hunts them."}
+  ]
+}
+```
+
 ### The roll: dice, read once
 
 Nothing is kept: dice, plus or minus named amounts, read from a list of results. A
@@ -377,7 +429,7 @@ The effects, a fixed list:
 
 | Effect | Example |
 |---|---|
-| `{"change": "<rule>", "by": N}` or `"set": N` | Bleed 6 sets Panic: `{"change": "Panic", "set": 6}` |
+| `{"change": "<rule>", "by": N}` or `"set": N` (a plane: `"axis": "<axis>"` too) | Bleed 6 sets Panic: `{"change": "Panic", "set": 6}` |
 | the same with `"of": "<holder>"` | a gang's Patience at 0 raises the character's Heat: `{"change": "Heat", "by": 2, "of": "player"}` |
 | `{"rate_of": "<rule>", "by": N}` (`of` too) | a warm year: `{"rate_of": "Sea level", "by": 1}` |
 | `{"state": "<rule>", "to": "<state>"}` (`of` too; an allowed move only) | Need at 5: `{"state": "Addiction", "to": "hooked"}` |
@@ -446,7 +498,6 @@ what happens in the fiction.
 
 ## 5. Coming later
 
-The other blocks of the plan, for when they are built: **a plane** (two values read together: chrome against anchor,
-law against good), **a bag** (tokens drawn, odds that change: a job's luck, the
+The other blocks of the plan, for when they are built: **a bag** (tokens drawn, odds that change: a job's luck, the
 years of the melt), **a budget** (a fixed amount split: downtime days, a gang's
 soldiers). With the bag comes the effect `tokens` (add to a bag).

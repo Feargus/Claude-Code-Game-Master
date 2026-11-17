@@ -96,7 +96,7 @@ def test_what_a_roll_is_not(ops):
     ({"results": [{"from": 5, "text": "a"}, {"from": 5, "text": "b"}]}, "two results are from 5"),
     ({"add": "The Lease"}, "'add' names no counter"),
     ({"results": [{"from": 5, "text": "a", "effects": [{"change": "The Lease", "by": 1}]}]},
-     "no counter 'The Lease' to change"),
+     "no counter or plane 'The Lease' to change"),
 ])
 def test_a_wrong_roll_is_refused(dcc_world, change, why):
     ops = JsonOperations(str(Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"))

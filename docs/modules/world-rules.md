@@ -8,6 +8,7 @@ sources:
   - { resource: /lib/rule_roll.py }
   - { resource: /lib/rule_time.py }
   - { resource: /lib/rule_states.py }
+  - { resource: /lib/rule_plane.py }
   - { resource: /tools/gm-rule.sh }
   - { resource: /.claude/skills/gm-rules/SKILL.md }
 ---
@@ -56,12 +57,14 @@ Built: the **counter** (a number in a range; results by range, cumulative unless
 have a `to`; options: a **rate**, `lib/rule_time.py`, applied by `time_manager.py` on every
 advance and set, counting whole periods from each holder's `rate_from`; **hysteresis**,
 a result's `off_at`, using the stored `on`; **overflow**, back to `back_to` with a mark
-due, recorded by `gm-rule.sh mark`; **streak**, `gm-rule.sh break`) **states** (`lib/rule_states.py`: a named state per holder, moved along its `moves`
+due, recorded by `gm-rule.sh mark`; **streak**, `gm-rule.sh break`) the **plane** (`lib/rule_plane.py`: two axes per holder, stored as `axes`; regions
+by `where` conditions, all that hold are on; a change moves one axis; `rates` per
+axis, each with its own `rate_from`), **states** (`lib/rule_states.py`: a named state per holder, moved along its `moves`
 by `gm-rule.sh move`, or any way by `set`; an `after` moves it on as time passes, from
 `entered`; a state's effects run on entering, its `when_off` on leaving) and the
 **roll** (`lib/rule_roll.py`: dice plus named amounts and
 optionally a counter's value, read from results by `from`; keeps nothing, logs the
-roll). Planned: planes, bags and budgets.
+roll). Planned: bags and budgets.
 
 ## Results that act (`lib/rule_effects.py`)
 

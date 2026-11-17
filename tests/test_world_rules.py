@@ -58,7 +58,7 @@ def test_rules_are_defined_once_and_checked(ops):
 @pytest.mark.parametrize("change, why", [
     ({"name": "A: b"}, "short key"),
     ({"name": "One two three four"}, "short key"),
-    ({"block": "plane"}, "isn't built yet .* step 7"),
+    ({"block": "bag"}, "isn't built yet .* step 8"),
     ({"block": "meter"}, "'block' must be one of"),
     ({"held_by": "god"}, "'held_by' must be one of"),
     ({"range": [6, 0]}, "'range' must be"),

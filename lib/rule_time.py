@@ -101,6 +101,9 @@ def apply(json_ops, before: datetime | None, after: datetime) -> list[dict[str, 
             import rule_states
             reports += rule_states.apply_time(json_ops, rule, before, after)
             continue
+        if rule["block"] == "plane":
+            reports += _apply_plane(json_ops, rule, before, after)
+            continue
         if rule["block"] != "counter" or not rule.get("rate"):
             continue
         state = world_rules.load_state(json_ops)
@@ -125,6 +128,42 @@ def apply(json_ops, before: datetime | None, after: datetime) -> list[dict[str, 
             if new != value:
                 reports.append(world_rules.change(
                     json_ops, rule["name"], holder, to=new,
+                    cause=f"its rate ({describe(rate)}), {periods} "
+                          f"period{'s' if periods != 1 else ''}"))
+    return reports
+
+
+def _apply_plane(json_ops, rule: dict[str, Any], before: datetime, after: datetime) -> list:
+    """A plane's axes with a rate move as a counter's value does; each axis counts its
+    own periods (`rate_from` per axis)."""
+    import world_rules
+    from game_time import STORED_FORMAT
+    from time_manager import parse_duration
+    reports = []
+    rates = rule.get("rates") or {}
+    if not rates:
+        return []
+    state = world_rules.load_state(json_ops)
+    holders = [h for h in ("player", "world") if h in rule["held_by"]]
+    holders += [h for h, values in state.items() if rule["name"] in values and h not in holders]
+    for holder in holders:
+        for axis, rate in rates.items():
+            state = world_rules.load_state(json_ops)
+            stored = dict(world_rules.entry(json_ops, rule, holder, state))
+            starts = dict(stored.get("rate_from") or {})
+            every = timedelta(minutes=parse_duration(rate["every"]))
+            start = datetime.strptime(starts[axis], STORED_FORMAT) if starts.get(axis) else before
+            periods = max(0, (after - start) // every)
+            starts[axis] = (start + periods * every).strftime(STORED_FORMAT)
+            stored["rate_from"] = starts
+            state.setdefault(holder, {})[rule["name"]] = stored
+            world_rules.save_state(json_ops, state)
+            low, high = rule["axes"][axis]
+            value = stored["axes"][axis]
+            new = step(value, rate, periods, low, high)
+            if new != value:
+                reports.append(world_rules.change(
+                    json_ops, rule["name"], holder, to=new, axis=axis,
                     cause=f"its rate ({describe(rate)}), {periods} "
                           f"period{'s' if periods != 1 else ''}"))
     return reports

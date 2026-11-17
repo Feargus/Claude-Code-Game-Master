@@ -26,7 +26,8 @@ Building blocks (rules-proposal.md in the campaign repo has the plan):
               list of results; keeps nothing (rule_roll.py)
     states    named states and the moves allowed between them; time can move them on
               (rule_states.py)
-    plane, bag, budget: later steps
+    plane     two values read together; results by region (rule_plane.py)
+    bag, budget: later steps
 
 A value is known (the default: the HUD may show it, the narration make it plain) or
 hidden (the GM sees it, the player only its signs; every output marks it).
@@ -55,12 +56,13 @@ LOG = "rules.log"
 BIBLE = "world-bible.json"
 
 HOLDER_KINDS = ("player", "npc", "faction", "location", "world")
-BLOCKS = ("counter", "roll", "states")
-LATER_BLOCKS = {"plane": 7, "bag": 8, "budget": 9}
+BLOCKS = ("counter", "roll", "states", "plane")
+LATER_BLOCKS = {"bag": 8, "budget": 9}
 COMMON_FIELDS = ("name", "block", "held_by", "known", "summary", "when", "notes")
 BLOCK_FIELDS = {"counter": ("range", "start", "results", "rate", "overflow", "streak"),
                 "roll": ("dice", "with", "add", "results"),
-                "states": ("start", "states")}
+                "states": ("start", "states"),
+                "plane": ("axes", "start", "rates", "regions")}
 RESULT_FIELDS = {"counter": ("from", "to", "off_at", "text", "effects", "when_off", "gm")}
 LATER_FIELDS: dict[str, int] = {}     # fields of a later step: "isn't built yet (step N)"
 MAX_NAME_WORDS = 3
@@ -256,6 +258,9 @@ def check_rule(raw: Any) -> dict[str, Any]:
     elif block == "states":
         import rule_states
         rule_states.check(rule, problems)
+    elif block == "plane":
+        import rule_plane
+        rule_plane.check(rule, problems)
     if problems:
         raise RulesError(f"{rule['name']}: " + "; ".join(problems) + ".")
     return rule
@@ -329,6 +334,15 @@ def _replace(old: dict[str, Any], rule: dict[str, Any], state: dict) -> dict[str
             raise RulesError(f"{rule['name']}: the new rule lacks the states some holders are "
                              f"in: {', '.join(lost)}. Keep those states, or move them first. "
                              f"Nothing was saved.")
+    if rule["block"] == "plane":
+        import rule_plane
+        for holder in holders:
+            stored = state[holder][rule["name"]]
+            old = stored.get("axes") or {}
+            stored["axes"] = {a: max(lo, min(hi, int(old.get(a, rule["start"][a]))))
+                              for a, (lo, hi) in rule["axes"].items()}
+            stored["on"] = rule_plane.regions_on(rule, stored["axes"])
+        return rule
     if rule["block"] != "counter":
         return rule
     low, high = rule["range"]
@@ -488,6 +502,9 @@ def entry(json_ops, rule: dict[str, Any], holder: str, state=None) -> dict[str, 
         return stored
     if rule["block"] == "states":
         return {"state": rule["start"]}
+    if rule["block"] == "plane":
+        import rule_plane
+        return {"axes": dict(rule["start"]), "on": rule_plane.regions_on(rule, rule["start"])}
     return {"value": rule["start"], "on": results_on(rule, rule["start"])}
 
 
@@ -500,6 +517,8 @@ def label(rule: dict[str, Any], result: dict[str, Any]) -> str:
     if rule["block"] == "roll":
         import rule_roll
         return rule_roll.label(result, rule["results"])
+    if rule["block"] == "plane":
+        return result["name"]
     return result_label(result)
 
 
@@ -512,7 +531,8 @@ def counter(json_ops, raw) -> dict[str, Any]:
     rule = find_rule(json_ops, raw)
     if rule["block"] != "counter":
         how = {"roll": f'gm-rule.sh roll "{rule["name"]}"',
-               "states": f'gm-rule.sh move "{rule["name"]}" [holder] <state>'}.get(
+               "states": f'gm-rule.sh move "{rule["name"]}" [holder] <state>',
+               "plane": f'gm-rule.sh change "{rule["name"]}" [holder] --axis <axis> +N|-N'}.get(
             rule["block"], f'gm-rule.sh show "{rule["name"]}"')
         raise RulesError(f"{rule['name']} is a {rule['block']}: it has no value to change ({how}).")
     return rule
@@ -533,13 +553,22 @@ def _log(json_ops, holder: str, rule: str, what: str, cause: str) -> None:
 
 
 def change(json_ops, raw_rule, raw_holder=None, by: int | None = None,
-           to: int | None = None, cause: str = "command", chain=None) -> dict[str, Any]:
+           to: int | None = None, cause: str = "command", chain=None,
+           axis: str | None = None) -> dict[str, Any]:
     """Change a counter by `by`, or set it `to` a value. A change that goes past the
     range stops at its end; a set outside it is refused. The results it turns on and
     off carry out their effects (rule_effects.py; `chain` is the chain this change is
     part of), then the on_rule consequences fire. Returns what happened:
     {rule, holder, before, after, stopped, on, off, still, known, did, gm, fired,
-    character (what changed on the character, for the whole chain)}."""
+    character (what changed on the character, for the whole chain)}. A plane moves
+    one `axis` (rule_plane.change)."""
+    rule = find_rule(json_ops, raw_rule)
+    if rule["block"] == "plane":
+        import rule_plane
+        return rule_plane.change(json_ops, rule, resolve_holder(json_ops, rule, raw_holder),
+                                 axis, by=by, to=to, cause=cause, chain=chain)
+    if axis is not None:
+        raise RulesError(f"{rule['name']} has no axes: --axis is for a plane.")
     rule = counter(json_ops, raw_rule)
     holder = resolve_holder(json_ops, rule, raw_holder)
     low, high = rule["range"]
@@ -658,6 +687,9 @@ def change_lines(json_ops, report: dict[str, Any], indent: str = "") -> list[str
     each followed by what its effects did (a change they made, indented under it),
     its line for the GM, the consequences it fired, and at the end of a chain what
     changed on the character."""
+    if "axis" in report:
+        import rule_plane
+        return rule_plane.change_lines(json_ops, report, indent)
     rule = find_rule(json_ops, report["rule"])
     who = holder_name(json_ops, report["holder"])
     top = ""
@@ -728,6 +760,9 @@ def rule_lines(json_ops, rule: dict[str, Any], holders=None) -> list[str]:
     if rule["block"] == "states":
         import rule_states
         return rule_states.rule_lines(json_ops, rule, holders)
+    if rule["block"] == "plane":
+        import rule_plane
+        return rule_plane.rule_lines(json_ops, rule, holders)
     low, high = rule["range"]
     hidden = "" if rule.get("known", True) else f"; {HIDDEN}"
     lines = [f"{rule['name']} ({rule['block']} {low}–{high}, held by {_kinds(rule)}{hidden}): "
@@ -816,6 +851,10 @@ def holder_lines(json_ops, holder: str) -> list[str]:
     state = load_state(json_ops)
     for rule in rules(json_ops):
         stored = (state.get(holder) or {}).get(rule["name"])
+        if stored and rule["block"] == "plane":
+            import rule_plane
+            lines.append(rule_plane.holder_line(rule, stored))
+            continue
         if stored and rule["block"] == "states":
             mark = "" if is_known(rule, stored) else f" {HIDDEN}"
             lines.append(f"{rule['name']}: {stored['state']} (states): "
@@ -839,9 +878,12 @@ def summary(json_ops, holder: str = "player") -> str:
         if holder.partition(":")[0] not in rule["held_by"] or rule["block"] == "roll":
             continue
         stored = entry(json_ops, rule, holder, state)
-        if rule["block"] == "states":
+        if rule["block"] in ("states", "plane"):
             hidden = "" if is_known(rule, stored) else " (hidden)"
-            parts.append(f"{rule['name']}: {stored['state']}{hidden}")
+            shown = stored["state"] if rule["block"] == "states" else (
+                ", ".join(stored.get("on") or [])
+                or ", ".join(f"{a} {v}" for a, v in stored["axes"].items()))
+            parts.append(f"{rule['name']}: {shown}{hidden}")
             continue
         hidden = "" if is_known(rule, stored) else " (hidden)"
         parts.append(f"{rule['name']} {stored.get('value')}/{rule['range'][1]}{hidden}")
@@ -864,6 +906,21 @@ def check_values(json_ops, holder: str, given: Any) -> list[tuple[str, Any]]:
             import rule_states
             checked.append((rule["name"], rule_states._find_state(rule, value)))
             continue
+        if rule["block"] == "plane":
+            import rule_plane
+            if not isinstance(value, dict):
+                raise RulesError(f"{rule['name']} is a plane: give its axes, e.g. "
+                                 f"{json.dumps(rule['start'])}.")
+            point = {}
+            for axis, number in value.items():
+                axis = rule_plane.find_axis(rule, axis)
+                low, high = rule["axes"][axis]
+                if not _is_int(number) or not low <= number <= high:
+                    raise RulesError(f"{rule['name']}'s {axis} goes from {low} to {high}, "
+                                     f"not {number!r}.")
+                point[axis] = number
+            checked.append((rule["name"], point))
+            continue
         rule = counter(json_ops, rule["name"])
         low, high = rule["range"]
         if not _is_int(value) or not low <= value <= high:
@@ -876,9 +933,16 @@ def check_values(json_ops, holder: str, given: Any) -> list[tuple[str, Any]]:
 def set_values(json_ops, holder: str, checked: list[tuple[str, Any]], cause: str) -> list[dict]:
     """Set values checked by check_values. Returns the reports."""
     import rule_states
-    return [rule_states.move(json_ops, name, holder, value, cause=cause, force=True)
-            if isinstance(value, str) else change(json_ops, name, holder, to=value, cause=cause)
-            for name, value in checked]
+    reports = []
+    for name, value in checked:
+        if isinstance(value, str):
+            reports.append(rule_states.move(json_ops, name, holder, value, cause=cause, force=True))
+        elif isinstance(value, dict):
+            reports += [change(json_ops, name, holder, to=v, axis=a, cause=cause)
+                        for a, v in value.items()]
+        else:
+            reports.append(change(json_ops, name, holder, to=value, cause=cause))
+    return reports
 
 
 def move_holder(json_ops, old: str, new: str) -> list[str]:
@@ -947,12 +1011,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="The world's own rules")
     sub = parser.add_subparsers(dest="action", required=True)
     sub.add_parser("list", help="every rule, and where it stands")
-    for action, words in (("show", "<rule> [holder]"), ("change", "<rule> [holder] +N|-N"),
-                          ("set", "<rule> [holder] N"), ("reveal", "<rule> [holder]"),
+    for action, words in (("show", "<rule> [holder]"),
+                          ("change", "<rule> [holder] +N|-N  (a plane: --axis <axis>)"),
+                          ("set", "<rule> [holder] N  (a plane: --axis; states: a state)"),
+                          ("reveal", "<rule> [holder]"),
                           ("hide", "<rule> [holder]"), ("break", "<rule> [holder]"),
                           ("move", "<rule> [holder] <state>"),
                           ("mark", "<rule> [holder] <the mark>")):
-        sub.add_parser(action, help=words).add_argument("words", nargs="+")
+        p = sub.add_parser(action, help=words)
+        p.add_argument("words", nargs="+")
+        if action in ("change", "set"):
+            p.add_argument("--axis")
     p = sub.add_parser("roll", help='<rule> [holder] [--with "<amount>"]...')
     p.add_argument("words", nargs="+")
     p.add_argument("--with", action="append", dest="named", default=[])
@@ -994,11 +1063,11 @@ def main() -> int:
         elif args.action in ("change", "set"):
             name, holder, value = _rule_and_holder(args.words, True)
             if args.action == "change":
-                report = change(ops, name, holder, by=_amount(value))
+                report = change(ops, name, holder, by=_amount(value), axis=args.axis)
             else:
                 if not value.lstrip("-").isdigit():
                     raise RulesError(f"A value is a whole number; got '{value}'.")
-                report = change(ops, name, holder, to=int(value))
+                report = change(ops, name, holder, to=int(value), axis=args.axis)
             emit(report, "\n".join(change_lines(ops, report)), json_mode)
         elif args.action == "roll":
             import rule_roll

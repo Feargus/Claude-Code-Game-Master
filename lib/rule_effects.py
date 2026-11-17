@@ -41,7 +41,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 KINDS = ("change", "rate_of", "state", "clock", "condition", "credits")
 LATER = {"tokens": 8}
-FIELDS = {"change": ("change", "by", "set", "of"),
+FIELDS = {"change": ("change", "axis", "by", "set", "of"),
           "rate_of": ("rate_of", "by", "of"),
           "state": ("state", "to", "of"),
           "clock": ("clock", "start", "advance", "text", "due_in", "on", "consequence"),
@@ -147,19 +147,23 @@ CHECKS = {"change": _check_change, "rate_of": _check_rate_of, "state": _check_st
           "condition": _check_condition, "credits": _check_credits}
 
 
-def effects_of(rule: dict[str, Any]):
-    """(result label, field, effect) for every effect of a rule."""
+def outcomes(rule: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    """(label, the dict that may carry effects) for each of a rule's outcomes: a
+    counter's or a roll's results, a plane's regions, a states rule's states."""
     from world_rules import label
+    if rule.get("block") == "plane":
+        return [(r.get("name"), r) for r in rule.get("regions") or []]
     if rule.get("block") == "states":
-        for name, state in (rule.get("states") or {}).items():
-            for field in ("effects", "when_off"):
-                for effect in state.get(field) or []:
-                    yield name, field, effect
-        return
-    for result in rule.get("results") or []:
+        return list((rule.get("states") or {}).items())
+    return [(label(rule, r), r) for r in rule.get("results") or []]
+
+
+def effects_of(rule: dict[str, Any]):
+    """(outcome label, field, effect) for every effect of a rule."""
+    for name, outcome in outcomes(rule):
         for field in ("effects", "when_off"):
-            for effect in result.get(field) or []:
-                yield label(rule, result), field, effect
+            for effect in outcome.get(field) or []:
+                yield name, field, effect
 
 
 def check_links(rules: list[dict[str, Any]], problems: list[str]) -> None:
@@ -194,12 +198,24 @@ def _link_add(rule, by_name, problems) -> None:
 
 
 def _link_change(effect, rule, target, where, problems) -> bool:
-    if target is None or target["block"] != "counter":
-        problems.append(f"{where}: no counter '{effect['change']}' to change")
+    if target is None or target["block"] not in ("counter", "plane"):
+        problems.append(f"{where}: no counter or plane '{effect['change']}' to change")
         return False
     if target["name"] == rule["name"] and "of" not in effect:
         problems.append(f"{where}: a result can't change its own rule")
-    low, high = target["range"]
+    if target["block"] == "plane":
+        axis = next((a for a in target["axes"] if a.lower() == str(effect.get("axis", "")).lower()), None)
+        if axis is None:
+            problems.append(f"{where}: {target['name']} is a plane: \"axis\" is one of "
+                            f"{', '.join(target['axes'])}")
+            return False
+        effect["axis"] = axis
+        low, high = target["axes"][axis]
+    elif "axis" in effect:
+        problems.append(f"{where}: {target['name']} has no axes")
+        return False
+    else:
+        low, high = target["range"]
     if "set" in effect and not low <= effect["set"] <= high:
         problems.append(f"{where}: {target['name']} goes from {low} to {high}, not {effect['set']}")
     return True
@@ -300,7 +316,8 @@ def _change(json_ops, effect, holder, chain, cause) -> dict[str, Any]:
         return {"line": f"stopped: {target['name']} of {world_rules.holder_name(json_ops, whose)} "
                         f"changed once already in this chain"}
     report = world_rules.change(json_ops, target["name"], whose, by=effect.get("by"),
-                                to=effect.get("set"), cause=cause, chain=chain)
+                                to=effect.get("set"), cause=cause, chain=chain,
+                                axis=effect.get("axis"))
     return {"line": "", "report": report}
 
 
@@ -415,6 +432,14 @@ def on_rule_target(json_ops, raw: str) -> tuple[str, str]:
             whose = world_rules.resolve_holder(json_ops, rule, holder.strip() or None)
             import rule_states
             return f"{rule['name']}:{rule_states._find_state(rule, value)}@{whose}", ""
+        if rule is not None and rule["block"] == "plane":
+            whose = world_rules.resolve_holder(json_ops, rule, holder.strip() or None)
+            region = next((r["name"] for r in rule["regions"]
+                           if r["name"].lower() == value.strip().lower()), None)
+            if region is None:
+                return "", (f"on_rule: {rule['name']} has no region '{value.strip()}'; its "
+                            f"regions: {', '.join(r['name'] for r in rule['regions'])}.")
+            return f"{rule['name']}:{region}@{whose}", ""
         if not sep or not value.strip().lstrip("-").isdigit():
             return "", (f"{usage} A states rule: \"<rule>:<state>\" (\"Addiction:hooked\"). "
                         f"Got '{text}'.")

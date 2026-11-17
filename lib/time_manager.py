@@ -175,8 +175,8 @@ def print_rule_changes(manager: "TimeManager") -> None:
     import world_rules
     import rule_states
     for report in manager.rule_changes:
-        show = rule_states.move_lines if "range" not in world_rules.find_rule(
-            manager.json_ops, report["rule"]) else world_rules.change_lines
+        block = world_rules.find_rule(manager.json_ops, report["rule"])["block"]
+        show = rule_states.move_lines if block == "states" else world_rules.change_lines
         print("\n".join(show(manager.json_ops, report)))
 
 
