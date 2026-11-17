@@ -39,11 +39,12 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-KINDS = ("change", "rate_of", "state", "clock", "condition", "credits")
-LATER = {"tokens": 8}
+KINDS = ("change", "rate_of", "state", "tokens", "clock", "condition", "credits")
+LATER: dict[str, int] = {}
 FIELDS = {"change": ("change", "axis", "by", "set", "of"),
           "rate_of": ("rate_of", "by", "of"),
           "state": ("state", "to", "of"),
+          "tokens": ("tokens", "add", "remove", "of"),
           "clock": ("clock", "start", "advance", "text", "due_in", "on", "consequence"),
           "condition": ("condition", "add"),
           "credits": ("credits",)}
@@ -136,6 +137,14 @@ def _check_state(effect) -> list[str]:
     return []
 
 
+def _check_tokens(effect) -> list[str]:
+    given = [f for f in ("add", "remove") if f in effect]
+    if len(given) != 1 or not isinstance(effect[given[0]], dict) or not effect[given[0]] or not all(
+            _is_int(n) and n > 0 for n in effect[given[0]].values()):
+        return ['a tokens effect has "add" or "remove": {"<kind>": N}, N 1 or more']
+    return []
+
+
 def _check_rate_of(effect) -> list[str]:
     if not _is_int(effect.get("by")) or effect["by"] == 0:
         return ['a rate_of effect has "by": N, the steps added to the rate (negative slows it)']
@@ -143,6 +152,7 @@ def _check_rate_of(effect) -> list[str]:
 
 
 CHECKS = {"change": _check_change, "rate_of": _check_rate_of, "state": _check_state,
+          "tokens": _check_tokens,
           "clock": _check_clock,
           "condition": _check_condition, "credits": _check_credits}
 
@@ -155,6 +165,9 @@ def outcomes(rule: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
         return [(r.get("name"), r) for r in rule.get("regions") or []]
     if rule.get("block") == "states":
         return list((rule.get("states") or {}).items())
+    if rule.get("block") == "bag":
+        results = rule.get("results")
+        return list(results.items()) if isinstance(results, dict) else []
     return [(label(rule, r), r) for r in rule.get("results") or []]
 
 
@@ -241,7 +254,22 @@ def _link_state(effect, rule, target, where, problems) -> bool:
     return True
 
 
-LINKS = {"change": _link_change, "rate_of": _link_rate_of, "state": _link_state}
+def _link_tokens(effect, rule, target, where, problems) -> bool:
+    if target is None or target["block"] != "bag":
+        problems.append(f"{where}: no bag '{effect['tokens']}' to add tokens to")
+        return False
+    field = "add" if "add" in effect else "remove"
+    kinds = {k.lower(): k for k in target["tokens"]}
+    unknown = [k for k in effect[field] if k.lower() not in kinds]
+    if unknown:
+        problems.append(f"{where}: {target['name']} has no tokens {', '.join(unknown)}")
+        return False
+    effect[field] = {kinds[k.lower()]: n for k, n in effect[field].items()}
+    return True
+
+
+LINKS = {"change": _link_change, "rate_of": _link_rate_of, "state": _link_state,
+         "tokens": _link_tokens}
 
 
 def _check_whose(effect, rule, target, where, problems) -> None:
@@ -263,7 +291,7 @@ def referring(rules: list[dict[str, Any]], name: str) -> list[str]:
     return [r["name"] for r in rules if r["name"] != name and (
         r.get("add") == name
         or any(e.get(kind_of(e)) == name for _, _, e in effects_of(r)
-               if kind_of(e) in ("change", "rate_of", "state")))]
+               if kind_of(e) in ("change", "rate_of", "state", "tokens")))]
 
 
 # ---------- running ----------
@@ -298,6 +326,8 @@ def run(json_ops, effect: dict[str, Any], holder: str, chain: dict[str, Any],
             return _rate_of(json_ops, effect, holder)
         if kind == "state":
             return _state(json_ops, effect, holder, chain, cause)
+        if kind == "tokens":
+            return _tokens(json_ops, effect, holder, cause)
         with contextlib.redirect_stdout(sys.stderr):    # the managers announce themselves
             if kind == "clock":
                 return _clock(json_ops, effect)
@@ -336,6 +366,24 @@ def _state(json_ops, effect, holder, chain, cause) -> dict[str, Any]:
     except world_rules.RulesError as error:
         return {"line": f"not done: {error}"}
     return {"line": "", "states_report": report}
+
+
+def _tokens(json_ops, effect, holder, cause) -> dict[str, Any]:
+    import rule_bag
+    import world_rules
+    target = world_rules.find_rule(json_ops, effect["tokens"])
+    whose = world_rules.resolve_holder(json_ops, target, effect["of"]) if "of" in effect else holder
+    field = "add" if "add" in effect else "remove"
+    sign = 1 if field == "add" else -1
+    parts, report = [], None
+    for kind, n in effect[field].items():
+        try:
+            report = rule_bag.put(json_ops, target["name"], whose, kind, sign * n, cause=cause)
+        except world_rules.RulesError as error:
+            return {"line": f"not done: {error}"}
+        parts.append(f"{sign * n:+d} {kind}")
+    return {"line": f"{target['name']} ({world_rules.holder_name(json_ops, whose)}): "
+                    f"{', '.join(parts)} (now {rule_bag.contents(report['after'])})"}
 
 
 def _rate_of(json_ops, effect, holder) -> dict[str, Any]:
@@ -432,6 +480,10 @@ def on_rule_target(json_ops, raw: str) -> tuple[str, str]:
             whose = world_rules.resolve_holder(json_ops, rule, holder.strip() or None)
             import rule_states
             return f"{rule['name']}:{rule_states._find_state(rule, value)}@{whose}", ""
+        if rule is not None and rule["block"] == "bag":
+            whose = world_rules.resolve_holder(json_ops, rule, holder.strip() or None)
+            import rule_bag
+            return f"{rule['name']}:{rule_bag._kind(rule, value)}@{whose}", ""
         if rule is not None and rule["block"] == "plane":
             whose = world_rules.resolve_holder(json_ops, rule, holder.strip() or None)
             region = next((r["name"] for r in rule["regions"]

@@ -53,7 +53,7 @@ Numbers are first guesses: play decides whether they are right.
 ## 3. The building blocks
 
 Built so far: **the counter** (with a rate, hysteresis, overflow and streaks),
-**states**, **the plane** and **the roll**, with results that act. The others (a roll, a plane, a bag, a budget,
+**states**, **the plane**, **the bag** and **the roll**, with results that act. The others (a roll, a plane, a bag, a budget,
 states, and the options rate, hysteresis, overflow and streak) come in later steps
 (rules-proposal.md in the campaign repo). Until then, model with counters, and put
 what a counter can't do into the rule's `notes`: the GM reads them in the brief.
@@ -341,6 +341,55 @@ Alignment, held by the character and NPCs:
 }
 ```
 
+### The bag: tokens drawn, and added to
+
+The odds are whatever is in the bag. Unlike a roll, a bag remembers: tokens kept out
+make the next draw different, and mistakes can add bad tokens, so the luck visibly
+runs out.
+
+```json
+{
+  "name": "The Job", "block": "bag", "held_by": ["world", "location"], "known": true,
+  "tokens": {"clean": 8, "trouble": 2}, "draw": "keep out",
+  "summary": "How far the crew's luck holds on a job. Each risky step draws a token; mistakes add trouble.",
+  "when": "Each risky step of a job (a door, a guard, a camera): draw. A failed roll on the job: put in a trouble token. A new job: refill.",
+  "results": {
+    "clean":   {"text": "The step goes as planned."},
+    "trouble": {"text": "Something goes wrong at this step.",
+                "gm": "An alarm, a guard off schedule, a door that won't open: pick what fits the step."}
+  },
+  "when_empty": "The luck has run out: the job goes loud now."
+}
+```
+
+- **`draw`**: `"keep out"` (a drawn token stays out until a `refill`) or `"put back"`.
+- **`results`**: one per kind of token; a drawn token's effects run, and `on_rule`
+  waits on a kind (`"The Melt:collapse"`).
+- **Commands:** `gm-rule.sh draw "The Job" [holder] [N]`, `put "The Job" [holder]
+  trouble 1`, `take ...`, `refill`. The effect `{"tokens": "The Job", "add":
+  {"trouble": 1}}` puts tokens in (or `"remove"`).
+- **`draw_every`**: the bag is drawn by itself as game time passes, once per period.
+- **`known`**: whether the player may know what is in the bag. A known bag is tension
+  the player can see; a hidden one is fate.
+
+The melt, drawn once a year by itself, changing the sea level's rate and feeding
+itself:
+
+```json
+{
+  "name": "The Melt", "block": "bag", "held_by": "world", "known": false,
+  "tokens": {"calm year": 6, "warm year": 3, "collapse": 1}, "draw": "put back", "draw_every": "360d",
+  "summary": "What each year does to the ice: most years little, some years much, and once in a while a shelf goes.",
+  "when": "Drawn by itself once a year of game time.",
+  "results": {
+    "calm year": {"text": "The sea keeps its pace."},
+    "warm year": {"text": "The sea rises faster this year.", "effects": [{"rate_of": "Sea level", "by": 1}]},
+    "collapse":  {"text": "An ice shelf goes: the sea jumps, and the melt feeds itself.",
+                  "effects": [{"change": "Sea level", "by": 2}, {"tokens": "The Melt", "add": {"collapse": 1}}]}
+  }
+}
+```
+
 ### The roll: dice, read once
 
 Nothing is kept: dice, plus or minus named amounts, read from a list of results. A
@@ -433,6 +482,7 @@ The effects, a fixed list:
 | the same with `"of": "<holder>"` | a gang's Patience at 0 raises the character's Heat: `{"change": "Heat", "by": 2, "of": "player"}` |
 | `{"rate_of": "<rule>", "by": N}` (`of` too) | a warm year: `{"rate_of": "Sea level", "by": 1}` |
 | `{"state": "<rule>", "to": "<state>"}` (`of` too; an allowed move only) | Need at 5: `{"state": "Addiction", "to": "hooked"}` |
+| `{"tokens": "<bag>", "add": {"<kind>": N}}` or `"remove"` (`of` too) | a failed roll on the job: `{"tokens": "The Job", "add": {"trouble": 1}}` |
 | `{"clock": "<name>", "start": N, "text": "...", "due_in": "3d"}` (`"on": "event"`, `"consequence": "..."` too) | Patience at 0 starts their retaliation |
 | `{"clock": "<name>", "advance": N}` | a rumour counter pushes an event clock on |
 | `{"condition": "<name>"}`, `"add": false` to remove | Panic on: the condition Panicked; off: removed |
@@ -498,6 +548,5 @@ what happens in the fiction.
 
 ## 5. Coming later
 
-The other blocks of the plan, for when they are built: **a bag** (tokens drawn, odds that change: a job's luck, the
-years of the melt), **a budget** (a fixed amount split: downtime days, a gang's
-soldiers). With the bag comes the effect `tokens` (add to a bag).
+The last block of the plan, for when it is built: **a budget** (a fixed amount split: downtime days, a gang's
+soldiers).

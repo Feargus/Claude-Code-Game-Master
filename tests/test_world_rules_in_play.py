@@ -135,8 +135,11 @@ def test_every_example_in_the_skill_is_a_rule_define_accepts(dcc_world):
     named = {e["name"] for e in examples}
     wanted = {e.get("add") for e in examples if e.get("add")}
     for e in examples:
-        for result in e.get("results") or []:
-            for effect in (result.get("effects") or []) + (result.get("when_off") or []):
+        results = e.get("results") or []
+        outcomes = (list(results.values()) if isinstance(results, dict) else list(results))
+        outcomes += list((e.get("states") or {}).values()) + list(e.get("regions") or [])
+        for outcome in outcomes:
+            for effect in (outcome.get("effects") or []) + (outcome.get("when_off") or []):
                 wanted |= {effect.get("change"), effect.get("rate_of")} - {None}
     stand_ins = [{"name": n, "block": "counter", "range": [-3, 10], "start": 0,
                   "held_by": ["player", "npc", "faction", "location", "world"],

@@ -104,6 +104,10 @@ def apply(json_ops, before: datetime | None, after: datetime) -> list[dict[str, 
         if rule["block"] == "plane":
             reports += _apply_plane(json_ops, rule, before, after)
             continue
+        if rule["block"] == "bag":
+            import rule_bag
+            reports += rule_bag.apply_time(json_ops, rule, before, after)
+            continue
         if rule["block"] != "counter" or not rule.get("rate"):
             continue
         state = world_rules.load_state(json_ops)

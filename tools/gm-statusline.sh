@@ -107,6 +107,8 @@ if [ -f "$CAMP/ruleset.json" ]; then
           | select(if ($e | has("known")) then $e.known
                    elif ($r | has("known")) then $r.known else true end)
           | if $r.block == "states" then "\($r.name): \($e.state // $r.start)"
+            elif $r.block == "bag" then "\($r.name): " + ([($e.tokens // $r.tokens)
+                | to_entries[] | "\(.value) \(.key)"] | join(" "))
             elif $r.block == "plane" then "\($r.name): " + (
               if (($e.on // []) | length) > 0 then ($e.on | join(", "))
               else ([($e.axes // $r.start) | to_entries[] | "\(.key) \(.value)"] | join(" ")) end)

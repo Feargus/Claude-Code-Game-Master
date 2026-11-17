@@ -7,6 +7,9 @@
 #   gm-rule.sh set "<rule>" [holder] N               a counter is set to a value
 #   gm-rule.sh roll "<rule>" [holder] [--with "<amount>"]...   a roll, read from its results
 #   gm-rule.sh move "<rule>" [holder] <state>        a states rule moves (set: any state)
+#   gm-rule.sh draw "<bag>" [holder] [N]             draw tokens from a bag
+#   gm-rule.sh put|take "<bag>" [holder] <kind> N    add tokens, or take them out
+#   gm-rule.sh refill "<bag>" [holder]               back to its first tokens
 #   gm-rule.sh reveal|hide "<rule>" [holder]         one holder's value becomes known or hidden
 #   gm-rule.sh break "<rule>" [holder]               a streak ends: back to its start
 #   gm-rule.sh mark "<rule>" [holder] "<mark>"       the lasting mark an overflow left
@@ -21,7 +24,7 @@
 source "$(dirname "$0")/common.sh"
 
 if [ "$#" -lt 1 ] || [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-    sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,23p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
 fi
 
