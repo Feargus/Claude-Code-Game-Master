@@ -65,12 +65,12 @@ def test_rules_are_defined_once_and_checked(ops):
     ({"start": 9}, "'start' must be a whole number from 0 to 6"),
     ({"summary": ""}, "'summary' must be a sentence"),
     ({"when": None}, "'when' must be a sentence"),
-    ({"rate": {"by": 1}}, "'rate' isn't built yet .* step 5"),
+    ({"rate": {"by": 1}}, "'rate' needs 'every'"),
     ({"colour": "red"}, "unknown field 'colour'; a counter has"),
     ({"results": [{"from": 9, "text": "x"}]}, "result 1 needs 'from'"),
     ({"results": [{"from": 2, "to": 1, "text": "x"}]}, "'to' must be"),
     ({"results": [{"from": 2}]}, "needs a 'text'"),
-    ({"results": [{"from": 2, "text": "x", "off_at": 0}]}, "'off_at' in result 1 isn't built yet"),
+    ({"results": [{"from": 2, "text": "x", "off_at": 2}]}, "'off_at' is where it goes off again"),
     ({"results": [{"from": 2, "text": "x"}, {"from": 2, "text": "y"}]}, "two results are from 2"),
 ])
 def test_a_wrong_rule_is_refused_with_the_reason(dcc_world, change, why):

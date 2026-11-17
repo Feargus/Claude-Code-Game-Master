@@ -127,6 +127,7 @@ class TimeManager:
         if self.campaign_dir is None:
             raise TimeError("No active campaign. Run /new-game or /import first.")
         self.json_ops = JsonOperations(str(self.campaign_dir))
+        self.rule_changes: list = []
 
     def get_game_time(self) -> datetime | None:
         return current_time(self.json_ops)
@@ -142,10 +143,19 @@ class TimeManager:
     def _update_clocks(self, moment: datetime) -> dict[str, dict]:
         return ThreatClockManager(self.world_state_dir).update_time_clocks(moment)
 
+    def _apply_rates(self, before, after) -> None:
+        """The world's rules with a rate move by the time passed (rule_time.py); what
+        they did is kept in `self.rule_changes` for the output."""
+        import rule_time
+        self.rule_changes = rule_time.apply(self.json_ops, before, after)
+
     def set_time(self, moment: datetime) -> dict[str, dict]:
         """Set the time outright. Returns the time clocks that moved."""
+        before = self.get_game_time()
         self._write(moment)
-        return self._update_clocks(moment)
+        moved = self._update_clocks(moment)
+        self._apply_rates(before, moment)
+        return moved
 
     def advance(self, minutes: int) -> dict[str, dict]:
         """Let time pass. Returns the time clocks that moved."""
@@ -155,7 +165,16 @@ class TimeManager:
                             "Set it once with: gm-time.sh set \"YYYY-MM-DD HH:MM\"")
         after = before + timedelta(minutes=minutes)
         self._write(after)
-        return self._update_clocks(after)
+        moved = self._update_clocks(after)
+        self._apply_rates(before, after)
+        return moved
+
+
+def print_rule_changes(manager: "TimeManager") -> None:
+    """What the world's rules did as time passed (their rates)."""
+    import world_rules
+    for report in manager.rule_changes:
+        print("\n".join(world_rules.change_lines(manager.json_ops, report)))
 
 
 def print_clocks(moved: dict[str, dict]) -> None:
@@ -179,10 +198,12 @@ def main(argv) -> int:
             moved = manager.advance(parse_duration(value))
             print(f"Time: {describe(manager.get_game_time())}")
             print_clocks(moved)
+            print_rule_changes(manager)
         elif action == "set" and value:
             moved = manager.set_time(parse_time(value))
             print(f"Time set: {describe(manager.get_game_time())}")
             print_clocks(moved)
+            print_rule_changes(manager)
         elif action == "show" and not value:
             moment = manager.get_game_time()
             print(f"Time: {describe(moment)}" if moment else

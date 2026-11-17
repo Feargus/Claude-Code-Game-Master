@@ -120,3 +120,29 @@ def test_the_hud_shows_known_values_only(tmp_path):
     (camp / "rule-state.json").write_text(json.dumps(
         {"player": {"Bleed": {"value": 5}, "Cascade": {"value": 2, "known": True}}}))
     assert "Bleed 5/6  Cascade 2/6" in hud()
+
+
+def test_every_example_in_the_skill_is_a_rule_define_accepts(dcc_world):
+    """The gm-rules skill teaches by example: each full rule in it must be accepted,
+    so the skill and the code can't drift apart. Rules the examples only name (an
+    effect's target, a roll's add) get a stand-in counter."""
+    import re
+    text = (ROOT / ".claude" / "skills" / "gm-rules" / "SKILL.md").read_text()
+    examples = [json.loads(b) for b in re.findall(r"```json\n(\{.*?\})\n```", text, re.S)]
+    # "Every rule" shows only the shared fields of Bleed; the counter's Bleed, later, is whole
+    examples = list({e["name"]: e for e in examples if "block" in e}.values())
+    assert len(examples) >= 10
+    named = {e["name"] for e in examples}
+    wanted = {e.get("add") for e in examples if e.get("add")}
+    for e in examples:
+        for result in e.get("results") or []:
+            for effect in (result.get("effects") or []) + (result.get("when_off") or []):
+                wanted |= {effect.get("change"), effect.get("rate_of")} - {None}
+    stand_ins = [{"name": n, "block": "counter", "range": [-3, 10], "start": 0,
+                  "held_by": ["player", "npc", "faction", "location", "world"],
+                  "rate": {"by": 1, "every": "1d"}, "summary": "A stand-in.", "when": "Never."}
+                 for n in sorted(wanted - named, key=str.lower)
+                 if n.lower() not in {x.lower() for x in named}]
+    ops = JsonOperations(str(Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"))
+    done = wr.define(ops, stand_ins + examples)
+    assert len(done) == len(stand_ins) + len(examples)

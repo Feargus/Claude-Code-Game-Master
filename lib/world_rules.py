@@ -19,7 +19,9 @@ facts write them (player, npc:<key>, location:<key>), plus `faction:<id>` (a fac
 of the world bible's factions graph, until factions have records) and `world`.
 
 Building blocks (rules-proposal.md in the campaign repo has the plan):
-    counter   one number in a range; results by range, cumulative unless `to` is given
+    counter   one number in a range; results by range, cumulative unless `to` is given;
+              options: a rate (rule_time.py), hysteresis (a result's `off_at`), overflow
+              (lasting marks), streak
     roll      dice plus named amounts (and a holder's value of a counter), read from a
               list of results; keeps nothing (rule_roll.py)
     plane, bag, budget, states: later steps
@@ -30,7 +32,8 @@ hidden (the GM sees it, the player only its signs; every output marks it).
     gm-rule.sh list | show "<rule>" [holder]
     gm-rule.sh change "<rule>" [holder] +N|-N   ·   set "<rule>" [holder] N
     gm-rule.sh roll "<rule>" [holder] [--with "<amount>"]...
-    gm-rule.sh reveal|hide "<rule>" [holder]
+    gm-rule.sh reveal|hide "<rule>" [holder]   ·   break "<rule>" [holder]
+    gm-rule.sh mark "<rule>" [holder] "<mark>"   ·   rate "<rule>" [holder] --by N [--every 90d]
     gm-rule.sh define <<'EOF' [...rules...] EOF   ·   plain <<'EOF' lines EOF   ·   remove "<rule>"
 """
 
@@ -52,11 +55,10 @@ HOLDER_KINDS = ("player", "npc", "faction", "location", "world")
 BLOCKS = ("counter", "roll")
 LATER_BLOCKS = {"states": 6, "plane": 7, "bag": 8, "budget": 9}
 COMMON_FIELDS = ("name", "block", "held_by", "known", "summary", "when", "notes")
-BLOCK_FIELDS = {"counter": ("range", "start", "results"),
+BLOCK_FIELDS = {"counter": ("range", "start", "results", "rate", "overflow", "streak"),
                 "roll": ("dice", "with", "add", "results")}
-RESULT_FIELDS = {"counter": ("from", "to", "text", "effects", "when_off", "gm")}
-LATER_FIELDS = {"rate": 5, "overflow": 5, "streak": 5,
-                "off_at": 5}
+RESULT_FIELDS = {"counter": ("from", "to", "off_at", "text", "effects", "when_off", "gm")}
+LATER_FIELDS: dict[str, int] = {}     # fields of a later step: "isn't built yet (step N)"
 MAX_NAME_WORDS = 3
 MAX_NAME_CHARS = 30
 HIDDEN = "[HIDDEN: show only its signs]"
@@ -166,6 +168,11 @@ def _check_counter(rule: dict, problems: list[str]) -> None:
             problems.append(f"result {number}: 'to' must be a whole number from "
                             f"{result['from']} to {high}")
             continue
+        if "off_at" in result and ("to" in result or not _is_int(result["off_at"])
+                                   or not low <= result["off_at"] < result["from"]):
+            problems.append(f"result {number}: 'off_at' is where it goes off again, a whole "
+                            f"number from {low} to {result['from'] - 1}, and not with 'to'")
+            continue
         if not isinstance(result.get("text"), str) or not result["text"].strip():
             problems.append(f"result {number} needs a 'text': what happens in the fiction")
             continue
@@ -176,6 +183,36 @@ def _check_counter(rule: dict, problems: list[str]) -> None:
         if label in labels:
             problems.append(f"two results are {label}: make them one")
         labels.append(label)
+
+
+def _check_counter_options(rule: dict, problems: list[str]) -> None:
+    """A counter's rate, overflow and streak."""
+    low, high = rule["range"]
+    if "rate" in rule:
+        import rule_time
+        problems += rule_time.check(rule["rate"], low, high)
+    ov = rule.get("overflow")
+    if ov is not None:
+        if not isinstance(ov, dict):
+            problems.append('\'overflow\' is {"at": N, "back_to": M, "marks": [...], '
+                            '"limit": K, "at_limit": "..."}')
+        else:
+            problems += [f"'overflow' has no '{k}'" for k in ov
+                         if k not in ("at", "back_to", "marks", "limit", "at_limit")]
+            if not _is_int(ov.get("at")) or not low < ov["at"] <= high:
+                problems.append(f"'overflow': 'at' is a whole number from {low + 1} to {high}")
+            elif not _is_int(ov.setdefault("back_to", low)) or not low <= ov["back_to"] < ov["at"]:
+                problems.append(f"'overflow': 'back_to' is a whole number from {low} to {ov['at'] - 1}")
+            if not isinstance(ov.setdefault("marks", []), list) or \
+                    not all(isinstance(m, str) and m.strip() for m in ov["marks"]):
+                problems.append("'overflow': 'marks' is a list of suggested marks")
+            if "limit" in ov and (not _is_int(ov["limit"]) or ov["limit"] < 1
+                                  or not isinstance(ov.get("at_limit"), str)
+                                  or not ov["at_limit"].strip()):
+                problems.append("'overflow': 'limit' is a number of marks (1 or more), with "
+                                "'at_limit', what happens then")
+    if not isinstance(rule.get("streak", False), bool):
+        problems.append("'streak' is true or false")
 
 
 def check_rule(raw: Any) -> dict[str, Any]:
@@ -207,6 +244,8 @@ def check_rule(raw: Any) -> dict[str, Any]:
     _text(rule, "notes", problems, required=False)
     if block == "counter":
         _check_counter(rule, problems)
+        if not problems:
+            _check_counter_options(rule, problems)
     elif block == "roll":
         import rule_roll
         rule_roll.check(rule, problems)
@@ -282,7 +321,7 @@ def _replace(old: dict[str, Any], rule: dict[str, Any], state: dict) -> dict[str
     for holder in holders:
         stored = state[holder][rule["name"]]
         stored["value"] = max(low, min(high, int(stored.get("value", rule["start"]))))
-        stored["on"] = results_on(rule, stored["value"])
+        stored["on"] = results_on(rule, stored["value"], stored.get("on") or ())
     return rule
 
 
@@ -413,11 +452,18 @@ def result_label(result: dict[str, Any]) -> str:
     return f"from {result['from']}"
 
 
-def results_on(rule: dict[str, Any], value: int) -> list[str]:
+def results_on(rule: dict[str, Any], value: int, before=()) -> list[str]:
     """The labels of the counter results that hold at `value`: each from its `from`
-    upward (cumulative), or only up to its `to`."""
-    return [result_label(r) for r in rule.get("results") or []
-            if r["from"] <= value and value <= r.get("to", value)]
+    upward (cumulative), or only up to its `to`. One with `off_at` (hysteresis), once
+    on (in `before`), stays on until the value falls to its `off_at`."""
+    on = []
+    for r in rule.get("results") or []:
+        label = result_label(r)
+        in_range = r["from"] <= value <= r.get("to", value)
+        held_on = "off_at" in r and label in before and value > r["off_at"]   # hysteresis
+        if in_range or held_on:
+            on.append(label)
+    return on
 
 
 def entry(json_ops, rule: dict[str, Any], holder: str, state=None) -> dict[str, Any]:
@@ -491,17 +537,25 @@ def change(json_ops, raw_rule, raw_holder=None, by: int | None = None,
         after = max(low, min(high, before + by))
     else:
         raise RulesError("Say how much: +N or -N, or set a value.")
+    stopped = by is not None and before + by != after
+    ov, overflow, reached = rule.get("overflow"), None, after
+    if ov and before < ov["at"] <= after:                 # a lasting mark, and back down
+        reached, after = ov["at"], ov["back_to"]
+        stored["marks_due"] = int(stored.get("marks_due", 0)) + 1
+        overflow = {"at": ov["at"], "back_to": after, "suggested": ov.get("marks") or [],
+                    "marks": list(stored.get("marks") or []), "due": stored["marks_due"]}
     old_on = list(stored.get("on") or results_on(rule, before))
-    new_on = results_on(rule, after)
+    new_on = results_on(rule, after, old_on)
     stored.update(value=after, on=new_on)
     now = _now_game(json_ops)
     if now:
         stored["since"] = now
     state.setdefault(holder, {})[rule["name"]] = stored
     save_state(json_ops, state)
-    _log(json_ops, holder, rule["name"], f"{before} -> {after}", cause)
+    path = f"{before} -> {reached} -> {after} (overflow)" if overflow else f"{before} -> {after}"
+    _log(json_ops, holder, rule["name"], path, cause)
     report = {"rule": rule["name"], "holder": holder, "before": before, "after": after,
-              "stopped": by is not None and before + by != after,
+              "stopped": stopped and not overflow, "overflow": overflow,
               "on": [r for r in new_on if r not in old_on],
               "off": [r for r in old_on if r not in new_on],
               "still": [r for r in new_on if r in old_on],
@@ -520,11 +574,48 @@ def change(json_ops, raw_rule, raw_holder=None, by: int | None = None,
             report["did"][label] = done
         if field == "effects" and result.get("gm"):
             report["gm"][label] = result["gm"]
-    report["fired"] = rule_effects.fire_on_rule(json_ops, rule["name"], holder, before, after,
+    report["fired"] = rule_effects.fire_on_rule(json_ops, rule["name"], holder, before, reached,
                                                 holder_name(json_ops, holder))
     if top:
         report["character"] = list(chain["character"])
     return report
+
+
+def mark(json_ops, raw_rule, raw_holder, text: str) -> dict[str, Any]:
+    """Record the lasting mark an overflow left (the GM picks one of the suggestions,
+    or writes one). Returns {rule, holder, mark, marks, at_limit (what happens now,
+    when the marks reach the limit, else '')}."""
+    rule = counter(json_ops, raw_rule)
+    ov = rule.get("overflow")
+    if not ov:
+        raise RulesError(f"{rule['name']} has no overflow, so it leaves no marks.")
+    holder = resolve_holder(json_ops, rule, raw_holder)
+    state = load_state(json_ops)
+    stored = dict(entry(json_ops, rule, holder, state))
+    if int(stored.get("marks_due", 0)) < 1:
+        raise RulesError(f"No mark is due: {rule['name']} leaves one each time it reaches "
+                         f"{ov['at']}.")
+    text = " ".join(str(text or "").split())
+    if not text:
+        raise RulesError("Say what the mark is, e.g. \"night terrors\".")
+    stored["marks"] = list(stored.get("marks") or []) + [text]
+    stored["marks_due"] = int(stored["marks_due"]) - 1
+    if not stored["marks_due"]:
+        del stored["marks_due"]
+    state.setdefault(holder, {})[rule["name"]] = stored
+    save_state(json_ops, state)
+    _log(json_ops, holder, rule["name"], f"mark: {text}", "command")
+    at_limit = ov.get("at_limit", "") if ov.get("limit") and len(stored["marks"]) >= ov["limit"] else ""
+    return {"rule": rule["name"], "holder": holder, "mark": text, "marks": stored["marks"],
+            "at_limit": at_limit}
+
+
+def break_streak(json_ops, raw_rule, raw_holder=None) -> dict[str, Any]:
+    """A failure ends a streak: back to its start."""
+    rule = counter(json_ops, raw_rule)
+    if not rule.get("streak"):
+        raise RulesError(f"{rule['name']} is no streak; to set it back: gm-rule.sh set.")
+    return change(json_ops, rule["name"], raw_holder, to=rule["start"], cause="the streak broke")
 
 
 def set_known(json_ops, raw_rule, raw_holder=None, known: bool = True) -> tuple[str, str]:
@@ -555,8 +646,17 @@ def change_lines(json_ops, report: dict[str, Any], indent: str = "") -> list[str
     top = ""
     if report["stopped"]:
         top = " (its highest)" if report["after"] == rule["range"][1] else " (its lowest)"
-    lines = [f"{indent}{rule['name']} ({who}): {report['before']} → {report['after']}{top}"
+    ov = report.get("overflow")
+    path = f"{report['before']} → {ov['at']} → {report['after']}" if ov else \
+        f"{report['before']} → {report['after']}"
+    lines = [f"{indent}{rule['name']} ({who}): {path}{top}"
              + ("" if report["known"] else f"  {HIDDEN}")]
+    if ov:
+        offer = f" Suggested: {'; '.join(ov['suggested'])}; or write one." if ov["suggested"] else ""
+        lines.append(f"{indent}  overflow at {ov['at']}, back to {ov['back_to']}: a lasting mark "
+                     f"is due.{offer} Then: gm-rule.sh mark \"{rule['name']}\""
+                     + ("" if rule["held_by"] in (["player"], ["world"]) else ' "<holder>"')
+                     + ' "<the mark>"')
     for kind, labels in (("now on", report["on"]), ("now off", report["off"]),
                          ("still on", report["still"])):
         for name in labels:
@@ -611,8 +711,10 @@ def rule_lines(json_ops, rule: dict[str, Any], holders=None) -> list[str]:
              f"  When: {rule['when']}"]
     if rule.get("notes"):
         lines.append(f"  Notes: {rule['notes']}")
+    lines += _option_lines(rule)
     for result in rule.get("results") or []:
-        lines.append(f"  {result_label(result)}: {result['text']}")
+        off = f" (off only at {result['off_at']})" if "off_at" in result else ""
+        lines.append(f"  {result_label(result)}{off}: {result['text']}")
     lines.append(command_line(rule))
     state = load_state(json_ops)
     if holders is None:
@@ -622,8 +724,39 @@ def rule_lines(json_ops, rule: dict[str, Any], holders=None) -> list[str]:
         stored = entry(json_ops, rule, holder, state)
         on = ", ".join(stored.get("on") or []) or "no result"
         mark = "" if is_known(rule, stored) else f" {HIDDEN}"
-        lines.append(f"  Now, {holder_name(json_ops, holder)}: {stored.get('value')} ({on}){mark}")
+        lines.append(f"  Now, {holder_name(json_ops, holder)}: {stored.get('value')} ({on})"
+                     f"{_extras(stored)}{mark}")
     return lines
+
+
+def _option_lines(rule: dict[str, Any]) -> list[str]:
+    """A counter's rate, overflow and streak, in words."""
+    lines = []
+    if rule.get("rate"):
+        import rule_time
+        lines.append(f"  Rate: {rule_time.describe(rule['rate'])}, by itself as game time passes.")
+    ov = rule.get("overflow")
+    if ov:
+        marks = f" (e.g. {'; '.join(ov['marks'])})" if ov.get("marks") else ""
+        limit = f" At {ov['limit']} marks: {ov['at_limit']}" if ov.get("limit") else ""
+        lines.append(f"  Overflow at {ov['at']}: back to {ov['back_to']}, and a lasting mark"
+                     f"{marks}.{limit}")
+    if rule.get("streak"):
+        lines.append(f"  Streak: a failure breaks it (gm-rule.sh break \"{rule['name']}\").")
+    return lines
+
+
+def _extras(stored: dict[str, Any]) -> str:
+    """A holder's marks, marks due and own rate, after its value."""
+    parts = []
+    if stored.get("marks"):
+        parts.append(f"marks: {'; '.join(stored['marks'])}")
+    if stored.get("marks_due"):
+        parts.append(f"{stored['marks_due']} mark due")
+    if stored.get("rate"):
+        import rule_time
+        parts.append(f"its own rate: {rule_time.describe(stored['rate'])}")
+    return f"; {', '.join(parts)}" if parts else ""
 
 
 def command_line(rule: dict[str, Any]) -> str:
@@ -665,7 +798,7 @@ def holder_lines(json_ops, holder: str) -> list[str]:
         on = [f"{label}: {_result(rule, label)['text']}" for label in stored.get("on") or []]
         mark = "" if is_known(rule, stored) else f" {HIDDEN}"
         lines.append(f"{rule['name']} {stored.get('value')} ({rule['block']} {low}–{high}): "
-                     + ("; ".join(on) or "no result") + mark)
+                     + ("; ".join(on) or "no result") + _extras(stored) + mark)
     return lines
 
 
@@ -768,11 +901,16 @@ def main() -> int:
     sub.add_parser("list", help="every rule, and where it stands")
     for action, words in (("show", "<rule> [holder]"), ("change", "<rule> [holder] +N|-N"),
                           ("set", "<rule> [holder] N"), ("reveal", "<rule> [holder]"),
-                          ("hide", "<rule> [holder]")):
+                          ("hide", "<rule> [holder]"), ("break", "<rule> [holder]"),
+                          ("mark", "<rule> [holder] <the mark>")):
         sub.add_parser(action, help=words).add_argument("words", nargs="+")
     p = sub.add_parser("roll", help='<rule> [holder] [--with "<amount>"]...')
     p.add_argument("words", nargs="+")
     p.add_argument("--with", action="append", dest="named", default=[])
+    p = sub.add_parser("rate", help="<rule> [holder] --by N [--every 90d]")
+    p.add_argument("words", nargs="+")
+    p.add_argument("--by", type=int)
+    p.add_argument("--every")
     sub.add_parser("define", help="add or replace rules: the JSON list after the command")
     sub.add_parser("plain", help="the plain rule lines, one per line, after the command")
     sub.add_parser("remove", help="remove a rule and its values").add_argument("rule")
@@ -812,6 +950,29 @@ def main() -> int:
             name, holder, _ = _rule_and_holder(args.words, False)
             report = rule_roll.roll(ops, name, holder, args.named)
             emit(report, "\n".join(rule_roll.roll_lines(ops, report)), json_mode)
+        elif args.action == "break":
+            name, holder, _ = _rule_and_holder(args.words, False)
+            report = break_streak(ops, name, holder)
+            emit(report, "\n".join(change_lines(ops, report)), json_mode)
+        elif args.action == "mark":
+            name, holder, text = _rule_and_holder(args.words, True)
+            done = mark(ops, name, holder, text)
+            message = f"[SUCCESS] {done['rule']} ({holder_name(ops, done['holder'])}): marks " \
+                      f"{'; '.join(done['marks'])}"
+            if done["at_limit"]:
+                message += f"\nDo now: {done['at_limit']}"
+            emit(done, message, json_mode)
+        elif args.action == "rate":
+            import rule_time
+            name, holder, _ = _rule_and_holder(args.words, False)
+            if args.by is None and args.every is None:
+                raise RulesError("Give the new rate: --by N, and/or --every <time>.")
+            old, new = rule_time.set_rate(ops, name, holder, by=args.by, every=args.every)
+            rule = find_rule(ops, name)
+            who = holder_name(ops, resolve_holder(ops, rule, holder))
+            emit({"before": old, "after": new},
+                 f"[SUCCESS] {rule['name']} ({who}): rate {rule_time.describe(old)} → "
+                 f"{rule_time.describe(new)}", json_mode)
         elif args.action in ("reveal", "hide"):
             name, holder, _ = _rule_and_holder(args.words, False)
             rule, who = set_known(ops, name, holder, known=args.action == "reveal")

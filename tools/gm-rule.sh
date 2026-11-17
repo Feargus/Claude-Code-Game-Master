@@ -7,6 +7,9 @@
 #   gm-rule.sh set "<rule>" [holder] N               a counter is set to a value
 #   gm-rule.sh roll "<rule>" [holder] [--with "<amount>"]...   a roll, read from its results
 #   gm-rule.sh reveal|hide "<rule>" [holder]         one holder's value becomes known or hidden
+#   gm-rule.sh break "<rule>" [holder]               a streak ends: back to its start
+#   gm-rule.sh mark "<rule>" [holder] "<mark>"       the lasting mark an overflow left
+#   gm-rule.sh rate "<rule>" [holder] --by N [--every 90d]   one holder's own rate
 #   gm-rule.sh define <<'EOF' [...] EOF              add or replace rules (a JSON list)
 #   gm-rule.sh plain <<'EOF' lines EOF               the plain rule lines (no mechanic)
 #   gm-rule.sh remove "<rule>"                       remove a rule and its values
@@ -17,7 +20,7 @@
 source "$(dirname "$0")/common.sh"
 
 if [ "$#" -lt 1 ] || [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-    sed -n '3,16p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,19p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
 fi
 
