@@ -20,15 +20,21 @@ character. In play the brief shows each rule in full (YOUR WORLD'S RULES), and
 While the player talks about the world, listen for something play will touch
 often and that the repo's rules don't already cover:
 
-- **A pressure that grows:** a debt, a sickness, a city's fear of the character,
-  the water rising. A counter.
-- **Something that wears down and comes back:** patience, nerve, heat from the law.
-  A counter, with a rate if it comes back by itself.
-- **A price for power:** what sorcery, a deep lease or a forbidden implant costs.
-- **Two things pulling against each other:** chrome against what ties you to
-  people; law against freedom.
-- **Luck that runs out as things go wrong; never enough time or soldiers for
-  everything; a condition with stages and no way back.**
+| You hear | The block (§3) | Examples |
+|---|---|---|
+| a pressure that grows, a thing that wears down | **counter** | a debt, a city's fear, heat from the law, the water rising |
+| ... and it moves by itself as time passes | counter with a **rate** | the sea rises a season at a time; patience comes back |
+| ... and it can tip over and stays tipped a while | counter with **hysteresis** | panic that lifts only when calm returns; a riot |
+| ... and it leaves scars when it fills | counter with **overflow** | stress that breaks into a phobia; a scandal that costs a board seat |
+| a run of luck that one failure ends | counter with a **streak** | momentum in a chase; a fighter's unbeaten run |
+| a price, a first reaction, a trap: decided once, by chance | **roll** | what sorcery costs; how a gang meets a stranger; a cursed hoard |
+| stages with a way in and, perhaps, no way back | **states** | addiction; a corporation's alert; a contact's trust |
+| two things that only matter together | **plane** | chrome against what ties you to people; law against good |
+| luck that runs out as things go wrong | **bag** | a job's luck; the years of the melt |
+| never enough time or people for everything | **budget** | a week of downtime; a gang's soldiers |
+
+Prefer the simplest block that does the job: most rules are counters. Two separate
+counters are better than a plane unless the combination matters.
 
 A rule must matter in many scenes. Scenery is not a rule: the city's architecture
 belongs in the bible, prices in a plain rule line (§4).
@@ -42,22 +48,29 @@ attitude, who knows what is facts. A rule adds to these and never replaces one.
 Suggest **one to three** rules, each in one plain sentence, with what it adds to
 play:
 
-> "The water level could be a counter for the whole world, 0 to 10: at 3 the Lower
-> Docks flood at every tide, at 6 the ring road goes under. It rises when the GM
-> says a storm hits."
+> "The water level could be a counter for the whole world, 0 to 10, rising a step
+> every season: at 3 the Lower Docks flood at every tide, at 6 the ring road goes
+> under."
+
+> "Each job could have a bag of luck, eight clean tokens and two trouble: every risky
+> step draws one, and every failed roll puts another trouble in."
 
 The player picks, changes or drops them; you can offer two ways of modelling the
-same thing. Show the chosen ones with the bible for approval, with their numbers.
+same thing. One rule that links to another (a warm year speeds up the sea, a lease
+raises Bleed) makes a world feel alive; more than a link or two makes it hard to
+follow. Show the chosen ones with the bible for approval, with their numbers.
 Numbers are first guesses: play decides whether they are right.
 
 ## 3. The building blocks
 
 Six blocks: **the counter** (one number, with a rate, hysteresis, overflow or a
-streak), **states**, **the plane**, **the bag**, **the budget** and **the roll**, and
+streak), **the roll**, **states**, **the plane**, **the bag** and **the budget**, and
 results that act. What no block can say goes into the rule's `notes`: the GM reads
 them in the brief.
 
-### Every rule
+### Every rule: the shared fields
+
+Every rule has these, whatever its block (the block's own fields follow below):
 
 ```json
 {
@@ -227,6 +240,75 @@ Momentum +1`, a failure `gm-rule.sh break Momentum` (back to its start).
 
 A pit fighter's unbeaten run, held by NPCs: `"Unbeaten"`, `"streak": true`, `{"from":
 5, "text": "The crowd chants their name; the bookies stop taking bets on them."}`.
+
+### The roll: dice, read once
+
+Nothing is kept: dice, plus or minus named amounts, read from a list of results. A
+price for power, a first reaction, a guarded treasure. `held_by` says whose rules its
+effects change (and whose `add` value counts).
+
+```json
+{
+  "name": "The Lease", "block": "roll", "held_by": "player",
+  "summary": "Leasing your mind costs something; the deeper the lease, the worse the odds.",
+  "when": "Whenever the character leases their mind: a night in a Sleepery, a deep lease for a job, a run through the Mesh.",
+  "dice": "1d20",
+  "with": {"ordinary night": 0, "deep lease": -2, "Mesh run": -4, "dreaming Mesh": -6},
+  "results": [
+    {"from": 15, "text": "Clean: rested-ish, paid, nothing extra."},
+    {"from": 10, "text": "+1 Bleed.", "effects": [{"change": "Bleed", "by": 1}]},
+    {"from": 5, "text": "+1 Bleed, and a stranger's memory or skill-flash comes back with them.",
+     "effects": [{"change": "Bleed", "by": 1}], "gm": "Invent the memory; it may matter."},
+    {"text": "+2 Bleed, and one of the character's own memories is gone.",
+     "effects": [{"change": "Bleed", "by": 2}], "gm": "Pick one that matters; record it as a fact."}
+  ]
+}
+```
+
+- **`dice`**: what to roll, `"1d20"`, `"2d6"`, `"3d6"`.
+- **`with`**: named amounts the GM picks at each roll
+  (`gm-rule.sh roll "The Lease" --with "deep lease"`, several allowed). Name them for
+  the fiction, never as bare numbers: the GM picks a situation, not a modifier.
+- **`results`**: the highest `from` the total reaches applies; one result without
+  `from` catches everything below. Effects run every time the result is rolled.
+
+A reaction shifted by a value: **`add`** adds the holder's value of a counter.
+
+```json
+{
+  "name": "Street welcome", "block": "roll", "held_by": "faction",
+  "summary": "How a gang's people meet the character, before anyone has said a word.",
+  "when": "The first time in a scene that the character deals with a gang's members.",
+  "dice": "2d6", "add": "Respect",
+  "results": [
+    {"from": 11, "text": "Friendly: they make room, offer a drink, maybe a tip."},
+    {"from": 8, "text": "Neutral: business, if the character has some."},
+    {"from": 5, "text": "Wary: hands near weapons, short answers, someone sent for the boss."},
+    {"text": "Hostile: they want the character gone, or worse."}
+  ]
+}
+```
+
+A guarded treasure, held by a place:
+
+```json
+{
+  "name": "The Drowned Vault", "block": "roll", "held_by": "location",
+  "summary": "The old bank's vault under the floodwater: rich, and not unguarded.",
+  "when": "Before anyone takes something from the vault.",
+  "dice": "1d20",
+  "results": [
+    {"from": 15, "text": "Clean: they get away with it."},
+    {"from": 8, "text": "The guardian wakes: the vault's old security drone comes on line.",
+     "gm": "Start the fight: gm-combat.sh."},
+    {"text": "The curse attaches: the stolen bonds carry a tracker, and their owners will come.",
+     "effects": [{"clock": "Bond hunters", "start": 4, "text": "The bonds' owners trace them", "due_in": "1w"}]}
+  ]
+}
+```
+
+A roll is not a skill contest: an action someone takes is always `gm-skills`. A roll
+is for what the world exacts or decides by itself: a price, a reaction, a curse.
 
 ### States: named stages, and the moves between them
 
@@ -432,75 +514,6 @@ A gang's soldiers, held by factions, refilled every week:
 }
 ```
 
-### The roll: dice, read once
-
-Nothing is kept: dice, plus or minus named amounts, read from a list of results. A
-price for power, a first reaction, a guarded treasure. `held_by` says whose rules its
-effects change (and whose `add` value counts).
-
-```json
-{
-  "name": "The Lease", "block": "roll", "held_by": "player",
-  "summary": "Leasing your mind costs something; the deeper the lease, the worse the odds.",
-  "when": "Whenever the character leases their mind: a night in a Sleepery, a deep lease for a job, a run through the Mesh.",
-  "dice": "1d20",
-  "with": {"ordinary night": 0, "deep lease": -2, "Mesh run": -4, "dreaming Mesh": -6},
-  "results": [
-    {"from": 15, "text": "Clean: rested-ish, paid, nothing extra."},
-    {"from": 10, "text": "+1 Bleed.", "effects": [{"change": "Bleed", "by": 1}]},
-    {"from": 5, "text": "+1 Bleed, and a stranger's memory or skill-flash comes back with them.",
-     "effects": [{"change": "Bleed", "by": 1}], "gm": "Invent the memory; it may matter."},
-    {"text": "+2 Bleed, and one of the character's own memories is gone.",
-     "effects": [{"change": "Bleed", "by": 2}], "gm": "Pick one that matters; record it as a fact."}
-  ]
-}
-```
-
-- **`dice`**: what to roll, `"1d20"`, `"2d6"`, `"3d6"`.
-- **`with`**: named amounts the GM picks at each roll
-  (`gm-rule.sh roll "The Lease" --with "deep lease"`, several allowed). Name them for
-  the fiction, never as bare numbers: the GM picks a situation, not a modifier.
-- **`results`**: the highest `from` the total reaches applies; one result without
-  `from` catches everything below. Effects run every time the result is rolled.
-
-A reaction shifted by a value: **`add`** adds the holder's value of a counter.
-
-```json
-{
-  "name": "Street welcome", "block": "roll", "held_by": "faction",
-  "summary": "How a gang's people meet the character, before anyone has said a word.",
-  "when": "The first time in a scene that the character deals with a gang's members.",
-  "dice": "2d6", "add": "Respect",
-  "results": [
-    {"from": 11, "text": "Friendly: they make room, offer a drink, maybe a tip."},
-    {"from": 8, "text": "Neutral: business, if the character has some."},
-    {"from": 5, "text": "Wary: hands near weapons, short answers, someone sent for the boss."},
-    {"text": "Hostile: they want the character gone, or worse."}
-  ]
-}
-```
-
-A guarded treasure, held by a place:
-
-```json
-{
-  "name": "The Drowned Vault", "block": "roll", "held_by": "location",
-  "summary": "The old bank's vault under the floodwater: rich, and not unguarded.",
-  "when": "Before anyone takes something from the vault.",
-  "dice": "1d20",
-  "results": [
-    {"from": 15, "text": "Clean: they get away with it."},
-    {"from": 8, "text": "The guardian wakes: the vault's old security drone comes on line.",
-     "gm": "Start the fight: gm-combat.sh."},
-    {"text": "The curse attaches: the stolen bonds carry a tracker, and their owners will come.",
-     "effects": [{"clock": "Bond hunters", "start": 4, "text": "The bonds' owners trace them", "due_in": "1w"}]}
-  ]
-}
-```
-
-A roll is not a skill contest: an action someone takes is always `gm-skills`. A roll
-is for what the world exacts or decides by itself: a price, a reaction, a curse.
-
 ### Results that act
 
 A result can do more than tell the GM what happens: it can carry **effects**, which
@@ -580,11 +593,25 @@ An ordinary night's lease pays about 4 zeds; rent in the Middens is about 3 a ni
 EOF
 ```
 
-**Starting values** other than the `start`: the world's and the factions' now
-(`gm-rule.sh set "Patience" "faction:lull" 3`), the character's in the interview
-(`"rules": {"Bleed": 1}` in `/create-character`'s JSON).
+**Starting values** other than the `start`:
+- the world's and the factions' now: `gm-rule.sh set "Patience" "faction:lull" 3`;
+  a state: `set "Alert" "faction:lull" watching`; a plane: `set "Humanity" 3 --axis
+  Chrome`; a bag's tokens: `put` and `take`. A faction's rule with a rate starts
+  moving with its first value, so set it here if it should move from the start.
+- the character's in the interview, at the top of `/create-character`'s JSON:
+  `"rules": {"Bleed": 1, "Addiction": "user", "Humanity": {"Chrome": 3}}` (a counter,
+  a state, a plane's axes; a bag held by the character: `{"clean": 5}`, its tokens).
 
-**Check** with `bash tools/gm-rule.sh list`: that is what the brief will show. Every
-rule needs a `when` that says what changes it, and every result a text that says
-what happens in the fiction.
+**Check** with `bash tools/gm-rule.sh list`: that is what the brief will show.
+
+## 5. Before the player approves
+
+- Every rule has a `when` that says what changes it, in the fiction's terms.
+- Every result, state, region, token and part has a `text` that says what happens
+  in the fiction, not only a number.
+- Effects do only what is mechanical; deaths, facts, wounds and arrivals are a `gm`
+  line or a consequence.
+- Hidden rules are hidden for a reason: the player should feel their signs.
+- One to three rules, each touching play often; prices and customs are plain lines.
+- The numbers are first guesses: say so, and let play correct them.
 
