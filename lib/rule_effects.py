@@ -132,11 +132,11 @@ CHECKS = {"change": _check_change, "clock": _check_clock, "condition": _check_co
 
 def effects_of(rule: dict[str, Any]):
     """(result label, field, effect) for every effect of a rule."""
-    from world_rules import result_label
+    from world_rules import label
     for result in rule.get("results") or []:
         for field in ("effects", "when_off"):
             for effect in result.get(field) or []:
-                yield result_label(result), field, effect
+                yield label(rule, result), field, effect
 
 
 def check_links(rules: list[dict[str, Any]], problems: list[str]) -> None:
@@ -144,13 +144,23 @@ def check_links(rules: list[dict[str, Any]], problems: list[str]) -> None:
     the same holder (or `of` names one), and not its own rule."""
     by_name = {r["name"].lower(): r for r in rules}
     for rule in rules:
+        if rule.get("add"):                                   # a roll adds a counter's value
+            added = by_name.get(str(rule["add"]).lower())
+            if added is None or added["block"] != "counter":
+                problems.append(f"{rule['name']}: 'add' names no counter ('{rule['add']}')")
+            elif not set(rule["held_by"]) <= set(added["held_by"]):
+                problems.append(f"{rule['name']}: 'add': {added['name']} is held by "
+                                f"{', '.join(added['held_by'])}, not by every holder of "
+                                f"{rule['name']}")
+            else:
+                rule["add"] = added["name"]
         for label, field, effect in effects_of(rule):
             if kind_of(effect) != "change":
                 continue
             where = f"{rule['name']}, result {label}, {field}"
             target = by_name.get(str(effect["change"]).lower())
-            if target is None:
-                problems.append(f"{where}: no rule '{effect['change']}' to change")
+            if target is None or target["block"] != "counter":
+                problems.append(f"{where}: no counter '{effect['change']}' to change")
                 continue
             effect["change"] = target["name"]
             if target["name"] == rule["name"] and "of" not in effect:
@@ -307,7 +317,7 @@ def on_rule_target(json_ops, raw: str) -> tuple[str, str]:
     if not sep or not value.strip().lstrip("-").isdigit():
         return "", f"{usage} Got '{text}'."
     try:
-        rule = world_rules.find_rule(json_ops, name)
+        rule = world_rules.counter(json_ops, name)
         whose = world_rules.resolve_holder(json_ops, rule, holder.strip() or None)
     except world_rules.RulesError as error:
         return "", f"on_rule: {error}"

@@ -5,6 +5,7 @@ description: A campaign's own mechanics (Bleed, a sea level, a gang's patience) 
 sources:
   - { resource: /lib/world_rules.py }
   - { resource: /lib/rule_effects.py }
+  - { resource: /lib/rule_roll.py }
   - { resource: /tools/gm-rule.sh }
   - { resource: /.claude/skills/gm-rules/SKILL.md }
 ---
@@ -50,7 +51,9 @@ a note.
 ## Building blocks
 
 Built: the **counter** (a number in a range; results by range, cumulative unless they
-have a `to`). Planned: rolls, rates, hysteresis, overflow, streaks, states, planes,
+have a `to`) and the **roll** (`lib/rule_roll.py`: dice plus named amounts and
+optionally a counter's value, read from results by `from`; keeps nothing, logs the
+roll). Planned: rates, hysteresis, overflow, streaks, states, planes,
 bags and budgets.
 
 ## Results that act (`lib/rule_effects.py`)

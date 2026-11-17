@@ -5,6 +5,7 @@
 #   gm-rule.sh show "<rule>" [holder]                one rule in full
 #   gm-rule.sh change "<rule>" [holder] +N|-N        a counter goes up or down
 #   gm-rule.sh set "<rule>" [holder] N               a counter is set to a value
+#   gm-rule.sh roll "<rule>" [holder] [--with "<amount>"]...   a roll, read from its results
 #   gm-rule.sh reveal|hide "<rule>" [holder]         one holder's value becomes known or hidden
 #   gm-rule.sh define <<'EOF' [...] EOF              add or replace rules (a JSON list)
 #   gm-rule.sh plain <<'EOF' lines EOF               the plain rule lines (no mechanic)
@@ -16,7 +17,7 @@
 source "$(dirname "$0")/common.sh"
 
 if [ "$#" -lt 1 ] || [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-    sed -n '3,15p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,16p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
 fi
 

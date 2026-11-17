@@ -101,6 +101,7 @@ if [ -f "$CAMP/ruleset.json" ]; then
       ((.[0].rules // []) | map(select(type == "object"))) as $rules
       | ((.[1] // {}).player // {}) as $mine
       | [ $rules[]
+          | select(has("range"))                       # counters: rolls keep nothing
           | select((.held_by | if type == "array" then . else [.] end) | index("player"))
           | . as $r | ($mine[$r.name] // {}) as $e
           | select(if ($e | has("known")) then $e.known

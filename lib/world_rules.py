@@ -20,13 +20,16 @@ of the world bible's factions graph, until factions have records) and `world`.
 
 Building blocks (rules-proposal.md in the campaign repo has the plan):
     counter   one number in a range; results by range, cumulative unless `to` is given
-    roll, plane, bag, budget, states: later steps
+    roll      dice plus named amounts (and a holder's value of a counter), read from a
+              list of results; keeps nothing (rule_roll.py)
+    plane, bag, budget, states: later steps
 
 A value is known (the default: the HUD may show it, the narration make it plain) or
 hidden (the GM sees it, the player only its signs; every output marks it).
 
     gm-rule.sh list | show "<rule>" [holder]
     gm-rule.sh change "<rule>" [holder] +N|-N   ·   set "<rule>" [holder] N
+    gm-rule.sh roll "<rule>" [holder] [--with "<amount>"]...
     gm-rule.sh reveal|hide "<rule>" [holder]
     gm-rule.sh define <<'EOF' [...rules...] EOF   ·   plain <<'EOF' lines EOF   ·   remove "<rule>"
 """
@@ -46,10 +49,11 @@ LOG = "rules.log"
 BIBLE = "world-bible.json"
 
 HOLDER_KINDS = ("player", "npc", "faction", "location", "world")
-BLOCKS = ("counter",)
-LATER_BLOCKS = {"roll": 4, "states": 6, "plane": 7, "bag": 8, "budget": 9}
+BLOCKS = ("counter", "roll")
+LATER_BLOCKS = {"states": 6, "plane": 7, "bag": 8, "budget": 9}
 COMMON_FIELDS = ("name", "block", "held_by", "known", "summary", "when", "notes")
-BLOCK_FIELDS = {"counter": ("range", "start", "results")}
+BLOCK_FIELDS = {"counter": ("range", "start", "results"),
+                "roll": ("dice", "with", "add", "results")}
 RESULT_FIELDS = {"counter": ("from", "to", "text", "effects", "when_off", "gm")}
 LATER_FIELDS = {"rate": 5, "overflow": 5, "streak": 5,
                 "off_at": 5}
@@ -203,6 +207,9 @@ def check_rule(raw: Any) -> dict[str, Any]:
     _text(rule, "notes", problems, required=False)
     if block == "counter":
         _check_counter(rule, problems)
+    elif block == "roll":
+        import rule_roll
+        rule_roll.check(rule, problems)
     if problems:
         raise RulesError(f"{rule['name']}: " + "; ".join(problems) + ".")
     return rule
@@ -269,6 +276,8 @@ def _replace(old: dict[str, Any], rule: dict[str, Any], state: dict) -> dict[str
                          f"Remove it first (gm-rule.sh remove), or give the new rule "
                          f"another name. Nothing was saved.")
     rule["name"] = old["name"]                                     # the key stays as it was
+    if rule["block"] != "counter":
+        return rule
     low, high = rule["range"]
     for holder in holders:
         stored = state[holder][rule["name"]]
@@ -424,8 +433,26 @@ def is_known(rule: dict[str, Any], stored: dict[str, Any]) -> bool:
     return bool(stored.get("known", rule.get("known", True)))
 
 
-def _result(rule, label) -> dict[str, Any]:
-    return next(r for r in rule.get("results") or [] if result_label(r) == label)
+def label(rule: dict[str, Any], result: dict[str, Any]) -> str:
+    """How a result of `rule` is named, whatever the block."""
+    if rule["block"] == "roll":
+        import rule_roll
+        return rule_roll.label(result, rule["results"])
+    return result_label(result)
+
+
+def _result(rule, name) -> dict[str, Any]:
+    return next(r for r in rule.get("results") or [] if label(rule, r) == name)
+
+
+def counter(json_ops, raw) -> dict[str, Any]:
+    """The rule `raw` names, which must be a counter (it has a value to change)."""
+    rule = find_rule(json_ops, raw)
+    if rule["block"] != "counter":
+        how = (f'gm-rule.sh roll "{rule["name"]}"' if rule["block"] == "roll"
+               else f'gm-rule.sh show "{rule["name"]}"')
+        raise RulesError(f"{rule['name']} is a {rule['block']}: it has no value to change ({how}).")
+    return rule
 
 
 def _now_game(json_ops) -> str:
@@ -450,7 +477,7 @@ def change(json_ops, raw_rule, raw_holder=None, by: int | None = None,
     part of), then the on_rule consequences fire. Returns what happened:
     {rule, holder, before, after, stopped, on, off, still, known, did, gm, fired,
     character (what changed on the character, for the whole chain)}."""
-    rule = find_rule(json_ops, raw_rule)
+    rule = counter(json_ops, raw_rule)
     holder = resolve_holder(json_ops, rule, raw_holder)
     low, high = rule["range"]
     state = load_state(json_ops)
@@ -502,7 +529,7 @@ def change(json_ops, raw_rule, raw_holder=None, by: int | None = None,
 
 def set_known(json_ops, raw_rule, raw_holder=None, known: bool = True) -> tuple[str, str]:
     """Make one holder's value known (`reveal`) or hidden (`hide`)."""
-    rule = find_rule(json_ops, raw_rule)
+    rule = counter(json_ops, raw_rule)
     holder = resolve_holder(json_ops, rule, raw_holder)
     state = load_state(json_ops)
     stored = dict(entry(json_ops, rule, holder, state))
@@ -532,21 +559,29 @@ def change_lines(json_ops, report: dict[str, Any], indent: str = "") -> list[str
              + ("" if report["known"] else f"  {HIDDEN}")]
     for kind, labels in (("now on", report["on"]), ("now off", report["off"]),
                          ("still on", report["still"])):
-        for label in labels:
-            lines.append(f"{indent}  {kind + ':':9s} {label}: {_result(rule, label)['text']}")
-            for done in (report.get("did") or {}).get(label, []):
-                if done.get("report"):
-                    nested = change_lines(json_ops, done["report"], indent + "      ")
-                    nested[0] = f"{indent}    → {nested[0].lstrip()}"
-                    lines += nested
-                if done.get("line"):
-                    lines.append(f"{indent}    → {done['line']}")
-                lines += _fired_lines(done.get("fired"), indent + "    ")
-            if kind == "now on" and (report.get("gm") or {}).get(label):
-                lines.append(f"{indent}    Do now: {report['gm'][label]}")
+        for name in labels:
+            lines.append(f"{indent}  {kind + ':':9s} {name}: {_result(rule, name)['text']}")
+            lines += done_lines(json_ops, (report.get("did") or {}).get(name, []), indent)
+            if kind == "now on" and (report.get("gm") or {}).get(name):
+                lines.append(f"{indent}    Do now: {report['gm'][name]}")
     lines += _fired_lines(report.get("fired"), indent + "  ")
     if report.get("character"):
         lines.append(f"{indent}Changed on the character: {'; '.join(report['character'])}.")
+    return lines
+
+
+def done_lines(json_ops, done: list[dict[str, Any]], indent: str) -> list[str]:
+    """What a result's effects did, under it: a change they made (indented, with its
+    own results), or a line, and the consequences they fired."""
+    lines = []
+    for one in done:
+        if one.get("report"):
+            nested = change_lines(json_ops, one["report"], indent + "      ")
+            nested[0] = f"{indent}    → {nested[0].lstrip()}"
+            lines += nested
+        if one.get("line"):
+            lines.append(f"{indent}    → {one['line']}")
+        lines += _fired_lines(one.get("fired"), indent + "    ")
     return lines
 
 
@@ -566,6 +601,9 @@ def rule_lines(json_ops, rule: dict[str, Any], holders=None) -> list[str]:
     """A rule in full: what it is, its words, its results, and where it stands for
     `holders` (default: every holder with a value, plus the player or the world when
     they hold it)."""
+    if rule["block"] == "roll":
+        import rule_roll
+        return rule_roll.rule_lines(rule)
     low, high = rule["range"]
     hidden = "" if rule.get("known", True) else f"; {HIDDEN}"
     lines = [f"{rule['name']} ({rule['block']} {low}–{high}, held by {_kinds(rule)}{hidden}): "
@@ -601,6 +639,9 @@ def brief_lines(json_ops) -> list[str]:
     lines = [f"- {line}" for line in plain_rules(json_ops)]
     state = load_state(json_ops)
     for rule in rules(json_ops):
+        if rule["block"] != "counter":
+            lines += rule_lines(json_ops, rule)
+            continue
         holders = [h for h in ("player", "world") if h in rule["held_by"]]
         holders += sorted(h for h, values in state.items()
                           if h.startswith("faction:") and rule["name"] in values)
@@ -618,7 +659,7 @@ def holder_lines(json_ops, holder: str) -> list[str]:
     state = load_state(json_ops)
     for rule in rules(json_ops):
         stored = (state.get(holder) or {}).get(rule["name"])
-        if not stored:
+        if not stored or rule["block"] != "counter":
             continue
         low, high = rule["range"]
         on = [f"{label}: {_result(rule, label)['text']}" for label in stored.get("on") or []]
@@ -633,7 +674,7 @@ def summary(json_ops, holder: str = "player") -> str:
     parts = []
     state = load_state(json_ops)
     for rule in rules(json_ops):
-        if holder.partition(":")[0] not in rule["held_by"]:
+        if holder.partition(":")[0] not in rule["held_by"] or rule["block"] != "counter":
             continue
         stored = entry(json_ops, rule, holder, state)
         hidden = "" if is_known(rule, stored) else " (hidden)"
@@ -650,7 +691,7 @@ def check_values(json_ops, holder: str, given: Any) -> list[tuple[str, int]]:
         raise RulesError('The rules\' starting values are an object: {"Bleed": 2}.')
     checked = []
     for raw, value in given.items():
-        rule = find_rule(json_ops, raw)
+        rule = counter(json_ops, raw)
         if holder.partition(":")[0] not in rule["held_by"]:
             raise RulesError(f"{rule['name']} is held by {_kinds(rule)}, not by {holder}.")
         low, high = rule["range"]
@@ -729,6 +770,9 @@ def main() -> int:
                           ("set", "<rule> [holder] N"), ("reveal", "<rule> [holder]"),
                           ("hide", "<rule> [holder]")):
         sub.add_parser(action, help=words).add_argument("words", nargs="+")
+    p = sub.add_parser("roll", help='<rule> [holder] [--with "<amount>"]...')
+    p.add_argument("words", nargs="+")
+    p.add_argument("--with", action="append", dest="named", default=[])
     sub.add_parser("define", help="add or replace rules: the JSON list after the command")
     sub.add_parser("plain", help="the plain rule lines, one per line, after the command")
     sub.add_parser("remove", help="remove a rule and its values").add_argument("rule")
@@ -763,6 +807,11 @@ def main() -> int:
                     raise RulesError(f"A value is a whole number; got '{value}'.")
                 report = change(ops, name, holder, to=int(value))
             emit(report, "\n".join(change_lines(ops, report)), json_mode)
+        elif args.action == "roll":
+            import rule_roll
+            name, holder, _ = _rule_and_holder(args.words, False)
+            report = rule_roll.roll(ops, name, holder, args.named)
+            emit(report, "\n".join(rule_roll.roll_lines(ops, report)), json_mode)
         elif args.action in ("reveal", "hide"):
             name, holder, _ = _rule_and_holder(args.words, False)
             rule, who = set_known(ops, name, holder, known=args.action == "reveal")

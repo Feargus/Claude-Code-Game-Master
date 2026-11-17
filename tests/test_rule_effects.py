@@ -62,7 +62,7 @@ def _character(ops):
     ([{"clock": "X"}], 'a clock effect has "start": N segments or "advance": N'),
     ([{"clock": "X", "start": 2, "due_in": "soon"}], "due_in:"),
     ([{"credits": 0}], 'a credits effect is "credits": N'),
-    ([{"change": "Nothing", "by": 1}], "no rule 'Nothing' to change"),
+    ([{"change": "Nothing", "by": 1}], "no counter 'Nothing' to change"),
     ([{"change": "Stress", "by": 1}], "a result can't change its own rule"),
     ([{"change": "Panic", "set": 9}], "Panic goes from 0 to 6, not 9"),
     ([{"change": "Patience", "by": -1}], "name whose with \"of\""),

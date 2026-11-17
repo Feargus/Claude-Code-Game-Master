@@ -52,7 +52,7 @@ Numbers are first guesses: play decides whether they are right.
 
 ## 3. The building blocks
 
-Built so far: **the counter**, with results that act. The others (a roll, a plane, a bag, a budget,
+Built so far: **the counter** and **the roll**, with results that act. The others (a roll, a plane, a bag, a budget,
 states, and the options rate, hysteresis, overflow and streak) come in later steps
 (rules-proposal.md in the campaign repo). Until then, model with counters, and put
 what a counter can't do into the rule's `notes`: the GM reads them in the brief.
@@ -168,6 +168,75 @@ An implant's hidden flaw, held by the character, revealed when a clinic scans it
 }
 ```
 
+### The roll: dice, read once
+
+Nothing is kept: dice, plus or minus named amounts, read from a list of results. A
+price for power, a first reaction, a guarded treasure. `held_by` says whose rules its
+effects change (and whose `add` value counts).
+
+```json
+{
+  "name": "The Lease", "block": "roll", "held_by": "player",
+  "summary": "Leasing your mind costs something; the deeper the lease, the worse the odds.",
+  "when": "Whenever the character leases their mind: a night in a Sleepery, a deep lease for a job, a run through the Mesh.",
+  "dice": "1d20",
+  "with": {"ordinary night": 0, "deep lease": -2, "Mesh run": -4, "dreaming Mesh": -6},
+  "results": [
+    {"from": 15, "text": "Clean: rested-ish, paid, nothing extra."},
+    {"from": 10, "text": "+1 Bleed.", "effects": [{"change": "Bleed", "by": 1}]},
+    {"from": 5, "text": "+1 Bleed, and a stranger's memory or skill-flash comes back with them.",
+     "effects": [{"change": "Bleed", "by": 1}], "gm": "Invent the memory; it may matter."},
+    {"text": "+2 Bleed, and one of the character's own memories is gone.",
+     "effects": [{"change": "Bleed", "by": 2}], "gm": "Pick one that matters; record it as a fact."}
+  ]
+}
+```
+
+- **`dice`**: what to roll, `"1d20"`, `"2d6"`, `"3d6"`.
+- **`with`**: named amounts the GM picks at each roll
+  (`gm-rule.sh roll "The Lease" --with "deep lease"`, several allowed). Name them for
+  the fiction, never as bare numbers: the GM picks a situation, not a modifier.
+- **`results`**: the highest `from` the total reaches applies; one result without
+  `from` catches everything below. Effects run every time the result is rolled.
+
+A reaction shifted by a value: **`add`** adds the holder's value of a counter.
+
+```json
+{
+  "name": "Street welcome", "block": "roll", "held_by": "faction",
+  "summary": "How a gang's people meet the character, before anyone has said a word.",
+  "when": "The first time in a scene that the character deals with a gang's members.",
+  "dice": "2d6", "add": "Respect",
+  "results": [
+    {"from": 11, "text": "Friendly: they make room, offer a drink, maybe a tip."},
+    {"from": 8, "text": "Neutral: business, if the character has some."},
+    {"from": 5, "text": "Wary: hands near weapons, short answers, someone sent for the boss."},
+    {"text": "Hostile: they want the character gone, or worse."}
+  ]
+}
+```
+
+A guarded treasure, held by a place:
+
+```json
+{
+  "name": "The Drowned Vault", "block": "roll", "held_by": "location",
+  "summary": "The old bank's vault under the floodwater: rich, and not unguarded.",
+  "when": "Before anyone takes something from the vault.",
+  "dice": "1d20",
+  "results": [
+    {"from": 15, "text": "Clean: they get away with it."},
+    {"from": 8, "text": "The guardian wakes: the vault's old security drone comes on line.",
+     "gm": "Start the fight: gm-combat.sh."},
+    {"text": "The curse attaches: the stolen bonds carry a tracker, and their owners will come.",
+     "effects": [{"clock": "Bond hunters", "start": 4, "text": "The bonds' owners trace them", "due_in": "1w"}]}
+  ]
+}
+```
+
+A roll is not a skill contest: an action someone takes is always `gm-skills`. A roll
+is for what the world exacts or decides by itself: a price, a reaction, a curse.
+
 ### Results that act
 
 A result can do more than tell the GM what happens: it can carry **effects**, which
@@ -253,9 +322,7 @@ what happens in the fiction.
 
 ## 5. Coming later
 
-The other blocks of the plan, for when they are built: **a roll** (dice plus or
-minus named amounts, read from a table: a price for power, a first reaction, a
-guarded treasure), **a plane** (two values read together: chrome against anchor,
+The other blocks of the plan, for when they are built: **a plane** (two values read together: chrome against anchor,
 law against good), **a bag** (tokens drawn, odds that change: a job's luck, the
 years of the melt), **a budget** (a fixed amount split: downtime days, a gang's
 soldiers), **states** (named stages with allowed moves: addiction, a corporation's
