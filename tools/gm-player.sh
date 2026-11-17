@@ -23,7 +23,7 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/new_character.py" "$@"
         ;;
 
-    "show"|"get"|"set"|"alias"|"xp"|"award"|"grow"|"level-check"|"raise"|"perk"|"vital"|"kill"|"credits"|"item"|"loot"|"condition")
+    "show"|"get"|"set"|"alias"|"xp"|"award"|"grow"|"level-check"|"raise"|"perk"|"kill"|"credits"|"item"|"loot"|"condition")
         $PYTHON_CMD "$LIB_DIR/player_manager.py" "$ACTION" "$@"
         ;;
 
@@ -43,7 +43,6 @@ case "$ACTION" in
         echo "  loot --credits X --items \"A\" \"B\"  - into the inventory, plus credits"
         echo "  credits [+N|-N]              - show or change credits"
         echo "  condition add|remove|list [<condition>]  (or gm-condition.sh)"
-        echo "  vital <counter> [+/-N | set N] - the campaign's own counters (Drift, ...)"
         echo "  award --size small|medium|large --reason \"...\" - XP for an achievement"
         echo "  grow --attribute A --skill S --skill T --perk \"Name\" \"Effect\" - growth that is due (gm-growth)"
         echo "  level-check                  - XP, level, growth due"

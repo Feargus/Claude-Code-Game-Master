@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """The player character's sheet (character.json, in sheet.py's format): show it,
-change its fields, items, credits, counters and conditions, XP and growth, death.
+change its fields, items, credits and conditions, XP and growth, death. (The
+world's own rules, Bleed and the like, are world_rules.py: gm-rule.sh.)
 
 Creation is new_character.py; wounds, armor and cyberware are body.py.
 A campaign has one player character, so no command takes a name: they all work
@@ -23,8 +24,6 @@ class PlayerManager(EntityManager):
 
     def __init__(self, world_state_dir: str = None):
         super().__init__(world_state_dir)
-        self._kit_base = world_state_dir
-        self._kit = None
         self.character_file = self.campaign_dir / "character.json"
 
     # ---------- loading ----------
@@ -41,12 +40,6 @@ class PlayerManager(EntityManager):
         if not char:
             print("[ERROR] No character yet. Create one: gm-player.sh create")
         return char
-
-    def world_kit(self):
-        if self._kit is None:
-            from world_kit import WorldKit
-            self._kit = WorldKit(self._kit_base)
-        return self._kit
 
     @staticmethod
     def _refuse(message: str) -> dict[str, Any]:
@@ -66,7 +59,10 @@ class PlayerManager(EntityManager):
         line = (f"{sheet_mod.name(char)}" + (f" - {who}" if who else "")
                 + f" - Level {level(char)} (Wounds: {wound_summary(char)}, "
                   f"Credits: {sheet_mod.get(char, 'possessions', 'credits', 0)})")
-        line += self._counters_summary(char)
+        import world_rules
+        rules = world_rules.summary(self.json_ops)
+        if rules:
+            line += f" | {rules}"
         if sheet_mod.is_dead(char):
             line += " | DEAD"
         if sheet_mod.conditions(char):
@@ -271,63 +267,6 @@ class PlayerManager(EntityManager):
             print(f"GROWTH_DUE {growth_due(char)} more level(s): run grow again with new choices.")
         return {'success': True, 'level': level(char), 'changes': changes}
 
-    # ---------- the campaign's own counters (stats.counters) ----------
-
-    def _kit_vitals(self) -> list[str]:
-        return [v for v in self.world_kit().vitals() if v != 'hp']
-
-    @staticmethod
-    def _read_counter(char: dict, name: str):
-        raw = (sheet_mod.get(char, "stats", "counters") or {}).get(name)
-        if isinstance(raw, dict):
-            return raw.get('current', 0), raw.get('max')
-        if isinstance(raw, (int, float)):
-            return raw, None
-        return 0, None
-
-    def _counters_summary(self, char: dict) -> str:
-        parts = []
-        for name in (sheet_mod.get(char, "stats", "counters") or {}):
-            current, maximum = self._read_counter(char, name)
-            parts.append(f"{name.capitalize()}: " + (f"{current}/{maximum}" if maximum is not None
-                                                     else f"{current}"))
-        return f" | {' | '.join(parts)}" if parts else ""
-
-    def modify_vital(self, vital: str, amount: int | None = None,
-                     set_value: int | None = None) -> dict[str, Any]:
-        """Read or change one of the campaign's counters (its ruleset's vitals)."""
-        if vital == 'hp':
-            return self._refuse("HP isn't used. Wounds go through gm-body.sh.")
-        declared = self._kit_vitals()
-        if vital not in declared:
-            return self._refuse(f"'{vital}' is not a counter in this world. "
-                                f"Declared: {', '.join(declared) if declared else '(none)'}")
-        char = self._sheet()
-        if not char:
-            return {'success': False}
-        char_name = sheet_mod.name(char)
-        current, maximum = self._read_counter(char, vital)
-        if amount is None and set_value is None:
-            print(f"{char_name} - {vital}: " + (f"{current}/{maximum}" if maximum is not None
-                                               else f"{current}"))
-            return {'success': True, 'name': char_name, 'vital': vital,
-                    'current': current, 'max': maximum}
-        new_value = max(0, set_value if set_value is not None else current + amount)
-        if maximum is not None:
-            new_value = min(new_value, maximum)
-        counters = sheet_mod.section(char, "stats").setdefault("counters", {})
-        if isinstance(counters.get(vital), dict):
-            counters[vital]['current'] = new_value
-        else:
-            counters[vital] = new_value
-        if not self._save_character(char):
-            return {'success': False}
-        print(f"VITAL {char_name} {vital}: {current} -> {new_value}")
-        print(f"{vital.capitalize()}: " + (f"{new_value}/{maximum}" if maximum is not None
-                                          else f"{new_value}"))
-        return {'success': True, 'name': char_name, 'vital': vital, 'previous': current,
-                'current': new_value, 'max': maximum}
-
     # ---------- death ----------
 
     def kill_character(self, cause: str | None = None) -> dict[str, Any]:
@@ -486,17 +425,6 @@ class PlayerManager(EntityManager):
         return {'success': True, 'name': char_name, 'conditions': conditions}
 
 
-def _parse_vital_change(args):
-    """(amount, set_value) for `vital <name> [<+/-N> | set N]`. Both None = read only."""
-    if args.amount is None:
-        return None, None
-    if args.amount.lower() == 'set':
-        if args.value is None:
-            raise ValueError("set requires a value")
-        return None, int(args.value)
-    return int(args.amount.lstrip('+')), None
-
-
 def _int(text: str, what: str) -> int:
     try:
         return int(str(text).replace('+', ''))
@@ -540,10 +468,6 @@ def main():
     p.add_argument('perk')
     p.add_argument('function')
 
-    p = sub.add_parser('vital', help="Read or change one of the campaign's counters")
-    p.add_argument('vital')
-    p.add_argument('amount', nargs='?')
-    p.add_argument('value', nargs='?')
     p = sub.add_parser('kill', help='The player character dies')
     p.add_argument('--cause')
 
@@ -578,17 +502,11 @@ def main():
         else:
             print(json.dumps(char, indent=2, ensure_ascii=False))
         return
-    if json_mode and args.action in ('vital', 'kill', 'award'):
+    if json_mode and args.action in ('kill', 'award'):
         import contextlib
         import io
         with contextlib.redirect_stdout(io.StringIO()):
-            if args.action == 'vital':
-                try:
-                    amount, set_value = _parse_vital_change(args)
-                except ValueError:
-                    sys.exit(emit_error(f"invalid amount: {args.amount}", json_mode=True))
-                result = manager.modify_vital(args.vital, amount, set_value)
-            elif args.action == 'kill':
+            if args.action == 'kill':
                 result = manager.kill_character(args.cause)
             else:
                 result = manager.award(args.size, args.reason)
@@ -620,13 +538,6 @@ def main():
         result = manager.raise_stat(args.kind, args.target)
     elif args.action == 'perk':
         result = manager.set_perk(args.perk, args.function)
-    elif args.action == 'vital':
-        try:
-            amount, set_value = _parse_vital_change(args)
-        except ValueError:
-            print(f"[ERROR] Invalid amount: {args.amount} {args.value or ''}".rstrip())
-            sys.exit(1)
-        result = manager.modify_vital(args.vital, amount, set_value)
     elif args.action == 'kill':
         result = manager.kill_character(args.cause)
         if result.get('success'):

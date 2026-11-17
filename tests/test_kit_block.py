@@ -1,4 +1,5 @@
-"""KIT block in scene context; signature_systems render; campaign_rules fallback."""
+"""The KIT block in the brief, and what the World Kit reads (the world's own rules
+are world_rules.py: tests/test_world_rules_in_play.py)."""
 
 import json
 
@@ -32,58 +33,7 @@ def test_dcc_context_kit_block(dcc_world):
     kit = _kit_section(ctx)
     assert "kit:" not in kit
     assert "progression" not in kit      # growth is the same for every campaign
-    assert "vitals: (none)" in kit  # hp is never a vital: wounds replaced it
-
-
-def test_signature_systems_list_appear_in_world_rules(tmp_path):
-    world = _world(tmp_path, "tide", {
-        "name": "Tideworld",
-        "kit": "custom",
-        "progression": {"model": "milestone"},
-        "signature_systems": [
-            {"name": "Tide-oaths", "summary": "every spell is a debt the sea collects"},
-        ],
-    }, overview={"name": "tide", "campaign_rules": {"legacy_flavor": "should not win"}})
-    ctx = SessionManager(world).get_full_context()
-    assert "YOUR WORLD'S RULES" in ctx
-    assert "Tide-oaths" in ctx
-    assert "every spell is a debt the sea collects" in ctx
-    assert "legacy_flavor" not in ctx
-
-
-def test_signature_systems_dict_appear_in_world_rules(tmp_path):
-    world = _world(tmp_path, "hyborian", {
-        "name": "The Hyborian Age",
-        "kit": "hyborian",
-        "progression": {"model": "milestone"},
-        "signature_systems": {
-            "Blood-priced sorcery": "Casting costs HP; no spell slots",
-        },
-    })
-    ctx = SessionManager(world).get_full_context()
-    assert "YOUR WORLD'S RULES" in ctx
-    assert "Blood-priced sorcery" in ctx
-    assert "Casting costs HP" in ctx
-
-
-def test_campaign_rules_fallback_when_no_signature_systems(tmp_path):
-    world = _world(tmp_path, "legacy", {
-        "name": "Old World",
-        "kit": "custom",
-        "progression": {"model": "milestone"},
-    }, overview={
-        "name": "legacy",
-        "campaign_rules": {"loot_box_system": "award a distinctive zzyzx box"},
-    })
-    ctx = SessionManager(world).get_full_context()
-    assert "YOUR WORLD'S RULES" in ctx
-    assert "loot_box_system" in ctx
-    assert "zzyzx" in ctx
-
-
-def test_dcc_still_renders_campaign_rules(dcc_world):
-    ctx = SessionManager(dcc_world).get_full_context()
-    assert "loot_box_system" in ctx
+    assert "vitals" not in kit       # gone: the world's own rules are world_rules.py
 
 
 def test_kit_block_skipped_when_worldkit_fails(dcc_world, monkeypatch):
@@ -97,7 +47,6 @@ def test_kit_block_skipped_when_worldkit_fails(dcc_world, monkeypatch):
     ctx = SessionManager(dcc_world).get_full_context()
     assert "--- KIT ---" not in ctx
     assert "SESSION CONTEXT" in ctx
-    assert "loot_box_system" in ctx  # campaign_rules fallback still renders
 
 
 # --- WorldKit accessors ------------------------------------------------------
@@ -105,40 +54,6 @@ def test_kit_block_skipped_when_worldkit_fails(dcc_world, monkeypatch):
 def test_worldkit_accepts_dcc_world_dir(dcc_world):
     kit = WorldKit(dcc_world)
     assert kit.skills() == []
-    assert kit.signature_systems() == []
-
-
-def test_signature_systems_normalizes_dict_form(tmp_path):
-    world = _world(tmp_path, "conan", {
-        "name": "The Hyborian Age",
-        "signature_systems": {
-            "Steel before sorcery": "mundane steel always works",
-            "Blood-priced sorcery": {
-                "summary": "casting costs HP",
-                "rules": "no Vancian slots",
-            },
-        },
-    })
-    systems = WorldKit(world).signature_systems()
-    by_name = {s["name"]: s for s in systems}
-    assert by_name["Steel before sorcery"]["summary"] == "mundane steel always works"
-    assert by_name["Blood-priced sorcery"]["summary"] == "casting costs HP"
-    assert by_name["Blood-priced sorcery"]["rules"] == "no Vancian slots"
-
-
-def test_signature_systems_normalizes_list_form(tmp_path):
-    world = _world(tmp_path, "listy", {
-        "name": "List World",
-        "signature_systems": [
-            {"name": "Tide-oaths", "summary": "debt the sea collects", "rules": "pay or drown"},
-            "loot boxes",
-        ],
-    })
-    systems = WorldKit(world).signature_systems()
-    assert systems[0]["name"] == "Tide-oaths"
-    assert systems[0]["summary"] == "debt the sea collects"
-    assert systems[0]["rules"] == "pay or drown"
-    assert systems[1] == {"name": "loot boxes", "summary": "loot boxes"}
 
 
 def test_skills_from_list_or_empty(tmp_path):
@@ -150,7 +65,7 @@ def test_skills_from_list_or_empty(tmp_path):
 
 
 def test_a_campaign_without_a_ruleset_plays_the_standard_rules(tmp_path):
-    """A one-shot has no ruleset.json: it gets no extra counters and the canon skills."""
+    """A one-shot has no ruleset.json: it gets no rules of its own and the canon skills."""
     ws = tmp_path / "world-state"
     camp = ws / "campaigns" / "solo"
     camp.mkdir(parents=True)
@@ -158,9 +73,10 @@ def test_a_campaign_without_a_ruleset_plays_the_standard_rules(tmp_path):
     (camp / "campaign-overview.json").write_text('{"campaign_name": "Solo"}')
     from lib.world_kit import WorldKit
     kit = WorldKit(str(ws))
-    assert (kit.name(), kit.vitals()) == ("Standard rules", [])
-    block = _kit_section(SessionManager(str(ws)).get_full_context())
-    assert "vitals: (none)" in block
+    assert kit.name() == "Standard rules"
+    brief = SessionManager(str(ws)).get_full_context()
+    assert "YOUR WORLD'S RULES" not in brief
+    block = _kit_section(brief)
     assert "skills: the standard list (gm-skills)" in block
 
 

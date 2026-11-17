@@ -34,7 +34,7 @@ is named in `world-state/active-campaign.txt`.
 
 ```
 <campaign-name>/
-├── campaign-overview.json   # Campaign settings, player position, campaign_rules
+├── campaign-overview.json   # Campaign settings, player position
 ├── character.json           # Player character sheet (FLAT shape)
 ├── npcs.json                # All NPCs
 ├── locations.json           # All locations
@@ -42,9 +42,10 @@ is named in `world-state/active-campaign.txt`.
 ├── plots.json               # Plot hooks and quests
 ├── items.json               # Items (from imports)
 ├── consequences.json        # Pending/resolved events + firing provenance
-├── ruleset.json             # World Kit — how this world plays
-├── world-bible.json         # Fidelity spine (voice, factions, geography, systems)
-├── rules.md                 # Optional long-form rules prose (ruleset.rules_doc)
+├── ruleset.json             # World Kit — how this world plays, with its own rules
+├── rule-state.json          # Where the world's own rules stand, per holder (world_rules.py)
+├── rules.log                # Every change of those values; per machine, not in git
+├── world-bible.json         # Fidelity spine (voice, factions, geography)
 ├── session-log.md           # Session history — the canonical ledger
 ├── threat-clocks.json       # Named pressure clocks (optional)
 ├── embeddings.npz           # Vectors for recall by meaning; derived, not in git (embedding_store.py)
@@ -86,11 +87,6 @@ Most of these are created lazily — a campaign that has never been illustrated 
   "current_character": "string (character name)",
   "session_count": 0,
 
-  "campaign_rules": {
-    "description": "…runs on its own systems — follow them exactly.",
-    "signature_systems": ["the book's distinctive mechanics"],
-    "tone": "string"
-  },
   "story_spine": {"arc": ["ordered plot names"], "through_line": "string"},
   "preferences": {"action_menu": true, "rag_inspiration": false},
   "scene": {"location": "string", "present": ["NPC keys in the scene"]},
@@ -98,11 +94,8 @@ Most of these are created lazily — a campaign that has never been illustrated 
 }
 ```
 
-**`campaign_rules` is the block that reaches the model verbatim and untruncated** every
-beat — it is where a world's signature systems must live to have any effect. Putting them
-in `ruleset.json` instead is a silent no-op for narration. See
-[game core and World Kit](modules/game-core-and-world-kit.md). Worlds are free to add
-their own keys here (the shipped DCC fixture carries `viewer_stats`, `pending_boxes`, and
+The world's own rules are not here: they are `ruleset.json`'s (see below). Worlds are
+free to add their own keys here (the shipped DCC fixture carries `viewer_stats`, `pending_boxes`, and
 `pending_interview_topics`).
 
 **The opening leaves no record of its own** except `opened`: `gm-session.sh opening`
@@ -541,9 +534,9 @@ See [the player character sheet](modules/player-character.md).
 }
 ```
 
-`xp` accepts a bare integer and is normalized to `{current, next_level}` on load. Kit
-vitals a schema has never heard of (`water`, `heat`, `corruption`) live at the top level
-and survive the flat↔open round trip.
+`xp` accepts a bare integer and is normalized to `{current, next_level}` on load. The
+world's own rules (Bleed, a sea level) are not on the sheet: their values are in
+`rule-state.json`.
 
 ---
 
@@ -593,7 +586,7 @@ items otherwise stay mixed in — do not treat a legacy save as a whole-world re
     "chronicler.json": {},
     "world-tick-log.json": {},
     "combat_state.json": {},
-    "rules.md": "text...",
+    "rule-state.json": {},
     "session-log.md": "text...",
     "fallen/hero.json": {},
     "characters": { "character": {} }
@@ -618,23 +611,39 @@ how a world plays without baking in D&D 5e.
 
 ```json
 {
-  "name": "Dungeon Crawler Carl",
-  "stat_schema": { "vitals": ["hp"] },
-  "progression": { "model": "milestone | xp-levels | resource-axis", "...": "model config (thresholds/tiers/resource)" },
-  "systems": [ {"primitive": "named_track|price_roll|reaction_roll|guarded_payoff", "name": "Menace", "config": {}} ],
+  "name": "Idle Cycles",
   "active_agents": ["npc-builder"],
-  "rules_doc": "rules.md"
+  "rules": [
+    {"name": "Bleed", "block": "counter", "held_by": "player", "known": true,
+     "range": [0, 6], "start": 0,
+     "summary": "what it is about", "when": "when the GM changes it", "notes": "the rest",
+     "results": [{"from": 2, "text": "what happens"}, {"from": 0, "to": 1, "text": "only in 0–1"}]}
+  ],
+  "plain_rules": ["Credits are zeds (Lull scrip). A meal costs 1."]
 }
 ```
 
-- `systems` (optional) instantiates the `game_core` signature-system primitives
-  (`WorldKit.systems()`); each rides scene context as an executable ROLL-these
-  block. Written by `book_bible.write_systems` (`gm-extract.sh write-systems`).
+- `rules` and `plain_rules` are written by `gm-rule.sh define` and `plain`
+  (`lib/world_rules.py`); every rule is checked when it is defined.
+- The attributes are not set here: every campaign uses the nine in `lib/skill_contest.py`.
+  Growth is the same for every campaign (`lib/growth.py`).
 
-- The attributes are not set here: every campaign uses the nine in `lib/skill_contest.py`. `stat_schema.vitals` names the counters.
-- `progression.model` selects one of the core's three models; its config
-  (`thresholds` for xp-levels, `resource`+`tiers` for resource-axis) is supplied here.
-- World-flavor systems (loot boxes, viewers) stay in campaign-overview `campaign_rules`.
+## rule-state.json
+
+Where each of the world's own rules stands, per holder (the facts' ids, plus
+`faction:<id>` from the bible and `world`). A value is stored once it is set or
+changes; until then it is the rule's `start`.
+
+```json
+{
+  "player": {"Bleed": {"value": 4, "on": ["from 2", "from 4"], "since": "2089-08-15T22:10"}},
+  "faction:lull": {"Patience": {"value": 1, "on": ["from 0 to 1"], "known": true}},
+  "location:The Middens": {"Heat": {"value": 4, "on": ["from 3"]}}
+}
+```
+
+`on` lists the results on now, `since` the game time of the last change, `known` is
+there only when one holder's value differs from the rule's.
 
 ## world-bible.json (Book Bible)
 
@@ -650,7 +659,6 @@ import; captures what makes a book feel like itself.
   "factions":  { "nodes": [{"id","name"}], "edges": [{"from","to","relation"}] },
   "geography": { "nodes": [{"id","name"}], "edges": [{"from","to","adjacency"}] },
   "timeline": ["..."],
-  "signature_systems": ["..."],
   "index": {
     "npcs":      [{"name": "string", "note": "one sentence"}],
     "locations": [{"name": "string", "note": "one sentence"}],
@@ -668,8 +676,9 @@ bibles); when present, `validate_bible` requires the four buckets to be lists of
 feeds the RAG coarse index (`lib/rag/coarse_index.py`) — it no longer writes into the
 bible.
 
-Required: name, voice, tone, themes, factions (graph), geography (graph),
-signature_systems. The bible auto-generates the World Kit ruleset + campaign_rules.
+Required: name, voice, tone, themes, factions (graph), geography (graph). The bible
+drafts the World Kit ruleset; the world's own rules are added to it with `gm-rule.sh
+define`. Faction ids name factions as holders of the world's rules (`faction:<id>`).
 
 A `confirmed: false` flag on a freshly auto-drafted bible holds the world for human review;
 **an absent flag counts as confirmed**, so hand-authored and legacy bibles are playable

@@ -14,7 +14,9 @@ and die sizes, zone names), writes the whole sheet, and wires the new character 
 - it records the character on the campaign overview;
 - the ids follow the people (handover.py): the outgoing character becomes an NPC
   with what they knew, and a canon character (an NPC from the campaign) takes what
-  the NPC knew as the player's.
+  the NPC knew as the player's;
+- the world's rules (world_rules.py) start at their `start`, or at the values the
+  interview gives under "rules" ({"Bleed": 1}).
 """
 
 import sys
@@ -98,27 +100,6 @@ def _named(given: Any, what: str) -> dict[str, str]:
     return {str(name): str(function) for name, function in given.items()}
 
 
-def _counters(given: dict[str, Any], kit: WorldKit) -> dict[str, Any]:
-    """The campaign's own counters (ruleset `stat_schema.vitals`), each starting at 0
-    unless the interview set it. A counter with a named_track of the same name in the
-    ruleset gets that track's max."""
-    tracks = {s["name"].lower(): s.get("config", {}) for s in kit.systems()
-              if s.get("primitive") == "named_track"}
-    counters = {}
-    for name in kit.vitals():
-        if name == "hp":
-            continue
-        value = given.get(name, 0)
-        maximum = tracks.get(name.lower(), {}).get("max")
-        if isinstance(value, dict):
-            counters[name] = value
-        elif maximum is not None:
-            counters[name] = {"current": value, "max": maximum}
-        else:
-            counters[name] = value
-    return counters
-
-
 def _body(character: dict[str, Any], given: dict[str, Any]) -> None:
     """Unwounded zones, plus armor and cyberware from the interview. The interview
     gives armor as {"name", "zones": {zone: boxes}, "dr"?}, outermost first; add_armor
@@ -159,15 +140,12 @@ def build_character(data: dict[str, Any], kit: WorldKit) -> tuple[dict[str, Any]
                   "skills": _skills(stats.get("skills") or {}, untrained, kit.campaign_dir),
                   "traits": _named(stats.get("traits"), "traits"),
                   "perks": _named(stats.get("perks"), "perks"),
-                  "luck": luck,
-                  "counters": _counters(stats.get("counters") or {}, kit)},
+                  "luck": luck},
         "progress": {"level": level, "xp": int(progress.get("xp", 0)),
                      "practice": progress.get("practice") or {}},
         "possessions": {"credits": DEFAULT_CREDITS, **(data.get("possessions") or {})},
         "status": {"state": "alive", "conditions": [], **(data.get("status") or {})},
     })
-    if not character["stats"]["counters"]:
-        del character["stats"]["counters"]
     try:
         character["items"] = {place: [sheet_mod.item(i) for i in (data.get("items") or {}).get(place) or []]
                               for place in sheet_mod.ITEM_PLACES}
@@ -203,6 +181,11 @@ class CharacterCreator(EntityManager):
                     "error": f'this campaign already plays "{who}" — pass --replace to hand the story to someone new'}
 
         data = dict(data)
+        import world_rules
+        try:      # the world's rules: starting values, e.g. {"Bleed": 1} (gm-rule.sh)
+            rule_values = world_rules.check_values(self.json_ops, "player", data.pop("rules", None))
+        except world_rules.RulesError as error:
+            return {"success": False, "error": str(error)}
         if canon:
             resolved = self._find_entity_name("npcs.json", canon)
             if not resolved:
@@ -232,6 +215,7 @@ class CharacterCreator(EntityManager):
 
         self.json_ops.update_json("campaign-overview.json",
                                   {"current_character": sheet_mod.name(character)})
+        world_rules.set_values(self.json_ops, "player", rule_values, "character creation")
         return {"success": True, "character": character, "warnings": warnings + notes,
                 "archived": archived}
 

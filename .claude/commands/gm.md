@@ -60,7 +60,7 @@ Two questions make a new campaign; ask them in plain text, numbered, phone-frien
 
 **1. How do we make the world?**
 1. **Together:** a conversation about premise, tone, voice and the world's own systems, then you build it and the player approves it. → `/new-game`
-2. **From one sentence:** the player gives one sentence ("a drowned arcology where the rich live on the roof"), you build the setting and lore from it without further questions. The repo's rules only: no signature systems. → `/new-game`, QUICK WORLD
+2. **From one sentence:** the player gives one sentence ("a drowned arcology where the rich live on the roof"), you build the setting and lore from it without further questions. The repo's rules only: no rules of its own. → `/new-game`, QUICK WORLD
 3. **From a book:** a PDF, book or module the player provides. → `/import`
 
 **2. How do we make the character?** Fast or slow, and someone of their own or someone from this world: the `/create-character` interview asks this, at the point each path hands over to it.
@@ -234,7 +234,7 @@ bash tools/gm-body.sh show
 
 ### 2. Display Character Sheet
 
-Present the finished sheet clearly, phone-friendly: name, level, race, role, background, attributes (as die sizes), skills, luck, traits, perks, the campaign's own counters, the body picture with its notes, armor and cyberware, features, credits, and inventory. No fenced boxes.
+Present the finished sheet clearly, phone-friendly: name, level, race, role, background, attributes (as die sizes), skills, luck, traits, perks, the world's own rules the character holds, the body picture with its notes, armor and cyberware, features, credits, and inventory. No fenced boxes.
 
 If no active character: don't print a sheet — ask the one question (see ENTERING A WORLD)
 and run the `/create-character` interview.

@@ -15,8 +15,8 @@ verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 `world-bible.json` is what makes playing Dune feel like Dune rather than d20-fantasy in a
 desert. It is authored once (drafted from the book by `gm-extract.sh draft-bible` on
 `/import`, written from the seed on `/new-game`) and then read constantly: the **voice**
-block reaches the model every beat, and the **signature systems** become the campaign
-rules the GM is told to follow exactly.
+block reaches the model every beat. The world's own rules are not in the bible: they are
+the ruleset's ([the world's own rules](world-rules.md)).
 
 ## Half deterministic, half authored — and the seam is the point
 
@@ -25,7 +25,7 @@ verbatim-filtered voice block and the skeleton keys `validate_bible` demands. It
 scaffolds an empty `index` — the named-thing roster, four buckets (`npcs`, `locations`,
 `items`, `monsters`), each entry a `{"name","note"}` pair with a one-sentence note (a
 later ticket populates it; the drafter only lays the empty structure). `tone`, `themes`,
-`factions`, `geography` and `signature_systems` are the **model's** authorship, merged in
+`factions` and `geography` are the **model's** authorship, merged in
 by re-running the same verb with `--fields-json`. That is why the verb is idempotent:
 scaffold, read the book, merge, merge again.
 
@@ -37,27 +37,15 @@ It refuses to touch a bible whose `confirmed` flag is absent or true
 (`lib/book_bible.py:173`) — the same rule `WorldBible.is_confirmed` reads, so a
 hand-authored or approved bible can never be flattened by a re-import.
 
-## The bible is upstream of two mechanical artifacts
+## The bible is upstream of the kit
 
-Neither is authored by hand — both are drafted from the bible, and both live somewhere
-else afterward:
-
-| Drafted by | Produces | Lands in |
-|---|---|---|
-| `bible_to_campaign_rules` | `signature_systems` + tone, wrapped in a "follow them exactly" instruction | `campaign-overview.json` → `campaign_rules` |
-| `draft_ruleset_from_bible` | a World Kit skeleton | `ruleset.json` |
-
-Both are reachable from the shell as `gm-extract.sh campaign-rules` and
-`gm-extract.sh draft-ruleset`, which is how `/import` calls them.
-
-The drafted ruleset is deliberately **thin**: `hp` as the only vital and
-`milestone` progression as "the safest book-native option" (`lib/book_bible.py:76-101`).
-Three things the source decides are passed in rather than inferred — the attribute list,
-the progression model, and `kit`. Nothing later infers them, and a kit with no attributes
-is indistinguishable from the `DEFAULT_RULESET` fallback.
+`draft_ruleset_from_bible` drafts a World Kit skeleton into `ruleset.json`
+(`gm-extract.sh draft-ruleset`, which is how `/import` and `/new-game` call it): the
+world's name and its active agents, nothing more. The world's own rules are added to it
+with `gm-rule.sh define`, after the player approved them with the bible.
 
 There is no `kit` field any more: every world plays by this fork's rules, and a book's
-magic is a signature system, not spell slots. See [game core and World Kit](game-core-and-world-kit.md).
+magic is one of the world's own rules, not spell slots. See [game core and World Kit](game-core-and-world-kit.md).
 
 ## Voice is grounded by a verbatim filter
 
@@ -84,7 +72,7 @@ draft and `world_bible.py confirm` stamps it, and both `/import` and `/new-game`
 human between them. Nothing in the runtime confirms a bible on its own.
 
 `validate_bible` requires `name`, `voice`, `tone`, `themes`, `factions`, `geography`,
-`signature_systems`, with factions and geography shaped as graphs. Missing keys fail
+with factions and geography shaped as graphs. Missing keys fail
 validation but do **not** block play; only the confirm flag does.
 
 ## Chapter segmentation is shared, and prefers real markers

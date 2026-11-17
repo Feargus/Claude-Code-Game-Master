@@ -21,15 +21,17 @@ def test_factions_and_geography_parse_as_graphs(dcc_world):
     assert any("stairwell" in e["adjacency"] for e in geo["edges"])
 
 
-def test_voice_and_signature_systems_present(dcc_world):
+def test_voice_present_and_the_rules_not_required(dcc_world):
+    """The world's own rules are the ruleset's (world_rules.py), not the bible's."""
     wb = WorldBible(dcc_world)
     assert wb.voice().get("style")
-    assert any("loot box" in s.lower() for s in wb.signature_systems())
+    bible = dict(wb.bible)
+    bible.pop("signature_systems", None)
+    assert validate_bible(bible) == (True, [])
 
 
 def test_validator_rejects_missing_graph():
     bad = {"name": "X", "voice": {}, "tone": "t", "themes": [],
-           "factions": {"nodes": []}, "geography": {"nodes": [], "edges": []},
-           "signature_systems": []}
+           "factions": {"nodes": []}, "geography": {"nodes": [], "edges": []}}
     ok, errs = validate_bible(bad)
     assert not ok and any("factions must be a graph" in e for e in errs)

@@ -513,6 +513,7 @@ def rule_lines(json_ops, rule: dict[str, Any], holders=None) -> list[str]:
         lines.append(f"  Notes: {rule['notes']}")
     for result in rule.get("results") or []:
         lines.append(f"  {result_label(result)}: {result['text']}")
+    lines.append(command_line(rule))
     state = load_state(json_ops)
     if holders is None:
         holders = [h for h in ("player", "world") if h in rule["held_by"]]
@@ -523,6 +524,108 @@ def rule_lines(json_ops, rule: dict[str, Any], holders=None) -> list[str]:
         mark = "" if is_known(rule, stored) else f" {HIDDEN}"
         lines.append(f"  Now, {holder_name(json_ops, holder)}: {stored.get('value')} ({on}){mark}")
     return lines
+
+
+def command_line(rule: dict[str, Any]) -> str:
+    """How the GM changes the rule."""
+    holder = "" if rule["held_by"] in (["player"], ["world"]) else ' "<holder>"'
+    return f'  Command: gm-rule.sh change "{rule["name"]}"{holder} +N|-N'
+
+
+def brief_lines(json_ops) -> list[str]:
+    """YOUR WORLD'S RULES in the brief: the plain lines, then each rule in full with
+    where it stands for the character, the world and the factions. NPCs' and
+    places' values are on their cards."""
+    lines = [f"- {line}" for line in plain_rules(json_ops)]
+    state = load_state(json_ops)
+    for rule in rules(json_ops):
+        holders = [h for h in ("player", "world") if h in rule["held_by"]]
+        holders += sorted(h for h, values in state.items()
+                          if h.startswith("faction:") and rule["name"] in values)
+        lines += rule_lines(json_ops, rule, holders)
+        if {"npc", "location"} & set(rule["held_by"]):
+            lines.append(f"  The values of people and places are on their cards "
+                         f"(all: gm-rule.sh show \"{rule['name']}\").")
+    return lines
+
+
+def holder_lines(json_ops, holder: str) -> list[str]:
+    """The rules a holder has a value of, each on a line with the results on now in
+    full: for a person's or a place's card."""
+    lines = []
+    state = load_state(json_ops)
+    for rule in rules(json_ops):
+        stored = (state.get(holder) or {}).get(rule["name"])
+        if not stored:
+            continue
+        low, high = rule["range"]
+        on = [f"{label}: {_result(rule, label)['text']}" for label in stored.get("on") or []]
+        mark = "" if is_known(rule, stored) else f" {HIDDEN}"
+        lines.append(f"{rule['name']} {stored.get('value')} ({rule['block']} {low}–{high}): "
+                     + ("; ".join(on) or "no result") + mark)
+    return lines
+
+
+def summary(json_ops, holder: str = "player") -> str:
+    """'Bleed 4/6, Stress 2/8 (hidden)': a holder's values on one line, or ''."""
+    parts = []
+    state = load_state(json_ops)
+    for rule in rules(json_ops):
+        if holder.partition(":")[0] not in rule["held_by"]:
+            continue
+        stored = entry(json_ops, rule, holder, state)
+        hidden = "" if is_known(rule, stored) else " (hidden)"
+        parts.append(f"{rule['name']} {stored.get('value')}/{rule['range'][1]}{hidden}")
+    return ", ".join(parts)
+
+
+def check_values(json_ops, holder: str, given: Any) -> list[tuple[str, int]]:
+    """Starting values {rule: value} for `holder` (`player` at character creation),
+    checked: [(rule name, value)], or RulesError."""
+    if not given:
+        return []
+    if not isinstance(given, dict):
+        raise RulesError('The rules\' starting values are an object: {"Bleed": 2}.')
+    checked = []
+    for raw, value in given.items():
+        rule = find_rule(json_ops, raw)
+        if holder.partition(":")[0] not in rule["held_by"]:
+            raise RulesError(f"{rule['name']} is held by {_kinds(rule)}, not by {holder}.")
+        low, high = rule["range"]
+        if not _is_int(value) or not low <= value <= high:
+            raise RulesError(f"{rule['name']} goes from {low} to {high}; {value!r} is not a "
+                             f"whole number in it.")
+        checked.append((rule["name"], value))
+    return checked
+
+
+def set_values(json_ops, holder: str, checked: list[tuple[str, int]], cause: str) -> list[dict]:
+    """Set values checked by check_values. Returns the reports."""
+    return [change(json_ops, name, holder, to=value, cause=cause) for name, value in checked]
+
+
+def move_holder(json_ops, old: str, new: str) -> list[str]:
+    """Give `old`'s values to `new` (a character hand-over: the outgoing character
+    becomes an NPC, a canon NPC becomes the player). Values of rules `new` can't
+    hold are dropped. Returns notes for the GM."""
+    state = load_state(json_ops)
+    values = state.pop(old, None)
+    if not values:
+        return []
+    kind = new.partition(":")[0]
+    by_name = {r["name"]: r for r in rules(json_ops)}
+    kept = {n: v for n, v in values.items() if n in by_name and kind in by_name[n]["held_by"]}
+    dropped = [n for n in values if n not in kept]
+    if kept:
+        state.setdefault(new, {}).update(kept)
+    save_state(json_ops, state)
+    for name in values:
+        _log(json_ops, old, name, f"moved to {new}" if name in kept else "dropped", "hand-over")
+    notes = []
+    if dropped:
+        notes.append(f"{', '.join(dropped)} can't be held by {kind}s; {old}'s values of "
+                     f"them are gone.")
+    return notes
 
 
 # ---------- the command line ----------

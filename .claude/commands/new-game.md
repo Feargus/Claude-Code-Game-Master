@@ -51,6 +51,13 @@ Genre bend options:
 Capture the genre bend as a sentence or two of distinct commitments. You do NOT
 need a full axis list to sit down — the world's shape emerges at the table.
 
+**The world's own rules.** Load the `gm-rules` skill now. While the player describes
+the world (and later their character), listen for what could be a rule of its own (a
+pressure that grows, two things pulling against each other, a price for power) and
+suggest one to three, each in a plain sentence: "The water level could be a counter
+that rises by itself." The player picks, changes or drops them. They are approved
+with the bible (Phase B) and written in Phase C.
+
 Write `world-seed.json` to the campaign dir:
 
 ```json
@@ -90,7 +97,8 @@ in the author's voice at play (surfaced every beat by `get_full_context`):
 Keep geography to the starting street plus a few horizon names. Do not author
 the continent. **Wire 2–4 edges** into the `factions`/`geography` graphs (a
 tension between two factions, an adjacency between two places) — nodes with no
-edges are a cast list, not a world. Signature systems go here — they become the kit.
+edges are a cast list, not a world. The world's own rules are not in the bible: they
+go into the ruleset in Phase C.
 
 Validate, then present for approval:
 ```bash
@@ -98,7 +106,8 @@ uv run python lib/world_bible.py validate
 uv run python lib/world_bible.py show
 ```
 
-Show the user the `name`, voice style, themes, factions, and signature systems.
+Show the user the `name`, voice style, themes, factions, and the world's own rules
+you suggest, each in a sentence or two with its numbers.
 **Gate play on their approval** — let them edit or accept. Then write the kit
 and sketch the opening (Phase C). The bible stays `confirmed: false` until they accept.
 
@@ -108,16 +117,12 @@ and sketch the opening (Phase C). The bible stays `confirmed: false` until they 
 
 Write only what tonight needs:
 
-1. Draft the kit: `gm-extract.sh draft-ruleset`. Attributes, rolls and growth are always the repo's (`gm-skills`, `gm-growth`); the world adds its signature systems.
-2. Write a short `rules.md` if the world has signature systems.
-2b. **Make the signature systems executable — dice, not vibes.** Instantiate 1–3
-   `game_core` primitives (**named_track** meter with threshold beats / **price_roll**
-   cost for forbidden power / **reaction_roll** reputation-shifted NPC stance /
-   **guarded_payoff** guarded-or-cursed treasure), name them for this world, and
-   persist: `bash tools/gm-extract.sh write-systems --systems-json <<'EOF'`, then the list
-   (`[{"primitive":"named_track","name":"Dread","config":{"max":4,"thresholds":[{"at":4,"consequence":"..."}]}}]`)
-   and a line `EOF`.
-   They surface as YOUR WORLD'S SIGNATURE SYSTEMS and are rolled, not narrated.
+1. Draft the kit: `gm-extract.sh draft-ruleset`. Attributes, rolls and growth are always the repo's (`gm-skills`, `gm-growth`); the world adds its own rules.
+2. **Write the world's own rules** as the player approved them, in the formats of the
+   `gm-rules` skill: `bash tools/gm-rule.sh define <<'EOF'`, the list, a line `EOF`; what
+   is no mechanic (prices, customs) with `gm-rule.sh plain`; starting values of the
+   world and the factions with `gm-rule.sh set`. Check with `gm-rule.sh list`: that is
+   what the brief will show. The player's starting values come with the character.
 2c. **Name the world's people, places, creatures and things** — the faces the player
    might actually meet, recognizable, not a gazetteer (about 6–10 people, 4–8 places,
    a few kinds of enemy, a few of the world's own words). There is no book, so **you
@@ -242,8 +247,8 @@ Then open the scene from what `opening` printed: the place, who is here, the hoo
 
 The player gives one sentence about the world. That is the only question about the
 world: you build everything else from it, with no questionnaire and no approval
-gate. **Setting and lore only:** no signature systems, no `ruleset.json`, no
-`rules.md`; the campaign plays by the repo's rules (`gm-skills`, `gm-combat`,
+gate. **Setting and lore only:** no rules of its own, no `ruleset.json`; the
+campaign plays by the repo's rules (`gm-skills`, `gm-combat`,
 `gm-growth`). New mechanics only come from the Together way.
 
 1. **Name the world** from the sentence, then create and switch the campaign
@@ -251,9 +256,9 @@ gate. **Setting and lore only:** no signature systems, no `ruleset.json`, no
 2. **Seed:** write `world-seed.json` as in Phase A, every field chosen by you: the
    sentence is the `premise`; tone, setting, genre bend, voice, art style and
    chronicler fit it.
-3. **Bible:** write `world-bible.json` as in Phase B, with `"confirmed": true` and
-   `"signature_systems": []`, and validate it. Don't present it for approval.
-4. **World index:** Phase C step 2c. Skip steps 1, 2 and 2b (kit, rules, systems).
+3. **Bible:** write `world-bible.json` as in Phase B, with `"confirmed": true`, and
+   validate it. Don't present it for approval.
+4. **World index:** Phase C step 2c. Skip steps 1 and 2 (the kit and its rules).
 5. **Sketch the opening** (Phase C step 3), and choose the start yourself: don't
    ask where or when.
 6. **Phase D:** lock the chronicler, then tell the player in two lines what world
@@ -265,8 +270,8 @@ gate. **Setting and lore only:** no signature systems, no `ruleset.json`, no
 
 ## COMPLETION CHECKLIST (play tonight)
 - [ ] `world-seed.json` (premise, voice, art style)
-- [ ] `world-bible.json` approved and confirmed (voice + signature systems, not a planet)
-- [ ] `ruleset.json` drafted, with the world's signature systems
+- [ ] `world-bible.json` approved and confirmed (voice, factions, not a planet), with the world's own rules
+- [ ] `ruleset.json` drafted, with the world's own rules (`gm-rule.sh list`)
 - [ ] chronicler locked (`gm-image.sh chronicler`)
 - [ ] handed off to the one question and the `/create-character` interview (`gm-player.sh create`)
 - [ ] the opening written with `gm-session.sh opening` (one place, exits, the people there,

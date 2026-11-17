@@ -92,6 +92,23 @@ LOC="?"
 # Conditions array -> status label; fall back to the wound-derived state.
 CONDS=$(jq -r '(.status.conditions // []) | map(ascii_downcase) | join(", ")' "$CHAR" 2>/dev/null)
 
+# --- The world's rules: the character's known values (lib/world_rules.py) ----
+# "Bleed 4/6": each rule the player holds whose value the player may know.
+RULES=""
+if [ -f "$CAMP/ruleset.json" ]; then
+    STATE_FILE="$CAMP/rule-state.json"; [ -f "$STATE_FILE" ] || STATE_FILE=/dev/null
+    RULES=$(jq -r -s '
+      ((.[0].rules // []) | map(select(type == "object"))) as $rules
+      | ((.[1] // {}).player // {}) as $mine
+      | [ $rules[]
+          | select((.held_by | if type == "array" then . else [.] end) | index("player"))
+          | . as $r | ($mine[$r.name] // {}) as $e
+          | select(if ($e | has("known")) then $e.known
+                   elif ($r | has("known")) then $r.known else true end)
+          | "\($r.name) \($e.value // $r.start // $r.range[0])/\($r.range[1])" ]
+      | join("  ")' "$CAMP/ruleset.json" "$STATE_FILE" 2>/dev/null)
+fi
+
 # --- Overview fields (location/time/date) -----------------------------------
 DATE="" ; TOD="" ; OLOC=""
 if [ -f "$OVER" ]; then
@@ -135,6 +152,7 @@ fi
 
 L1="${TEAL}⚔ ${BOLD}${NAME}${RESET}  ${DIM}Lv${LEVEL} ${RACE} ${CLASS}${RESET}  ${SEP}  ${AMBER}${LOC}${RESET}"
 L2="  ${DIM}Wounds${RESET} ${WC}${WOUNDS}${RESET} ${SEPV} ${CRED}${CREDITS}cr${RESET} ${SEPV} ${DIM}XP${RESET} ${XP_CUR}/${XP_NEXT} ${SEPV} ${STATEC}${STATE}${RESET}"
+[ -n "$RULES" ] && L2="${L2} ${SEPV} ${TEAL}${RULES}${RESET}"
 
 # Top rule — frames the HUD off from the conversation above.
 divider "$RULEC" "$ORNC"

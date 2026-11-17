@@ -9,8 +9,8 @@ they can rely on the structure.
     identity     name, aliases, race, role, background, affiliation
     look         physique, style, presence
     personality  big_five, demeanor, voice, tells, want, need, values, fears
-    stats        attributes, skills, traits, perks, luck (the player only), counters
-                 (the campaign's own, e.g. Drift: its ruleset's vitals)
+    stats        attributes, skills, traits, perks, luck (the player only); the world's
+                 own rules (Bleed and the like) are kept apart: world_rules.py
     body         the player: zones, armor, cyberware
                  NPCs and mobs: wounds, armor, cyberware
     items        gear (holstered, in pockets, slung within reach: visible unless an
@@ -58,7 +58,7 @@ SECTIONS: dict[str, dict[str, str]] = {
     "personality": {"big_five": TEXT, "demeanor": TEXT, "voice": TEXT, "tells": TEXT,
                     "want": TEXT, "need": TEXT, "values": TEXT, "fears": TEXT},
     "stats": {"attributes": DICT, "skills": DICT, "traits": DICT, "perks": DICT,
-              "luck": DICT, "counters": DICT},
+              "luck": DICT},
     "body": {"zones": DICT, "wounds": INT, "armor": LIST, "cyberware": LIST},
     "items": {"gear": LIST, "inventory": LIST},
     "possessions": {"credits": INT, "vehicles": LIST, "lodging": LIST, "stashes": LIST},
@@ -281,9 +281,7 @@ def from_npc(npc: dict[str, Any]) -> dict[str, Any]:
     """A canon NPC's sheet as the base of a player sheet: what carries over (identity,
     look, personality, stats, items, possessions); body and status start fresh."""
     keep = ("identity", "look", "personality", "stats", "items", "possessions")
-    base = {key: merge(npc, {})[key] for key in keep if key in npc}
-    base.get("stats", {}).pop("counters", None)
-    return base
+    return {key: merge(npc, {})[key] for key in keep if key in npc}
 
 
 # ---------- editing: the text fields every `set` command takes ----------
@@ -410,9 +408,6 @@ def describe(sheet: dict[str, Any]) -> list[str]:
             lines.append(f"{kind[:-1]}: {key}" + (f": {effect}" if effect else ""))
     if stats.get("luck"):
         lines.append(f"luck: {stats['luck'].get('current')}/{stats['luck'].get('max')}")
-    for key, value in (stats.get("counters") or {}).items():
-        shown = f"{value.get('current')}/{value.get('max')}" if isinstance(value, dict) else value
-        lines.append(f"{key}: {shown}")
     if "wounds" in (sheet.get("body") or {}):
         lines.append(f"wounds: {sheet['body']['wounds']}")
     for place in ITEM_PLACES:

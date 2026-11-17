@@ -152,6 +152,8 @@ class Cards:
                          f"(if one is actually here: bash tools/gm-scene.sh enter \"<name>\")")
         if waiting:
             lines += self._waiting_here(location)
+        import world_rules
+        lines += [f"Rule here: {line}" for line in world_rules.holder_lines(self.json_ops, f"location:{location}")]
         # Not only the facts of the place: whatever fits the scene best, the place's
         # own facts helped by the bonuses (recall-proposal.md, decision 4). Split by
         # who knows it, so the GM sees at once what the character can draw on.
@@ -210,6 +212,8 @@ class Cards:
         lines[1:1] = [f"  towards {self.player if whom == 'player' else whom.partition(':')[2]}: "
                       f"{f['fact']}" for whom, f in mine]           # right under who they are
         lines += ["  " + line for line in self._plots_of(nid, "in plot")]
+        import world_rules
+        lines += [f"  rule: {line}" for line in world_rules.holder_lines(self.json_ops, nid)]
         knows, wrong, about, shared = [], [], [], 0
         for f in self.facts:
             if f.get("attitude"):

@@ -36,9 +36,8 @@ ARCHIVE_BASE="$WORLD_STATE_BASE/archive"
 #   SOURCE (kept): source/current-document.txt, metadata.json, chunks/, vectors/,
 #                  extracted*/, canon/, authored/, images/
 #   WORLD  (kept): world-bible.json, world-seed.json — world identity, authored
-#                  once and never regenerated during play (the bible feeds
-#                  ruleset.json via bible_to_campaign_rules)
-#   KIT    (kept): ruleset.json, rules.md, chronicler.json
+#                  once and never regenerated during play
+#   KIT    (kept): ruleset.json (with the world's own rules), chronicler.json
 #   STORY (cleared): everything below — blanked when a manager expects the file
 #                    to exist, deleted when it is created lazily.
 STORY_FILES=(
@@ -52,6 +51,8 @@ STORY_FILES=(
     threat-clocks.json
     world-tick-log.json
     loremaster-cache.json
+    rule-state.json
+    rules.log
 )
 STORY_DIRS=(fallen characters)
 
@@ -74,8 +75,8 @@ show_usage() {
     echo ""
     echo "Reset keeps the SOURCE (source/current-document.txt, metadata.json, chunks/, vectors/,"
     echo "images/), the WORLD (world-bible.json, world-seed.json) and the KIT (ruleset.json,"
-    echo "rules.md, chronicler.json); it clears the STORY (characters, NPCs, locations,"
-    echo "facts, plots, items, consequences, combat, memory, clocks, session log,"
+    echo "chronicler.json); it clears the STORY (characters, NPCs, locations,"
+    echo "facts, plots, items, consequences, combat, memory, clocks, the rules' values, session log,"
     echo "fallen/)."
     echo ""
     echo "Note: This resets the ACTIVE CAMPAIGN only."
@@ -140,7 +141,7 @@ preview_world() {
     echo "📚 Kept (reset keeps the SOURCE, the WORLD and the KIT, clears the STORY):"
     echo "  • Source: source/current-document.txt, metadata.json, chunks/, vectors/, images/"
     echo "  • World:  world-bible.json, world-seed.json"
-    echo "  • Kit:    ruleset.json, rules.md, chronicler.json"
+    echo "  • Kit:    ruleset.json, chronicler.json"
 }
 
 reset_world() {
@@ -212,7 +213,7 @@ EOF
     echo ""
     echo "✅ Story reset to blank slate — source (chunks/, vectors/, source/current-document.txt,"
     echo "   images/), world (world-bible.json, world-seed.json) and kit (ruleset.json,"
-    echo "   rules.md, chronicler.json) kept."
+    echo "   chronicler.json) kept."
 }
 
 case "$ACTION" in

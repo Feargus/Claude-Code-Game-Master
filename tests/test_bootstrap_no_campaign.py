@@ -89,7 +89,7 @@ def test_no_tool_dies_silently(no_active_campaign, argv):
     assert output.strip(), f"{argv} produced no output (exit {result.returncode})"
 
 
-@pytest.mark.parametrize("verb", ["draft-bible", "draft-ruleset", "campaign-rules", "write-systems"])
+@pytest.mark.parametrize("verb", ["draft-bible", "draft-ruleset"])
 def test_extract_verbs_needing_a_campaign_fail_loudly(no_active_campaign, verb):
     """The raw-cat sites: each of these verbs needs a campaign and had none, so it
     must name the problem and the fix — not exit 1 with an empty terminal."""

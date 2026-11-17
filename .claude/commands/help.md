@@ -44,11 +44,12 @@ Display all available commands and tools.
   gm-session.sh     Start/end sessions, the brief (context), moves, the opening
   gm-campaign.sh    Create and switch campaigns
   gm-time.sh        In-game time
+  gm-rule.sh        The world's own rules: their values, changed
   gm-scene.sh       Who is in the scene
   gm-location.sh    Add and connect locations
   gm-overview.sh    Quick world summary
   Character
-  gm-player.sh      The player's sheet: fields, items, credits, counters, XP and growth
+  gm-player.sh      The player's sheet: fields, items, credits, XP and growth
   gm-body.sh        Wounds, armor and cyberware
   gm-condition.sh   Conditions
   Rolls and fights

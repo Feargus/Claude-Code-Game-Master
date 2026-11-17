@@ -39,14 +39,6 @@ def test_draft_ruleset_from_bible_is_valid_kit():
     assert "resolution" not in ruleset and "progression" not in ruleset
 
 
-def test_bible_to_campaign_rules_carries_signature_systems():
-    bible = {"name": "DCC", "tone": "comedy-horror",
-             "signature_systems": ["loot boxes", "viewer counts"]}
-    rules = book_bible.bible_to_campaign_rules(bible)
-    assert rules["signature_systems"] == ["loot boxes", "viewer counts"]
-    assert "follow them exactly" in rules["description"]
-
-
 def test_token_estimate_is_observable_not_a_cap():
     n = book_bible.log_token_estimate("abcd" * 100, label="test")
     assert n == 100  # 400 chars // 4; never truncates

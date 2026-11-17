@@ -53,8 +53,8 @@ def _learn_match(match: str, old: str, new: str) -> str:
 
 
 def move_id(json_ops, old: str, new: str) -> list[str]:
-    """Rewrite `old` to `new` in the facts (holders, about) and the active
-    consequences (triggers, tell effects). Returns notes for the GM about
+    """Rewrite `old` to `new` in the facts (holders, about), the active
+    consequences (triggers, tell effects) and the world's rules' values. Returns notes for the GM about
     anything that no longer makes sense."""
     notes = []
     facts = fact_file.load(json_ops)
@@ -92,6 +92,8 @@ def move_id(json_ops, old: str, new: str) -> list[str]:
                 changed += 1
     if changed:
         json_ops.save_json("consequences.json", store)
+    import world_rules
+    notes += world_rules.move_holder(json_ops, old, new)
     return notes
 
 

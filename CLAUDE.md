@@ -8,8 +8,8 @@ materialize the next face or place when play walks toward it. Do not scrape a
 gazetteer "so it's ready."
 
 The rules are this repo's: every action someone takes is rolled as a skill contest (`gm-skills`), fights and
-wounds are in `gm-combat`. A campaign adds only its setting: its `rules.md` and the
-signature systems in its `ruleset.json`.
+wounds are in `gm-combat`. A campaign adds only its setting and its own rules (YOUR WORLD'S RULES in the
+brief, `gm-rule.sh`).
 The world remembers the player and pushes the right thing into the scene.
 Heavy mechanics + craft live in on-demand Skills (`.claude/skills/gm-*`).
 
@@ -116,7 +116,7 @@ later facts), ask the player out of character before narrating or noting it.
 |---|---|
 | Credits (PC) | `gm-player.sh credits +N\|-N`; loot: `gm-player.sh loot --credits N --items "A" "B"` (into the inventory). No player command takes a name |
 | Items (PC or NPC) | `gm-player.sh item add gear\|inventory "<item>" [--concealed]` / `item remove\|move "<item>"`; NPC: `gm-npc.sh item "<npc>" add gear "<item>"`. **gear** is worn or within reach (holstered, in pockets, slung on the back): others see it unless it is concealed. **inventory** is in bags and packs: hidden. Who knows about a hidden item is a fact |
-| A campaign counter (PC) | `gm-player.sh vital <counter> +N\|-N\|set N` (the counters this campaign declares; the brief's SIGNATURE SYSTEMS names which they are, and their thresholds) |
+| The world's own rules (Bleed, a sea level, a gang's patience: YOUR WORLD'S RULES in the brief, each with its "When" and its command) | `gm-rule.sh change "<rule>" [holder] +N\|-N` / `set "<rule>" [holder] N`; the holder is left out when only the character or only the world holds the rule, else `"<npc>"`, `"<place>"`, `faction:<id>`. It prints the results that came on or went off: play them. A value marked `[HIDDEN: show only its signs]` is never named to the player. `gm-rule.sh show "<rule>"` shows everyone's |
 | Wounds, armor, cyberware (PC) | `gm-body.sh` (`hit`, `heal`, `repair`, `show`; rules in `gm-combat`) |
 | XP for an achievement (an obstacle surmounted, a goal reached, a problem solved, power gained) | `gm-player.sh award --size small\|medium\|large --reason "..."`; skills and fights pay XP by themselves (`gm-growth`) |
 | A companion joins or leaves | `gm-npc.sh promote "<npc>"` / `demote` (party members are present wherever the player is) |

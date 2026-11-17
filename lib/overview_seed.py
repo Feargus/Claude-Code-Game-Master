@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
-"""Author per-book campaign-overview fields + campaign_rules; fix dangling rules_doc.
+"""Author per-book campaign-overview fields.
 
-Import copies/creates ruleset.json but leaves campaign-overview as the default
-scaffold (genre "Fantasy", no campaign_rules), so the book's signature systems live
-nowhere the GM tooling reads (WorldKit.campaign_rules() reads overview.campaign_rules).
-A sibling-kit copy can also leave ruleset.rules_doc pointing at a file that doesn't
-exist. These helpers seed real overview content and null a dangling pointer.
+Import creates campaign-overview.json as the default scaffold (genre "Fantasy"),
+so the book's own name, genre and tone have to be written in. The world's own
+rules are not kept here: they are the ruleset's (world_rules.py, gm-rule.sh).
 """
 
 import json
 from pathlib import Path
 
 
-def seed_overview(campaign_dir, fields: dict = None, campaign_rules: dict = None) -> dict:
-    """Merge `fields` into campaign-overview.json and set `campaign_rules`.
+def seed_overview(campaign_dir, fields: dict = None) -> dict:
+    """Merge `fields` into campaign-overview.json.
 
     Returns the written overview. Existing keys are overwritten only for the keys
     provided (player_position, session_count, etc. are preserved otherwise).
@@ -22,67 +20,23 @@ def seed_overview(campaign_dir, fields: dict = None, campaign_rules: dict = None
     overview = json.loads(path.read_text()) if path.exists() else {}
     if fields:
         overview.update(fields)
-    if campaign_rules is not None:
-        overview["campaign_rules"] = campaign_rules
     path.write_text(json.dumps(overview, indent=2))
     return overview
 
 
-def fix_rules_doc(campaign_dir) -> dict:
-    """Resolve a dangling ruleset.rules_doc: null it if the target file is missing.
-
-    Returns {"rules_doc": <final value>, "changed": bool}.
-    """
-    cdir = Path(campaign_dir)
-    path = cdir / "ruleset.json"
-    if not path.exists():
-        return {"rules_doc": None, "changed": False}
-    ruleset = json.loads(path.read_text())
-    doc = ruleset.get("rules_doc")
-    if doc and not (cdir / doc).exists():
-        ruleset["rules_doc"] = None
-        path.write_text(json.dumps(ruleset, indent=2))
-        return {"rules_doc": None, "changed": True}
-    return {"rules_doc": doc, "changed": False}
-
-
-def set_rules_doc(campaign_dir, filename: str = "rules.md") -> dict:
-    """Point ruleset.rules_doc at `filename` (only if the file exists in the campaign).
-
-    Returns {"rules_doc": <value>, "changed": bool}.
-    """
-    cdir = Path(campaign_dir)
-    rs_path = cdir / "ruleset.json"
-    if not rs_path.exists() or not (cdir / filename).exists():
-        return {"rules_doc": None, "changed": False}
-    ruleset = json.loads(rs_path.read_text())
-    changed = ruleset.get("rules_doc") != filename
-    ruleset["rules_doc"] = filename
-    rs_path.write_text(json.dumps(ruleset, indent=2))
-    return {"rules_doc": filename, "changed": changed}
-
-
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Seed campaign-overview + fix rules_doc")
+    parser = argparse.ArgumentParser(description="Seed campaign-overview")
     parser.add_argument("campaign_dir")
     parser.add_argument("--fields-json", nargs="?", const="-",
                         help="JSON object of overview fields to set; without a value: "
                              "read from after the command")
-    parser.add_argument("--rules-json", nargs="?", const="-",
-                        help="JSON object for campaign_rules; without a value: read from after the command")
-    parser.add_argument("--fix-rules-doc", action="store_true")
     args = parser.parse_args()
 
-    if args.fields_json or args.rules_json:
+    if args.fields_json:
         from cli_output import json_input
-        fields = json_input(args.fields_json, "--fields-json") if args.fields_json else None
-        rules = json_input(args.rules_json, "--rules-json") if args.rules_json else None
-        seed_overview(args.campaign_dir, fields, rules)
+        seed_overview(args.campaign_dir, json_input(args.fields_json, "--fields-json"))
         print("overview seeded")
-    if args.fix_rules_doc:
-        r = fix_rules_doc(args.campaign_dir)
-        print(f"rules_doc: {r['rules_doc']} (changed={r['changed']})")
 
 
 if __name__ == "__main__":

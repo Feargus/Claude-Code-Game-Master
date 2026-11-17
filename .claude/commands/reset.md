@@ -23,7 +23,7 @@ Cleared:
 Kept:
   • Source: current-document.txt, metadata.json, chunks/, vectors/, images/
   • World: world-bible.json, world-seed.json
-  • Kit: ruleset.json, rules.md, chronicler.json
+  • Kit: ruleset.json (the world's own rules), chronicler.json
 
 Options:
 1. ARCHIVE - Copy current world to world-state/archive/, then reset (safe)

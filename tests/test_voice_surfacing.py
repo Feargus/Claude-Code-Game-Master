@@ -26,8 +26,7 @@ def _campaign(tmp_path, voice=None):
     if voice is not None:
         (camp / "world-bible.json").write_text(json.dumps({
             "name": "C", "voice": voice, "tone": "t", "themes": [],
-            "factions": {"nodes": [], "edges": []}, "geography": {"nodes": [], "edges": []},
-            "signature_systems": []}))
+            "factions": {"nodes": [], "edges": []}, "geography": {"nodes": [], "edges": []}}))
     return str(ws)
 
 

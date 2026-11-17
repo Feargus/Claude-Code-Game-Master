@@ -121,8 +121,7 @@ bash tools/gm-extract.sh draft-bible --fields-json <<'EOF'
   "tone": "...",
   "themes": ["..."],
   "factions": {"nodes": [{"id":"thieves","name":"Thieves of the Maul"},{"id":"yara","name":"Priesthood of Yara"}], "edges": [{"from":"yara","to":"thieves","relation":"preys on / is feared by"}]},
-  "geography": {"nodes": [{"id":"maul","name":"The Maul"},{"id":"tower","name":"Elephant Tower"}], "edges": [{"from":"maul","to":"tower","adjacency":"across the temple quarter"}]},
-  "signature_systems": ["..."]
+  "geography": {"nodes": [{"id":"maul","name":"The Maul"},{"id":"tower","name":"Elephant Tower"}], "edges": [{"from":"maul","to":"tower","adjacency":"across the temple quarter"}]}
 }
 EOF
 uv run python lib/world_bible.py validate
@@ -142,32 +141,30 @@ CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 ```
 
 ```bash
-bash tools/gm-extract.sh campaign-rules
 CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
-uv run python lib/overview_seed.py "$CAMPAIGN_DIR" --fix-rules-doc --fields-json <<'EOF'
+uv run python lib/overview_seed.py "$CAMPAIGN_DIR" --fields-json <<'EOF'
 {"campaign_name": "<World>", "genre": "...", "tone": {"grim": 40, "adventure": 40, "horror": 20}}
 EOF
 ```
 
-Write a short `rules.md` if the book has signature systems, then point the kit at it.
-
-**Make the signature systems executable — dice, not vibes.** Instantiate 1–3 of
-the `game_core` primitives, name them for this world, and persist onto the kit so
-the GM *rolls* them:
+**The book's own rules.** Load the `gm-rules` skill. Model what the book's world
+runs on (a menace that grows, a price for sorcery, a city's patience) with its
+building blocks: one to three rules, each a plain sentence for the player, who
+approves them with the bible. Then write them:
 
 ```bash
-bash tools/gm-extract.sh write-systems --systems-json <<'EOF'
-[
-  {"primitive":"named_track","name":"Menace","config":{"max":6,"thresholds":[{"at":3,"consequence":"men step aside for you"},{"at":6,"consequence":"the city turns out to hunt you"}]}},
-  {"primitive":"price_roll","name":"Sorcery's Price","config":{"dice":"1d20","ladder":[{"min_roll":15,"cost":"a night lost to dreams"},{"min_roll":5,"cost":"a year of your life"},{"min_roll":-99,"cost":"something now watches you"}]}}
-]
+bash tools/gm-rule.sh define <<'EOF'
+[{"name": "Menace", "block": "counter", "held_by": "player", "range": [0, 6],
+  "summary": "How much the city has come to fear the character.",
+  "when": "+1 for each killing seen in public, +2 for a noble's.",
+  "results": [{"from": 3, "text": "Men step aside for the character; nobody meets their eye."},
+              {"from": 6, "text": "The city turns out to hunt them."}]}]
 EOF
+bash tools/gm-rule.sh plain <<'EOF'
+<a rule line that is no mechanic: prices, customs>
+EOF
+bash tools/gm-rule.sh list
 ```
-
-Primitives: **named_track** (a Menace/Dread/Corruption meter with threshold beats),
-**price_roll** (forbidden power exacts a cost), **reaction_roll** (reputation shifts
-an NPC's opening stance), **guarded_payoff** (treasure guarded/cursed — roll before
-the hand closes). They ride into every scene as YOUR WORLD'S SIGNATURE SYSTEMS.
 
 Voice — verbatim excerpts only (the filter drops paraphrase):
 

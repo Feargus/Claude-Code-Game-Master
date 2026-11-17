@@ -85,10 +85,8 @@ Commands:
                             voice + skeleton keys). Idempotent; refuses a
                             confirmed bible. Run BEFORE draft-ruleset.
   draft-ruleset [campaign] [--force]
-                            Draft the World Kit (ruleset.json) from the bible
-  campaign-rules [campaign] Write the bible's signature systems into
-                            campaign-overview.json as campaign_rules
-  write-systems [campaign] --systems-json <<'EOF' <json> EOF
+                            Draft the World Kit (ruleset.json) from the bible;
+                            the world's own rules: gm-rule.sh define
   list                      List the campaigns made from a document
   clean [campaign]          Remove a campaign folder (a failed import)
 
@@ -268,8 +266,8 @@ case "$1" in
 
 
 
-    draft-bible|draft-ruleset|campaign-rules|write-systems)
-        # The bible -> kit -> campaign_rules chain (lib/book_bible.py). The
+    draft-bible|draft-ruleset)
+        # The bible -> kit chain (lib/book_bible.py). The
         # campaign argument is optional here because every flag these verbs take
         # is a --long option: anything starting with -- is passed through, so
         # `draft-bible --name "X"` still means the ACTIVE campaign.

@@ -30,7 +30,7 @@ class Brief:
     # what belongs to no plot; the character; the world; the scene; then the
     # newest facts not shown above, so the cards don't repeat them.
     SECTIONS = ("header", "kit", "play_style", "images", "plots", "unplotted",
-                "character", "party", "wrong_beliefs", "world_rules", "systems", "voice",
+                "character", "party", "wrong_beliefs", "world_rules", "voice",
                 "scene", "latest")
     SECRETS_PER_PLOT = 5     # what the character doesn't know, newest first
     LATEST = 5               # the newest facts not shown above
@@ -125,11 +125,9 @@ class Brief:
             kit = None
         if kit is not None:
             skills = kit.skills()
-            vitals = kit.vitals()
             lines.append("")
             lines.append("--- KIT ---")
             lines.append(f"name: {kit.name()}")
-            lines.append(f"vitals: {', '.join(vitals) if vitals else '(none)'}")
             lines.append(f"skills: {', '.join(skills) if skills else 'the standard list (gm-skills)'}")
         self.kit = kit
         return lines
@@ -433,94 +431,15 @@ class Brief:
                 + lines)
 
     def _section_world_rules(self) -> list[str]:
-        lines = []
-        campaign = self.campaign
-        kit = self.kit
-        # --- Your World's Rules (bespoke per-campaign systems; NEVER truncated) ---
-        # Prefer kit signature_systems; campaign_rules is the legacy fallback.
-        # These rules ARE the magic that makes each book feel distinct. The GM is
-        # told to follow them exactly, so it must see them in full.
-        systems = kit.signature_systems() if kit is not None else []
-        if systems:
-            lines.append("")
-            lines.append("--- YOUR WORLD'S RULES (follow exactly) ---")
-            for system in systems:
-                name = system.get("name") or "unnamed"
-                summary = system.get("summary") or ""
-                extra = system.get("rules") or ""
-                if summary:
-                    lines.append(f"- {name}: {summary}")
-                else:
-                    lines.append(f"- {name}")
-                if extra and extra != summary:
-                    lines.append(f"    {extra}")
-        else:
-            rules = campaign.get('campaign_rules', {})
-            if rules:
-                import json
-                lines.append("")
-                lines.append("--- YOUR WORLD'S RULES (follow exactly) ---")
-                if isinstance(rules, dict):
-                    for key, val in rules.items():
-                        if isinstance(val, (dict, list)):
-                            lines.append(f"- {key}:")
-                            for vline in json.dumps(val, indent=2, ensure_ascii=False).splitlines():
-                                lines.append(f"    {vline}")
-                        else:
-                            lines.append(f"- {key}: {val}")
-                elif isinstance(rules, list):
-                    for rule in rules:
-                        if isinstance(rule, (dict, list)):
-                            for vline in json.dumps(rule, indent=2, ensure_ascii=False).splitlines():
-                                lines.append(f"  {vline}")
-                        else:
-                            lines.append(f"- {rule}")
-        return lines
-
-    def _section_systems(self) -> list[str]:
-        lines = []
-        kit = self.kit
-        # --- Signature Systems (executable primitives; the GM ROLLS these, not vibes) ---
-        try:
-            sys_list = kit.systems() if kit is not None else []
-        except Exception:
-            sys_list = []
-        if sys_list:
-            lines.append("")
-            lines.append("--- YOUR WORLD'S SIGNATURE SYSTEMS (executable — ROLL these, "
-                         "do not just narrate them) ---")
-            counters = {v.lower(): v for v in kit.vitals() if v != "hp"}
-            for s in sys_list:
-                name = s.get('name', '')
-                if s.get('primitive') == 'named_track' and name.lower() in counters:
-                    how = f"counter: gm-player.sh vital {counters[name.lower()]} +1"
-                elif s.get('primitive') == 'named_track':
-                    how = "count it with an event clock: gm-clock.sh"
-                else:
-                    how = 'roll: uv run python lib/dice.py "1d20"'
-                lines.append(f"- {name} ({how}): {self._system_summary(s)}")
-        return lines
+        """The campaign's own rules in full (world_rules.py), never cut: the GM is
+        told to follow them exactly, so it must see them whole."""
+        import world_rules
+        rules = world_rules.brief_lines(self.json_ops)
+        if not rules:
+            return []
+        return ["", "--- YOUR WORLD'S RULES (follow exactly) ---"] + rules
 
     # ==================== Private Helpers ====================
-
-    def _system_summary(self, system):
-        """One-line render of an instantiated signature system for the brief."""
-        prim = system.get("primitive")
-        cfg = system.get("config") or {}
-        if prim == "named_track":
-            mx = cfg.get("max", "?")
-            ths = cfg.get("thresholds") or []
-            parts = "; ".join(
-                f"at {t.get('at')}: {t.get('consequence', '')}".strip()
-                for t in ths if isinstance(t, dict))
-            return f"track 0–{mx}" + (f" — {parts}" if parts else "")
-        if prim == "price_roll":
-            return "taking the marked action forces a cost roll"
-        if prim == "reaction_roll":
-            return "NPC opening reaction, modified by this world's reputation/track"
-        if prim == "guarded_payoff":
-            return "roll BEFORE taking marked treasure: clean / guardian wakes / curse attaches"
-        return system.get("summary") or prim or ""
 
     def _wrong_beliefs(self):
         """Lines for what the player character holds that is wrong or partial,

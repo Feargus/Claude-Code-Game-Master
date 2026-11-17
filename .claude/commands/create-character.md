@@ -40,7 +40,7 @@ The character is saved as a sheet of sections, the same sheet NPCs have (`lib/sh
    - **gear:** worn or within reach (holstered, in pockets, slung on the back). Others see it, unless an item is `"concealed": true`.
    - **inventory:** in bags and packs: spare weapons, tools, loot. Hidden from others.
 7. **Possessions.** Credits: a trivial amount, 20 if nothing else fits. Vehicles, lodging, stashes if the concept has them.
-8. **The campaign's own counters.** The KIT block of `bash tools/gm-session.sh context` lists them under `vitals:`. They start at 0; ask only if the concept suggests otherwise (`stats.counters`).
+8. **The world's own rules** the character holds (YOUR WORLD'S RULES in the brief, or `bash tools/gm-rule.sh list`). They start at the rule's start; give another value only if the concept suggests it, at the top of the interview's JSON: `"rules": {"Bleed": 1}`.
 9. **Look.** Three short descriptions: `physique` (sex, age, ethnicity, build, distinguishing features), `style` (outfit, overall aesthetic, scent), `presence` (how they carry themselves and fill a room). For a canon character, start from what is known.
 10. **Personality**, optional: the player plays the character, but a few lines keep them consistent, and matter if the character ever becomes an NPC. `big_five`: the Big Five in OCEAN order, each −3 to +3, 0 the average person ("O1 C-1 E1 A0 N1"; N+ anxious, N− calm under pressure); `demeanor`, `voice` (vocabulary, accent, dialect, tics), `tells` (gestures, habits), `want` and `need`, `values`, `fears`.
 

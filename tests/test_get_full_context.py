@@ -88,15 +88,6 @@ def test_pending_consequences_render_real_text_not_unknown(dcc_world):
     assert "Unknown -> triggers" not in ctx
 
 
-def test_context_includes_campaign_rules_block(dcc_world):
-    """DCC's bespoke rules should be present (untruncate-campaign-rules will
-    later assert they are present IN FULL; here we just pin that they appear)."""
-    ctx = _context(dcc_world)
-    assert any(
-        rule in ctx for rule in ("loot_box_system", "audience_system", "interview_system")
-    ), "expected DCC campaign_rules to appear in the context"
-
-
 def test_pending_consequences_show_their_typed_triggers(dcc_world):
     from lib.consequence_manager import ConsequenceManager
     ConsequenceManager(dcc_world).add_consequence(

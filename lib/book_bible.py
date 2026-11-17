@@ -5,9 +5,9 @@ Book Bible import helpers — long-context reading instead of chunk-and-delete.
 The import flow keeps the book text (not deleted on cleanup), a world-bible
 subagent reads LARGE spans (whole chapters via long context, not 3000-char
 chunks) and emits a structured world-bible.json, and that bible AUTO-DRAFTS the
-World Kit ruleset + campaign_rules. This module holds the deterministic, testable
-pieces: chapter segmentation, the bible→ruleset/campaign_rules draft, and token
-observability. The subagent read itself is orchestrated by the /import command.
+World Kit ruleset (the world's own rules are added to it with gm-rule.sh define).
+This module holds the deterministic, testable pieces: chapter segmentation, the
+bible→ruleset draft, and token observability. The subagent read itself is orchestrated by the /import command.
 """
 
 import copy
@@ -18,8 +18,6 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
-
-from overview_seed import seed_overview
 
 _CHAPTER_RE = re.compile(r'^\s*(chapter\s+\w+|part\s+\w+|\d+\.\s)', re.IGNORECASE | re.MULTILINE)
 
@@ -63,29 +61,17 @@ def segment_into_chapters(text: str, max_chars: int = 20000) -> list[dict[str, A
     return chapters
 
 
-def bible_to_campaign_rules(bible: dict[str, Any]) -> dict[str, Any]:
-    """Map a world-bible's signature systems into a campaign_rules block."""
-    systems = bible.get("signature_systems", []) or []
-    return {
-        "description": f"{bible.get('name', 'This world')} runs on its own systems — follow them exactly.",
-        "signature_systems": list(systems),
-        "tone": bible.get("tone", ""),
-    }
-
-
 def draft_ruleset_from_bible(bible: dict[str, Any]) -> dict[str, Any]:
     """Auto-draft a World Kit ruleset.json from a world-bible.
 
-    No vitals: those are the world's own counters, added with its signature
-    systems; wounds come with every character. No progression: XP and levels
-    are the same for every campaign (growth.py).
+    No rules yet: the world's own rules are added with `gm-rule.sh define`
+    (world_rules.py); wounds come with every character. No progression: XP and
+    levels are the same for every campaign (growth.py).
     """
     agents = ["npc-builder"]
     return {
         "name": bible.get("name", "Imported World"),
-        "stat_schema": {"vitals": []},
         "active_agents": agents,
-        "rules_doc": "rules.md",
     }
 
 
@@ -115,12 +101,12 @@ def log_token_estimate(text: str, label: str = "import") -> int:
     return approx
 
 
-# --- the import chain: bible -> ruleset -> campaign_rules ---
+# --- the import chain: bible -> ruleset ---
 #
 # The split is deliberate. This module writes only what the SOURCE can prove: the
 # chapter map, the verbatim-filtered voice block, and the skeleton keys
-# validate_bible requires. The creative fields (tone, themes, factions, geography,
-# signature_systems) are the MODEL's authorship during /import, merged in by
+# validate_bible requires. The creative fields (tone, themes, factions, geography)
+# are the MODEL's authorship during /import, merged in by
 # re-running the same verb. Everything stays `confirmed: false` until a human
 # approves it, which is what the WorldBible confirm gate reads.
 
@@ -129,7 +115,6 @@ _SKELETON = (
     ("themes", []),
     ("factions", {"nodes": [], "edges": []}),
     ("geography", {"nodes": [], "edges": []}),
-    ("signature_systems", []),
 )
 
 
@@ -206,36 +191,6 @@ def write_ruleset(campaign_dir, force: bool = False) -> dict[str, Any]:
     return ruleset
 
 
-def write_campaign_rules(campaign_dir) -> dict[str, Any]:
-    """Map the bible's signature systems into campaign-overview.json's campaign_rules."""
-    rules = bible_to_campaign_rules(load_bible(campaign_dir))
-    seed_overview(campaign_dir, campaign_rules=rules)
-    return rules
-
-
-def write_systems(campaign_dir, systems: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Persist executable signature systems onto the kit (ruleset.json `systems`).
-
-    Each kept entry is `{primitive, name, config}` — an instantiation of a
-    game_core primitive (named_track / price_roll / reaction_roll /
-    guarded_payoff). Malformed entries (no primitive or no name) are dropped.
-    Requires an existing ruleset.json (run `draft-ruleset` first).
-    """
-    path = Path(campaign_dir) / "ruleset.json"
-    if not path.exists():
-        raise FileNotFoundError(
-            f"no ruleset.json in {campaign_dir} — run `gm-extract.sh draft-ruleset` first")
-    ruleset = json.loads(path.read_text(encoding="utf-8"))
-    clean = []
-    for s in (systems or []):
-        if isinstance(s, dict) and s.get("primitive") and s.get("name"):
-            clean.append({"primitive": s["primitive"], "name": s["name"],
-                          "config": s.get("config") or {}})
-    ruleset["systems"] = clean
-    path.write_text(json.dumps(ruleset, indent=2, ensure_ascii=False), encoding="utf-8")
-    return clean
-
-
 def main():
     import argparse
 
@@ -256,16 +211,6 @@ def main():
     p_kit.add_argument("campaign_dir")
     p_kit.add_argument("--force", action="store_true", help="overwrite an existing ruleset.json")
 
-    p_rules = sub.add_parser("campaign-rules", help="write campaign_rules into campaign-overview.json")
-    p_rules.add_argument("campaign_dir")
-
-    p_sys = sub.add_parser("write-systems",
-                           help="persist executable signature systems onto the kit (ruleset.json)")
-    p_sys.add_argument("campaign_dir")
-    p_sys.add_argument("--systems-json", nargs="?", const="-", required=True,
-                       help='[{"primitive":"named_track","name":"Menace","config":{"max":6,"thresholds":[...]}}]; '
-                            "without a value: read from after the command")
-
     args = parser.parse_args()
     from cli_output import json_input
 
@@ -279,16 +224,10 @@ def main():
             )
             print(f"world-bible.json drafted: {bible['name']} "
                   f"({len(bible['voice']['sample_passages'])} verbatim passages, confirmed=False)")
-        elif args.action == "draft-ruleset":
+        else:
             ruleset = write_ruleset(args.campaign_dir, force=args.force)
             print(f"ruleset.json drafted: {ruleset['name']} "
                   f"| agents: {ruleset['active_agents']}")
-        elif args.action == "write-systems":
-            sysv = write_systems(args.campaign_dir, json_input(args.systems_json, "--systems-json"))
-            print(f"kit systems written: {', '.join(s['name'] for s in sysv) or '(none)'}")
-        else:
-            rules = write_campaign_rules(args.campaign_dir)
-            print(f"campaign_rules written: {len(rules['signature_systems'])} signature systems")
     except (ConfirmedBibleError, FileNotFoundError, FileExistsError, ValueError) as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)

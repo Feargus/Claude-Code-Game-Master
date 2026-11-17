@@ -4,8 +4,7 @@ The Book Bible — the structured fidelity spine of a world.
 
 world-bible.json is what makes "playing Dune" feel unmistakably like Dune rather
 than d20-fantasy-in-a-desert. It captures VOICE, TONE, THEMES, FACTIONS (as a
-graph), GEOGRAPHY (as a place graph), TIMELINE, and the book's SIGNATURE SYSTEMS,
-and is the canonical spine loaded at session start. The import pipeline
+graph), GEOGRAPHY (as a place graph), and TIMELINE, and is the canonical spine loaded at session start. The import pipeline
 (import-longcontext-read) auto-drafts it; here we define + validate the shape and
 ship a hand-authored DCC bible to prove it.
 """
@@ -16,10 +15,11 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import world_rules
 from campaign_manager import CampaignManager
 from json_ops import JsonOperations
 
-_REQUIRED = ('name', 'voice', 'tone', 'themes', 'factions', 'geography', 'signature_systems')
+_REQUIRED = ('name', 'voice', 'tone', 'themes', 'factions', 'geography')
 
 
 def _is_graph(g: Any) -> bool:
@@ -35,8 +35,6 @@ def validate_bible(bible: dict[str, Any]) -> tuple[bool, list[str]]:
             errors.append(f'missing required key: {key}')
     if not isinstance(bible.get('themes', []), list):
         errors.append('themes must be a list')
-    if not isinstance(bible.get('signature_systems', []), list):
-        errors.append('signature_systems must be a list')
     errors += [f'{key} must be a graph {{nodes:[], edges:[]}}' for key in ('factions', 'geography')
                if key in bible and not _is_graph(bible[key])]
     voice = bible.get('voice')
@@ -73,9 +71,6 @@ class WorldBible:
     def geography(self) -> dict[str, Any]:
         return self.bible.get('geography', {'nodes': [], 'edges': []})
 
-    def signature_systems(self) -> list[Any]:
-        return self.bible.get('signature_systems', [])
-
     # --- draft-then-confirm gate ---
     def is_confirmed(self) -> bool:
         """A newly-drafted bible is `confirmed: false` until a human approves it.
@@ -97,7 +92,8 @@ class WorldBible:
         return self.json_ops.save_json("world-bible.json", self.bible)
 
     def review_summary(self) -> dict[str, Any]:
-        """The human-facing draft to review before play (voice/factions/systems)."""
+        """The human-facing draft to review before play (voice, factions, the world's
+        own rules: those are the ruleset's, world_rules.py)."""
         return {
             'name': self.bible.get('name'),
             'tone': self.bible.get('tone'),
@@ -108,7 +104,7 @@ class WorldBible:
             # review screen — show what is there rather than crash on the shape.
             'factions': [n.get('name') if isinstance(n, dict) else n
                          for n in self.factions().get('nodes', [])],
-            'signature_systems': self.signature_systems(),
+            'rules': [r['name'] for r in world_rules.rules(self.json_ops)],
             'confirmed': self.is_confirmed(),
         }
 

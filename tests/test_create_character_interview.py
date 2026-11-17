@@ -6,7 +6,6 @@ import re
 from pathlib import Path
 
 from lib.schemas import validate_character
-from tests.test_kit_vitals import HYBORIAN_RULESET, _make_world, _save, _sheet
 
 ROOT = Path(__file__).resolve().parent.parent
 COMMAND = ROOT / ".claude" / "commands" / "create-character.md"
@@ -14,6 +13,35 @@ COMMAND = ROOT / ".claude" / "commands" / "create-character.md"
 
 def _cmd():
     return COMMAND.read_text(encoding="utf-8")
+
+
+HYBORIAN_RULESET = {"name": "The Hyborian Age", "active_agents": []}
+NEW_CHARACTER = Path(__file__).resolve().parent.parent / "lib" / "new_character.py"
+
+
+def _make_world(tmp_path, slug, ruleset):
+    world = tmp_path / "world-state"
+    campaign = world / "campaigns" / slug
+    campaign.mkdir(parents=True)
+    (world / "active-campaign.txt").write_text(slug, encoding="utf-8")
+    (campaign / "ruleset.json").write_text(json.dumps(ruleset), encoding="utf-8")
+    return world
+
+
+def _save(world, payload):
+    """Run `create` against `world`."""
+    import os
+    import subprocess
+    import sys
+    return subprocess.run(
+        [sys.executable, str(NEW_CHARACTER), json.dumps(payload), "--replace"],
+        capture_output=True, text=True, env={**os.environ, "GM_WORLD_STATE_BASE": str(world)},
+    )
+
+
+def _sheet(world):
+    slug = (world / "active-campaign.txt").read_text(encoding="utf-8").strip()
+    return json.loads((world / "campaigns" / slug / "character.json").read_text(encoding="utf-8"))
 
 
 def test_there_is_no_create_character_agent_any_more():
@@ -77,7 +105,7 @@ def test_gm_player_banner_is_kit_neutral():
 
 
 def test_a_sheet_without_race_or_class_saves_and_validates(tmp_path):
-    world = _make_world(tmp_path, "conan-live", {k: v for k, v in HYBORIAN_RULESET.items() if k != "kit"})
+    world = _make_world(tmp_path, "conan-live", HYBORIAN_RULESET)
     r = _save(world, {"identity": {"name": "Nameless"},
                       "stats": {"attributes": {"STR": 14, "AGI": 11, "VIG": 13}}})
     assert r.returncode == 0, r.stdout + r.stderr
@@ -97,5 +125,5 @@ def test_a_new_campaign_asks_how_to_make_the_world():
     assert "no one yet" not in (commands / "import.md").read_text(encoding="utf-8")
     new_game = (commands / "new-game.md").read_text(encoding="utf-8")
     quick = new_game[new_game.index("## QUICK WORLD"):]
-    assert '"signature_systems": []' in quick and "no `ruleset.json`" in quick
+    assert "no rules of its own, no `ruleset.json`" in quick
     assert "gm-session.sh opening" in quick and "/create-character" in quick
