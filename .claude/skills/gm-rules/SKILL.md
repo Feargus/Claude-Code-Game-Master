@@ -52,11 +52,10 @@ Numbers are first guesses: play decides whether they are right.
 
 ## 3. The building blocks
 
-Built so far: **the counter** (with a rate, hysteresis, overflow and streaks),
-**states**, **the plane**, **the bag** and **the roll**, with results that act. The others (a roll, a plane, a bag, a budget,
-states, and the options rate, hysteresis, overflow and streak) come in later steps
-(rules-proposal.md in the campaign repo). Until then, model with counters, and put
-what a counter can't do into the rule's `notes`: the GM reads them in the brief.
+Six blocks: **the counter** (one number, with a rate, hysteresis, overflow or a
+streak), **states**, **the plane**, **the bag**, **the budget** and **the roll**, and
+results that act. What no block can say goes into the rule's `notes`: the GM reads
+them in the brief.
 
 ### Every rule
 
@@ -390,6 +389,49 @@ itself:
 }
 ```
 
+### The budget: a fixed amount split among parts
+
+Never enough time or people for everything: a week of downtime, a gang's soldiers.
+The whole amount is split at once, each part buying something per unit; then the
+budget is spent until it is refilled.
+
+```json
+{
+  "name": "Downtime", "block": "budget", "held_by": "player",
+  "amount": 7, "unit": "days", "period": "by hand",
+  "summary": "A week between jobs, and never enough of it.",
+  "when": "Between jobs, when the character lies low for a week. Refill at the next downtime.",
+  "parts": {
+    "healing":  {"text": "Each day: one wound heals a step.", "gm": "gm-body.sh heal, a step per day given."},
+    "work":     {"text": "Each day: 40 credits.", "effects": [{"credits": 40}]},
+    "training": {"text": "Each 2 days: one practice of a skill of the character's choice.", "per": 2},
+    "crew":     {"text": "Each day: one crew member's trouble dealt with, or one favour done."}
+  }
+}
+```
+
+- **Split:** `gm-rule.sh split "Downtime" healing=3 work=2 crew=2`. It must use the
+  whole amount; parts left out get 0. Each part's effects run once per `per` units
+  (default 1: work=2 pays twice); its text and `gm` line are printed with its units.
+- **Refill:** by hand, `gm-rule.sh refill "Downtime"`, or with
+  `"period": {"every": "7d"}` by itself as game time passes.
+
+A gang's soldiers, held by factions, refilled every week:
+
+```json
+{
+  "name": "Soldiers", "block": "budget", "held_by": "faction",
+  "amount": 10, "unit": "soldiers", "period": {"every": "7d"},
+  "summary": "How many fighters a gang has, and where it sends them.",
+  "when": "Each week the GM splits each gang's soldiers by its goals (its plot); the character can learn the split.",
+  "parts": {
+    "turf":    {"text": "Holds the gang's blocks; fewer than 3 and a rival can take one."},
+    "raids":   {"text": "Each 2: a raid on a rival's business this week.", "per": 2},
+    "rackets": {"text": "Each: money comes in; the gang can afford a favour."}
+  }
+}
+```
+
 ### The roll: dice, read once
 
 Nothing is kept: dice, plus or minus named amounts, read from a list of results. A
@@ -546,7 +588,3 @@ EOF
 rule needs a `when` that says what changes it, and every result a text that says
 what happens in the fiction.
 
-## 5. Coming later
-
-The last block of the plan, for when it is built: **a budget** (a fixed amount split: downtime days, a gang's
-soldiers).

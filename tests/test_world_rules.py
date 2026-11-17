@@ -58,7 +58,6 @@ def test_rules_are_defined_once_and_checked(ops):
 @pytest.mark.parametrize("change, why", [
     ({"name": "A: b"}, "short key"),
     ({"name": "One two three four"}, "short key"),
-    ({"block": "budget"}, "isn't built yet .* step 9"),
     ({"block": "meter"}, "'block' must be one of"),
     ({"held_by": "god"}, "'held_by' must be one of"),
     ({"range": [6, 0]}, "'range' must be"),
@@ -209,8 +208,8 @@ def test_the_command(dcc_world):
     assert plain.returncode == 0 and "2 plain rule lines" in plain.stdout
     listed = run("list").stdout
     assert listed.startswith("- Credits are gold.\n- A room costs 2.\nBleed (counter")
-    wrong = run("define", given="[{\"name\": \"X\", \"block\": \"budget\"}]")
-    assert wrong.returncode == 1 and "isn't built yet" in wrong.stderr
+    wrong = run("define", given="[{\"name\": \"X\", \"block\": \"deck\"}]")
+    assert wrong.returncode == 1 and "'block' must be one of" in wrong.stderr
     assert run("remove", "Patience").returncode == 0
     state = json.loads((Path(dcc_world) / "campaigns" / CAMPAIGN / "rule-state.json").read_text())
     assert state == {"player": {"Bleed": {"value": 5, "on": ["from 2", "from 4"]}}}

@@ -177,7 +177,9 @@ def print_rule_changes(manager: "TimeManager") -> None:
     for report in manager.rule_changes:
         block = world_rules.find_rule(manager.json_ops, report["rule"])["block"]
         import rule_bag
-        show = {"states": rule_states.move_lines, "bag": rule_bag.draw_lines}.get(
+        import rule_budget
+        show = {"states": rule_states.move_lines, "bag": rule_bag.draw_lines,
+                "budget": lambda ops, r: [rule_budget.refill_line(ops, r)]}.get(
             block, world_rules.change_lines)
         print("\n".join(show(manager.json_ops, report)))
 

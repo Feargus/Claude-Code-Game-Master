@@ -168,6 +168,9 @@ def outcomes(rule: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     if rule.get("block") == "bag":
         results = rule.get("results")
         return list(results.items()) if isinstance(results, dict) else []
+    if rule.get("block") == "budget":
+        parts = rule.get("parts")
+        return list(parts.items()) if isinstance(parts, dict) else []
     return [(label(rule, r), r) for r in rule.get("results") or []]
 
 

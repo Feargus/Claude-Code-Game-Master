@@ -28,7 +28,7 @@ Building blocks (rules-proposal.md in the campaign repo has the plan):
               (rule_states.py)
     plane     two values read together; results by region (rule_plane.py)
     bag       tokens drawn and added to; the odds are what is in it (rule_bag.py)
-    budget: a later step
+    budget    a fixed amount split among named parts, refilled (rule_budget.py)
 
 A value is known (the default: the HUD may show it, the narration make it plain) or
 hidden (the GM sees it, the player only its signs; every output marks it).
@@ -38,6 +38,7 @@ hidden (the GM sees it, the player only its signs; every output marks it).
     gm-rule.sh roll "<rule>" [holder] [--with "<amount>"]...
     gm-rule.sh move "<rule>" [holder] <state>   (set: any state, a correction)
     gm-rule.sh draw "<bag>" [holder] [N]   ·   put|take "<bag>" [holder] <kind> N   ·   refill
+    gm-rule.sh split "<budget>" [holder] <part>=N ...   ·   refill "<budget>" [holder]
     gm-rule.sh reveal|hide "<rule>" [holder]   ·   break "<rule>" [holder]
     gm-rule.sh mark "<rule>" [holder] "<mark>"   ·   rate "<rule>" [holder] --by N [--every 90d]
     gm-rule.sh define <<'EOF' [...rules...] EOF   ·   plain <<'EOF' lines EOF   ·   remove "<rule>"
@@ -58,14 +59,15 @@ LOG = "rules.log"
 BIBLE = "world-bible.json"
 
 HOLDER_KINDS = ("player", "npc", "faction", "location", "world")
-BLOCKS = ("counter", "roll", "states", "plane", "bag")
-LATER_BLOCKS = {"budget": 9}
+BLOCKS = ("counter", "roll", "states", "plane", "bag", "budget")
+LATER_BLOCKS: dict[str, int] = {}
 COMMON_FIELDS = ("name", "block", "held_by", "known", "summary", "when", "notes")
 BLOCK_FIELDS = {"counter": ("range", "start", "results", "rate", "overflow", "streak"),
                 "roll": ("dice", "with", "add", "results"),
                 "states": ("start", "states"),
                 "plane": ("axes", "start", "rates", "regions"),
-                "bag": ("tokens", "draw", "draw_every", "results", "when_empty")}
+                "bag": ("tokens", "draw", "draw_every", "results", "when_empty"),
+                "budget": ("amount", "unit", "period", "parts")}
 RESULT_FIELDS = {"counter": ("from", "to", "off_at", "text", "effects", "when_off", "gm")}
 LATER_FIELDS: dict[str, int] = {}     # fields of a later step: "isn't built yet (step N)"
 MAX_NAME_WORDS = 3
@@ -267,6 +269,9 @@ def check_rule(raw: Any) -> dict[str, Any]:
     elif block == "bag":
         import rule_bag
         rule_bag.check(rule, problems)
+    elif block == "budget":
+        import rule_budget
+        rule_budget.check(rule, problems)
     if problems:
         raise RulesError(f"{rule['name']}: " + "; ".join(problems) + ".")
     return rule
@@ -348,6 +353,12 @@ def _replace(old: dict[str, Any], rule: dict[str, Any], state: dict) -> dict[str
             stored["axes"] = {a: max(lo, min(hi, int(old.get(a, rule["start"][a]))))
                               for a, (lo, hi) in rule["axes"].items()}
             stored["on"] = rule_plane.regions_on(rule, stored["axes"])
+        return rule
+    if rule["block"] == "budget":
+        for holder in holders:
+            stored = state[holder][rule["name"]]
+            if stored.get("split"):
+                stored["split"] = {p: n for p, n in stored["split"].items() if p in rule["parts"]}
         return rule
     if rule["block"] == "bag":
         for holder in holders:
@@ -519,6 +530,8 @@ def entry(json_ops, rule: dict[str, Any], holder: str, state=None) -> dict[str, 
         return {"axes": dict(rule["start"]), "on": rule_plane.regions_on(rule, rule["start"])}
     if rule["block"] == "bag":
         return {"tokens": dict(rule["tokens"]), "drawn": []}
+    if rule["block"] == "budget":
+        return {"spent": False}
     return {"value": rule["start"], "on": results_on(rule, rule["start"])}
 
 
@@ -547,7 +560,8 @@ def counter(json_ops, raw) -> dict[str, Any]:
         how = {"roll": f'gm-rule.sh roll "{rule["name"]}"',
                "states": f'gm-rule.sh move "{rule["name"]}" [holder] <state>',
                "plane": f'gm-rule.sh change "{rule["name"]}" [holder] --axis <axis> +N|-N',
-               "bag": f'gm-rule.sh draw "{rule["name"]}" [holder]'}.get(
+               "bag": f'gm-rule.sh draw "{rule["name"]}" [holder]',
+               "budget": f'gm-rule.sh split "{rule["name"]}" [holder] <part>=N ...'}.get(
             rule["block"], f'gm-rule.sh show "{rule["name"]}"')
         raise RulesError(f"{rule['name']} is a {rule['block']}: it has no value to change ({how}).")
     return rule
@@ -781,6 +795,9 @@ def rule_lines(json_ops, rule: dict[str, Any], holders=None) -> list[str]:
     if rule["block"] == "bag":
         import rule_bag
         return rule_bag.rule_lines(json_ops, rule, holders)
+    if rule["block"] == "budget":
+        import rule_budget
+        return rule_budget.rule_lines(json_ops, rule, holders)
     low, high = rule["range"]
     hidden = "" if rule.get("known", True) else f"; {HIDDEN}"
     lines = [f"{rule['name']} ({rule['block']} {low}–{high}, held by {_kinds(rule)}{hidden}): "
@@ -877,6 +894,10 @@ def holder_lines(json_ops, holder: str) -> list[str]:
             import rule_bag
             lines.append(rule_bag.holder_line(rule, stored))
             continue
+        if stored and rule["block"] == "budget":
+            import rule_budget
+            lines.append(rule_budget.holder_line(rule, stored))
+            continue
         if stored and rule["block"] == "states":
             mark = "" if is_known(rule, stored) else f" {HIDDEN}"
             lines.append(f"{rule['name']}: {stored['state']} (states): "
@@ -900,11 +921,14 @@ def summary(json_ops, holder: str = "player") -> str:
         if holder.partition(":")[0] not in rule["held_by"] or rule["block"] == "roll":
             continue
         stored = entry(json_ops, rule, holder, state)
-        if rule["block"] in ("states", "plane", "bag"):
+        if rule["block"] in ("states", "plane", "bag", "budget"):
             import rule_bag
+            import rule_budget
             hidden = "" if is_known(rule, stored) else " (hidden)"
             if rule["block"] == "states":
                 shown = stored["state"]
+            elif rule["block"] == "budget":
+                shown = rule_budget.summary(rule, stored)
             elif rule["block"] == "bag":
                 shown = rule_bag.contents(stored["tokens"])
             else:
@@ -933,6 +957,9 @@ def check_values(json_ops, holder: str, given: Any) -> list[tuple[str, Any]]:
             import rule_states
             checked.append((rule["name"], rule_states._find_state(rule, value)))
             continue
+        if rule["block"] == "budget":
+            raise RulesError(f"{rule['name']} is a budget: it has no starting value (it starts "
+                             f"full: gm-rule.sh split).")
         if rule["block"] == "bag":
             if not isinstance(value, dict):
                 raise RulesError(f"{rule['name']} is a bag: give its tokens, e.g. "
@@ -1051,11 +1078,15 @@ def emit_bag(json_ops, action: str, words: list[str], json_mode: bool) -> None:
     emit(report, rule_bag.put_line(json_ops, report), json_mode)
 
 
-def _is_states(json_ops, words) -> bool:
+def _is_block(json_ops, words, block: str) -> bool:
     try:
-        return find_rule(json_ops, words[0])["block"] == "states"
+        return find_rule(json_ops, words[0])["block"] == block
     except (RulesError, IndexError):
         return False
+
+
+def _is_states(json_ops, words) -> bool:
+    return _is_block(json_ops, words, "states")
 
 
 def _stdin_text() -> str:
@@ -1087,7 +1118,8 @@ def main() -> int:
     p = sub.add_parser("roll", help='<rule> [holder] [--with "<amount>"]...')
     p.add_argument("words", nargs="+")
     p.add_argument("--with", action="append", dest="named", default=[])
-    for action, words in (("draw", "<bag> [holder] [N]"), ("refill", "<bag> [holder]"),
+    for action, words in (("draw", "<bag> [holder] [N]"), ("refill", "<bag or budget> [holder]"),
+                          ("split", "<budget> [holder] <part>=N ..."),
                           ("put", "<bag> [holder] <kind> N"), ("take", "<bag> [holder] <kind> N")):
         sub.add_parser(action, help=words).add_argument("words", nargs="+")
     p = sub.add_parser("rate", help="<rule> [holder] --by N [--every 90d]")
@@ -1139,6 +1171,18 @@ def main() -> int:
             name, holder, _ = _rule_and_holder(args.words, False)
             report = rule_roll.roll(ops, name, holder, args.named)
             emit(report, "\n".join(rule_roll.roll_lines(ops, report)), json_mode)
+        elif args.action == "split" or (args.action == "refill" and _is_block(ops, args.words, "budget")):
+            import rule_budget
+            words = args.words
+            first = [i for i, word in enumerate(words) if "=" in word]
+            head = words[:first[0]] if first else words
+            name, holder, _ = _rule_and_holder(head, False)
+            if args.action == "split":
+                report = rule_budget.split(ops, name, holder, words[len(head):])
+                emit(report, "\n".join(rule_budget.split_lines(ops, report)), json_mode)
+            else:
+                report = rule_budget.refill(ops, name, holder)
+                emit(report, rule_budget.refill_line(ops, report), json_mode)
         elif args.action in ("draw", "refill", "put", "take"):
             emit_bag(ops, args.action, args.words, json_mode)
         elif args.action == "break":

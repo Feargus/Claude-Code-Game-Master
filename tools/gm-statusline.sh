@@ -107,6 +107,8 @@ if [ -f "$CAMP/ruleset.json" ]; then
           | select(if ($e | has("known")) then $e.known
                    elif ($r | has("known")) then $r.known else true end)
           | if $r.block == "states" then "\($r.name): \($e.state // $r.start)"
+            elif $r.block == "budget" then "\($r.name): " + (if $e.spent then "spent"
+                else "\($r.amount) \($r.unit // "units")" end)
             elif $r.block == "bag" then "\($r.name): " + ([($e.tokens // $r.tokens)
                 | to_entries[] | "\(.value) \(.key)"] | join(" "))
             elif $r.block == "plane" then "\($r.name): " + (

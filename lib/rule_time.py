@@ -108,6 +108,10 @@ def apply(json_ops, before: datetime | None, after: datetime) -> list[dict[str, 
             import rule_bag
             reports += rule_bag.apply_time(json_ops, rule, before, after)
             continue
+        if rule["block"] == "budget":
+            import rule_budget
+            reports += rule_budget.apply_time(json_ops, rule, before, after)
+            continue
         if rule["block"] != "counter" or not rule.get("rate"):
             continue
         state = world_rules.load_state(json_ops)
