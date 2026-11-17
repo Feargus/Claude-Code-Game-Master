@@ -70,7 +70,7 @@ def test_rules_are_defined_once_and_checked(ops):
     ({"results": [{"from": 9, "text": "x"}]}, "result 1 needs 'from'"),
     ({"results": [{"from": 2, "to": 1, "text": "x"}]}, "'to' must be"),
     ({"results": [{"from": 2}]}, "needs a 'text'"),
-    ({"results": [{"from": 2, "text": "x", "effects": []}]}, "'effects' in result 1 isn't built yet"),
+    ({"results": [{"from": 2, "text": "x", "off_at": 0}]}, "'off_at' in result 1 isn't built yet"),
     ({"results": [{"from": 2, "text": "x"}, {"from": 2, "text": "y"}]}, "two results are from 2"),
 ])
 def test_a_wrong_rule_is_refused_with_the_reason(dcc_world, change, why):

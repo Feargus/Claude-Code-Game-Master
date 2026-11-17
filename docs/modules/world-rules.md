@@ -4,6 +4,7 @@ title: The world's own rules
 description: A campaign's own mechanics (Bleed, a sea level, a gang's patience) built from a few building blocks, defined once in the ruleset, with a value per holder in rule-state.json.
 sources:
   - { resource: /lib/world_rules.py }
+  - { resource: /lib/rule_effects.py }
   - { resource: /tools/gm-rule.sh }
   - { resource: /.claude/skills/gm-rules/SKILL.md }
 ---
@@ -49,9 +50,25 @@ a note.
 ## Building blocks
 
 Built: the **counter** (a number in a range; results by range, cumulative unless they
-have a `to`). Planned, with the effects that let one rule change another and the
-`on_rule` trigger for consequences: rolls, rates, hysteresis, overflow, streaks, states,
-planes, bags and budgets. The plan and its decisions: `rules-proposal.md` in the
+have a `to`). Planned: rolls, rates, hysteresis, overflow, streaks, states, planes,
+bags and budgets.
+
+## Results that act (`lib/rule_effects.py`)
+
+A result's `effects` run when it comes on, its `when_off` when it goes off; its `gm`
+line is printed as "Do now:". The effects: `change` (another rule's value, for the
+same holder or `of` another), `clock` (`start` or `advance`), `condition` and `credits`
+(the character's). `world_rules.change` runs them and passes a chain along: a change an
+effect makes runs its own results' effects, a rule changes once per holder in a chain,
+and a chain stops after `MAX_STEPS` effects. Clocks and consequences are opened through
+the active campaign, so a change on a campaign that isn't active runs neither (it says
+so). What is checked when the rules are defined: the shape of each effect, that a
+change names a rule that exists and can be held by the same holder (or its `of`), and
+not its own rule. A rule other rules' effects change can't be removed.
+
+**`on_rule`** (`consequence_manager.py`, an event trigger like `on_clock`): the match is
+stored as `"<rule>:<value>@<holder>"`; `world_rules.change` fires it for every value the
+change reached, after the effects. The plan and its decisions: `rules-proposal.md` in the
 campaign repo.
 
 ## What it replaced (2026-11-17)

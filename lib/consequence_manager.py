@@ -43,12 +43,12 @@ class ConsequenceManager(EntityManager):
 
     # Structured trigger types the reactivity engine can evaluate automatically.
     TRIGGER_TYPES = ('on_location', 'on_npc', 'on_time', 'on_event', 'on_death', 'on_clock',
-                     'on_learn')
+                     'on_learn', 'on_rule')
     # Event triggers fire once, inside the command that makes the change
     # (fire_event), never on the scene check that moves and time steps run.
     # on_event is the GM's: each recorded fact lists the consequences waiting
     # on one (waiting_on_event), and the GM fires a fitting one by hand.
-    EVENT_TRIGGER_TYPES = ('on_death', 'on_event', 'on_clock', 'on_learn')
+    EVENT_TRIGGER_TYPES = ('on_death', 'on_event', 'on_clock', 'on_learn', 'on_rule')
     # A trigger either matches or not. There is no word matching: free-text
     # conditions are on_event triggers, judged by the GM.
     # Triggers whose match is an id (world_ids.py), checked when added and
@@ -112,6 +112,13 @@ class ConsequenceManager(EntityManager):
                 t['match'] = canonical
             if t['type'] == 'on_clock':
                 canonical, error = self._clock_target(t['match'])
+                if error:
+                    print(f"[ERROR] {error}", file=sys.stderr)
+                    return ""
+                t['match'] = canonical
+            if t['type'] == 'on_rule':      # a world rule's value (rule_effects.py)
+                from rule_effects import on_rule_target
+                canonical, error = on_rule_target(self.json_ops, t['match'])
                 if error:
                     print(f"[ERROR] {error}", file=sys.stderr)
                     return ""

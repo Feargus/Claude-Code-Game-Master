@@ -50,8 +50,8 @@ BLOCKS = ("counter",)
 LATER_BLOCKS = {"roll": 4, "states": 6, "plane": 7, "bag": 8, "budget": 9}
 COMMON_FIELDS = ("name", "block", "held_by", "known", "summary", "when", "notes")
 BLOCK_FIELDS = {"counter": ("range", "start", "results")}
-RESULT_FIELDS = {"counter": ("from", "to", "text")}
-LATER_FIELDS = {"effects": 3, "when_off": 3, "rate": 5, "overflow": 5, "streak": 5,
+RESULT_FIELDS = {"counter": ("from", "to", "text", "effects", "when_off", "gm")}
+LATER_FIELDS = {"rate": 5, "overflow": 5, "streak": 5,
                 "off_at": 5}
 MAX_NAME_WORDS = 3
 MAX_NAME_CHARS = 30
@@ -166,6 +166,8 @@ def _check_counter(rule: dict, problems: list[str]) -> None:
             problems.append(f"result {number} needs a 'text': what happens in the fiction")
             continue
         result["text"] = " ".join(result["text"].split())
+        import rule_effects
+        rule_effects.check_shape(result, number, problems)
         label = result_label(result)
         if label in labels:
             problems.append(f"two results are {label}: make them one")
@@ -235,6 +237,11 @@ def define(json_ops, given: Any) -> list[tuple[str, str]]:
         raise RulesError(" ".join(problems) + " Nothing was saved.")
     ruleset = _ruleset(json_ops)
     have = [r for r in ruleset.get("rules") or [] if isinstance(r, dict)]
+    import rule_effects  # what the effects name must exist, then or now
+    new = {r["name"].lower() for r in checked}
+    rule_effects.check_links(checked + [r for r in have if r["name"].lower() not in new], problems)
+    if problems:
+        raise RulesError(" ".join(problems) + " Nothing was saved.")
     state = load_state(json_ops)
     done = []
     for rule in checked:
@@ -273,6 +280,11 @@ def _replace(old: dict[str, Any], rule: dict[str, Any], state: dict) -> dict[str
 def remove(json_ops, raw) -> int:
     """Remove a rule and all its values. Returns how many holders had one."""
     rule = find_rule(json_ops, raw)
+    import rule_effects
+    using = rule_effects.referring(rules(json_ops), rule["name"])
+    if using:
+        raise RulesError(f"{rule['name']} is changed by the effects of {', '.join(using)}: "
+                         f"change or remove those first.")
     ruleset = _ruleset(json_ops)
     ruleset["rules"] = [r for r in ruleset.get("rules") or [] if r.get("name") != rule["name"]]
     json_ops.save_json(RULESET, ruleset)
@@ -431,10 +443,13 @@ def _log(json_ops, holder: str, rule: str, what: str, cause: str) -> None:
 
 
 def change(json_ops, raw_rule, raw_holder=None, by: int | None = None,
-           to: int | None = None, cause: str = "command") -> dict[str, Any]:
+           to: int | None = None, cause: str = "command", chain=None) -> dict[str, Any]:
     """Change a counter by `by`, or set it `to` a value. A change that goes past the
-    range stops at its end; a set outside it is refused. Returns what happened:
-    {rule, holder, before, after, stopped, on, off, still, known}."""
+    range stops at its end; a set outside it is refused. The results it turns on and
+    off carry out their effects (rule_effects.py; `chain` is the chain this change is
+    part of), then the on_rule consequences fire. Returns what happened:
+    {rule, holder, before, after, stopped, on, off, still, known, did, gm, fired,
+    character (what changed on the character, for the whole chain)}."""
     rule = find_rule(json_ops, raw_rule)
     holder = resolve_holder(json_ops, rule, raw_holder)
     low, high = rule["range"]
@@ -458,12 +473,31 @@ def change(json_ops, raw_rule, raw_holder=None, by: int | None = None,
     state.setdefault(holder, {})[rule["name"]] = stored
     save_state(json_ops, state)
     _log(json_ops, holder, rule["name"], f"{before} -> {after}", cause)
-    return {"rule": rule["name"], "holder": holder, "before": before, "after": after,
-            "stopped": by is not None and before + by != after,
-            "on": [r for r in new_on if r not in old_on],
-            "off": [r for r in old_on if r not in new_on],
-            "still": [r for r in new_on if r in old_on],
-            "known": is_known(rule, stored)}
+    report = {"rule": rule["name"], "holder": holder, "before": before, "after": after,
+              "stopped": by is not None and before + by != after,
+              "on": [r for r in new_on if r not in old_on],
+              "off": [r for r in old_on if r not in new_on],
+              "still": [r for r in new_on if r in old_on],
+              "known": is_known(rule, stored)}
+    import rule_effects
+    top = chain is None
+    chain = rule_effects.new_chain() if top else chain
+    chain["seen"].add((rule["name"], holder))
+    report["did"], report["gm"] = {}, {}
+    for label, field in [(r, "when_off") for r in report["off"]] + [(r, "effects") for r in report["on"]]:
+        result = _result(rule, label)
+        done = [rule_effects.run(json_ops, effect, holder, chain,
+                                 f"effect of {rule['name']} {label}")
+                for effect in result.get(field) or []]
+        if done:
+            report["did"][label] = done
+        if field == "effects" and result.get("gm"):
+            report["gm"][label] = result["gm"]
+    report["fired"] = rule_effects.fire_on_rule(json_ops, rule["name"], holder, before, after,
+                                                holder_name(json_ops, holder))
+    if top:
+        report["character"] = list(chain["character"])
+    return report
 
 
 def set_known(json_ops, raw_rule, raw_holder=None, known: bool = True) -> tuple[str, str]:
@@ -484,19 +518,47 @@ def set_known(json_ops, raw_rule, raw_holder=None, known: bool = True) -> tuple[
 
 # ---------- showing ----------
 
-def change_lines(json_ops, report: dict[str, Any]) -> list[str]:
-    """A change as the GM reads it: the values, then the results it turned on and off."""
+def change_lines(json_ops, report: dict[str, Any], indent: str = "") -> list[str]:
+    """A change as the GM reads it: the values, then the results it turned on and off,
+    each followed by what its effects did (a change they made, indented under it),
+    its line for the GM, the consequences it fired, and at the end of a chain what
+    changed on the character."""
     rule = find_rule(json_ops, report["rule"])
     who = holder_name(json_ops, report["holder"])
     top = ""
     if report["stopped"]:
         top = " (its highest)" if report["after"] == rule["range"][1] else " (its lowest)"
-    lines = [f"{rule['name']} ({who}): {report['before']} → {report['after']}{top}"
+    lines = [f"{indent}{rule['name']} ({who}): {report['before']} → {report['after']}{top}"
              + ("" if report["known"] else f"  {HIDDEN}")]
     for kind, labels in (("now on", report["on"]), ("now off", report["off"]),
                          ("still on", report["still"])):
         for label in labels:
-            lines.append(f"  {kind + ':':9s} {label}: {_result(rule, label)['text']}")
+            lines.append(f"{indent}  {kind + ':':9s} {label}: {_result(rule, label)['text']}")
+            for done in (report.get("did") or {}).get(label, []):
+                if done.get("report"):
+                    nested = change_lines(json_ops, done["report"], indent + "      ")
+                    nested[0] = f"{indent}    → {nested[0].lstrip()}"
+                    lines += nested
+                if done.get("line"):
+                    lines.append(f"{indent}    → {done['line']}")
+                lines += _fired_lines(done.get("fired"), indent + "    ")
+            if kind == "now on" and (report.get("gm") or {}).get(label):
+                lines.append(f"{indent}    Do now: {report['gm'][label]}")
+    lines += _fired_lines(report.get("fired"), indent + "  ")
+    if report.get("character"):
+        lines.append(f"{indent}Changed on the character: {'; '.join(report['character'])}.")
+    return lines
+
+
+def _fired_lines(fired, indent: str) -> list[str]:
+    if not fired:
+        return []
+    from consequence_manager import AFTER_FIRING
+    lines = []
+    for c in fired:
+        lines.append(f"{indent}[REACTIVITY] fired [{c['id']}] {c['consequence']}")
+        lines.append(f"{indent}    ↳ fired because: {c.get('match_reason', '')} ({AFTER_FIRING})")
+        lines += [f"{indent}    ↳ {line}" for line in c.get("effects_done") or []]
     return lines
 
 

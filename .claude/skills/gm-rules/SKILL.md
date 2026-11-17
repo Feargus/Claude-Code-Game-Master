@@ -52,7 +52,7 @@ Numbers are first guesses: play decides whether they are right.
 
 ## 3. The building blocks
 
-Built so far: **the counter.** The others (a roll, a plane, a bag, a budget,
+Built so far: **the counter**, with results that act. The others (a roll, a plane, a bag, a budget,
 states, and the options rate, hysteresis, overflow and streak) come in later steps
 (rules-proposal.md in the campaign repo). Until then, model with counters, and put
 what a counter can't do into the rule's `notes`: the GM reads them in the brief.
@@ -168,6 +168,57 @@ An implant's hidden flaw, held by the character, revealed when a clinic scans it
 }
 ```
 
+### Results that act
+
+A result can do more than tell the GM what happens: it can carry **effects**, which
+the script carries out the moment the result comes on, so nothing is forgotten.
+`when_off` effects run when it goes off again, and `gm` is a line for the GM, printed
+as "Do now:", for what needs the GM's judgement (a death, a fact, a wound, someone
+arriving).
+
+```json
+{"from": 4, "text": "Lost time: something else drives the body for minutes.",
+ "effects":  [{"change": "Stress", "by": 1}, {"condition": "Dissociating"}],
+ "when_off": [{"condition": "Dissociating", "add": false}],
+ "gm": "Narrate only what the character finds when they come back; record it as a fact."}
+```
+
+The effects, a fixed list:
+
+| Effect | Example |
+|---|---|
+| `{"change": "<rule>", "by": N}` or `"set": N` | Bleed 6 sets Panic: `{"change": "Panic", "set": 6}` |
+| the same with `"of": "<holder>"` | a gang's Patience at 0 raises the character's Heat: `{"change": "Heat", "by": 2, "of": "player"}` |
+| `{"clock": "<name>", "start": N, "text": "...", "due_in": "3d"}` (`"on": "event"`, `"consequence": "..."` too) | Patience at 0 starts their retaliation |
+| `{"clock": "<name>", "advance": N}` | a rumour counter pushes an event clock on |
+| `{"condition": "<name>"}`, `"add": false` to remove | Panic on: the condition Panicked; off: removed |
+| `{"credits": N}` (negative spends; refused if there isn't enough) | a debt result takes 50 |
+
+A change made by an effect turns that rule's results on and off in turn, with their
+own effects: a **chain**. The output shows it indented, and ends with what changed on
+the character (credits, conditions). In one chain a rule changes once per holder; a
+second change is stopped and the output says so. A result can't change its own rule.
+
+**What is never an effect**, and goes into `gm` instead: a death (the Death Protocol
+needs the GM), a fact (its holders and truth need the GM), wounds (the zone and the
+cause), and anything in the scene. That last is a consequence's job:
+
+### The story waits on a value: `on_rule`
+
+The rule's results are the world's physics, the same every time. The story's plans
+laid on top are consequences that wait on a value, made in play and belonging to a
+plot:
+
+```bash
+bash tools/gm-consequence.sh add "The Ark Hospital evacuates its lower wards" "the sea reaches 5" \
+  --trigger-type on_rule --match "Sea level:5" --plot "The Flood"
+bash tools/gm-consequence.sh add "Imelda Strand sends the Floor Marshals" "Lull runs out of patience" \
+  --trigger-type on_rule --match "Patience:0@faction:lull"
+```
+
+It fires once, when the value reaches the number from either side. `@<holder>` names
+whose value, when the rule has several holders.
+
 ## 4. Writing them down
 
 When the player has approved them (with the bible):
@@ -209,5 +260,5 @@ law against good), **a bag** (tokens drawn, odds that change: a job's luck, the
 years of the melt), **a budget** (a fixed amount split: downtime days, a gang's
 soldiers), **states** (named stages with allowed moves: addiction, a corporation's
 alert), and the options **rate** (a value that moves by itself with time),
-**hysteresis**, **overflow** (lasting marks) and **streak**. Results that change
-other rules by themselves come with them.
+**hysteresis**, **overflow** (lasting marks) and **streak**. With them come the
+effects `rate_of` (change a rate), `tokens` (add to a bag) and `state` (move a state).
