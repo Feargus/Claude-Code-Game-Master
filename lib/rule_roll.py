@@ -33,6 +33,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 FIELDS = ("dice", "with", "add", "results")
+HOLDS = False                      # a roll keeps nothing per holder
 RESULT_FIELDS = ("from", "text", "effects", "gm")
 
 
@@ -181,7 +182,7 @@ def roll_lines(json_ops, report: dict[str, Any]) -> list[str]:
     return lines
 
 
-def rule_lines(rule: dict[str, Any]) -> list[str]:
+def rule_lines(json_ops, rule: dict[str, Any], holders=None) -> list[str]:
     """A roll in full, for the brief and `show`."""
     import world_rules
     lines = [f"{rule['name']} (roll {rule['dice']}, held by {world_rules._kinds(rule)}): "
@@ -200,3 +201,41 @@ def rule_lines(rule: dict[str, Any]) -> list[str]:
     amounts = ' [--with "<amount>"]...' if rule["with"] else ""
     lines.append(f'  Command: gm-rule.sh roll "{rule["name"]}"{holder}{amounts}')
     return lines
+
+
+# ---------- the block interface (world_rules.BLOCKS) ----------
+
+def default(rule: dict[str, Any]) -> dict[str, Any]:
+    return {}
+
+
+def outcomes(rule: dict[str, Any]) -> list[tuple[str, dict]]:
+    return [(label(r, rule["results"]), r) for r in rule.get("results") or []]
+
+
+def holder_line(rule, stored) -> str:
+    return ""
+
+
+def summary(rule, stored) -> str:
+    return ""
+
+
+def start(json_ops, rule, value):
+    import world_rules
+    raise world_rules.RulesError(f"{rule['name']} is a roll: it keeps no value to start at.")
+
+
+def set_start(json_ops, rule, holder, value, cause) -> list:
+    return []
+
+
+def on_redefine(rule, stored) -> str:
+    return ""
+
+
+def apply_time(json_ops, rule, before, after) -> list:
+    return []
+
+
+report_lines = roll_lines

@@ -159,19 +159,10 @@ CHECKS = {"change": _check_change, "rate_of": _check_rate_of, "state": _check_st
 
 def outcomes(rule: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     """(label, the dict that may carry effects) for each of a rule's outcomes: a
-    counter's or a roll's results, a plane's regions, a states rule's states."""
-    from world_rules import label
-    if rule.get("block") == "plane":
-        return [(r.get("name"), r) for r in rule.get("regions") or []]
-    if rule.get("block") == "states":
-        return list((rule.get("states") or {}).items())
-    if rule.get("block") == "bag":
-        results = rule.get("results")
-        return list(results.items()) if isinstance(results, dict) else []
-    if rule.get("block") == "budget":
-        parts = rule.get("parts")
-        return list(parts.items()) if isinstance(parts, dict) else []
-    return [(label(rule, r), r) for r in rule.get("results") or []]
+    counter's or a roll's results, a plane's regions, a states rule's states, a bag's
+    kinds, a budget's parts (each block's `outcomes`)."""
+    import world_rules
+    return world_rules.block(rule).outcomes(rule)
 
 
 def effects_of(rule: dict[str, Any]):

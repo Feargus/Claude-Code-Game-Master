@@ -33,6 +33,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 FIELDS = ("axes", "start", "rates", "regions")
+HOLDS = True
 REGION_FIELDS = ("name", "where", "text", "effects", "when_off", "gm")
 _COMPARE = re.compile(r"^\s*(?P<left>[^<>=]+?)\s*(?P<op><=|>=|==|<|>)\s*(?P<right>.+?)\s*$")
 _RIGHT = re.compile(r"^(?P<axis>.+?)\s*(?P<sign>[+-])\s*(?P<num>\d+)$")
@@ -254,3 +255,87 @@ def holder_line(rule: dict[str, Any], stored: dict[str, Any]) -> str:
     on = "; ".join(f"{n}: {by_name[n]['text']}" for n in stored.get("on") or [] if n in by_name)
     mark = "" if world_rules.is_known(rule, stored) else f" {world_rules.HIDDEN}"
     return f"{rule['name']}: {at} (plane): {on or 'no region'}{mark}"
+
+
+# ---------- the block interface (world_rules.BLOCKS) ----------
+
+def default(rule: dict[str, Any]) -> dict[str, Any]:
+    return {"axes": dict(rule["start"]), "on": regions_on(rule, rule["start"])}
+
+
+def outcomes(rule: dict[str, Any]) -> list[tuple[str, dict]]:
+    return [(r.get("name"), r) for r in rule.get("regions") or []]
+
+
+def summary(rule: dict[str, Any], stored: dict[str, Any]) -> str:
+    shown = ", ".join(stored.get("on") or []) or ", ".join(f"{a} {v}" for a, v in stored["axes"].items())
+    return f"{rule['name']}: {shown}"
+
+
+def start(json_ops, rule: dict[str, Any], value) -> dict[str, int]:
+    """A starting point: {"Chrome": 3}, axes left out keep their start."""
+    import json
+
+    import world_rules
+    if not isinstance(value, dict):
+        raise world_rules.RulesError(f"{rule['name']} is a plane: give its axes, e.g. "
+                                     f"{json.dumps(rule['start'])}.")
+    point = {}
+    for axis, number in value.items():
+        axis = find_axis(rule, axis)
+        low, high = rule["axes"][axis]
+        if not _is_int(number) or not low <= number <= high:
+            raise world_rules.RulesError(f"{rule['name']}'s {axis} goes from {low} to {high}, "
+                                         f"not {number!r}.")
+        point[axis] = number
+    return point
+
+
+def set_start(json_ops, rule, holder, value, cause) -> list[dict]:
+    return [change(json_ops, rule, holder, axis, to=number, cause=cause)
+            for axis, number in value.items()]
+
+
+def on_redefine(rule: dict[str, Any], stored: dict[str, Any]) -> str:
+    """Keep a holder's point: each axis moved into its new range."""
+    old = stored.get("axes") or {}
+    stored["axes"] = {a: max(lo, min(hi, int(old.get(a, rule["start"][a]))))
+                      for a, (lo, hi) in rule["axes"].items()}
+    stored["on"] = regions_on(rule, stored["axes"])
+    return ""
+
+
+def apply_time(json_ops, rule: dict[str, Any], before, after) -> list[dict]:
+    """The axes with a rate move as a counter's value does; each axis counts its own
+    periods (`rate_from` per axis)."""
+    from datetime import datetime, timedelta
+
+    import rule_time
+    import world_rules
+    from game_time import STORED_FORMAT
+    from time_manager import parse_duration
+    rates = rule.get("rates") or {}
+    reports = []
+    for holder in world_rules.holders_of(json_ops, rule) if rates else []:
+        for axis, rate in rates.items():
+            state = world_rules.load_state(json_ops)
+            stored = dict(world_rules.entry(json_ops, rule, holder, state))
+            starts = dict(stored.get("rate_from") or {})
+            every = timedelta(minutes=parse_duration(rate["every"]))
+            begun = datetime.strptime(starts[axis], STORED_FORMAT) if starts.get(axis) else before
+            periods = max(0, (after - begun) // every)
+            starts[axis] = (begun + periods * every).strftime(STORED_FORMAT)
+            stored["rate_from"] = starts
+            state.setdefault(holder, {})[rule["name"]] = stored
+            world_rules.save_state(json_ops, state)
+            low, high = rule["axes"][axis]
+            value = stored["axes"][axis]
+            new = rule_time.step(value, rate, periods, low, high)
+            if new != value:
+                reports.append(change(json_ops, rule, holder, axis, to=new,
+                                      cause=f"its rate ({rule_time.describe(rate)}), {periods} "
+                                            f"period{'s' if periods != 1 else ''}"))
+    return reports
+
+
+report_lines = change_lines

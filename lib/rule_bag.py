@@ -31,6 +31,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 FIELDS = ("tokens", "draw", "draw_every", "results", "when_empty")
+HOLDS = True
 RESULT_FIELDS = ("text", "effects", "gm")
 DRAWS = ("keep out", "put back")
 
@@ -293,3 +294,43 @@ def apply_time(json_ops, rule: dict[str, Any], before, after) -> list[dict]:
             reports.append(draw(json_ops, rule["name"], holder, count=min(periods, 1000),
                                 cause=f"time: drawn every {rule['draw_every']}"))
     return reports
+
+
+# ---------- the block interface (world_rules.BLOCKS) ----------
+
+def default(rule: dict[str, Any]) -> dict[str, Any]:
+    return {"tokens": dict(rule["tokens"]), "drawn": []}
+
+
+def outcomes(rule: dict[str, Any]) -> list[tuple[str, dict]]:
+    results = rule.get("results")
+    return list(results.items()) if isinstance(results, dict) else []
+
+
+def summary(rule: dict[str, Any], stored: dict[str, Any]) -> str:
+    return f"{rule['name']}: {contents(stored['tokens'])}"
+
+
+def start(json_ops, rule: dict[str, Any], value) -> dict[str, Any]:
+    """Starting counts: {"clean": 5}; kinds left out keep the rule's."""
+    import json
+
+    import world_rules
+    if not isinstance(value, dict):
+        raise world_rules.RulesError(f"{rule['name']} is a bag: give its tokens, e.g. "
+                                     f"{json.dumps(rule['tokens'])}.")
+    return {"tokens": {_kind(rule, k): n for k, n in value.items()}}
+
+
+def set_start(json_ops, rule, holder, value, cause) -> list[dict]:
+    return [set_tokens(json_ops, rule["name"], holder, value["tokens"], cause)]
+
+
+def on_redefine(rule: dict[str, Any], stored: dict[str, Any]) -> str:
+    """Keep a holder's tokens of the kinds the rule still has; new kinds start full."""
+    old = stored.get("tokens") or {}
+    stored["tokens"] = {k: int(old.get(k, n)) for k, n in rule["tokens"].items()}
+    return ""
+
+
+report_lines = draw_lines

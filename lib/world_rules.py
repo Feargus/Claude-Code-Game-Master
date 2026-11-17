@@ -18,10 +18,10 @@ written to rule-state.json once it is set or changes. Holders are written as the
 facts write them (player, npc:<key>, location:<key>), plus `faction:<id>` (a faction
 of the world bible's factions graph, until factions have records) and `world`.
 
-Building blocks (rules-proposal.md in the campaign repo has the plan):
+The building blocks, one module each (rules-proposal.md in the campaign repo has the plan):
     counter   one number in a range; results by range, cumulative unless `to` is given;
-              options: a rate (rule_time.py), hysteresis (a result's `off_at`), overflow
-              (lasting marks), streak
+              options: a rate, hysteresis (`off_at`), overflow (lasting marks), streak
+              (rule_counter.py; rates: rule_time.py)
     roll      dice plus named amounts (and a holder's value of a counter), read from a
               list of results; keeps nothing (rule_roll.py)
     states    named states and the moves allowed between them; time can move them on
@@ -29,12 +29,18 @@ Building blocks (rules-proposal.md in the campaign repo has the plan):
     plane     two values read together; results by region (rule_plane.py)
     bag       tokens drawn and added to; the odds are what is in it (rule_bag.py)
     budget    a fixed amount split among named parts, refilled (rule_budget.py)
+Results that act, and on_rule: rule_effects.py.
+
+Every block module provides the same names, which this module dispatches to (BLOCKS):
+FIELDS, HOLDS (whether it keeps a value per holder), check, default, outcomes,
+rule_lines, holder_line, summary, start, set_start, on_redefine, apply_time,
+report_lines.
 
 A value is known (the default: the HUD may show it, the narration make it plain) or
 hidden (the GM sees it, the player only its signs; every output marks it).
 
     gm-rule.sh list | show "<rule>" [holder]
-    gm-rule.sh change "<rule>" [holder] +N|-N   ·   set "<rule>" [holder] N
+    gm-rule.sh change "<rule>" [holder] +N|-N   ·   set "<rule>" [holder] N   (a plane: --axis)
     gm-rule.sh roll "<rule>" [holder] [--with "<amount>"]...
     gm-rule.sh move "<rule>" [holder] <state>   (set: any state, a correction)
     gm-rule.sh draw "<bag>" [holder] [N]   ·   put|take "<bag>" [holder] <kind> N   ·   refill
@@ -45,6 +51,7 @@ hidden (the GM sees it, the player only its signs; every output marks it).
 """
 
 import difflib
+import importlib
 import json
 import sys
 from datetime import UTC, datetime
@@ -59,24 +66,28 @@ LOG = "rules.log"
 BIBLE = "world-bible.json"
 
 HOLDER_KINDS = ("player", "npc", "faction", "location", "world")
-BLOCKS = ("counter", "roll", "states", "plane", "bag", "budget")
-LATER_BLOCKS: dict[str, int] = {}
+BLOCKS = {"counter": "rule_counter", "roll": "rule_roll", "states": "rule_states",
+          "plane": "rule_plane", "bag": "rule_bag", "budget": "rule_budget"}
 COMMON_FIELDS = ("name", "block", "held_by", "known", "summary", "when", "notes")
-BLOCK_FIELDS = {"counter": ("range", "start", "results", "rate", "overflow", "streak"),
-                "roll": ("dice", "with", "add", "results"),
-                "states": ("start", "states"),
-                "plane": ("axes", "start", "rates", "regions"),
-                "bag": ("tokens", "draw", "draw_every", "results", "when_empty"),
-                "budget": ("amount", "unit", "period", "parts")}
-RESULT_FIELDS = {"counter": ("from", "to", "off_at", "text", "effects", "when_off", "gm")}
-LATER_FIELDS: dict[str, int] = {}     # fields of a later step: "isn't built yet (step N)"
 MAX_NAME_WORDS = 3
 MAX_NAME_CHARS = 30
 HIDDEN = "[HIDDEN: show only its signs]"
+# What the GM does with a rule of each block, for refusals that point the way.
+HOW = {"counter": 'gm-rule.sh change "{name}" [holder] +N|-N',
+       "roll": 'gm-rule.sh roll "{name}"',
+       "states": 'gm-rule.sh move "{name}" [holder] <state>',
+       "plane": 'gm-rule.sh change "{name}" [holder] --axis <axis> +N|-N',
+       "bag": 'gm-rule.sh draw "{name}" [holder]',
+       "budget": 'gm-rule.sh split "{name}" [holder] <part>=N ...'}
 
 
-class RulesError(ValueError):
-    """A rule or a change that can't be made. The message says how to fix it."""
+from rule_errors import RulesError  # noqa: E402  (one class, however this module is imported)
+
+
+def block(which):
+    """The module of a block: a rule, or a block's name."""
+    name = which["block"] if isinstance(which, dict) else which
+    return importlib.import_module(BLOCKS[name])
 
 
 # ---------- the rules ----------
@@ -136,94 +147,14 @@ def _text(rule: dict, field: str, problems: list[str], required: bool = True) ->
 
 
 def _unknown(fields, allowed, where: str, what: str, problems: list[str]) -> None:
-    """Fields that aren't `allowed`: those of a later step say so."""
+    """Fields that aren't `allowed`."""
     for field in fields:
-        if field in allowed:
-            continue
-        if field in LATER_FIELDS:
-            problems.append(f"'{field}'{where} isn't built yet (rules-proposal.md, step "
-                            f"{LATER_FIELDS[field]})")
-        else:
+        if field not in allowed:
             problems.append(f"unknown field '{field}'{where}; {what} has {', '.join(allowed)}")
 
 
 def _is_int(value) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
-
-
-def _check_counter(rule: dict, problems: list[str]) -> None:
-    span = rule.get("range")
-    if not (isinstance(span, list) and len(span) == 2 and all(_is_int(v) for v in span)
-            and span[0] < span[1]):
-        problems.append("'range' must be [lowest, highest], two whole numbers, e.g. [0, 6]")
-        return
-    low, high = span
-    start = rule.setdefault("start", low)
-    if not _is_int(start) or not low <= start <= high:
-        problems.append(f"'start' must be a whole number from {low} to {high}")
-    results = rule.setdefault("results", [])
-    if not isinstance(results, list):
-        problems.append('\'results\' must be a list: [{"from": 2, "text": "..."}, ...]')
-        return
-    labels = []
-    for number, result in enumerate(results, 1):
-        where = f" in result {number}"
-        if not isinstance(result, dict):
-            problems.append(f'result {number} must be {{"from": N, "text": "..."}}')
-            continue
-        _unknown(result, RESULT_FIELDS["counter"], where, "a result", problems)
-        if not _is_int(result.get("from")) or not low <= result["from"] <= high:
-            problems.append(f"result {number} needs 'from', a whole number from {low} to {high}")
-            continue
-        if "to" in result and (not _is_int(result["to"]) or not result["from"] <= result["to"] <= high):
-            problems.append(f"result {number}: 'to' must be a whole number from "
-                            f"{result['from']} to {high}")
-            continue
-        if "off_at" in result and ("to" in result or not _is_int(result["off_at"])
-                                   or not low <= result["off_at"] < result["from"]):
-            problems.append(f"result {number}: 'off_at' is where it goes off again, a whole "
-                            f"number from {low} to {result['from'] - 1}, and not with 'to'")
-            continue
-        if not isinstance(result.get("text"), str) or not result["text"].strip():
-            problems.append(f"result {number} needs a 'text': what happens in the fiction")
-            continue
-        result["text"] = " ".join(result["text"].split())
-        import rule_effects
-        rule_effects.check_shape(result, number, problems)
-        label = result_label(result)
-        if label in labels:
-            problems.append(f"two results are {label}: make them one")
-        labels.append(label)
-
-
-def _check_counter_options(rule: dict, problems: list[str]) -> None:
-    """A counter's rate, overflow and streak."""
-    low, high = rule["range"]
-    if "rate" in rule:
-        import rule_time
-        problems += rule_time.check(rule["rate"], low, high)
-    ov = rule.get("overflow")
-    if ov is not None:
-        if not isinstance(ov, dict):
-            problems.append('\'overflow\' is {"at": N, "back_to": M, "marks": [...], '
-                            '"limit": K, "at_limit": "..."}')
-        else:
-            problems += [f"'overflow' has no '{k}'" for k in ov
-                         if k not in ("at", "back_to", "marks", "limit", "at_limit")]
-            if not _is_int(ov.get("at")) or not low < ov["at"] <= high:
-                problems.append(f"'overflow': 'at' is a whole number from {low + 1} to {high}")
-            elif not _is_int(ov.setdefault("back_to", low)) or not low <= ov["back_to"] < ov["at"]:
-                problems.append(f"'overflow': 'back_to' is a whole number from {low} to {ov['at'] - 1}")
-            if not isinstance(ov.setdefault("marks", []), list) or \
-                    not all(isinstance(m, str) and m.strip() for m in ov["marks"]):
-                problems.append("'overflow': 'marks' is a list of suggested marks")
-            if "limit" in ov and (not _is_int(ov["limit"]) or ov["limit"] < 1
-                                  or not isinstance(ov.get("at_limit"), str)
-                                  or not ov["at_limit"].strip()):
-                problems.append("'overflow': 'limit' is a number of marks (1 or more), with "
-                                "'at_limit', what happens then")
-    if not isinstance(rule.get("streak", False), bool):
-        problems.append("'streak' is true or false")
 
 
 def check_rule(raw: Any) -> dict[str, Any]:
@@ -232,16 +163,12 @@ def check_rule(raw: Any) -> dict[str, Any]:
         raise RulesError('A rule is an object: {"name": "...", "block": "counter", ...}.')
     rule = json.loads(json.dumps(raw))                         # a copy, plain JSON
     rule["name"] = _name(rule.get("name"))
+    kind = rule.get("block")
+    if kind not in BLOCKS:
+        raise RulesError(f"{rule['name']}: 'block' must be one of {', '.join(BLOCKS)}, "
+                         f"not {kind!r}.")
     problems = []
-    block = rule.get("block")
-    if block in LATER_BLOCKS:
-        raise RulesError(f"{rule['name']}: the block '{block}' isn't built yet "
-                         f"(rules-proposal.md, step {LATER_BLOCKS[block]}). Built: "
-                         f"{', '.join(BLOCKS)}.")
-    if block not in BLOCKS:
-        raise RulesError(f"{rule['name']}: 'block' must be one of "
-                         f"{', '.join(BLOCKS + tuple(LATER_BLOCKS))}, not {block!r}.")
-    _unknown(rule, COMMON_FIELDS + BLOCK_FIELDS[block], "", f"a {block}", problems)
+    _unknown(rule, COMMON_FIELDS + block(kind).FIELDS, "", f"a {kind}", problems)
     held = rule.get("held_by")
     held = [held] if isinstance(held, str) else held
     if not isinstance(held, list) or not held or any(h not in HOLDER_KINDS for h in held):
@@ -253,25 +180,7 @@ def check_rule(raw: Any) -> dict[str, Any]:
     _text(rule, "summary", problems)
     _text(rule, "when", problems)
     _text(rule, "notes", problems, required=False)
-    if block == "counter":
-        _check_counter(rule, problems)
-        if not problems:
-            _check_counter_options(rule, problems)
-    elif block == "roll":
-        import rule_roll
-        rule_roll.check(rule, problems)
-    elif block == "states":
-        import rule_states
-        rule_states.check(rule, problems)
-    elif block == "plane":
-        import rule_plane
-        rule_plane.check(rule, problems)
-    elif block == "bag":
-        import rule_bag
-        rule_bag.check(rule, problems)
-    elif block == "budget":
-        import rule_budget
-        rule_budget.check(rule, problems)
+    block(kind).check(rule, problems)
     if problems:
         raise RulesError(f"{rule['name']}: " + "; ".join(problems) + ".")
     return rule
@@ -287,8 +196,8 @@ def _ruleset(json_ops) -> dict[str, Any]:
 
 def define(json_ops, given: Any) -> list[tuple[str, str]]:
     """Add rules, or replace those of the same name: all or nothing. Returns
-    [(name, "added" | "replaced")]. A replaced rule keeps its holders' values
-    (clamped into a new range); its block can't change while values exist."""
+    [(name, "added" | "replaced")]. A replaced rule keeps its holders' values (each
+    block's on_redefine fits them in); its block can't change while values exist."""
     given = [given] if isinstance(given, dict) else given
     if not isinstance(given, list) or not given:
         raise RulesError("Give the rules as a list: [{\"name\": \"...\", ...}, ...].")
@@ -330,7 +239,7 @@ def define(json_ops, given: Any) -> list[tuple[str, str]]:
 
 def _replace(old: dict[str, Any], rule: dict[str, Any], state: dict) -> dict[str, Any]:
     """`rule` in place of `old`, under the old key; the holders' values (in `state`)
-    are kept, moved into a new range."""
+    are fitted to it by its block, or the replacement is refused."""
     holders = [h for h, values in state.items() if old["name"] in values]
     if old.get("block") != rule["block"] and holders:
         raise RulesError(f"{rule['name']} is a {old.get('block')} with values "
@@ -338,41 +247,14 @@ def _replace(old: dict[str, Any], rule: dict[str, Any], state: dict) -> dict[str
                          f"Remove it first (gm-rule.sh remove), or give the new rule "
                          f"another name. Nothing was saved.")
     rule["name"] = old["name"]                                     # the key stays as it was
-    if rule["block"] == "states":
-        lost = [f"{h} ({state[h][rule['name']].get('state')})" for h in holders
-                if state[h][rule["name"]].get("state") not in rule["states"]]
-        if lost:
-            raise RulesError(f"{rule['name']}: the new rule lacks the states some holders are "
-                             f"in: {', '.join(lost)}. Keep those states, or move them first. "
-                             f"Nothing was saved.")
-    if rule["block"] == "plane":
-        import rule_plane
-        for holder in holders:
-            stored = state[holder][rule["name"]]
-            old = stored.get("axes") or {}
-            stored["axes"] = {a: max(lo, min(hi, int(old.get(a, rule["start"][a]))))
-                              for a, (lo, hi) in rule["axes"].items()}
-            stored["on"] = rule_plane.regions_on(rule, stored["axes"])
-        return rule
-    if rule["block"] == "budget":
-        for holder in holders:
-            stored = state[holder][rule["name"]]
-            if stored.get("split"):
-                stored["split"] = {p: n for p, n in stored["split"].items() if p in rule["parts"]}
-        return rule
-    if rule["block"] == "bag":
-        for holder in holders:
-            stored = state[holder][rule["name"]]
-            old = stored.get("tokens") or {}
-            stored["tokens"] = {k: int(old.get(k, n)) for k, n in rule["tokens"].items()}
-        return rule
-    if rule["block"] != "counter":
-        return rule
-    low, high = rule["range"]
+    lost = []
     for holder in holders:
-        stored = state[holder][rule["name"]]
-        stored["value"] = max(low, min(high, int(stored.get("value", rule["start"]))))
-        stored["on"] = results_on(rule, stored["value"], stored.get("on") or ())
+        why = block(rule).on_redefine(rule, state[holder][rule["name"]])
+        if why:
+            lost.append(f"{holder} ({why})")
+    if lost:
+        raise RulesError(f"{rule['name']}: the new rule doesn't fit what some holders have: "
+                         f"{', '.join(lost)}. Nothing was saved.")
     return rule
 
 
@@ -494,75 +376,30 @@ def save_state(json_ops, state: dict[str, dict[str, Any]]) -> None:
     json_ops.save_json(STATE, state)
 
 
-def result_label(result: dict[str, Any]) -> str:
-    """'from 2', 'from 2 to 3' or 'at 0': how a result is named in the output and stored in `on`."""
-    if result.get("to") == result["from"]:
-        return f"at {result['from']}"
-    if "to" in result:
-        return f"from {result['from']} to {result['to']}"
-    return f"from {result['from']}"
-
-
-def results_on(rule: dict[str, Any], value: int, before=()) -> list[str]:
-    """The labels of the counter results that hold at `value`: each from its `from`
-    upward (cumulative), or only up to its `to`. One with `off_at` (hysteresis), once
-    on (in `before`), stays on until the value falls to its `off_at`."""
-    on = []
-    for r in rule.get("results") or []:
-        label = result_label(r)
-        in_range = r["from"] <= value <= r.get("to", value)
-        held_on = "off_at" in r and label in before and value > r["off_at"]   # hysteresis
-        if in_range or held_on:
-            on.append(label)
-    return on
+def holders_of(json_ops, rule: dict[str, Any], state=None) -> list[str]:
+    """Who has a value of `rule`: the player and the world when they hold it (their
+    value exists from the start), then every other holder with a stored value."""
+    state = load_state(json_ops) if state is None else state
+    holders = [h for h in ("player", "world") if h in rule["held_by"]]
+    return holders + [h for h, values in state.items() if rule["name"] in values and h not in holders]
 
 
 def entry(json_ops, rule: dict[str, Any], holder: str, state=None) -> dict[str, Any]:
-    """Where `rule` stands for `holder` (the rule's start if nothing is stored)."""
+    """Where `rule` stands for `holder` (the block's default if nothing is stored)."""
     state = load_state(json_ops) if state is None else state
     stored = (state.get(holder) or {}).get(rule["name"])
-    if stored:
-        return stored
-    if rule["block"] == "states":
-        return {"state": rule["start"]}
-    if rule["block"] == "plane":
-        import rule_plane
-        return {"axes": dict(rule["start"]), "on": rule_plane.regions_on(rule, rule["start"])}
-    if rule["block"] == "bag":
-        return {"tokens": dict(rule["tokens"]), "drawn": []}
-    if rule["block"] == "budget":
-        return {"spent": False}
-    return {"value": rule["start"], "on": results_on(rule, rule["start"])}
+    return stored if stored else block(rule).default(rule)
 
 
 def is_known(rule: dict[str, Any], stored: dict[str, Any]) -> bool:
     return bool(stored.get("known", rule.get("known", True)))
 
 
-def label(rule: dict[str, Any], result: dict[str, Any]) -> str:
-    """How a result of `rule` is named, whatever the block."""
-    if rule["block"] == "roll":
-        import rule_roll
-        return rule_roll.label(result, rule["results"])
-    if rule["block"] == "plane":
-        return result["name"]
-    return result_label(result)
-
-
-def _result(rule, name) -> dict[str, Any]:
-    return next(r for r in rule.get("results") or [] if label(rule, r) == name)
-
-
 def counter(json_ops, raw) -> dict[str, Any]:
     """The rule `raw` names, which must be a counter (it has a value to change)."""
     rule = find_rule(json_ops, raw)
     if rule["block"] != "counter":
-        how = {"roll": f'gm-rule.sh roll "{rule["name"]}"',
-               "states": f'gm-rule.sh move "{rule["name"]}" [holder] <state>',
-               "plane": f'gm-rule.sh change "{rule["name"]}" [holder] --axis <axis> +N|-N',
-               "bag": f'gm-rule.sh draw "{rule["name"]}" [holder]',
-               "budget": f'gm-rule.sh split "{rule["name"]}" [holder] <part>=N ...'}.get(
-            rule["block"], f'gm-rule.sh show "{rule["name"]}"')
+        how = HOW[rule["block"]].format(name=rule["name"])
         raise RulesError(f"{rule['name']} is a {rule['block']}: it has no value to change ({how}).")
     return rule
 
@@ -584,13 +421,9 @@ def _log(json_ops, holder: str, rule: str, what: str, cause: str) -> None:
 def change(json_ops, raw_rule, raw_holder=None, by: int | None = None,
            to: int | None = None, cause: str = "command", chain=None,
            axis: str | None = None) -> dict[str, Any]:
-    """Change a counter by `by`, or set it `to` a value. A change that goes past the
-    range stops at its end; a set outside it is refused. The results it turns on and
-    off carry out their effects (rule_effects.py; `chain` is the chain this change is
-    part of), then the on_rule consequences fire. Returns what happened:
-    {rule, holder, before, after, stopped, on, off, still, known, did, gm, fired,
-    character (what changed on the character, for the whole chain)}. A plane moves
-    one `axis` (rule_plane.change)."""
+    """Change a counter by `by`, or set it `to` a value (rule_counter.change); a plane
+    moves one `axis` (rule_plane.change). The results it turns on and off carry out
+    their effects, then the on_rule consequences fire."""
     rule = find_rule(json_ops, raw_rule)
     if rule["block"] == "plane":
         import rule_plane
@@ -599,90 +432,16 @@ def change(json_ops, raw_rule, raw_holder=None, by: int | None = None,
     if axis is not None:
         raise RulesError(f"{rule['name']} has no axes: --axis is for a plane.")
     rule = counter(json_ops, raw_rule)
-    holder = resolve_holder(json_ops, rule, raw_holder)
-    low, high = rule["range"]
-    state = load_state(json_ops)
-    stored = dict(entry(json_ops, rule, holder, state))
-    before = int(stored.get("value", rule["start"]))
-    if to is not None:
-        if not low <= to <= high:
-            raise RulesError(f"{rule['name']} goes from {low} to {high}; {to} is outside.")
-        after = to
-    elif by is not None:
-        after = max(low, min(high, before + by))
-    else:
-        raise RulesError("Say how much: +N or -N, or set a value.")
-    stopped = by is not None and before + by != after
-    ov, overflow, reached = rule.get("overflow"), None, after
-    if ov and before < ov["at"] <= after:                 # a lasting mark, and back down
-        reached, after = ov["at"], ov["back_to"]
-        stored["marks_due"] = int(stored.get("marks_due", 0)) + 1
-        overflow = {"at": ov["at"], "back_to": after, "suggested": ov.get("marks") or [],
-                    "marks": list(stored.get("marks") or []), "due": stored["marks_due"]}
-    old_on = list(stored.get("on") or results_on(rule, before))
-    new_on = results_on(rule, after, old_on)
-    stored.update(value=after, on=new_on)
-    now = _now_game(json_ops)
-    if now:
-        stored["since"] = now
-    state.setdefault(holder, {})[rule["name"]] = stored
-    save_state(json_ops, state)
-    path = f"{before} -> {reached} -> {after} (overflow)" if overflow else f"{before} -> {after}"
-    _log(json_ops, holder, rule["name"], path, cause)
-    report = {"rule": rule["name"], "holder": holder, "before": before, "after": after,
-              "stopped": stopped and not overflow, "overflow": overflow,
-              "on": [r for r in new_on if r not in old_on],
-              "off": [r for r in old_on if r not in new_on],
-              "still": [r for r in new_on if r in old_on],
-              "known": is_known(rule, stored)}
-    import rule_effects
-    top = chain is None
-    chain = rule_effects.new_chain() if top else chain
-    chain["seen"].add((rule["name"], holder))
-    report["did"], report["gm"] = {}, {}
-    for label, field in [(r, "when_off") for r in report["off"]] + [(r, "effects") for r in report["on"]]:
-        result = _result(rule, label)
-        done = [rule_effects.run(json_ops, effect, holder, chain,
-                                 f"effect of {rule['name']} {label}")
-                for effect in result.get(field) or []]
-        if done:
-            report["did"][label] = done
-        if field == "effects" and result.get("gm"):
-            report["gm"][label] = result["gm"]
-    report["fired"] = rule_effects.fire_on_rule(json_ops, rule["name"], holder, before, reached,
-                                                holder_name(json_ops, holder))
-    if top:
-        report["character"] = list(chain["character"])
-    return report
+    import rule_counter
+    return rule_counter.change(json_ops, rule, resolve_holder(json_ops, rule, raw_holder),
+                               by=by, to=to, cause=cause, chain=chain)
 
 
 def mark(json_ops, raw_rule, raw_holder, text: str) -> dict[str, Any]:
-    """Record the lasting mark an overflow left (the GM picks one of the suggestions,
-    or writes one). Returns {rule, holder, mark, marks, at_limit (what happens now,
-    when the marks reach the limit, else '')}."""
+    """Record the lasting mark an overflow left (rule_counter.mark)."""
+    import rule_counter
     rule = counter(json_ops, raw_rule)
-    ov = rule.get("overflow")
-    if not ov:
-        raise RulesError(f"{rule['name']} has no overflow, so it leaves no marks.")
-    holder = resolve_holder(json_ops, rule, raw_holder)
-    state = load_state(json_ops)
-    stored = dict(entry(json_ops, rule, holder, state))
-    if int(stored.get("marks_due", 0)) < 1:
-        raise RulesError(f"No mark is due: {rule['name']} leaves one each time it reaches "
-                         f"{ov['at']}.")
-    text = " ".join(str(text or "").split())
-    if not text:
-        raise RulesError("Say what the mark is, e.g. \"night terrors\".")
-    stored["marks"] = list(stored.get("marks") or []) + [text]
-    stored["marks_due"] = int(stored["marks_due"]) - 1
-    if not stored["marks_due"]:
-        del stored["marks_due"]
-    state.setdefault(holder, {})[rule["name"]] = stored
-    save_state(json_ops, state)
-    _log(json_ops, holder, rule["name"], f"mark: {text}", "command")
-    at_limit = ov.get("at_limit", "") if ov.get("limit") and len(stored["marks"]) >= ov["limit"] else ""
-    return {"rule": rule["name"], "holder": holder, "mark": text, "marks": stored["marks"],
-            "at_limit": at_limit}
+    return rule_counter.mark(json_ops, rule, resolve_holder(json_ops, rule, raw_holder), text)
 
 
 def break_streak(json_ops, raw_rule, raw_holder=None) -> dict[str, Any]:
@@ -695,7 +454,9 @@ def break_streak(json_ops, raw_rule, raw_holder=None) -> dict[str, Any]:
 
 def set_known(json_ops, raw_rule, raw_holder=None, known: bool = True) -> tuple[str, str]:
     """Make one holder's value known (`reveal`) or hidden (`hide`)."""
-    rule = counter(json_ops, raw_rule)
+    rule = find_rule(json_ops, raw_rule)
+    if not block(rule).HOLDS:
+        raise RulesError(f"{rule['name']} is a {rule['block']}: it keeps no value to hide.")
     holder = resolve_holder(json_ops, rule, raw_holder)
     state = load_state(json_ops)
     stored = dict(entry(json_ops, rule, holder, state))
@@ -712,40 +473,14 @@ def set_known(json_ops, raw_rule, raw_holder=None, known: bool = True) -> tuple[
 # ---------- showing ----------
 
 def change_lines(json_ops, report: dict[str, Any], indent: str = "") -> list[str]:
-    """A change as the GM reads it: the values, then the results it turned on and off,
-    each followed by what its effects did (a change they made, indented under it),
-    its line for the GM, the consequences it fired, and at the end of a chain what
-    changed on the character."""
-    if "axis" in report:
-        import rule_plane
-        return rule_plane.change_lines(json_ops, report, indent)
-    rule = find_rule(json_ops, report["rule"])
-    who = holder_name(json_ops, report["holder"])
-    top = ""
-    if report["stopped"]:
-        top = " (its highest)" if report["after"] == rule["range"][1] else " (its lowest)"
-    ov = report.get("overflow")
-    path = f"{report['before']} → {ov['at']} → {report['after']}" if ov else \
-        f"{report['before']} → {report['after']}"
-    lines = [f"{indent}{rule['name']} ({who}): {path}{top}"
-             + ("" if report["known"] else f"  {HIDDEN}")]
-    if ov:
-        offer = f" Suggested: {'; '.join(ov['suggested'])}; or write one." if ov["suggested"] else ""
-        lines.append(f"{indent}  overflow at {ov['at']}, back to {ov['back_to']}: a lasting mark "
-                     f"is due.{offer} Then: gm-rule.sh mark \"{rule['name']}\""
-                     + ("" if rule["held_by"] in (["player"], ["world"]) else ' "<holder>"')
-                     + ' "<the mark>"')
-    for kind, labels in (("now on", report["on"]), ("now off", report["off"]),
-                         ("still on", report["still"])):
-        for name in labels:
-            lines.append(f"{indent}  {kind + ':':9s} {name}: {_result(rule, name)['text']}")
-            lines += done_lines(json_ops, (report.get("did") or {}).get(name, []), indent)
-            if kind == "now on" and (report.get("gm") or {}).get(name):
-                lines.append(f"{indent}    Do now: {report['gm'][name]}")
-    lines += _fired_lines(report.get("fired"), indent + "  ")
-    if report.get("character"):
-        lines.append(f"{indent}Changed on the character: {'; '.join(report['character'])}.")
-    return lines
+    """A change as the GM reads it (a counter's or a plane's)."""
+    which = "rule_plane" if "axis" in report else "rule_counter"
+    return importlib.import_module(which).change_lines(json_ops, report, indent)
+
+
+def report_lines(json_ops, report: dict[str, Any]) -> list[str]:
+    """Any block's report (from a time step), as the GM reads it."""
+    return block(find_rule(json_ops, report["rule"])).report_lines(json_ops, report)
 
 
 def done_lines(json_ops, done: list[dict[str, Any]], indent: str) -> list[str]:
@@ -780,83 +515,10 @@ def _fired_lines(fired, indent: str) -> list[str]:
 
 
 def rule_lines(json_ops, rule: dict[str, Any], holders=None) -> list[str]:
-    """A rule in full: what it is, its words, its results, and where it stands for
-    `holders` (default: every holder with a value, plus the player or the world when
-    they hold it)."""
-    if rule["block"] == "roll":
-        import rule_roll
-        return rule_roll.rule_lines(rule)
-    if rule["block"] == "states":
-        import rule_states
-        return rule_states.rule_lines(json_ops, rule, holders)
-    if rule["block"] == "plane":
-        import rule_plane
-        return rule_plane.rule_lines(json_ops, rule, holders)
-    if rule["block"] == "bag":
-        import rule_bag
-        return rule_bag.rule_lines(json_ops, rule, holders)
-    if rule["block"] == "budget":
-        import rule_budget
-        return rule_budget.rule_lines(json_ops, rule, holders)
-    low, high = rule["range"]
-    hidden = "" if rule.get("known", True) else f"; {HIDDEN}"
-    lines = [f"{rule['name']} ({rule['block']} {low}–{high}, held by {_kinds(rule)}{hidden}): "
-             f"{rule['summary']}",
-             f"  When: {rule['when']}"]
-    if rule.get("notes"):
-        lines.append(f"  Notes: {rule['notes']}")
-    lines += _option_lines(rule)
-    for result in rule.get("results") or []:
-        off = f" (off only at {result['off_at']})" if "off_at" in result else ""
-        lines.append(f"  {result_label(result)}{off}: {result['text']}")
-    lines.append(command_line(rule))
-    state = load_state(json_ops)
-    if holders is None:
-        holders = [h for h in ("player", "world") if h in rule["held_by"]]
-        holders += [h for h, values in state.items() if rule["name"] in values and h not in holders]
-    for holder in holders:
-        stored = entry(json_ops, rule, holder, state)
-        on = ", ".join(stored.get("on") or []) or "no result"
-        mark = "" if is_known(rule, stored) else f" {HIDDEN}"
-        lines.append(f"  Now, {holder_name(json_ops, holder)}: {stored.get('value')} ({on})"
-                     f"{_extras(stored)}{mark}")
-    return lines
-
-
-def _option_lines(rule: dict[str, Any]) -> list[str]:
-    """A counter's rate, overflow and streak, in words."""
-    lines = []
-    if rule.get("rate"):
-        import rule_time
-        lines.append(f"  Rate: {rule_time.describe(rule['rate'])}, by itself as game time passes.")
-    ov = rule.get("overflow")
-    if ov:
-        marks = f" (e.g. {'; '.join(ov['marks'])})" if ov.get("marks") else ""
-        limit = f" At {ov['limit']} marks: {ov['at_limit']}" if ov.get("limit") else ""
-        lines.append(f"  Overflow at {ov['at']}: back to {ov['back_to']}, and a lasting mark"
-                     f"{marks}.{limit}")
-    if rule.get("streak"):
-        lines.append(f"  Streak: a failure breaks it (gm-rule.sh break \"{rule['name']}\").")
-    return lines
-
-
-def _extras(stored: dict[str, Any]) -> str:
-    """A holder's marks, marks due and own rate, after its value."""
-    parts = []
-    if stored.get("marks"):
-        parts.append(f"marks: {'; '.join(stored['marks'])}")
-    if stored.get("marks_due"):
-        parts.append(f"{stored['marks_due']} mark due")
-    if stored.get("rate"):
-        import rule_time
-        parts.append(f"its own rate: {rule_time.describe(stored['rate'])}")
-    return f"; {', '.join(parts)}" if parts else ""
-
-
-def command_line(rule: dict[str, Any]) -> str:
-    """How the GM changes the rule."""
-    holder = "" if rule["held_by"] in (["player"], ["world"]) else ' "<holder>"'
-    return f'  Command: gm-rule.sh change "{rule["name"]}"{holder} +N|-N'
+    """A rule in full: what it is, its words, its outcomes, its command, and where it
+    stands for `holders` (default: every holder with a value, plus the player or the
+    world when they hold it)."""
+    return block(rule).rule_lines(json_ops, rule, holders)
 
 
 def brief_lines(json_ops) -> list[str]:
@@ -866,7 +528,7 @@ def brief_lines(json_ops) -> list[str]:
     lines = [f"- {line}" for line in plain_rules(json_ops)]
     state = load_state(json_ops)
     for rule in rules(json_ops):
-        if rule["block"] == "roll":
+        if not block(rule).HOLDS:
             lines += rule_lines(json_ops, rule)
             continue
         holders = [h for h in ("player", "world") if h in rule["held_by"]]
@@ -880,70 +542,29 @@ def brief_lines(json_ops) -> list[str]:
 
 
 def holder_lines(json_ops, holder: str) -> list[str]:
-    """The rules a holder has a value of, each on a line with the results on now in
-    full: for a person's or a place's card."""
-    lines = []
+    """The rules a holder has a value of, a line each with what is on now in full: for
+    a person's or a place's card."""
     state = load_state(json_ops)
-    for rule in rules(json_ops):
-        stored = (state.get(holder) or {}).get(rule["name"])
-        if stored and rule["block"] == "plane":
-            import rule_plane
-            lines.append(rule_plane.holder_line(rule, stored))
-            continue
-        if stored and rule["block"] == "bag":
-            import rule_bag
-            lines.append(rule_bag.holder_line(rule, stored))
-            continue
-        if stored and rule["block"] == "budget":
-            import rule_budget
-            lines.append(rule_budget.holder_line(rule, stored))
-            continue
-        if stored and rule["block"] == "states":
-            mark = "" if is_known(rule, stored) else f" {HIDDEN}"
-            lines.append(f"{rule['name']}: {stored['state']} (states): "
-                         f"{rule['states'][stored['state']]['text']}{mark}")
-            continue
-        if not stored or rule["block"] != "counter":
-            continue
-        low, high = rule["range"]
-        on = [f"{label}: {_result(rule, label)['text']}" for label in stored.get("on") or []]
-        mark = "" if is_known(rule, stored) else f" {HIDDEN}"
-        lines.append(f"{rule['name']} {stored.get('value')} ({rule['block']} {low}–{high}): "
-                     + ("; ".join(on) or "no result") + _extras(stored) + mark)
-    return lines
+    return [block(rule).holder_line(rule, stored) for rule in rules(json_ops)
+            if (stored := (state.get(holder) or {}).get(rule["name"])) and block(rule).HOLDS]
 
 
 def summary(json_ops, holder: str = "player") -> str:
-    """'Bleed 4/6, Stress 2/8 (hidden)': a holder's values on one line, or ''."""
+    """'Bleed 4/6, Addiction: hooked (hidden)': a holder's values on one line, or ''."""
     parts = []
     state = load_state(json_ops)
     for rule in rules(json_ops):
-        if holder.partition(":")[0] not in rule["held_by"] or rule["block"] == "roll":
+        if holder.partition(":")[0] not in rule["held_by"] or not block(rule).HOLDS:
             continue
         stored = entry(json_ops, rule, holder, state)
-        if rule["block"] in ("states", "plane", "bag", "budget"):
-            import rule_bag
-            import rule_budget
-            hidden = "" if is_known(rule, stored) else " (hidden)"
-            if rule["block"] == "states":
-                shown = stored["state"]
-            elif rule["block"] == "budget":
-                shown = rule_budget.summary(rule, stored)
-            elif rule["block"] == "bag":
-                shown = rule_bag.contents(stored["tokens"])
-            else:
-                shown = (", ".join(stored.get("on") or [])
-                         or ", ".join(f"{a} {v}" for a, v in stored["axes"].items()))
-            parts.append(f"{rule['name']}: {shown}{hidden}")
-            continue
         hidden = "" if is_known(rule, stored) else " (hidden)"
-        parts.append(f"{rule['name']} {stored.get('value')}/{rule['range'][1]}{hidden}")
+        parts.append(block(rule).summary(rule, stored) + hidden)
     return ", ".join(parts)
 
 
 def check_values(json_ops, holder: str, given: Any) -> list[tuple[str, Any]]:
     """Starting values {rule: value} for `holder` (`player` at character creation),
-    checked: [(rule name, value)], or RulesError."""
+    each checked by its block: [(rule name, value)], or RulesError."""
     if not given:
         return []
     if not isinstance(given, dict):
@@ -953,60 +574,16 @@ def check_values(json_ops, holder: str, given: Any) -> list[tuple[str, Any]]:
         rule = find_rule(json_ops, raw)
         if holder.partition(":")[0] not in rule["held_by"]:
             raise RulesError(f"{rule['name']} is held by {_kinds(rule)}, not by {holder}.")
-        if rule["block"] == "states":
-            import rule_states
-            checked.append((rule["name"], rule_states._find_state(rule, value)))
-            continue
-        if rule["block"] == "budget":
-            raise RulesError(f"{rule['name']} is a budget: it has no starting value (it starts "
-                             f"full: gm-rule.sh split).")
-        if rule["block"] == "bag":
-            if not isinstance(value, dict):
-                raise RulesError(f"{rule['name']} is a bag: give its tokens, e.g. "
-                                 f"{json.dumps(rule['tokens'])}.")
-            import rule_bag
-            checked.append((rule["name"], {"tokens": {rule_bag._kind(rule, k): n
-                                                      for k, n in value.items()}}))
-            continue
-        if rule["block"] == "plane":
-            import rule_plane
-            if not isinstance(value, dict):
-                raise RulesError(f"{rule['name']} is a plane: give its axes, e.g. "
-                                 f"{json.dumps(rule['start'])}.")
-            point = {}
-            for axis, number in value.items():
-                axis = rule_plane.find_axis(rule, axis)
-                low, high = rule["axes"][axis]
-                if not _is_int(number) or not low <= number <= high:
-                    raise RulesError(f"{rule['name']}'s {axis} goes from {low} to {high}, "
-                                     f"not {number!r}.")
-                point[axis] = number
-            checked.append((rule["name"], point))
-            continue
-        rule = counter(json_ops, rule["name"])
-        low, high = rule["range"]
-        if not _is_int(value) or not low <= value <= high:
-            raise RulesError(f"{rule['name']} goes from {low} to {high}; {value!r} is not a "
-                             f"whole number in it.")
-        checked.append((rule["name"], value))
+        checked.append((rule["name"], block(rule).start(json_ops, rule, value)))
     return checked
 
 
 def set_values(json_ops, holder: str, checked: list[tuple[str, Any]], cause: str) -> list[dict]:
     """Set values checked by check_values. Returns the reports."""
-    import rule_states
     reports = []
     for name, value in checked:
-        if isinstance(value, str):
-            reports.append(rule_states.move(json_ops, name, holder, value, cause=cause, force=True))
-        elif isinstance(value, dict) and "tokens" in value:
-            import rule_bag
-            reports.append(rule_bag.set_tokens(json_ops, name, holder, value["tokens"], cause))
-        elif isinstance(value, dict):
-            reports += [change(json_ops, name, holder, to=v, axis=a, cause=cause)
-                        for a, v in value.items()]
-        else:
-            reports.append(change(json_ops, name, holder, to=value, cause=cause))
+        rule = find_rule(json_ops, name)
+        reports += block(rule).set_start(json_ops, rule, holder, value, cause)
     return reports
 
 
@@ -1054,63 +631,187 @@ def _rule_and_holder(args: list[str], with_value: bool) -> tuple[str, str | None
     return rest[0], (rest[1] if len(rest) > 1 else None), value
 
 
-def emit_bag(json_ops, action: str, words: list[str], json_mode: bool) -> None:
-    """gm-rule.sh draw / refill / put / take."""
-    import rule_bag
-    from cli_output import emit
-    if action == "draw":
-        count = 1
-        if len(words) > 1 and words[-1].isdigit():
-            count, words = int(words[-1]), words[:-1]
-        name, holder, _ = _rule_and_holder(words, False)
-        report = rule_bag.draw(json_ops, name, holder, count)
-        emit(report, "\n".join(rule_bag.draw_lines(json_ops, report)), json_mode)
-        return
-    if action == "refill":
-        name, holder, _ = _rule_and_holder(words, False)
-        report = rule_bag.refill(json_ops, name, holder)
-    else:
-        if len(words) < 3 or not words[-1].isdigit():
-            raise RulesError(f'Give "<bag>" [holder] <kind> N: gm-rule.sh {action} "The Job" trouble 1.')
-        amount = int(words[-1]) * (1 if action == "put" else -1)
-        name, holder, kind = _rule_and_holder(words[:-1], True)
-        report = rule_bag.put(json_ops, name, holder, kind, amount)
-    emit(report, rule_bag.put_line(json_ops, report), json_mode)
-
-
-def _is_block(json_ops, words, block: str) -> bool:
+def _block_of(json_ops, words) -> str:
     try:
-        return find_rule(json_ops, words[0])["block"] == block
+        return find_rule(json_ops, words[0])["block"]
     except (RulesError, IndexError):
-        return False
-
-
-def _is_states(json_ops, words) -> bool:
-    return _is_block(json_ops, words, "states")
+        return ""
 
 
 def _stdin_text() -> str:
     return "" if sys.stdin.isatty() else sys.stdin.read()
 
 
-def main() -> int:
+def _cmd_list(ops, args):
+    found = rules(ops)
+    lines = [f"- {line}" for line in plain_rules(ops)]
+    for rule in found:
+        lines += rule_lines(ops, rule)
+    return ({"rules": found, "plain_rules": plain_rules(ops), "state": load_state(ops)},
+            "\n".join(lines) or "This campaign has no rules of its own (gm-rule.sh define).")
+
+
+def _cmd_show(ops, args):
+    name, holder, _ = _rule_and_holder(args.words, False)
+    rule = find_rule(ops, name)
+    holders = [resolve_holder(ops, rule, holder)] if holder else None
+    return ({"rule": rule, "state": {h: v[rule["name"]] for h, v in load_state(ops).items()
+                                     if rule["name"] in v}},
+            "\n".join(rule_lines(ops, rule, holders)))
+
+
+def _cmd_change(ops, args):
+    if args.action == "set" and _block_of(ops, args.words) == "states":
+        return _cmd_move(ops, args)
+    name, holder, value = _rule_and_holder(args.words, True)
+    if args.action == "change":
+        report = change(ops, name, holder, by=_amount(value), axis=args.axis)
+    else:
+        if not value.lstrip("-").isdigit():
+            raise RulesError(f"A value is a whole number; got '{value}'.")
+        report = change(ops, name, holder, to=int(value), axis=args.axis)
+    return report, "\n".join(change_lines(ops, report))
+
+
+def _cmd_move(ops, args):
+    import rule_states
+    name, holder, value = _rule_and_holder(args.words, True)
+    report = rule_states.move(ops, name, holder, value, force=args.action == "set",
+                              cause="command" if args.action == "move" else "set")
+    return report, "\n".join(rule_states.move_lines(ops, report))
+
+
+def _cmd_roll(ops, args):
+    import rule_roll
+    name, holder, _ = _rule_and_holder(args.words, False)
+    report = rule_roll.roll(ops, name, holder, args.named)
+    return report, "\n".join(rule_roll.roll_lines(ops, report))
+
+
+def _cmd_split(ops, args):
+    import rule_budget
+    words = args.words
+    first = [i for i, word in enumerate(words) if "=" in word]
+    head = words[:first[0]] if first else words
+    name, holder, _ = _rule_and_holder(head, False)
+    report = rule_budget.split(ops, name, holder, words[len(head):])
+    return report, "\n".join(rule_budget.split_lines(ops, report))
+
+
+def _cmd_refill(ops, args):
+    name, holder, _ = _rule_and_holder(args.words, False)
+    if _block_of(ops, args.words) == "budget":
+        import rule_budget
+        report = rule_budget.refill(ops, name, holder)
+        return report, rule_budget.refill_line(ops, report)
+    import rule_bag
+    report = rule_bag.refill(ops, name, holder)
+    return report, rule_bag.put_line(ops, report)
+
+
+def _cmd_draw(ops, args):
+    import rule_bag
+    words, count = args.words, 1
+    if len(words) > 1 and words[-1].isdigit():
+        count, words = int(words[-1]), words[:-1]
+    name, holder, _ = _rule_and_holder(words, False)
+    report = rule_bag.draw(ops, name, holder, count)
+    return report, "\n".join(rule_bag.draw_lines(ops, report))
+
+
+def _cmd_put(ops, args):
+    import rule_bag
+    words = args.words
+    if len(words) < 3 or not words[-1].isdigit():
+        raise RulesError(f'Give "<bag>" [holder] <kind> N: gm-rule.sh {args.action} "The Job" trouble 1.')
+    amount = int(words[-1]) * (1 if args.action == "put" else -1)
+    name, holder, kind = _rule_and_holder(words[:-1], True)
+    report = rule_bag.put(ops, name, holder, kind, amount)
+    return report, rule_bag.put_line(ops, report)
+
+
+def _cmd_break(ops, args):
+    name, holder, _ = _rule_and_holder(args.words, False)
+    report = break_streak(ops, name, holder)
+    return report, "\n".join(change_lines(ops, report))
+
+
+def _cmd_mark(ops, args):
+    name, holder, text = _rule_and_holder(args.words, True)
+    done = mark(ops, name, holder, text)
+    message = f"[SUCCESS] {done['rule']} ({holder_name(ops, done['holder'])}): marks " \
+              f"{'; '.join(done['marks'])}"
+    if done["at_limit"]:
+        message += f"\nDo now: {done['at_limit']}"
+    return done, message
+
+
+def _cmd_rate(ops, args):
+    import rule_time
+    name, holder, _ = _rule_and_holder(args.words, False)
+    if args.by is None and args.every is None:
+        raise RulesError("Give the new rate: --by N, and/or --every <time>.")
+    old, new = rule_time.set_rate(ops, name, holder, by=args.by, every=args.every)
+    rule = find_rule(ops, name)
+    who = holder_name(ops, resolve_holder(ops, rule, holder))
+    return ({"before": old, "after": new},
+            f"[SUCCESS] {rule['name']} ({who}): rate {rule_time.describe(old)} → "
+            f"{rule_time.describe(new)}")
+
+
+def _cmd_known(ops, args):
+    name, holder, _ = _rule_and_holder(args.words, False)
+    rule, who = set_known(ops, name, holder, known=args.action == "reveal")
+    state = "known: the HUD may show it" if args.action == "reveal" else \
+        "hidden: the player sees only its signs"
+    return ({"rule": rule, "holder": who, "known": args.action == "reveal"},
+            f"[SUCCESS] {rule} ({holder_name(ops, who)}) is {state}.")
+
+
+def _cmd_define(ops, args):
+    from cli_output import json_input
+    try:
+        given = json_input(None, "the rules")
+    except ValueError as error:
+        raise RulesError(str(error)) from error
+    done = define(ops, given)
+    return ({"defined": [{"name": n, "how": h} for n, h in done]},
+            "\n".join(f"[SUCCESS] {n}: {h}" for n, h in done))
+
+
+def _cmd_plain(ops, args):
+    kept = set_plain(ops, _stdin_text().splitlines())
+    return {"plain_rules": kept}, f"[SUCCESS] {len(kept)} plain rule lines."
+
+
+def _cmd_remove(ops, args):
+    name = find_rule(ops, args.rule)["name"]
+    dropped = remove(ops, name)
+    return ({"removed": name, "values": dropped},
+            f"[SUCCESS] {name} removed, with {dropped} holders' values.")
+
+
+COMMANDS = {"list": _cmd_list, "show": _cmd_show, "change": _cmd_change, "set": _cmd_change,
+            "move": _cmd_move, "roll": _cmd_roll, "split": _cmd_split, "refill": _cmd_refill,
+            "draw": _cmd_draw, "put": _cmd_put, "take": _cmd_put, "break": _cmd_break,
+            "mark": _cmd_mark, "rate": _cmd_rate, "reveal": _cmd_known, "hide": _cmd_known,
+            "define": _cmd_define, "plain": _cmd_plain, "remove": _cmd_remove}
+
+
+def _parser():
     import argparse
-
-    from campaign_manager import CampaignManager
-    from cli_output import emit, emit_error, json_input, strip_json_flag, wants_json
-    from json_ops import JsonOperations
-
-    json_mode = wants_json()
     parser = argparse.ArgumentParser(description="The world's own rules")
     sub = parser.add_subparsers(dest="action", required=True)
     sub.add_parser("list", help="every rule, and where it stands")
     for action, words in (("show", "<rule> [holder]"),
                           ("change", "<rule> [holder] +N|-N  (a plane: --axis <axis>)"),
                           ("set", "<rule> [holder] N  (a plane: --axis; states: a state)"),
-                          ("reveal", "<rule> [holder]"),
-                          ("hide", "<rule> [holder]"), ("break", "<rule> [holder]"),
-                          ("move", "<rule> [holder] <state>"),
-                          ("mark", "<rule> [holder] <the mark>")):
+                          ("reveal", "<rule> [holder]"), ("hide", "<rule> [holder]"),
+                          ("break", "<rule> [holder]"), ("move", "<rule> [holder] <state>"),
+                          ("mark", "<rule> [holder] <the mark>"),
+                          ("draw", "<bag> [holder] [N]"), ("refill", "<bag or budget> [holder]"),
+                          ("split", "<budget> [holder] <part>=N ..."),
+                          ("put", "<bag> [holder] <kind> N"), ("take", "<bag> [holder] <kind> N")):
         p = sub.add_parser(action, help=words)
         p.add_argument("words", nargs="+")
         if action in ("change", "set"):
@@ -1118,10 +819,6 @@ def main() -> int:
     p = sub.add_parser("roll", help='<rule> [holder] [--with "<amount>"]...')
     p.add_argument("words", nargs="+")
     p.add_argument("--with", action="append", dest="named", default=[])
-    for action, words in (("draw", "<bag> [holder] [N]"), ("refill", "<bag or budget> [holder]"),
-                          ("split", "<budget> [holder] <part>=N ..."),
-                          ("put", "<bag> [holder] <kind> N"), ("take", "<bag> [holder] <kind> N")):
-        sub.add_parser(action, help=words).add_argument("words", nargs="+")
     p = sub.add_parser("rate", help="<rule> [holder] --by N [--every 90d]")
     p.add_argument("words", nargs="+")
     p.add_argument("--by", type=int)
@@ -1129,110 +826,25 @@ def main() -> int:
     sub.add_parser("define", help="add or replace rules: the JSON list after the command")
     sub.add_parser("plain", help="the plain rule lines, one per line, after the command")
     sub.add_parser("remove", help="remove a rule and its values").add_argument("rule")
-    args = parser.parse_args(strip_json_flag()[1:])
+    return parser
 
+
+def main() -> int:
+    from campaign_manager import CampaignManager
+    from cli_output import emit, emit_error, strip_json_flag, wants_json
+    from json_ops import JsonOperations
+
+    json_mode = wants_json()
+    args = _parser().parse_args(strip_json_flag()[1:])
     campaign = CampaignManager().get_active_campaign_dir()
     if campaign is None:
         return emit_error("No active campaign.", json_mode)
     ops = JsonOperations(str(campaign))
     try:
-        if args.action == "list":
-            found = rules(ops)
-            lines = [f"- {line}" for line in plain_rules(ops)]
-            for rule in found:
-                lines += rule_lines(ops, rule)
-            emit({"rules": found, "plain_rules": plain_rules(ops), "state": load_state(ops)},
-                 "\n".join(lines) or "This campaign has no rules of its own (gm-rule.sh define).",
-                 json_mode)
-        elif args.action == "show":
-            name, holder, _ = _rule_and_holder(args.words, False)
-            rule = find_rule(ops, name)
-            holders = [resolve_holder(ops, rule, holder)] if holder else None
-            emit({"rule": rule, "state": {h: v[rule["name"]] for h, v in load_state(ops).items()
-                                          if rule["name"] in v}},
-                 "\n".join(rule_lines(ops, rule, holders)), json_mode)
-        elif args.action == "move" or (args.action == "set" and _is_states(ops, args.words)):
-            import rule_states
-            name, holder, value = _rule_and_holder(args.words, True)
-            report = rule_states.move(ops, name, holder, value, force=args.action == "set",
-                                      cause="command" if args.action == "move" else "set")
-            emit(report, "\n".join(rule_states.move_lines(ops, report)), json_mode)
-        elif args.action in ("change", "set"):
-            name, holder, value = _rule_and_holder(args.words, True)
-            if args.action == "change":
-                report = change(ops, name, holder, by=_amount(value), axis=args.axis)
-            else:
-                if not value.lstrip("-").isdigit():
-                    raise RulesError(f"A value is a whole number; got '{value}'.")
-                report = change(ops, name, holder, to=int(value), axis=args.axis)
-            emit(report, "\n".join(change_lines(ops, report)), json_mode)
-        elif args.action == "roll":
-            import rule_roll
-            name, holder, _ = _rule_and_holder(args.words, False)
-            report = rule_roll.roll(ops, name, holder, args.named)
-            emit(report, "\n".join(rule_roll.roll_lines(ops, report)), json_mode)
-        elif args.action == "split" or (args.action == "refill" and _is_block(ops, args.words, "budget")):
-            import rule_budget
-            words = args.words
-            first = [i for i, word in enumerate(words) if "=" in word]
-            head = words[:first[0]] if first else words
-            name, holder, _ = _rule_and_holder(head, False)
-            if args.action == "split":
-                report = rule_budget.split(ops, name, holder, words[len(head):])
-                emit(report, "\n".join(rule_budget.split_lines(ops, report)), json_mode)
-            else:
-                report = rule_budget.refill(ops, name, holder)
-                emit(report, rule_budget.refill_line(ops, report), json_mode)
-        elif args.action in ("draw", "refill", "put", "take"):
-            emit_bag(ops, args.action, args.words, json_mode)
-        elif args.action == "break":
-            name, holder, _ = _rule_and_holder(args.words, False)
-            report = break_streak(ops, name, holder)
-            emit(report, "\n".join(change_lines(ops, report)), json_mode)
-        elif args.action == "mark":
-            name, holder, text = _rule_and_holder(args.words, True)
-            done = mark(ops, name, holder, text)
-            message = f"[SUCCESS] {done['rule']} ({holder_name(ops, done['holder'])}): marks " \
-                      f"{'; '.join(done['marks'])}"
-            if done["at_limit"]:
-                message += f"\nDo now: {done['at_limit']}"
-            emit(done, message, json_mode)
-        elif args.action == "rate":
-            import rule_time
-            name, holder, _ = _rule_and_holder(args.words, False)
-            if args.by is None and args.every is None:
-                raise RulesError("Give the new rate: --by N, and/or --every <time>.")
-            old, new = rule_time.set_rate(ops, name, holder, by=args.by, every=args.every)
-            rule = find_rule(ops, name)
-            who = holder_name(ops, resolve_holder(ops, rule, holder))
-            emit({"before": old, "after": new},
-                 f"[SUCCESS] {rule['name']} ({who}): rate {rule_time.describe(old)} → "
-                 f"{rule_time.describe(new)}", json_mode)
-        elif args.action in ("reveal", "hide"):
-            name, holder, _ = _rule_and_holder(args.words, False)
-            rule, who = set_known(ops, name, holder, known=args.action == "reveal")
-            state = "known: the HUD may show it" if args.action == "reveal" else \
-                "hidden: the player sees only its signs"
-            emit({"rule": rule, "holder": who, "known": args.action == "reveal"},
-                 f"[SUCCESS] {rule} ({holder_name(ops, who)}) is {state}.", json_mode)
-        elif args.action == "define":
-            try:
-                given = json_input(None, "the rules")
-            except ValueError as error:
-                raise RulesError(str(error)) from error
-            done = define(ops, given)
-            emit({"defined": [{"name": n, "how": h} for n, h in done]},
-                 "\n".join(f"[SUCCESS] {n}: {h}" for n, h in done), json_mode)
-        elif args.action == "plain":
-            kept = set_plain(ops, _stdin_text().splitlines())
-            emit({"plain_rules": kept}, f"[SUCCESS] {len(kept)} plain rule lines.", json_mode)
-        else:
-            name = find_rule(ops, args.rule)["name"]
-            dropped = remove(ops, name)
-            emit({"removed": name, "values": dropped},
-                 f"[SUCCESS] {name} removed, with {dropped} holders' values.", json_mode)
+        data, message = COMMANDS[args.action](ops, args)
     except RulesError as error:
         return emit_error(str(error), json_mode)
+    emit(data, message, json_mode)
     return 0
 
 

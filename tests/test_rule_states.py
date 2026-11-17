@@ -144,7 +144,7 @@ def test_a_state_in_use_cant_be_dropped(ops):
     rule_states.move(ops, "Addiction", "player", "user")
     fewer = {**ADDICTION, "states": {"clean": ADDICTION["states"]["clean"]}}
     fewer["states"]["clean"] = {"text": "No pull."}
-    with pytest.raises(wr.RulesError, match=r"lacks the states some holders are in: player \(user\)"):
+    with pytest.raises(wr.RulesError, match=r"doesn't fit what some holders have: player \(its state 'user' is gone"):
         wr.define(ops, [fewer, {**NEED, "results": []}])
 
 

@@ -171,17 +171,10 @@ class TimeManager:
 
 
 def print_rule_changes(manager: "TimeManager") -> None:
-    """What the world's rules did as time passed (their rates)."""
+    """What the world's rules did as time passed (rates, states, bags, budgets)."""
     import world_rules
-    import rule_states
     for report in manager.rule_changes:
-        block = world_rules.find_rule(manager.json_ops, report["rule"])["block"]
-        import rule_bag
-        import rule_budget
-        show = {"states": rule_states.move_lines, "bag": rule_bag.draw_lines,
-                "budget": lambda ops, r: [rule_budget.refill_line(ops, r)]}.get(
-            block, world_rules.change_lines)
-        print("\n".join(show(manager.json_ops, report)))
+        print("\n".join(world_rules.report_lines(manager.json_ops, report)))
 
 
 def print_clocks(moved: dict[str, dict]) -> None:

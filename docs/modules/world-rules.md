@@ -4,6 +4,8 @@ title: The world's own rules
 description: A campaign's own mechanics (Bleed, a sea level, a gang's patience) built from a few building blocks, defined once in the ruleset, with a value per holder in rule-state.json.
 sources:
   - { resource: /lib/world_rules.py }
+  - { resource: /lib/rule_counter.py }
+  - { resource: /lib/rule_errors.py }
   - { resource: /lib/rule_effects.py }
   - { resource: /lib/rule_roll.py }
   - { resource: /lib/rule_time.py }
@@ -55,7 +57,16 @@ a note.
 
 ## Building blocks
 
-Built: the **counter** (a number in a range; results by range, cumulative unless they
+One module per block, each with the same names, which `world_rules.py` dispatches to
+through its table `BLOCKS` (2026-11-17): `FIELDS`, `HOLDS` (whether it keeps a value
+per holder; a roll doesn't), `check`, `default`, `outcomes` (what can carry effects),
+`rule_lines`, `holder_line`, `summary`, `start` and `set_start` (starting values),
+`on_redefine` (fit a holder's value to a redefined rule, or say why not),
+`apply_time` (what time moves) and `report_lines`. A new block is a new module and a
+line in `BLOCKS`. `RulesError` lives in `rule_errors.py`, so that it is one class
+however `world_rules.py` is loaded (as the script behind `gm-rule.sh`, or imported).
+
+Built: the **counter** (`lib/rule_counter.py`: a number in a range; results by range, cumulative unless they
 have a `to`; options: a **rate**, `lib/rule_time.py`, applied by `time_manager.py` on every
 advance and set, counting whole periods from each holder's `rate_from`; **hysteresis**,
 a result's `off_at`, using the stored `on`; **overflow**, back to `back_to` with a mark

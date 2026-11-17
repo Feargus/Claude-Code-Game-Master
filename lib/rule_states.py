@@ -37,6 +37,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 FIELDS = ("start", "states")
+HOLDS = True
 STATE_FIELDS = ("text", "moves", "after", "effects", "when_off", "gm")
 
 
@@ -236,3 +237,42 @@ def apply_time(json_ops, rule: dict[str, Any], before: datetime, after: datetime
                                 cause=f"time: {wait} in '{stored['state']}'",
                                 when=due.strftime(STORED_FORMAT)))
     return reports
+
+
+# ---------- the block interface (world_rules.BLOCKS) ----------
+
+def default(rule: dict[str, Any]) -> dict[str, Any]:
+    return {"state": rule["start"]}
+
+
+def outcomes(rule: dict[str, Any]) -> list[tuple[str, dict]]:
+    return list((rule.get("states") or {}).items())
+
+
+def holder_line(rule: dict[str, Any], stored: dict[str, Any]) -> str:
+    import world_rules
+    mark = "" if world_rules.is_known(rule, stored) else f" {world_rules.HIDDEN}"
+    return (f"{rule['name']}: {stored['state']} (states): "
+            f"{rule['states'][stored['state']]['text']}{mark}")
+
+
+def summary(rule: dict[str, Any], stored: dict[str, Any]) -> str:
+    return f"{rule['name']}: {stored['state']}"
+
+
+def start(json_ops, rule: dict[str, Any], value) -> str:
+    return _find_state(rule, value)
+
+
+def set_start(json_ops, rule, holder, value, cause) -> list[dict]:
+    return [move(json_ops, rule["name"], holder, value, cause=cause, force=True)]
+
+
+def on_redefine(rule: dict[str, Any], stored: dict[str, Any]) -> str:
+    """A holder's state must still exist in the redefined rule."""
+    if stored.get("state") not in rule["states"]:
+        return f"its state '{stored.get('state')}' is gone: keep that state, or move them first"
+    return ""
+
+
+report_lines = move_lines

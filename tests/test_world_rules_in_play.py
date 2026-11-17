@@ -149,3 +149,31 @@ def test_every_example_in_the_skill_is_a_rule_define_accepts(dcc_world):
     ops = JsonOperations(str(Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"))
     done = wr.define(ops, stand_ins + examples)
     assert len(done) == len(stand_ins) + len(examples)
+
+
+def test_an_error_from_any_block_is_a_clean_error_line(dcc_world):
+    """gm-rule.sh runs world_rules.py as a script, and the block modules raise the same
+    RulesError (rule_errors.py): every refusal is one [ERROR] line, never a traceback
+    (it was one before 2026-11-17 for every block but the counter)."""
+    blocks = [
+        {"name": "The Job", "block": "bag", "held_by": "world", "summary": "s.", "when": "w.",
+         "tokens": {"clean": 1}, "results": {"clean": {"text": "x"}}},
+        {"name": "Alert", "block": "states", "held_by": "world", "summary": "s.", "when": "w.",
+         "start": "asleep", "states": {"asleep": {"text": "x"}, "awake": {"text": "y"}}},
+        {"name": "Downtime", "block": "budget", "held_by": "world", "summary": "s.", "when": "w.",
+         "amount": 2, "parts": {"rest": {"text": "x"}}},
+        {"name": "Price", "block": "roll", "held_by": "world", "summary": "s.", "when": "w.",
+         "dice": "1d6", "results": [{"text": "x"}]},
+        {"name": "Mood", "block": "plane", "held_by": "world", "summary": "s.", "when": "w.",
+         "axes": {"Up": [0, 3], "Warm": [0, 3]}, "regions": [{"name": "Fine", "where": "Up >= 0", "text": "x"}]},
+    ]
+    ops = JsonOperations(str(Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"))
+    wr.define(ops, blocks)
+    env = dict(os.environ, GM_WORLD_STATE_BASE=dcc_world)
+    for words in (["take", "The Job", "clean", "5"], ["move", "Alert", "world", "awake"],
+                  ["split", "Downtime", "rest=1"], ["roll", "Price", "--with", "luck"],
+                  ["change", "Mood", "+1"], ["change", "Price", "+1"]):
+        out = subprocess.run(["bash", str(ROOT / "tools" / "gm-rule.sh"), *words],
+                             capture_output=True, text=True, env=env)
+        assert out.returncode == 1 and out.stderr.startswith("[ERROR] "), (words, out.stderr)
+        assert "Traceback" not in out.stderr, words

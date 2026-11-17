@@ -26,6 +26,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 FIELDS = ("amount", "unit", "period", "parts")
+HOLDS = True
 PART_FIELDS = ("text", "per", "effects", "gm")
 
 
@@ -214,7 +215,7 @@ def holder_line(rule, stored) -> str:
 
 
 def summary(rule, stored) -> str:
-    return _now(rule, stored)
+    return f"{rule['name']}: {_now(rule, stored)}"
 
 
 def apply_time(json_ops, rule: dict[str, Any], before, after) -> list[dict]:
@@ -244,3 +245,34 @@ def apply_time(json_ops, rule: dict[str, Any], before, after) -> list[dict]:
             reports.append(refill(json_ops, rule["name"], holder,
                                   cause=f"time: every {rule['period']['every']}"))
     return reports
+
+
+# ---------- the block interface (world_rules.BLOCKS) ----------
+
+def default(rule: dict[str, Any]) -> dict[str, Any]:
+    return {"spent": False}
+
+
+def outcomes(rule: dict[str, Any]) -> list[tuple[str, dict]]:
+    parts = rule.get("parts")
+    return list(parts.items()) if isinstance(parts, dict) else []
+
+
+def start(json_ops, rule, value):
+    import world_rules
+    raise world_rules.RulesError(f"{rule['name']} is a budget: it has no starting value (it "
+                                 f"starts full: gm-rule.sh split).")
+
+
+def set_start(json_ops, rule, holder, value, cause) -> list:
+    return []
+
+
+def on_redefine(rule: dict[str, Any], stored: dict[str, Any]) -> str:
+    if stored.get("split"):
+        stored["split"] = {p: n for p, n in stored["split"].items() if p in rule["parts"]}
+    return ""
+
+
+def report_lines(json_ops, report, indent: str = "") -> list[str]:
+    return [indent + refill_line(json_ops, report)]
