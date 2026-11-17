@@ -97,6 +97,10 @@ def apply(json_ops, before: datetime | None, after: datetime) -> list[dict[str, 
         return []
     reports = []
     for rule in world_rules.rules(json_ops):
+        if rule["block"] == "states":
+            import rule_states
+            reports += rule_states.apply_time(json_ops, rule, before, after)
+            continue
         if rule["block"] != "counter" or not rule.get("rate"):
             continue
         state = world_rules.load_state(json_ops)

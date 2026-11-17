@@ -101,12 +101,13 @@ if [ -f "$CAMP/ruleset.json" ]; then
       ((.[0].rules // []) | map(select(type == "object"))) as $rules
       | ((.[1] // {}).player // {}) as $mine
       | [ $rules[]
-          | select(has("range"))                       # counters: rolls keep nothing
+          | select(.block != "roll")                   # rolls keep nothing
           | select((.held_by | if type == "array" then . else [.] end) | index("player"))
           | . as $r | ($mine[$r.name] // {}) as $e
           | select(if ($e | has("known")) then $e.known
                    elif ($r | has("known")) then $r.known else true end)
-          | "\($r.name) \($e.value // $r.start // $r.range[0])/\($r.range[1])" ]
+          | if $r.block == "states" then "\($r.name): \($e.state // $r.start)"
+            else "\($r.name) \($e.value // $r.start // $r.range[0])/\($r.range[1])" end ]
       | join("  ")' "$CAMP/ruleset.json" "$STATE_FILE" 2>/dev/null)
 fi
 

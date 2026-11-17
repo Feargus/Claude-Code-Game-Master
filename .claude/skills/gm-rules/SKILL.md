@@ -52,8 +52,8 @@ Numbers are first guesses: play decides whether they are right.
 
 ## 3. The building blocks
 
-Built so far: **the counter** (with a rate, hysteresis, overflow and streaks) and
-**the roll**, with results that act. The others (a roll, a plane, a bag, a budget,
+Built so far: **the counter** (with a rate, hysteresis, overflow and streaks),
+**states** and **the roll**, with results that act. The others (a roll, a plane, a bag, a budget,
 states, and the options rate, hysteresis, overflow and streak) come in later steps
 (rules-proposal.md in the campaign repo). Until then, model with counters, and put
 what a counter can't do into the rule's `notes`: the GM reads them in the brief.
@@ -229,6 +229,66 @@ Momentum +1`, a failure `gm-rule.sh break Momentum` (back to its start).
 A pit fighter's unbeaten run, held by NPCs: `"Unbeaten"`, `"streak": true`, `{"from":
 5, "text": "The crowd chants their name; the bookies stop taking bets on them."}`.
 
+### States: named stages, and the moves between them
+
+The value is a name, not a number: addiction, a corporation's alert, a contact's
+trust. Each state says what it means, which states it can move to (each with its
+cause in words), and optionally how long until time moves it on by itself. A state
+with no moves is final: there is no way back from "burned".
+
+```json
+{
+  "name": "Addiction", "block": "states", "held_by": ["player", "npc"], "start": "clean",
+  "summary": "A drug's hold on someone.",
+  "when": "A dose: gm-rule.sh move Addiction <who> user (or hooked). Time moves the rest by itself.",
+  "states": {
+    "clean":      {"text": "No pull.", "moves": {"user": "a dose"}},
+    "user":       {"text": "A taste for it; a stim at the hard moments.",
+                   "moves": {"hooked": "a dose while the need is high", "clean": "a month without"},
+                   "after": {"30d": "clean"}},
+    "hooked":     {"text": "Every scene without a dose: -1 to every roll, until they get one.",
+                   "moves": {"withdrawal": "a day without", "hooked": "a dose (the day starts again)"},
+                   "after": {"1d": "withdrawal"},
+                   "effects": [{"condition": "Hooked"}], "when_off": [{"condition": "Hooked", "add": false}],
+                   "gm": "Play the craving in every quiet moment."},
+    "withdrawal": {"text": "Shakes, sweats, the worst week of their life.",
+                   "moves": {"recovering": "the week sat through", "hooked": "a dose"},
+                   "after": {"7d": "recovering"}},
+    "recovering": {"text": "Clean, and it knows where they live.",
+                   "moves": {"user": "a dose"}, "after": {"90d": "clean"}}
+  }
+}
+```
+
+- **`moves`**: `gm-rule.sh move "<rule>" [holder] <state>` refuses any other move and
+  lists the allowed ones. Moving into the state it is in (if allowed, like a dose while
+  hooked) starts its time again.
+- **`after`**: time spent in a state moves it on by itself as game time passes, several
+  in a row if enough time passed.
+- **`effects`**, **`when_off`** and **`gm`** belong to a state: entering it, leaving it.
+- `gm-rule.sh set "<rule>" [holder] <state>` puts a holder into any state (a
+  correction, a start).
+- A counter can move a state: the effect `{"state": "Addiction", "to": "hooked"}`, along
+  an allowed move only.
+
+A corporation's alert, held by factions, with no way back from the top:
+
+```json
+{
+  "name": "Alert", "block": "states", "held_by": "faction", "start": "asleep",
+  "summary": "How alert a corporation is to the character's kind of trouble.",
+  "when": "After a job against them, and when someone asks about them in the wrong places.",
+  "states": {
+    "asleep":   {"text": "Routine. Guards bored, logs unread.", "moves": {"watching": "a trace, a missing guard, an odd question"}},
+    "watching": {"text": "Logs read; guards in pairs; questions asked about strangers.",
+                 "moves": {"hunting": "proof of an intruder", "asleep": "a quiet week"}, "after": {"7d": "asleep"}},
+    "hunting":  {"text": "A team is on the intruder's trail; the next job against them is twice as hard.",
+                 "moves": {"lockdown": "a second breach", "watching": "two quiet weeks"}, "after": {"14d": "watching"}},
+    "lockdown": {"text": "The company has changed everything: codes, guards, routes. What the character knew of them is out of date."}
+  }
+}
+```
+
 ### The roll: dice, read once
 
 Nothing is kept: dice, plus or minus named amounts, read from a list of results. A
@@ -320,6 +380,7 @@ The effects, a fixed list:
 | `{"change": "<rule>", "by": N}` or `"set": N` | Bleed 6 sets Panic: `{"change": "Panic", "set": 6}` |
 | the same with `"of": "<holder>"` | a gang's Patience at 0 raises the character's Heat: `{"change": "Heat", "by": 2, "of": "player"}` |
 | `{"rate_of": "<rule>", "by": N}` (`of` too) | a warm year: `{"rate_of": "Sea level", "by": 1}` |
+| `{"state": "<rule>", "to": "<state>"}` (`of` too; an allowed move only) | Need at 5: `{"state": "Addiction", "to": "hooked"}` |
 | `{"clock": "<name>", "start": N, "text": "...", "due_in": "3d"}` (`"on": "event"`, `"consequence": "..."` too) | Patience at 0 starts their retaliation |
 | `{"clock": "<name>", "advance": N}` | a rumour counter pushes an event clock on |
 | `{"condition": "<name>"}`, `"add": false` to remove | Panic on: the condition Panicked; off: removed |
@@ -347,8 +408,9 @@ bash tools/gm-consequence.sh add "Imelda Strand sends the Floor Marshals" "Lull 
   --trigger-type on_rule --match "Patience:0@faction:lull"
 ```
 
-It fires once, when the value reaches the number from either side. `@<holder>` names
-whose value, when the rule has several holders.
+It fires once, when the value reaches the number from either side; for states, when
+the holder enters the state (`"Addiction:hooked@npc:Precious Adeyemi"`). `@<holder>`
+names whose value, when the rule has several holders.
 
 ## 4. Writing them down
 
@@ -387,6 +449,4 @@ what happens in the fiction.
 The other blocks of the plan, for when they are built: **a plane** (two values read together: chrome against anchor,
 law against good), **a bag** (tokens drawn, odds that change: a job's luck, the
 years of the melt), **a budget** (a fixed amount split: downtime days, a gang's
-soldiers), **states** (named stages with allowed moves: addiction, a corporation's
-alert). With them come the effects `tokens` (add to a bag) and `state` (move a
-state).
+soldiers). With the bag comes the effect `tokens` (add to a bag).

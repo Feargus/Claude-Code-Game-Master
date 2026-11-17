@@ -55,7 +55,7 @@ def _character(ops):
 # ---------- checking ----------
 
 @pytest.mark.parametrize("effects, why", [
-    ([{"wobble": 1}], "an effect is one of change, rate_of, clock, condition, credits"),
+    ([{"wobble": 1}], "an effect is one of change, rate_of, state, clock, condition, credits"),
     ([{"tokens": "The Job", "add": {"trouble": 1}}], "'tokens' isn't built yet .* step 8"),
     ([{"rate_of": "Panic", "by": 1}], "no counter 'Panic' with a rate in steps"),
     ([{"change": "Panic"}], 'a change effect has "by": N or "set": N'),

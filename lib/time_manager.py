@@ -173,8 +173,11 @@ class TimeManager:
 def print_rule_changes(manager: "TimeManager") -> None:
     """What the world's rules did as time passed (their rates)."""
     import world_rules
+    import rule_states
     for report in manager.rule_changes:
-        print("\n".join(world_rules.change_lines(manager.json_ops, report)))
+        show = rule_states.move_lines if "range" not in world_rules.find_rule(
+            manager.json_ops, report["rule"]) else world_rules.change_lines
+        print("\n".join(show(manager.json_ops, report)))
 
 
 def print_clocks(moved: dict[str, dict]) -> None:

@@ -39,10 +39,11 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-KINDS = ("change", "rate_of", "clock", "condition", "credits")
-LATER = {"tokens": 8, "state": 6}
+KINDS = ("change", "rate_of", "state", "clock", "condition", "credits")
+LATER = {"tokens": 8}
 FIELDS = {"change": ("change", "by", "set", "of"),
           "rate_of": ("rate_of", "by", "of"),
+          "state": ("state", "to", "of"),
           "clock": ("clock", "start", "advance", "text", "due_in", "on", "consequence"),
           "condition": ("condition", "add"),
           "credits": ("credits",)}
@@ -59,19 +60,21 @@ def kind_of(effect: dict[str, Any]) -> str:
 
 # ---------- checking (when the rules are defined) ----------
 
-def check_shape(result: dict[str, Any], number: int, problems: list[str]) -> None:
-    """The shape of a result's effects, when_off and gm line."""
+def check_shape(result: dict[str, Any], number, problems: list[str]) -> None:
+    """The shape of a result's (or a state's) effects, when_off and gm line. `number`
+    is the result's number, or a state's name."""
+    where = f"result {number}" if isinstance(number, int) else f"state '{number}'"
     for field in ("effects", "when_off"):
         if field not in result:
             continue
         effects = result[field]
         if not isinstance(effects, list):
-            problems.append(f"result {number}: '{field}' must be a list of effects")
+            problems.append(f"{where}: '{field}' must be a list of effects")
             continue
         for effect in effects:
-            problems += [f"result {number}, {field}: {p}" for p in _check_one(effect)]
+            problems += [f"{where}, {field}: {p}" for p in _check_one(effect)]
     if "gm" in result and (not isinstance(result["gm"], str) or not result["gm"].strip()):
-        problems.append(f"result {number}: 'gm' must be a line for the GM")
+        problems.append(f"{where}: 'gm' must be a line for the GM")
 
 
 def _check_one(effect: Any) -> list[str]:
@@ -127,19 +130,32 @@ def _check_credits(effect) -> list[str]:
     return []
 
 
+def _check_state(effect) -> list[str]:
+    if not isinstance(effect.get("to"), str) or not effect["to"].strip():
+        return ['a state effect has "to": the state to move into']
+    return []
+
+
 def _check_rate_of(effect) -> list[str]:
     if not _is_int(effect.get("by")) or effect["by"] == 0:
         return ['a rate_of effect has "by": N, the steps added to the rate (negative slows it)']
     return []
 
 
-CHECKS = {"change": _check_change, "rate_of": _check_rate_of, "clock": _check_clock,
+CHECKS = {"change": _check_change, "rate_of": _check_rate_of, "state": _check_state,
+          "clock": _check_clock,
           "condition": _check_condition, "credits": _check_credits}
 
 
 def effects_of(rule: dict[str, Any]):
     """(result label, field, effect) for every effect of a rule."""
     from world_rules import label
+    if rule.get("block") == "states":
+        for name, state in (rule.get("states") or {}).items():
+            for field in ("effects", "when_off"):
+                for effect in state.get(field) or []:
+                    yield name, field, effect
+        return
     for result in rule.get("results") or []:
         for field in ("effects", "when_off"):
             for effect in result.get(field) or []:
@@ -147,44 +163,69 @@ def effects_of(rule: dict[str, Any]):
 
 
 def check_links(rules: list[dict[str, Any]], problems: list[str]) -> None:
-    """What the effects name exists: a change names a counter that can be held by
-    the same holder (or `of` names one), and not its own rule."""
+    """What the effects name exists and fits: a change names a counter (not its own
+    rule), a rate_of a counter with a rate in steps, a state a states rule and one of
+    its states, a roll's add a counter; and each can be held by the same holder, or
+    the one `of` names."""
     by_name = {r["name"].lower(): r for r in rules}
     for rule in rules:
-        if rule.get("add"):                                   # a roll adds a counter's value
-            added = by_name.get(str(rule["add"]).lower())
-            if added is None or added["block"] != "counter":
-                problems.append(f"{rule['name']}: 'add' names no counter ('{rule['add']}')")
-            elif not set(rule["held_by"]) <= set(added["held_by"]):
-                problems.append(f"{rule['name']}: 'add': {added['name']} is held by "
-                                f"{', '.join(added['held_by'])}, not by every holder of "
-                                f"{rule['name']}")
-            else:
-                rule["add"] = added["name"]
+        if rule.get("add"):
+            _link_add(rule, by_name, problems)
         for label, field, effect in effects_of(rule):
             kind = kind_of(effect)
-            if kind not in ("change", "rate_of"):
-                continue
-            where = f"{rule['name']}, result {label}, {field}"
-            target = by_name.get(str(effect[kind]).lower())
-            if kind == "rate_of":
-                if target is None or not (target.get("rate") or {}).get("by"):
-                    problems.append(f"{where}: no counter '{effect[kind]}' with a rate in steps "
-                                    f"('by') to change")
-                    continue
-                effect[kind] = target["name"]
-                _check_whose(effect, rule, target, where, problems)
-                continue
-            if target is None or target["block"] != "counter":
-                problems.append(f"{where}: no counter '{effect['change']}' to change")
-                continue
-            effect["change"] = target["name"]
-            if target["name"] == rule["name"] and "of" not in effect:
-                problems.append(f"{where}: a result can't change its own rule")
-            if "set" in effect and not target["range"][0] <= effect["set"] <= target["range"][1]:
-                problems.append(f"{where}: {target['name']} goes from {target['range'][0]} to "
-                                f"{target['range'][1]}, not {effect['set']}")
-            _check_whose(effect, rule, target, where, problems)
+            if kind in LINKS:
+                where = f"{rule['name']}, {label}, {field}"
+                target = by_name.get(str(effect[kind]).lower())
+                if LINKS[kind](effect, rule, target, where, problems):
+                    effect[kind] = target["name"]
+                    _check_whose(effect, rule, target, where, problems)
+
+
+def _link_add(rule, by_name, problems) -> None:
+    """A roll adds a counter's value."""
+    added = by_name.get(str(rule["add"]).lower())
+    if added is None or added["block"] != "counter":
+        problems.append(f"{rule['name']}: 'add' names no counter ('{rule['add']}')")
+    elif not set(rule["held_by"]) <= set(added["held_by"]):
+        problems.append(f"{rule['name']}: 'add': {added['name']} is held by "
+                        f"{', '.join(added['held_by'])}, not by every holder of {rule['name']}")
+    else:
+        rule["add"] = added["name"]
+
+
+def _link_change(effect, rule, target, where, problems) -> bool:
+    if target is None or target["block"] != "counter":
+        problems.append(f"{where}: no counter '{effect['change']}' to change")
+        return False
+    if target["name"] == rule["name"] and "of" not in effect:
+        problems.append(f"{where}: a result can't change its own rule")
+    low, high = target["range"]
+    if "set" in effect and not low <= effect["set"] <= high:
+        problems.append(f"{where}: {target['name']} goes from {low} to {high}, not {effect['set']}")
+    return True
+
+
+def _link_rate_of(effect, rule, target, where, problems) -> bool:
+    if target is None or not (target.get("rate") or {}).get("by"):
+        problems.append(f"{where}: no counter '{effect['rate_of']}' with a rate in steps "
+                        f"('by') to change")
+        return False
+    return True
+
+
+def _link_state(effect, rule, target, where, problems) -> bool:
+    if target is None or target["block"] != "states":
+        problems.append(f"{where}: no states rule '{effect['state']}' to move")
+        return False
+    to = next((s for s in target["states"] if s.lower() == str(effect["to"]).lower()), None)
+    if to is None:
+        problems.append(f"{where}: {target['name']} has no state '{effect['to']}'")
+        return False
+    effect["to"] = to
+    return True
+
+
+LINKS = {"change": _link_change, "rate_of": _link_rate_of, "state": _link_state}
 
 
 def _check_whose(effect, rule, target, where, problems) -> None:
@@ -206,7 +247,7 @@ def referring(rules: list[dict[str, Any]], name: str) -> list[str]:
     return [r["name"] for r in rules if r["name"] != name and (
         r.get("add") == name
         or any(e.get(kind_of(e)) == name for _, _, e in effects_of(r)
-               if kind_of(e) in ("change", "rate_of")))]
+               if kind_of(e) in ("change", "rate_of", "state")))]
 
 
 # ---------- running ----------
@@ -239,6 +280,8 @@ def run(json_ops, effect: dict[str, Any], holder: str, chain: dict[str, Any],
             return _change(json_ops, effect, holder, chain, cause)
         if kind == "rate_of":
             return _rate_of(json_ops, effect, holder)
+        if kind == "state":
+            return _state(json_ops, effect, holder, chain, cause)
         with contextlib.redirect_stdout(sys.stderr):    # the managers announce themselves
             if kind == "clock":
                 return _clock(json_ops, effect)
@@ -259,6 +302,23 @@ def _change(json_ops, effect, holder, chain, cause) -> dict[str, Any]:
     report = world_rules.change(json_ops, target["name"], whose, by=effect.get("by"),
                                 to=effect.get("set"), cause=cause, chain=chain)
     return {"line": "", "report": report}
+
+
+def _state(json_ops, effect, holder, chain, cause) -> dict[str, Any]:
+    """Move a states rule, by one of its allowed moves only."""
+    import rule_states
+    import world_rules
+    target = world_rules.find_rule(json_ops, effect["state"])
+    whose = world_rules.resolve_holder(json_ops, target, effect["of"]) if "of" in effect else holder
+    if (target["name"], whose) in chain["seen"]:
+        return {"line": f"stopped: {target['name']} of {world_rules.holder_name(json_ops, whose)} "
+                        f"changed once already in this chain"}
+    try:
+        report = rule_states.move(json_ops, target["name"], whose, effect["to"], cause=cause,
+                                  chain=chain)
+    except world_rules.RulesError as error:
+        return {"line": f"not done: {error}"}
+    return {"line": "", "states_report": report}
 
 
 def _rate_of(json_ops, effect, holder) -> dict[str, Any]:
@@ -349,9 +409,15 @@ def on_rule_target(json_ops, raw: str) -> tuple[str, str]:
     text = " ".join(str(raw or "").split())
     head, _, holder = text.partition("@")
     name, sep, value = head.strip().rpartition(":")
-    if not sep or not value.strip().lstrip("-").isdigit():
-        return "", f"{usage} Got '{text}'."
     try:
+        rule = world_rules.find_rule(json_ops, name) if sep else None
+        if rule is not None and rule["block"] == "states":
+            whose = world_rules.resolve_holder(json_ops, rule, holder.strip() or None)
+            import rule_states
+            return f"{rule['name']}:{rule_states._find_state(rule, value)}@{whose}", ""
+        if not sep or not value.strip().lstrip("-").isdigit():
+            return "", (f"{usage} A states rule: \"<rule>:<state>\" (\"Addiction:hooked\"). "
+                        f"Got '{text}'.")
         rule = world_rules.counter(json_ops, name)
         whose = world_rules.resolve_holder(json_ops, rule, holder.strip() or None)
     except world_rules.RulesError as error:
@@ -360,6 +426,17 @@ def on_rule_target(json_ops, raw: str) -> tuple[str, str]:
     if not low <= int(value) <= high:
         return "", f"on_rule: {rule['name']} goes from {low} to {high}, not {value}."
     return f"{rule['name']}:{int(value)}@{whose}", ""
+
+
+def fire_state(json_ops, rule: str, holder: str, state: str, who: str) -> list[dict[str, Any]]:
+    """Fire the on_rule consequences waiting for a holder to enter `state`."""
+    base = _base(json_ops)
+    if base is None:
+        return []
+    from consequence_manager import ConsequenceManager
+    with contextlib.redirect_stdout(sys.stderr):
+        return ConsequenceManager(base).fire_event(
+            "on_rule", [f"{rule}:{state}@{holder}"], f"{rule} of {who} became {state}")
 
 
 def fire_on_rule(json_ops, rule: str, holder: str, before: int, after: int,

@@ -7,6 +7,7 @@ sources:
   - { resource: /lib/rule_effects.py }
   - { resource: /lib/rule_roll.py }
   - { resource: /lib/rule_time.py }
+  - { resource: /lib/rule_states.py }
   - { resource: /tools/gm-rule.sh }
   - { resource: /.claude/skills/gm-rules/SKILL.md }
 ---
@@ -55,15 +56,18 @@ Built: the **counter** (a number in a range; results by range, cumulative unless
 have a `to`; options: a **rate**, `lib/rule_time.py`, applied by `time_manager.py` on every
 advance and set, counting whole periods from each holder's `rate_from`; **hysteresis**,
 a result's `off_at`, using the stored `on`; **overflow**, back to `back_to` with a mark
-due, recorded by `gm-rule.sh mark`; **streak**, `gm-rule.sh break`) and the **roll** (`lib/rule_roll.py`: dice plus named amounts and
+due, recorded by `gm-rule.sh mark`; **streak**, `gm-rule.sh break`) **states** (`lib/rule_states.py`: a named state per holder, moved along its `moves`
+by `gm-rule.sh move`, or any way by `set`; an `after` moves it on as time passes, from
+`entered`; a state's effects run on entering, its `when_off` on leaving) and the
+**roll** (`lib/rule_roll.py`: dice plus named amounts and
 optionally a counter's value, read from results by `from`; keeps nothing, logs the
-roll). Planned: states, planes, bags and budgets.
+roll). Planned: planes, bags and budgets.
 
 ## Results that act (`lib/rule_effects.py`)
 
 A result's `effects` run when it comes on, its `when_off` when it goes off; its `gm`
 line is printed as "Do now:". The effects: `change` (another rule's value, for the
-same holder or `of` another), `rate_of` (a holder's rate in steps), `clock` (`start` or `advance`), `condition` and `credits`
+same holder or `of` another), `rate_of` (a holder's rate in steps), `state` (a move, allowed ones only), `clock` (`start` or `advance`), `condition` and `credits`
 (the character's). `world_rules.change` runs them and passes a chain along: a change an
 effect makes runs its own results' effects, a rule changes once per holder in a chain,
 and a chain stops after `MAX_STEPS` effects. Clocks and consequences are opened through
