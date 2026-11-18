@@ -89,6 +89,25 @@ def derive_time_of_day(moment: datetime) -> str:
     return [word for start, word in TIMES_OF_DAY if start <= moment.hour][-1]
 
 
+def next_time_of_day(after: datetime, words) -> tuple[datetime, str] | None:
+    """The first moment after `after` at which one of `words` (time-of-day words, any
+    case) holds: the next start of its hours, or the next minute if it holds now (a
+    consequence waiting on it is due at once). None for no word."""
+    wanted = {str(w).strip().lower() for w in words}
+    if not wanted:
+        return None
+    now_word = derive_time_of_day(after)
+    if now_word.lower() in wanted:
+        return after + timedelta(minutes=1), now_word
+    day = after.replace(hour=0, minute=0, second=0, microsecond=0)
+    for days in range(2):
+        for start, word in TIMES_OF_DAY:
+            moment = day + timedelta(days=days, hours=start)
+            if moment > after and word.lower() in wanted and derive_time_of_day(moment) == word:
+                return moment, word
+    return None
+
+
 def hours_of(word: str) -> str:
     """The hours a time-of-day word covers on the game clock: "11:00–12:59" for
     Noon, "23:00–00:59" for Midnight (it wraps around 00:00); '' if unknown."""

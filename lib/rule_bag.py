@@ -334,3 +334,14 @@ def on_redefine(rule: dict[str, Any], stored: dict[str, Any]) -> str:
 
 
 report_lines = draw_lines
+
+
+def next_time(json_ops, rule: dict[str, Any], after):
+    """When a bag with `draw_every` is next drawn for a holder."""
+    import rule_time
+    import world_rules
+    if not rule.get("draw_every"):
+        return None
+    return min((rule_time.next_period(world_rules.entry(json_ops, rule, h).get("draw_from"),
+                                      rule["draw_every"], after)
+                for h in world_rules.holders_of(json_ops, rule)), default=None)

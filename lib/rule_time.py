@@ -153,3 +153,39 @@ def set_rate(json_ops, raw_rule, raw_holder=None, by: int | None = None,
     world_rules._log(json_ops, holder, rule["name"], f"rate {describe(old)} -> {describe(new)}",
                      "command" if add is None else "an effect")
     return old, new
+
+
+# ---------- when next (time_walk.py) ----------
+
+def next_period(start: str | None, every: str, after: datetime) -> datetime:
+    """The first moment after `after` at which a period counted from `start` (a
+    stored time, e.g. a holder's `rate_from`) ends; from `after` itself when nothing
+    is stored yet, as the time steps count."""
+    from datetime import timedelta
+
+    from game_time import STORED_FORMAT
+    from time_manager import parse_duration
+    period = timedelta(minutes=parse_duration(every))
+    begun = datetime.strptime(start, STORED_FORMAT) if start else after
+    return begun + (max(0, (after - begun) // period) + 1) * period
+
+
+def moves(rate: dict[str, Any], value: int, low: int, high: int) -> bool:
+    """Would one period of `rate` change `value`? (A value held at its point, or at
+    the end of the range it drifts to, has nothing more to do.)"""
+    return step(value, rate, 1, low, high) != value
+
+
+def next_moment(json_ops, after: datetime) -> tuple[datetime, list[str]] | None:
+    """The earliest moment after `after` at which a world rule changes by itself
+    (a rate step, a state's `after`, a draw, a refill), with the rules due then."""
+    import world_rules
+    due: dict[datetime, list[str]] = {}
+    for rule in world_rules.rules(json_ops):
+        moment = world_rules.block(rule).next_time(json_ops, rule, after)
+        if moment is not None:
+            due.setdefault(moment, []).append(rule["name"])
+    if not due:
+        return None
+    first = min(due)
+    return first, due[first]

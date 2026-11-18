@@ -34,7 +34,7 @@ Results that act, and on_rule: rule_effects.py.
 Every block module provides the same names, which this module dispatches to (BLOCKS):
 FIELDS, HOLDS (whether it keeps a value per holder), check, default, outcomes,
 rule_lines, holder_line, summary, start, set_start, on_redefine, apply_time,
-report_lines.
+next_time (when time next moves it: time_walk.py), report_lines.
 
 A value is known (the default: the HUD may show it, the narration make it plain) or
 hidden (the GM sees it, the player only its signs; every output marks it).

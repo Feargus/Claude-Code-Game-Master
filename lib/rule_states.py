@@ -276,3 +276,20 @@ def on_redefine(rule: dict[str, Any], stored: dict[str, Any]) -> str:
 
 
 report_lines = move_lines
+
+
+def next_time(json_ops, rule: dict[str, Any], after: datetime):
+    """When a holder's state's `after` next moves them on."""
+    import world_rules
+    from game_time import STORED_FORMAT
+    from time_manager import parse_duration
+    times = []
+    for holder in world_rules.holders_of(json_ops, rule):
+        stored = world_rules.entry(json_ops, rule, holder)
+        current = rule["states"][stored["state"]]
+        if current.get("after"):
+            (wait, _), = current["after"].items()
+            entered = (datetime.strptime(stored["entered"], STORED_FORMAT)
+                       if stored.get("entered") else after)
+            times.append(entered + timedelta(minutes=parse_duration(wait)))
+    return min(times, default=None)

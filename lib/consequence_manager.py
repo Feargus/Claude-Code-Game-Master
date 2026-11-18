@@ -515,6 +515,12 @@ class ConsequenceManager(EntityManager):
         self._carry_out(fired)
         return fired
 
+    def waiting_time_words(self) -> set[str]:
+        """The time-of-day words (lower case) that consequences still wait on (on_time)."""
+        data = self.json_ops.load_json(self.consequences_file)
+        return {t['match'].strip().lower() for c in data.get('active', []) if not c.get('fired')
+                for t in self.structured_triggers(c) if t['type'] == 'on_time'}
+
     def waiting_on_event(self) -> list[dict[str, Any]]:
         """Active consequences the GM must match to events by judgment.
 

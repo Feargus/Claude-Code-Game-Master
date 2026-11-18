@@ -276,3 +276,18 @@ def on_redefine(rule: dict[str, Any], stored: dict[str, Any]) -> str:
 
 def report_lines(json_ops, report, indent: str = "") -> list[str]:
     return [indent + refill_line(json_ops, report)]
+
+
+def next_time(json_ops, rule: dict[str, Any], after):
+    """When a spent budget with a period next refills."""
+    import rule_time
+    import world_rules
+    if rule["period"] == "by hand":
+        return None
+    times = []
+    for holder in world_rules.holders_of(json_ops, rule):
+        stored = world_rules.entry(json_ops, rule, holder)
+        if stored.get("spent"):
+            times.append(rule_time.next_period(stored.get("period_from"),
+                                               rule["period"]["every"], after))
+    return min(times, default=None)

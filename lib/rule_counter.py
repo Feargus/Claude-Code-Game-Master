@@ -417,3 +417,19 @@ def apply_time(json_ops, rule: dict[str, Any], before, after) -> list[dict]:
                                   cause=f"its rate ({rule_time.describe(rate)}), {periods} "
                                         f"period{'s' if periods != 1 else ''}"))
     return reports
+
+
+def next_time(json_ops, rule: dict[str, Any], after):
+    """When a rate next moves a holder's value (None: no rate, or nothing to move)."""
+    import rule_time
+    import world_rules
+    if not rule.get("rate"):
+        return None
+    times = []
+    for holder in world_rules.holders_of(json_ops, rule):
+        stored = world_rules.entry(json_ops, rule, holder)
+        rate = rule_time.rate_of(rule, stored)
+        value = int(stored.get("value", rule["start"]))
+        if rate and rate.get("by") != 0 and rule_time.moves(rate, value, *rule["range"]):
+            times.append(rule_time.next_period(stored.get("rate_from"), rate["every"], after))
+    return min(times, default=None)

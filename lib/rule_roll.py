@@ -239,3 +239,7 @@ def apply_time(json_ops, rule, before, after) -> list:
 
 
 report_lines = roll_lines
+
+
+def next_time(json_ops, rule, after):
+    return None                        # a roll keeps nothing, and time moves nothing

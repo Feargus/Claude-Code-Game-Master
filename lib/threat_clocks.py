@@ -237,6 +237,29 @@ class ThreatClockManager(EntityManager):
         moved = self.update_time_clocks(now) if now is not None else {}
         return moved.get(name) or dict(self._load()[name], fired=[])
 
+    def next_moment(self, after: datetime) -> tuple[datetime, list[str]] | None:
+        """The earliest moment after `after` at which a time clock reaches its next
+        segment (the time `update_time_clocks` would first move it), with the clocks
+        due then. Segment k of m is reached when k/m of the time from start to due
+        has passed, to the minute; the last at the due time."""
+        import math
+        due_at: dict[datetime, list[str]] = {}
+        for name, c in self._load().items():
+            if c.get("advance_on", "time") != "time" or "starts_at" not in c or "due_at" not in c:
+                continue
+            cur, mx = int(c.get("current", 0)), int(c.get("max", 1))
+            if cur >= mx:
+                continue
+            starts = datetime.strptime(c["starts_at"], STORED_FORMAT)
+            due = datetime.strptime(c["due_at"], STORED_FORMAT)
+            span = int((due - starts).total_seconds() // 60)
+            moment = min(due, starts + timedelta(minutes=math.ceil((cur + 1) * span / mx)))
+            due_at.setdefault(max(moment, after + timedelta(minutes=1)), []).append(name)
+        if not due_at:
+            return None
+        first = min(due_at)
+        return first, due_at[first]
+
     def update_time_clocks(self, now: datetime) -> dict[str, Any]:
         """Recompute every time clock from the game time.
 

@@ -339,3 +339,17 @@ def apply_time(json_ops, rule: dict[str, Any], before, after) -> list[dict]:
 
 
 report_lines = change_lines
+
+
+def next_time(json_ops, rule: dict[str, Any], after):
+    """When an axis's rate next moves a holder's point."""
+    import rule_time
+    import world_rules
+    times = []
+    for holder in world_rules.holders_of(json_ops, rule) if rule.get("rates") else []:
+        stored = world_rules.entry(json_ops, rule, holder)
+        starts = stored.get("rate_from") or {}
+        for axis, rate in rule["rates"].items():
+            if rule_time.moves(rate, stored["axes"][axis], *rule["axes"][axis]):
+                times.append(rule_time.next_period(starts.get(axis), rate["every"], after))
+    return min(times, default=None)
