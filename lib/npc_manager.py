@@ -374,6 +374,30 @@ class NPCManager(EntityManager):
         return {k: v for k, v in npcs.items() if wanted in [p.lower() for p in usual_places(v)]}
 
 
+def _faction_ids(manager, open_ones, secret_ones) -> list[tuple[str, bool]]:
+    """(faction id, secret) for gm-npc.sh create's --faction flags, or exit 1."""
+    from factions import FactionError, FactionManager
+    m = FactionManager(manager.json_ops)
+    try:
+        return [(m.key(f), False) for f in open_ones] + [(m.key(f), True) for f in secret_ones]
+    except FactionError as error:
+        print(f"[ERROR] {error}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _join(manager, name: str, joins) -> None:
+    from factions import FactionError, FactionManager, _print_join
+    m = FactionManager(manager.json_ops)
+    for fid, secret in joins:
+        try:
+            _print_join(m.join(fid, f"npc:{name}", secret or None), secret)
+        except FactionError as error:
+            print(f"[ERROR] {error}", file=sys.stderr)
+            sys.exit(1)
+    for note in m.notes:
+        print(f"[NOTE] {note}")
+
+
 def main():
     import argparse
 
@@ -392,6 +416,10 @@ def main():
     p.add_argument('--alias', action='append', dest='aliases', help='a shorter name (repeatable)')
     p.add_argument('--another', action='store_true',
                    help='someone else, though the name is close to an existing NPC')
+    p.add_argument('--faction', action='append', default=[],
+                   help='a faction they belong to (repeatable)')
+    p.add_argument('--secret-faction', action='append', default=[], dest='secret_factions',
+                   help='a faction they belong to in secret: only its members know (repeatable)')
     sheet_mod.add_field_flags(p)
 
     p = sub.add_parser('attitude', help='How an NPC regards the player (or another NPC) now')
@@ -457,11 +485,13 @@ def main():
             sys.exit(1)
         print(text)
     elif args.action == 'create':
+        joins = _faction_ids(manager, args.faction, args.secret_factions)   # checked first
         if not manager.create_npc(args.name, args.role, args.attitude, locations=args.locations,
                                   nowhere=args.nowhere, aliases=args.aliases,
                                   fields=sheet_mod.fields_from_args(args),
                                   another=args.another):
             sys.exit(1)
+        _join(manager, args.name, joins)
     elif args.action == 'attitude':
         from note_manager import NoteManager, fact_text
         notes = NoteManager()

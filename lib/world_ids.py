@@ -188,8 +188,17 @@ class WorldIds:
         if key is None and kind == "npc" and self._is_player(rest):
             return "player", ""  # a canon character: the NPC is the player now
         if key is None:
-            return "", f"No {kind} '{rest}'{self._suggest(rest, kinds=(kind,))}"
+            return "", f"No {kind} '{rest}'{self._suggest(rest, kinds=(kind,))}{self._in_bible(kind)}"
         return f"{kind}:{key}", ""
+
+    def _in_bible(self, kind: str) -> str:
+        """For an older campaign whose factions are still only in the world bible."""
+        import factions
+        if kind != "faction" or factions.has_file(self.json_ops) or not factions.from_bible(self.json_ops):
+            return ""
+        return (". This campaign's factions are still in the world bible (gm-faction.sh list): "
+                "bash tools/gm-faction.sh from-bible copies them into factions.json, and faction "
+                "ids work everywhere")
 
     def _resolve_bare(self, text: str) -> tuple[str, str]:
         low = text.lower()

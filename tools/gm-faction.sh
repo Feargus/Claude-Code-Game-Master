@@ -11,8 +11,14 @@
 #                                      (each its own quoted value; none clears it)
 #   gm-faction.sh alias <faction> <alias>... [--remove <alias>]
 #   gm-faction.sh asset <faction> "<name>" "<what it is>" [--remove]
+#   gm-faction.sh join <faction> <npc> [--secret | --open]
+#                                      a member: knows what the faction knows (their on_learn
+#                                      consequences fire); --secret: only its members know it;
+#                                      a member already: --secret / --open change only that
+#   gm-faction.sh leave <faction> <npc>  no longer knows what only the faction knew
 #   gm-faction.sh show <faction>       the faction, its world-rule values, the facts it knows
 #   gm-faction.sh list                 every faction, one line each
+#   gm-faction.sh from-bible           an older campaign: copy the world bible's factions in
 #
 # Its goal is a plot it owns, its secrets are facts it holds (gm-note.sh --holders
 # faction:<id>), its own numbers are world rules held by factions (gm-rule.sh).
@@ -20,7 +26,7 @@
 source "$(dirname "$0")/common.sh"
 
 if [ "$#" -lt 1 ] || [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-    sed -n '3,18p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,24p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
 fi
 

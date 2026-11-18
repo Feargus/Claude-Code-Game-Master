@@ -211,9 +211,12 @@ class Cards:
         mine.sort(key=lambda pair: pair[0] != "player")             # the player first
         lines[1:1] = [f"  towards {self.player if whom == 'player' else whom.partition(':')[2]}: "
                       f"{f['fact']}" for whom, f in mine]           # right under who they are
+        lines += self._faction_lines(npc)
         lines += ["  " + line for line in self._plots_of(nid, "in plot")]
         import world_rules
         lines += [f"  rule: {line}" for line in world_rules.holder_lines(self.json_ops, nid)]
+        from factions import knowers
+        mine = knowers(nid, self.npcs)            # they know what their factions know
         knows, wrong, about, shared = [], [], [], 0
         for f in self.facts:
             if f.get("attitude"):
@@ -223,7 +226,7 @@ class Cards:
                 if nid in (f.get("about") or self._world_ids().mentioned(str(f["fact"]))):
                     about.append(f)
                 continue
-            if nid in holders or "public" in holders:  # public: known to everyone, them too
+            if mine & set(holders) or "public" in holders:  # public: known to everyone, them too
                 if f.get("truth") in ("wrong", "partial"):
                     wrong.append(f)                   # play them from the belief
                 elif {"player", "public"} & set(holders):
@@ -244,6 +247,15 @@ class Cards:
             lines.append(f"  + {shared} fact{'s' if shared != 1 else ''} they share with "
                          f"{self.player} (gm-note.sh find --held-by \"{nid}\" --held-by player)")
         return lines
+
+    def _faction_lines(self, npc: dict[str, Any]) -> list[str]:
+        """'member of: Lull Corporation; the Coven (SECRET: …)'."""
+        from factions import known, memberships
+        table = known(self.json_ops)
+        parts = [table.get(m["id"], {}).get("name", m["id"])
+                 + (" (SECRET: only its members know; nobody else acts on it)" if m.get("secret")
+                    else "") for m in memberships(npc)]
+        return [f"  member of: {'; '.join(parts)}"] if parts else []
 
     def _person(self, name: str, npc: dict[str, Any]) -> list[str]:
         """The sheet: who they are and how to play them. Only fields that are filled in."""

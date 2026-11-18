@@ -15,6 +15,13 @@ Everything else lives where it already has a home: its goal is a plot it owns, i
 secrets are facts it holds, the world's own numbers for it (Patience, Alert) are
 world rules held by factions.
 
+Membership is on the NPC's sheet: `identity.factions`, [{"id": "lull"}, {"id":
+"coven", "secret": true}]. What a faction knows, every member knows: an NPC knows a
+fact they hold, or one held by a faction they belong to (`knows`). Joining is
+learning (the member's on_learn consequences fire), leaving loses the faction's
+knowledge. A secret membership is known only to the faction's members: the GM sees
+it marked; anyone else finding out is a fact ("Jax is in the Coven").
+
 Campaigns made before factions.json list their factions in the world bible's
 factions graph. Where there is no factions.json, world rules still find them there
 (`known`); the first `create` copies them in, so the values held by them carry over.
@@ -87,6 +94,38 @@ def resolver_table(json_ops) -> dict[str, dict[str, Any]]:
     them, by id, name or alias (world_ids.py)."""
     return {fid: {"aliases": [f.get("name", fid), *(f.get("aliases") or [])]}
             for fid, f in load(json_ops).items()}
+
+
+# ---------- members ----------
+
+def memberships(sheet) -> list[dict[str, Any]]:
+    """A sheet's memberships: [{"id": ..., "secret": True}] ("secret" only when true)."""
+    found = ((sheet or {}).get("identity") or {}).get("factions") or []
+    return [m for m in found if isinstance(m, dict) and m.get("id")]
+
+
+def knowers(holder: str, npcs: dict[str, Any]) -> set[str]:
+    """The holders whose knowledge `holder` draws on: themselves, and for an NPC each
+    faction they belong to (what a faction knows, every member knows)."""
+    out = {holder}
+    kind, _, key = holder.partition(":")
+    if kind == "npc":
+        out |= {f"faction:{m['id']}" for m in memberships(npcs.get(key))}
+    return out
+
+
+def knows(holder: str, holders, npcs: dict[str, Any]) -> bool:
+    """Whether `holder` knows a fact held by `holders` (`public`: everyone)."""
+    return isinstance(holders, list) and ("public" in holders
+                                          or bool(knowers(holder, npcs) & set(holders)))
+
+
+def members(npcs: dict[str, Any], fid: str, living: bool = True) -> list[tuple[str, bool]]:
+    """(NPC key, secret) of a faction's members; the dead too unless `living`."""
+    from entity_manager import is_dead
+    return [(key, bool(m.get("secret"))) for key, npc in npcs.items()
+            if isinstance(npc, dict) and (not living or not is_dead(npc))
+            for m in memberships(npc) if m["id"] == fid]
 
 
 # ---------- the manager ----------
@@ -189,6 +228,9 @@ class FactionManager:
             row["tags"] = tags
         table[fid] = row
         self._save(table)
+        for field in PEOPLE_FIELDS:
+            if row.get(field):
+                self._ensure_member(fid, row[field], field)
         return fid
 
     def _checked_aliases(self, name: str, fid: str, aliases) -> list[str]:
@@ -232,6 +274,8 @@ class FactionManager:
         else:
             row.pop(field, None)
         self._save(table)
+        if field in PEOPLE_FIELDS and value:
+            self._ensure_member(fid, value, field)
         return fid, before
 
     def asset(self, raw, name: str, note: str = "", remove: bool = False) -> tuple[str, list]:
@@ -263,6 +307,94 @@ class FactionManager:
         self._save(table)
         return fid, assets
 
+    # ---------- membership ----------
+
+    def _npc(self, raw) -> tuple[str, str]:
+        cid, error = self._ids().resolve_as(raw, ("npc",))
+        if error:
+            raise FactionError(f"{error.rstrip('.')}. Only NPCs belong to factions for now; the "
+                               f"character's memberships come with what the character knows.")
+        return cid, cid.partition(":")[2]
+
+    def _ensure_member(self, fid: str, cid: str, why: str) -> None:
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        key = cid.partition(":")[2]
+        if not any(m["id"] == fid for m in memberships(npcs.get(key))):
+            self.join(fid, cid)
+            self.notes.append(f"{key} is its {why}, so a member now.")
+
+    def join(self, raw_faction, raw_npc, secret: bool | None = None) -> dict[str, Any]:
+        """An NPC joins a faction, and learns what it knows: their on_learn consequences
+        fire for each fact. `secret`: only the faction's members know. For a member
+        already, `secret` True or False changes only the flag. Returns {"faction",
+        "npc", "learned": fact ids, "fired": consequences, "changed": flag only}."""
+        from entity_manager import is_dead
+        self._seed()
+        fid = self.key(raw_faction)
+        cid, key = self._npc(raw_npc)
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        npc = npcs[key]
+        name = load(self.json_ops)[fid]["name"]
+        had = next((m for m in memberships(npc) if m["id"] == fid), None)
+        if had:
+            if secret is None or bool(had.get("secret")) == secret:
+                raise FactionError(f"{key} is a member of {name} already"
+                                   + (" (secret)." if had.get("secret") else ".")
+                                   + " --secret or --open changes who knows it.")
+            if secret:
+                had["secret"] = True
+            else:
+                had.pop("secret", None)
+            self.json_ops.save_json("npcs.json", npcs)
+            return {"faction": fid, "npc": key, "learned": [], "fired": [], "changed": True}
+        if is_dead(npc):
+            raise FactionError(f"{key} is dead and joins nothing.")
+        import facts as fact_file
+        facts = fact_file.load(self.json_ops)
+        knew = {f["id"] for f in facts if knows(cid, f.get("holders"), npcs)}
+        identity = npc.setdefault("identity", {})
+        identity["factions"] = memberships(npc) + [{"id": fid, **({"secret": True} if secret else {})}]
+        self.json_ops.save_json("npcs.json", npcs)
+        learned = [f for f in facts if f["id"] not in knew and knows(cid, f.get("holders"), npcs)]
+        return {"faction": fid, "npc": key, "learned": [f["id"] for f in learned],
+                "fired": self._learn(cid, learned), "changed": False}
+
+    def _learn(self, cid: str, learned: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Fire `cid`'s on_learn consequences for facts they just learned, oldest first."""
+        if not learned:
+            return []
+        from note_manager import NoteManager
+        from rule_effects import _base
+        base = _base(self.json_ops)
+        if base is None:
+            self.notes.append("Not the active campaign: on_learn consequences weren't checked.")
+            return []
+        notes, fired = NoteManager(base), []
+        for f in learned:
+            fired += notes._learned(f["id"], f, [cid])
+        return fired
+
+    def leave(self, raw_faction, raw_npc) -> dict[str, Any]:
+        """An NPC leaves a faction and no longer knows what only it knew. Returns
+        {"faction", "npc", "lost": fact ids}."""
+        import facts as fact_file
+        self._seed()
+        fid = self.key(raw_faction)
+        cid, key = self._npc(raw_npc)
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        mine = memberships(npcs[key])
+        if not any(m["id"] == fid for m in mine):
+            raise FactionError(f"{key} is no member of {load(self.json_ops)[fid]['name']}.")
+        facts = fact_file.load(self.json_ops)
+        knew = [f["id"] for f in facts if knows(cid, f.get("holders"), npcs)]
+        npcs[key]["identity"]["factions"] = [m for m in mine if m["id"] != fid]
+        if not npcs[key]["identity"]["factions"]:
+            del npcs[key]["identity"]["factions"]
+        self.json_ops.save_json("npcs.json", npcs)
+        by_id = {f["id"]: f for f in facts}
+        lost = [i for i in knew if not knows(cid, by_id[i].get("holders"), npcs)]
+        return {"faction": fid, "npc": key, "lost": lost}
+
     # ---------- showing ----------
 
     def line(self, fid: str, row: dict[str, Any]) -> str:
@@ -274,7 +406,15 @@ class FactionManager:
         fid = self.key(raw)
         row = known(self.json_ops)[fid]
         return "\n".join([f"{row['name']} (faction:{fid})", *_record_lines(row),
-                          *self._world_lines(f"faction:{fid}")])
+                          *self._member_lines(fid), *self._world_lines(f"faction:{fid}")])
+
+    def _member_lines(self, fid: str) -> list[str]:
+        from entity_manager import is_dead
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        listed = [key + (" (secret: only its members know)" if secret else "")
+                  + (" (dead)" if is_dead(npcs[key]) else "")
+                  for key, secret in members(npcs, fid, living=False)]
+        return [f"  Members: {'; '.join(listed)}" if listed else "  Members: none named"]
 
     def _world_lines(self, cid: str) -> list[str]:
         import facts as fact_file
@@ -294,9 +434,70 @@ class FactionManager:
     def list_lines(self) -> list[str]:
         lines = [self.line(fid, row) for fid, row in known(self.json_ops).items()]
         if lines and not has_file(self.json_ops):
-            lines.append("(From the world bible: the first gm-faction.sh create, set, alias or "
-                         "asset copies them into factions.json.)")
+            lines.append("(From the world bible: gm-faction.sh from-bible copies them into "
+                         "factions.json, as does the first create, set, alias, asset or join; "
+                         "until then facts can't name them.)")
         return lines
+
+
+def _cmd_create(m, args):
+    fid = m.create(args.name, args.description, args.id, args.kind, args.impulse, args.value,
+                   args.alias, args.tag, args.leader, args.successor, args.another)
+    print(f"[SUCCESS] Faction faction:{fid} ({args.name})")
+
+
+def _cmd_set(m, args):
+    fid, before = m.set_field(args.faction, args.field, args.values)
+    was = "; ".join(before) if isinstance(before, list) else before
+    print(f"[SUCCESS] faction:{fid} {args.field} set" + (f" (was: {was})" if was else ""))
+
+
+def _cmd_alias(m, args):
+    from world_ids import change_aliases
+    if not args.aliases and not args.remove:
+        raise FactionError("Give the aliases to add, or --remove <alias>.")
+    m._seed()
+    key, aliases = change_aliases(m.json_ops, "faction", args.faction, args.aliases, args.remove)
+    print(f"faction:{key} is also called: {', '.join(aliases) or 'nothing else'}")
+
+
+def _cmd_asset(m, args):
+    fid, assets = m.asset(args.faction, args.name, args.note, args.remove)
+    print(f"faction:{fid} assets: {', '.join(a['name'] for a in assets) or 'none'}")
+
+
+def _cmd_leave(m, args):
+    done = m.leave(args.faction, args.npc)
+    print(f"[SUCCESS] npc:{done['npc']} left faction:{done['faction']}")
+    if done["lost"]:
+        print(f"  No longer knows (only the faction did): {', '.join(done['lost'])}. What they "
+              f"take along is told with gm-note.sh tell <id> \"npc:{done['npc']}\".")
+
+
+def _from_bible(m) -> None:
+    if has_file(m.json_ops):
+        raise FactionError(f"There is a {FILE} already: the factions are copied in.")
+    if not m._seed():
+        raise FactionError("The world bible lists no factions.")
+
+
+def _cmd_list(m, args):
+    lines = m.list_lines()
+    print("\n".join(lines) if lines else
+          "No factions yet (bash tools/gm-faction.sh create \"<name>\" --description \"…\").")
+
+
+def _print_join(done: dict[str, Any], secret) -> None:
+    from consequence_manager import print_fired
+    who, fid = f"npc:{done['npc']}", f"faction:{done['faction']}"
+    if done["changed"]:
+        print(f"[SUCCESS] {who}'s membership of {fid} is "
+              + ("secret now: only its members know" if secret else "open now"))
+        return
+    print(f"[SUCCESS] {who} joined {fid}" + (" (secret: only its members know)" if secret else ""))
+    if done["learned"]:
+        print(f"  Now knows what the faction knows: {', '.join(done['learned'])}")
+    print_fired(done["fired"])
 
 
 def _record_lines(row: dict[str, Any]) -> list[str]:
@@ -329,8 +530,6 @@ def main() -> int:
 
     from campaign_manager import CampaignManager
     from json_ops import JsonOperations
-    from world_ids import change_aliases
-
     parser = argparse.ArgumentParser(description="Factions")
     sub = parser.add_subparsers(dest="action", required=True)
     p = sub.add_parser("create", help="a new faction")
@@ -359,8 +558,20 @@ def main() -> int:
     p.add_argument("name")
     p.add_argument("note", nargs="?", default="")
     p.add_argument("--remove", action="store_true")
+    p = sub.add_parser("join", help="an NPC joins: they learn what the faction knows")
+    p.add_argument("faction")
+    p.add_argument("npc")
+    flag = p.add_mutually_exclusive_group()
+    flag.add_argument("--secret", dest="secret", action="store_const", const=True,
+                      help="only the faction's members know it")
+    flag.add_argument("--open", dest="secret", action="store_const", const=False,
+                      help="a member already: no longer secret")
+    p = sub.add_parser("leave", help="an NPC leaves: they no longer know what only it knew")
+    p.add_argument("faction")
+    p.add_argument("npc")
     sub.add_parser("show", help="a faction in full").add_argument("faction")
     sub.add_parser("list", help="every faction, one line each")
+    sub.add_parser("from-bible", help="an older campaign: copy the bible's factions in")
     args = parser.parse_args()
 
     campaign = CampaignManager().get_active_campaign_dir()
@@ -369,31 +580,7 @@ def main() -> int:
         return 1
     m = FactionManager(JsonOperations(str(campaign)))
     try:
-        if args.action == "create":
-            fid = m.create(args.name, args.description, args.id, args.kind, args.impulse,
-                           args.value, args.alias, args.tag, args.leader, args.successor,
-                           args.another)
-            print(f"[SUCCESS] Faction faction:{fid} ({args.name})")
-        elif args.action == "set":
-            fid, before = m.set_field(args.faction, args.field, args.values)
-            was = "; ".join(before) if isinstance(before, list) else before
-            print(f"[SUCCESS] faction:{fid} {args.field} set" + (f" (was: {was})" if was else ""))
-        elif args.action == "alias":
-            if not args.aliases and not args.remove:
-                raise FactionError("Give the aliases to add, or --remove <alias>.")
-            m._seed()
-            key, aliases = change_aliases(m.json_ops, "faction", args.faction,
-                                          args.aliases, args.remove)
-            print(f"faction:{key} is also called: {', '.join(aliases) or 'nothing else'}")
-        elif args.action == "asset":
-            fid, assets = m.asset(args.faction, args.name, args.note, args.remove)
-            print(f"faction:{fid} assets: {', '.join(a['name'] for a in assets) or 'none'}")
-        elif args.action == "show":
-            print(m.show(args.faction))
-        else:
-            lines = m.list_lines()
-            print("\n".join(lines) if lines else
-                  "No factions yet (bash tools/gm-faction.sh create \"<name>\" --description \"…\").")
+        COMMANDS[args.action](m, args)
     except (FactionError, ValueError) as error:
         print(f"[ERROR] {error}", file=sys.stderr)
         return 1
@@ -401,6 +588,13 @@ def main() -> int:
         for note in m.notes:                       # the bible's factions copied in
             print(f"[NOTE] {note}")
     return 0
+
+
+COMMANDS = {
+    "create": _cmd_create, "set": _cmd_set, "alias": _cmd_alias, "asset": _cmd_asset,
+    "join": lambda m, args: _print_join(m.join(args.faction, args.npc, args.secret), args.secret),
+    "leave": _cmd_leave, "from-bible": lambda m, args: _from_bible(m), "show": lambda m, args: print(m.show(args.faction)), "list": _cmd_list,
+}
 
 
 if __name__ == "__main__":

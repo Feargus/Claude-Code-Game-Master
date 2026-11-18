@@ -335,24 +335,29 @@ class NoteManager:
 
     def _learned(self, fact_id: str, entry: dict, new_holders) -> list:
         """Fire the on_learn consequences for holders who just learned a fact. A fact
-        that becomes public is learned by everyone who didn't hold it: the player,
-        the street, every living NPC and every faction (todo.md, 2026-11-18). Returns the fired
+        that becomes public is learned by everyone who didn't know it: the player,
+        the street, every living NPC and every faction (todo.md, 2026-11-18). What a
+        faction learns, its living members learn (factions.py). Returns the fired
         consequences (also kept in `last_fired`)."""
         from consequence_manager import ConsequenceManager
+        from factions import knows, members
         self.last_fired = []
         if not new_holders:
             return []
         about = entry.get('about') or []
         learners = list(new_holders)
+        before = [h for h in entry.get('holders') or [] if h not in new_holders]
+        npcs = self.json_ops.load_json("npcs.json") or {}
         if 'public' in learners:                  # public is everyone: all of them learn it
             from entity_manager import is_dead
-            knew = set(entry.get('holders') or []) - set(new_holders)
-            npcs = self.json_ops.load_json("npcs.json") or {}
             from factions import load as factions
             everyone = ['player', 'street'] + [f"npc:{k}" for k, v in npcs.items()
                                                if isinstance(v, dict) and not is_dead(v)]
             everyone += [f"faction:{k}" for k in factions(self.json_ops)]
-            learners += [w for w in everyone if w not in knew and w not in learners]
+            learners += [w for w in everyone if not knows(w, before, npcs) and w not in learners]
+        for faction in [w for w in learners if w.startswith('faction:')]:
+            learners += [f"npc:{k}" for k, _ in members(npcs, faction.partition(':')[2])
+                         if not knows(f"npc:{k}", before, npcs) and f"npc:{k}" not in learners]
         values = []
         for who in learners + ['anyone']:
             values.append(f"{who} learns {fact_id}")
@@ -430,7 +435,9 @@ class NoteManager:
 
     def tell(self, fact_id: str, holders) -> list:
         """Someone learns a recorded fact: add holders. Returns those who are new
-        (already knowing isn't learning). Raises ValueError for an unknown fact or id."""
+        (already knowing isn't learning: a member knows what their faction knows).
+        Raises ValueError for an unknown fact or id."""
+        from factions import knowers
         from world_ids import WorldIds
         adding, errors = WorldIds(self.json_ops).resolve_all(holders, holders=True)
         if errors:
@@ -438,7 +445,8 @@ class NoteManager:
         facts = fact_file.load(self.json_ops)
         entry = self._entry(facts, fact_id)
         known = entry.setdefault('holders', [])
-        new = [h for h in adding if h not in known]
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        new = [h for h in adding if not knowers(h, npcs) & set(known)]   # they or their faction
         self.last_fired = []
         if new:
             known.extend(new)
@@ -490,9 +498,9 @@ class NoteManager:
              text=None, at=None, since=None, until=None, plot=None) -> list:
         """Facts matching every filter given, newest first.
 
-        held_by: holder ids (or names); each must know it, and a fact held by
-        `public` counts as known to everyone (`street` doesn't: who belongs to
-        the street isn't recorded). about: ids it must be about. secret: nobody
+        held_by: holder ids (or names); each must know it: an NPC knows what their
+        factions know, and a fact held by `public` counts as known to everyone
+        (`street` doesn't: who belongs to the street isn't recorded). about: ids it must be about. secret: nobody
         knows it. hidden: the player doesn't. truth: wrong or partial. text:
         every word must occur. Matching facts get `public: True` when only
         `public` made a held_by match. Raises ValueError for an unknown id.
@@ -515,13 +523,17 @@ class NoteManager:
         if errors:
             raise ValueError("; ".join(errors))
         words = [w.lower() for w in str(text or '').split()]
+        from factions import knowers
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        mine = {h: knowers(h, npcs) for h in holders}     # an NPC and their factions
         out = []
         for f in self._all():
             known = f.get('holders')
             if holders:
-                if known is None or not all(h in known or 'public' in known for h in holders):
+                if known is None or not all(mine[h] & set(known) or 'public' in known
+                                            for h in holders):
                     continue
-                if any(h not in known for h in holders):
+                if any(not mine[h] & set(known) for h in holders):
                     f = dict(f, public=True)
             if abouts and not all(a in (f.get('about') or []) for a in abouts):
                 continue
@@ -569,8 +581,10 @@ class NoteManager:
                 raise ValueError("Where were they? The current location is unknown; give --at.")
             at = place
         window = [parse_time(t).strftime(STORED_FORMAT) if t else None for t in (since, until)]
+        from factions import knowers
+        theirs = knowers(cid, self.json_ops.load_json("npcs.json") or {})   # and their factions'
         candidates = [f for f in self.find(at=at, since=window[0], until=window[1])
-                      if cid not in (f.get('holders') or [])]
+                      if not theirs & set(f.get('holders') or [])]
         def seen(f):
             known = f.get('holders')
             return (isinstance(known, list) and bool({'player', 'public'} & set(known))

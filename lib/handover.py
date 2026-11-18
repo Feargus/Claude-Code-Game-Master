@@ -52,10 +52,31 @@ def _learn_match(match: str, old: str, new: str) -> str:
     return f"{who}{sep}{what}"
 
 
+def _move_in_factions(json_ops, old: str, new: str) -> list[str]:
+    """A faction's leader or successor. The player leads no faction (yet): the
+    field is emptied, with a note."""
+    import factions
+    if not factions.has_file(json_ops):
+        return []
+    table, notes = factions.load(json_ops), []
+    for fid, row in table.items():
+        for field in factions.PEOPLE_FIELDS:
+            if row.get(field) != old:
+                continue
+            if new == "player":
+                del row[field]
+                notes.append(f"{old} was the {field} of faction:{fid}; the character leads no "
+                             f"faction yet: set another with gm-faction.sh set {fid} {field} <npc>.")
+            else:
+                row[field] = new
+    json_ops.save_json(factions.FILE, table)
+    return notes
+
+
 def move_id(json_ops, old: str, new: str) -> list[str]:
     """Rewrite `old` to `new` in the facts (holders, about), the active
-    consequences (triggers, tell effects), the plots (owner, involves) and the world's
-    rules' values. Returns notes for the GM about anything that no longer makes sense."""
+    consequences (triggers, tell effects), the plots (owner, involves), the factions'
+    leaders and successors, and the world's rules' values. Returns notes for the GM about anything that no longer makes sense."""
     notes = []
     facts = fact_file.load(json_ops)
     changed = 0
@@ -93,6 +114,7 @@ def move_id(json_ops, old: str, new: str) -> list[str]:
     if changed:
         json_ops.save_json("consequences.json", store)
     _move_in_plots(json_ops, old, new)
+    notes += _move_in_factions(json_ops, old, new)
     import world_rules
     notes += world_rules.move_holder(json_ops, old, new)
     return notes

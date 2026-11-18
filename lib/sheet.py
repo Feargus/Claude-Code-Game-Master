@@ -6,7 +6,7 @@ sections; some only make sense for one kind, and most fields are optional, fille
 in when play needs them. Scripts read and write sheets through this module, so
 they can rely on the structure.
 
-    identity     name, aliases, race, role, background, affiliation
+    identity     name, aliases, race, role, background, affiliation, factions (memberships)
     look         physique, style, presence
     personality  big_five, demeanor, voice, tells, want, need, values, fears
     stats        attributes, skills, traits, perks, luck (the player only); the world's
@@ -53,7 +53,8 @@ TEXT, LIST, DICT, INT, BOOL = "text", "list", "dict", "int", "bool"
 # section -> field -> type. A section lists every field it can hold.
 SECTIONS: dict[str, dict[str, str]] = {
     "identity": {"name": TEXT, "aliases": LIST, "race": TEXT, "role": TEXT,
-                 "background": TEXT, "affiliation": TEXT},
+                 "background": TEXT, "affiliation": TEXT,
+                 "factions": LIST},          # memberships: [{"id": "lull", "secret": true}] (factions.py)
     "look": {"physique": TEXT, "style": TEXT, "presence": TEXT},
     "personality": {"big_five": TEXT, "demeanor": TEXT, "voice": TEXT, "tells": TEXT,
                     "want": TEXT, "need": TEXT, "values": TEXT, "fears": TEXT},
@@ -391,6 +392,9 @@ def describe(sheet: dict[str, Any]) -> list[str]:
         for field, value in content.items():
             if value in ("", [], {}, None) or (sec, field) == ("identity", "name"):
                 continue
+            if (sec, field) == ("identity", "factions"):
+                value = [f"{m.get('id')} (secret)" if m.get("secret") else m.get("id")
+                         for m in value if isinstance(m, dict)]
             if isinstance(value, list):
                 value = ", ".join(str(v) for v in value)
             elif isinstance(value, dict):

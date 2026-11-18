@@ -146,7 +146,7 @@ Write only what tonight needs:
    to fill in when play walks toward it, so the name check, triggers and plots see it:
    ```bash
    bash tools/gm-location.sh add "<place>" "<where it is>"                  # a bare place: described before it is narrated
-   bash tools/gm-npc.sh create "<Name>" --background "<one sentence>" --location "<place>"   # a sketch; any few fields
+   bash tools/gm-npc.sh create "<Name>" --background "<one sentence>" --location "<place>" [--faction <id>]   # a sketch; any few fields
    bash tools/gm-mob.sh add "<kind of enemy>" --note "<one sentence>"       # stats before it is fought
    bash tools/gm-glossary.sh add "<term>" "<what it means here>"            # relics, institutions, slang
    ```

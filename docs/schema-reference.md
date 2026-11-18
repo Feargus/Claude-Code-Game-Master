@@ -701,7 +701,14 @@ its own numbers are world rules held by factions.
 }
 ```
 
-Only `name` and `description` are required. The first `gm-faction.sh create` in a campaign
+Only `name` and `description` are required. A leader or successor is also a member.
+
+**Membership** is on the NPC's sheet, `identity.factions`: `[{"id": "lull"}, {"id": "coven",
+"secret": true}]` (`gm-faction.sh join` / `leave`, `gm-npc.sh create --faction`). An NPC knows
+a fact they hold or one held by a faction they belong to (`factions.knows`); joining fires
+their `on_learn` consequences for the faction's facts, and what a faction learns its living
+members learn. `secret`: only the faction's members know of it (marked on the card; anyone
+else finding out is a fact). The first `gm-faction.sh create` in a campaign
 whose bible lists factions as `nodes` copies those in first, so values they hold carry over.
 
 A `confirmed: false` flag on a freshly auto-drafted bible holds the world for human review;

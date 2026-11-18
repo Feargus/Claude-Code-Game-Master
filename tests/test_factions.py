@@ -208,3 +208,138 @@ def test_an_older_campaign_lists_and_shows_the_bibles_factions(ops):
     m.set_field("crawlers", "kind", ["the contestants"])                  # a change copies them in
     assert load(ops)["crawlers"]["kind"] == "the contestants" and "system" in load(ops)
     assert "started from the world bible's factions" in m.notes[0]
+
+
+# ---------- step 2: members ----------
+
+def _cards(ops):
+    from lib.cards import Cards
+    return Cards(ops)
+
+
+def _npcs(ops):
+    return json.loads((Path(ops.world_state_dir) / "npcs.json").read_text())
+
+
+def test_joining_puts_the_membership_on_the_sheet(borant, ops):
+    done = borant.join("Meridian", "Mordecai")
+    assert done["npc"] == "Mordecai" and not done["changed"]
+    assert _npcs(ops)["Mordecai"]["identity"]["factions"] == [{"id": "meridian-group"}]
+    borant.join("system", "Mordecai", secret=True)
+    assert _npcs(ops)["Mordecai"]["identity"]["factions"][1] == {"id": "system", "secret": True}
+    card = "\n".join(_cards(ops).npc_card("Mordecai"))
+    assert "member of: Meridian Group; The System / Borant Corp (SECRET: only its members know" in card
+    assert "Members: Mordecai" in borant.show("Meridian")
+    assert "Mordecai (secret: only its members know)" in borant.show("system")
+
+
+def test_a_membership_is_joined_once_and_its_secret_can_change(borant, ops):
+    borant.join("Meridian", "Mordecai")
+    with pytest.raises(FactionError, match="a member of Meridian Group already"):
+        borant.join("Meridian", "Mordecai")
+    assert borant.join("Meridian", "Mordecai", secret=True)["changed"]
+    assert _npcs(ops)["Mordecai"]["identity"]["factions"] == [{"id": "meridian-group", "secret": True}]
+    borant.join("Meridian", "Mordecai", secret=False)
+    assert _npcs(ops)["Mordecai"]["identity"]["factions"] == [{"id": "meridian-group"}]
+
+
+def test_only_npcs_join(borant):
+    with pytest.raises(FactionError, match="Only NPCs belong to factions"):
+        borant.join("Meridian", "player")
+
+
+def test_a_member_knows_what_the_faction_knows(borant, ops, dcc_world):
+    notes = NoteManager(dcc_world)
+    fid = notes.add_fact("Meridian pays the Showrunners.", holders=["faction:meridian-group"])
+    borant.join("Meridian", "Mordecai")
+    card = "\n".join(_cards(ops).npc_card("Mordecai"))
+    assert fid in card                                            # one "they know" list
+    assert fid in [f["id"] for f in notes.find(held_by=["Mordecai"])]
+    assert notes.tell(fid, ["Mordecai"]) == []                    # knew it already
+    assert _cards(ops).npc_card("Carl") and fid not in "\n".join(_cards(ops).npc_card("Carl"))
+
+
+def test_joining_is_learning(borant, dcc_world):
+    notes = NoteManager(dcc_world)
+    first = notes.add_fact("The guards are bribable.", holders=["faction:meridian-group"])
+    second = notes.add_fact("The vault code is 0451.", holders=["faction:meridian-group"])
+    cm = ConsequenceManager(dcc_world)
+    one = cm.add_consequence("Mordecai sells it.", "y", trigger_type="on_learn",
+                             match=f"npc:Mordecai learns {first}")
+    two = cm.add_consequence("Mordecai opens the vault.", "y", trigger_type="on_learn",
+                             match=f"npc:Mordecai learns {second}")
+    done = borant.join("Meridian", "Mordecai")
+    assert done["learned"] == [first, second]
+    assert {c["id"] for c in done["fired"]} == {one, two}
+
+
+def test_what_a_faction_learns_its_living_members_learn(borant, ops, dcc_world):
+    borant.join("Meridian", "Mordecai")
+    borant.join("Meridian", "Carl")
+    npcs = _npcs(ops)
+    npcs["Carl"].setdefault("status", {})["state"] = "dead"
+    (Path(ops.world_state_dir) / "npcs.json").write_text(json.dumps(npcs))
+    notes = NoteManager(dcc_world)
+    fid = notes.add_fact("The stairs are mined.", secret=True)
+    cm = ConsequenceManager(dcc_world)
+    alive = cm.add_consequence("Mordecai warns Carl.", "y", trigger_type="on_learn",
+                               match=f"npc:Mordecai learns {fid}")
+    dead = cm.add_consequence("Carl hears.", "y", trigger_type="on_learn",
+                              match=f"npc:Carl learns {fid}")
+    notes.tell(fid, ["faction:meridian-group"])
+    fired = {c["id"] for c in notes.last_fired}
+    assert alive in fired and dead not in fired
+
+
+def test_leaving_loses_what_only_the_faction_knew(borant, dcc_world):
+    notes = NoteManager(dcc_world)
+    theirs = notes.add_fact("The client is Borant.", holders=["faction:meridian-group"])
+    own = notes.add_fact("Mordecai owes Carl.", holders=["npc:Mordecai", "faction:meridian-group"])
+    borant.join("Meridian", "Mordecai")
+    assert borant.leave("Meridian", "Mordecai")["lost"] == [theirs]
+    found = [f["id"] for f in notes.find(held_by=["Mordecai"])]
+    assert own in found and theirs not in found
+    with pytest.raises(FactionError, match="no member"):
+        borant.leave("Meridian", "Mordecai")
+
+
+def test_a_leader_is_a_member(borant, ops):
+    borant.set_field("Meridian", "leader", ["Mordecai"])
+    assert _npcs(ops)["Mordecai"]["identity"]["factions"] == [{"id": "meridian-group"}]
+    assert "Mordecai is its leader, so a member now." in borant.notes
+
+
+def test_a_leader_who_becomes_the_character_leads_no_more(borant, ops):
+    from lib.handover import move_id
+    borant.set_field("Meridian", "leader", ["Mordecai"])
+    notes = move_id(ops, "npc:Mordecai", "player")
+    assert "leader" not in load(ops)["meridian-group"]
+    assert any("was the leader of faction:meridian-group" in n for n in notes)
+
+
+def test_npc_create_joins_factions(borant, dcc_world):
+    env = dict(os.environ, GM_WORLD_STATE_BASE=dcc_world)
+
+    def run(*words):
+        return subprocess.run(["bash", str(ROOT / "tools" / "gm-npc.sh"), *words],
+                              capture_output=True, text=True, env=env)
+
+    bad = run("create", "Ilse Varga", "a guard", "--nowhere", "--faction", "Nobody")
+    assert bad.returncode == 1 and "No faction" in bad.stderr
+    assert "Ilse Varga" not in _npcs(JsonOperations(str(Path(dcc_world) / "campaigns" / CAMPAIGN)))
+    made = run("create", "Ilse Varga", "a guard", "--nowhere", "--faction", "Meridian",
+               "--secret-faction", "system")
+    assert made.returncode == 0, made.stderr
+    assert "npc:Ilse Varga joined faction:meridian-group" in made.stdout
+    assert "joined faction:system (secret" in made.stdout
+
+
+def test_an_older_campaigns_factions_are_copied_in_on_demand(ops):
+    cid, error = WorldIds(ops).resolve("faction:crawlers")
+    assert cid == "" and "gm-faction.sh from-bible" in error
+    from lib.factions import _from_bible
+    m = FactionManager(ops)
+    _from_bible(m)
+    assert WorldIds(ops).resolve("faction:crawlers") == ("faction:crawlers", "")
+    with pytest.raises(FactionError, match="copied in"):
+        _from_bible(m)

@@ -7,6 +7,7 @@ usage() {
     echo "Usage: gm-npc.sh <action> [name] [args]"
     echo ""
     echo "  create <name> [\"<role>\" [\"<attitude>\"]] [--location <place>]... [--alias <short name>]... [--another]"
+    echo "         [--faction <faction>]... [--secret-faction <faction>]...   members (gm-faction.sh join)"
     echo "         [field flags]           Create an NPC. The attitude is their attitude towards the player,"
     echo "                                 as one or more adjectives, comma separated (\"wary\", \"fond,"
     echo "                                 exasperated\"), never a sentence; leave it out if they have none."
