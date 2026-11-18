@@ -45,6 +45,9 @@ add:
     --starts-clock "<short name>" [--clock-text "<what it is about>"] [--clock-segments N] [--clock-on time|event]
                    [--clock-due-in 3d | --clock-due "YYYY-MM-DD HH:MM"] [--clock-consequence "..."]
     --tells <fact id> --to <holder> [--to <holder>...]
+    --rule-effect '<json>'   a world rule's effect, as a rule's result has it, with "of":
+                   '{"change": "Standing", "of": "faction:police", "by": -4}'
+                   '{"rate_of": "Standing", "of": "faction:kin", "shift": 1}'  (repeatable)
 
 Examples:
   gm-consequence.sh add "Dekker's crew leans on Auntie Ro" "next time he's at the stall" \

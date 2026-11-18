@@ -21,7 +21,12 @@ The effects (a fixed list):
     {"condition": "<name>"}  or  "add": false     a condition on the character
     {"credits": N}                                the character's credits
 
-`rate_of`, `tokens` and `state` come with rates, bags and states.
+    {"rate_of": "<rule>", "by": N}                steps added to a holder's rate;
+                   "toward": N or "shift": N      its own point, set or moved
+    {"state": "<rule>", "to": "<state>"}          a move of a states rule
+    {"tokens": "<bag>", "add"|"remove": {...}}    tokens into or out of a bag
+
+A consequence can carry the rule ones too (consequence_manager.py, "type": "rule").
 
 A change made by an effect turns its own results on and off, which may carry effects
 in turn: a chain. In one chain a rule's value for a holder changes once (a second
@@ -42,7 +47,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 KINDS = ("change", "rate_of", "state", "tokens", "clock", "condition", "credits")
 LATER: dict[str, int] = {}
 FIELDS = {"change": ("change", "axis", "by", "set", "of"),
-          "rate_of": ("rate_of", "by", "of"),
+          "rate_of": ("rate_of", "by", "toward", "shift", "of"),
           "state": ("state", "to", "of"),
           "tokens": ("tokens", "add", "remove", "of"),
           "clock": ("clock", "start", "advance", "text", "due_in", "on", "consequence"),
@@ -146,8 +151,12 @@ def _check_tokens(effect) -> list[str]:
 
 
 def _check_rate_of(effect) -> list[str]:
-    if not _is_int(effect.get("by")) or effect["by"] == 0:
-        return ['a rate_of effect has "by": N, the steps added to the rate (negative slows it)']
+    given = [f for f in ("by", "toward", "shift") if f in effect]
+    if not given or not all(_is_int(effect[f]) for f in given) \
+            or any(effect.get(f) == 0 for f in ("by", "shift")) \
+            or {"toward", "shift"} <= set(given):
+        return ['a rate_of effect has "by": N (steps added to the rate; negative slows it), '
+                'and/or "toward": N (the holder\'s own point) or "shift": N (moves that point)']
     return []
 
 
@@ -229,10 +238,13 @@ def _link_change(effect, rule, target, where, problems) -> bool:
 
 
 def _link_rate_of(effect, rule, target, where, problems) -> bool:
-    if target is None or not (target.get("rate") or {}).get("by"):
-        problems.append(f"{where}: no counter '{effect['rate_of']}' with a rate in steps "
-                        f"('by') to change")
+    if target is None or not target.get("rate") or ("by" in effect and not target["rate"].get("by")):
+        problems.append(f"{where}: no counter '{effect['rate_of']}' with a rate"
+                        + (" in steps ('by')" if "by" in effect else "") + " to change")
         return False
+    if "toward" in effect and not target["range"][0] <= effect["toward"] <= target["range"][1]:
+        problems.append(f"{where}: {target['name']} goes from {target['range'][0]} to "
+                        f"{target['range'][1]}, not {effect['toward']}")
     return True
 
 
@@ -391,7 +403,8 @@ def _rate_of(json_ops, effect, holder) -> dict[str, Any]:
     import world_rules
     target = world_rules.find_rule(json_ops, effect["rate_of"])
     whose = world_rules.resolve_holder(json_ops, target, effect["of"]) if "of" in effect else holder
-    old, new = rule_time.set_rate(json_ops, target["name"], whose, add=effect["by"])
+    old, new = rule_time.set_rate(json_ops, target["name"], whose, add=effect.get("by"),
+                                  toward=effect.get("toward"), shift=effect.get("shift"))
     return {"line": f"{target['name']} ({world_rules.holder_name(json_ops, whose)}): rate "
                     f"{rule_time.describe(old)} → {rule_time.describe(new)}"}
 

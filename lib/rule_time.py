@@ -121,13 +121,17 @@ def apply(json_ops, before: datetime | None, after: datetime) -> list[dict[str, 
 
 
 def set_rate(json_ops, raw_rule, raw_holder=None, by: int | None = None,
-             every: str | None = None, add: int | None = None) -> tuple[dict, dict]:
-    """A holder's own rate: `by` steps (or `add` to the steps it has) every `every`.
-    Returns (the rate before, after)."""
+             every: str | None = None, add: int | None = None, toward: int | None = None,
+             shift: int | None = None) -> tuple[dict, dict]:
+    """A holder's own rate: `by` steps (or `add` to the steps it has) every `every`,
+    and its own point: `toward` (or `shift` the one it has; a faction's standing
+    resting at +2). Returns (the rate before, after)."""
     import world_rules
     from time_manager import TimeError, parse_duration
     rule = world_rules.counter(json_ops, raw_rule)
-    if not rule.get("rate") or "by" not in rule["rate"]:
+    if not rule.get("rate"):
+        raise world_rules.RulesError(f"{rule['name']} has no rate to change.")
+    if (by is not None or add is not None) and "by" not in rule["rate"]:
         raise world_rules.RulesError(f"{rule['name']} has no rate in steps ('by') to change.")
     holder = world_rules.resolve_holder(json_ops, rule, raw_holder)
     state = world_rules.load_state(json_ops)
@@ -144,6 +148,7 @@ def set_rate(json_ops, raw_rule, raw_holder=None, by: int | None = None,
         except (ValueError, TimeError) as error:
             raise world_rules.RulesError(f"--every: {error}") from error
         new["every"] = every
+    _set_point(rule, old, new, toward, shift)
     if new == rule["rate"]:
         stored.pop("rate", None)
     else:
@@ -151,8 +156,25 @@ def set_rate(json_ops, raw_rule, raw_holder=None, by: int | None = None,
     state.setdefault(holder, {})[rule["name"]] = stored
     world_rules.save_state(json_ops, state)
     world_rules._log(json_ops, holder, rule["name"], f"rate {describe(old)} -> {describe(new)}",
-                     "command" if add is None else "an effect")
+                     "command" if add is None and shift is None else "an effect")
     return old, new
+
+
+def _set_point(rule: dict[str, Any], old: dict, new: dict, toward, shift) -> None:
+    """A holder's own `toward`: set, or shifted from the one it has; inside the range."""
+    import world_rules
+    if toward is None and shift is None:
+        return
+    if shift is not None:
+        if old.get("toward") is None:
+            raise world_rules.RulesError(f"{rule['name']}'s rate has no point ('toward') to "
+                                         f"shift; give one with --toward.")
+        toward = old["toward"] + shift
+    low, high = rule["range"]
+    new["toward"] = max(low, min(high, toward)) if shift is not None else toward
+    if not low <= new["toward"] <= high:
+        raise world_rules.RulesError(f"{rule['name']} goes from {low} to {high}: its point "
+                                     f"can't be {toward}.")
 
 
 # ---------- when next (time_walk.py) ----------

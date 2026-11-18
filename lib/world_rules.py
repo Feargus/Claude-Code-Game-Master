@@ -66,6 +66,8 @@ LOG = "rules.log"
 BIBLE = "world-bible.json"
 
 HOLDER_KINDS = ("player", "npc", "faction", "location", "world")
+STANDING = "Standing"    # how each faction regards the character: every campaign has it,
+                         # and scripts read it by this name (design-notes.md, "Factions")
 BLOCKS = {"counter": "rule_counter", "roll": "rule_roll", "states": "rule_states",
           "plane": "rule_plane", "bag": "rule_bag", "budget": "rule_budget"}
 COMMON_FIELDS = ("name", "block", "held_by", "known", "summary", "when", "notes")
@@ -181,6 +183,9 @@ def check_rule(raw: Any) -> dict[str, Any]:
     _text(rule, "when", problems)
     _text(rule, "notes", problems, required=False)
     block(kind).check(rule, problems)
+    if rule["name"].lower() == STANDING.lower() and (kind != "counter" or rule.get("held_by") != ["faction"]):
+        problems.append(f"{STANDING} is how each faction regards the character, and scripts read "
+                        f"it by that name: a counter held by factions (\"held_by\": \"faction\")")
     if problems:
         raise RulesError(f"{rule['name']}: " + "; ".join(problems) + ".")
     return rule
@@ -747,9 +752,10 @@ def _cmd_mark(ops, args):
 def _cmd_rate(ops, args):
     import rule_time
     name, holder, _ = _rule_and_holder(args.words, False)
-    if args.by is None and args.every is None:
-        raise RulesError("Give the new rate: --by N, and/or --every <time>.")
-    old, new = rule_time.set_rate(ops, name, holder, by=args.by, every=args.every)
+    if args.by is None and args.every is None and args.toward is None and args.shift is None:
+        raise RulesError("Give the new rate: --by N, --every <time>, --toward N or --shift N.")
+    old, new = rule_time.set_rate(ops, name, holder, by=args.by, every=args.every,
+                                  toward=args.toward, shift=args.shift)
     rule = find_rule(ops, name)
     who = holder_name(ops, resolve_holder(ops, rule, holder))
     return ({"before": old, "after": new},
@@ -817,10 +823,13 @@ def _parser():
     p = sub.add_parser("roll", help='<rule> [holder] [--with "<amount>"]...')
     p.add_argument("words", nargs="+")
     p.add_argument("--with", action="append", dest="named", default=[])
-    p = sub.add_parser("rate", help="<rule> [holder] --by N [--every 90d]")
+    p = sub.add_parser("rate", help="<rule> [holder] --by N [--every 90d] [--toward N | --shift N]")
     p.add_argument("words", nargs="+")
     p.add_argument("--by", type=int)
     p.add_argument("--every")
+    point = p.add_mutually_exclusive_group()
+    point.add_argument("--toward", type=int, help="this holder's own point")
+    point.add_argument("--shift", type=int, help="move this holder's point by N")
     sub.add_parser("define", help="add or replace rules: the JSON list after the command")
     sub.add_parser("plain", help="the plain rule lines, one per line, after the command")
     sub.add_parser("remove", help="remove a rule and its values").add_argument("rule")

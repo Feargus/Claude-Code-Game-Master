@@ -137,8 +137,12 @@ Write only what tonight needs:
 2. **Write the world's own rules** as the player approved them, in the formats of the
    `gm-rules` skill: `bash tools/gm-rule.sh define <<'EOF'`, the list, a line `EOF`; what
    is no mechanic (prices, customs) with `gm-rule.sh plain`; starting values of the
-   world and the factions with `gm-rule.sh set`. Check with `gm-rule.sh list`: that is
-   what the brief will show. The player's starting values come with the character.
+   world and the factions with `gm-rule.sh set`. **Every world has `Standing`**, how each
+   faction regards the character (the `gm-rules` skill, "Standing"): define it in the
+   world's words, then for each faction its value and the point it rests at (`gm-rule.sh
+   set "Standing" "faction:<id>" N`, `gm-rule.sh rate "Standing" "faction:<id>" --toward
+   N`). Check with `gm-rule.sh list`: that is what the brief will show. The player's
+   starting values come with the character.
 2c. **Name the world's people, places, creatures and things** — the faces the player
    might actually meet, recognizable, not a gazetteer (about 6–10 people, 4–8 places,
    a few kinds of enemy, a few of the world's own words). There is no book, so **you

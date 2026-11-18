@@ -15,7 +15,8 @@
 #   gm-rule.sh reveal|hide "<rule>" [holder]         one holder's value becomes known or hidden
 #   gm-rule.sh break "<rule>" [holder]               a streak ends: back to its start
 #   gm-rule.sh mark "<rule>" [holder] "<mark>"       the lasting mark an overflow left
-#   gm-rule.sh rate "<rule>" [holder] --by N [--every 90d]   one holder's own rate
+#   gm-rule.sh rate "<rule>" [holder] [--by N] [--every 90d] [--toward N | --shift N]
+#                                                    one holder's own rate, and its own point
 #   gm-rule.sh define <<'EOF' [...] EOF              add or replace rules (a JSON list)
 #   gm-rule.sh plain <<'EOF' lines EOF               the plain rule lines (no mechanic)
 #   gm-rule.sh remove "<rule>"                       remove a rule and its values

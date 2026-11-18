@@ -87,7 +87,7 @@ roll).
 
 A result's `effects` run when it comes on, its `when_off` when it goes off; its `gm`
 line is printed as "Do now:". The effects: `change` (another rule's value, for the
-same holder or `of` another), `rate_of` (a holder's rate in steps), `state` (a move, allowed ones only), `tokens` (into or out of a bag), `clock` (`start` or `advance`), `condition` and `credits`
+same holder or `of` another), `rate_of` (a holder's rate in steps, and its own point: `toward` or `shift`), `state` (a move, allowed ones only), `tokens` (into or out of a bag), `clock` (`start` or `advance`), `condition` and `credits`
 (the character's: for any other holder they are "not done", and a clock started for
 another holder names them in its text). A rate with `toward` pulls the value
 toward it (`by` above 0) or pushes it away (below 0), from either side
@@ -98,6 +98,16 @@ the active campaign, so a change on a campaign that isn't active runs neither (i
 so). What is checked when the rules are defined: the shape of each effect, that a
 change names a rule that exists and can be held by the same holder (or its `of`), and
 not its own rule. A rule other rules' effects change can't be removed.
+
+**A consequence's rule effects** (`consequence_manager.py`, `"type": "rule"`, `gm-consequence.sh
+add --rule-effect`): `change`, `rate_of`, `state` or `tokens`, checked when the consequence
+is added as a rule's are, `of` resolved to its holder, run through `rule_effects.run` when it
+fires.
+
+**`Standing`** (`world_rules.STANDING`): how each faction regards the character. Every
+campaign defines it, and scripts read it by this name, so a rule of that name must be a
+counter held by factions. A faction's own point is a holder's rate `toward`
+(`gm-rule.sh rate --toward`).
 
 **`on_rule`** (`consequence_manager.py`, an event trigger like `on_clock`): the match is
 stored as `"<rule>:<value>@<holder>"`; `world_rules.change` fires it for every value the

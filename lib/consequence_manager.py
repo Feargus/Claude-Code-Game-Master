@@ -80,6 +80,10 @@ class ConsequenceManager(EntityManager):
         `effects` are carried out by the script each time it fires (see EFFECT_TYPES):
           {"type": "start_clock", "name", "segments", "on" (time|event, default time),
            "due_in" ("3d") or "due" ("YYYY-MM-DD HH:MM"), "consequence" (optional)}
+          {"type": "tell", "fact", "holders"}
+          {"type": "rule", <a world rule's effect>}: change, rate_of, state or tokens
+           (rule_effects.py), with "of" its holder, e.g. {"type": "rule", "change":
+           "Standing", "of": "faction:police", "by": -3}
         A due_in counts from when the consequence fires.
 
         Returns the consequence ID, or "" if refused.
@@ -206,7 +210,8 @@ class ConsequenceManager(EntityManager):
                 matched.append(hit)
         return matched
 
-    EFFECT_TYPES = ('start_clock', 'tell')
+    EFFECT_TYPES = ('start_clock', 'tell', 'rule')
+    RULE_EFFECTS = ('change', 'rate_of', 'state', 'tokens')    # what a rule effect may be
 
     def _check_effect(self, effect: dict[str, Any]) -> str:
         """Why `effect` can't be carried out, or '' if it can. Fills in defaults
@@ -216,7 +221,49 @@ class ConsequenceManager(EntityManager):
                     f"{', '.join(self.EFFECT_TYPES)}")
         if effect['type'] == 'tell':
             return self._check_tell(effect)
+        if effect['type'] == 'rule':
+            return self._check_rule(effect)
         return self._check_start_clock(effect)
+
+    def _check_rule(self, effect: dict[str, Any]) -> str:
+        """rule: a world rule's effect (change, rate_of, state, tokens), checked as a
+        rule's own are; "of" is resolved to its holder (needed unless the rule is
+        held only by the player or the world)."""
+        import rule_effects
+        import world_rules
+        from rule_errors import RulesError
+        inner = {k: v for k, v in effect.items() if k != 'type'}
+        kind = rule_effects.kind_of(inner)
+        if kind not in self.RULE_EFFECTS:
+            return (f"A rule effect is one of {', '.join(self.RULE_EFFECTS)} (a world rule's "
+                    f"effect, gm-rules skill); got {sorted(inner)}. A clock: --starts-clock.")
+        problems = rule_effects._check_one(inner)
+        try:
+            target = world_rules.find_rule(self.json_ops, inner[kind])
+            if not problems and rule_effects.LINKS[kind](inner, {"name": "", "held_by": []},
+                                                         target, "rule effect", problems):
+                inner[kind] = target["name"]
+                inner["of"] = world_rules.resolve_holder(self.json_ops, target, inner.get("of"))
+        except RulesError as error:
+            problems.append(str(error))
+        if problems:
+            return "rule effect: " + "; ".join(problems)
+        effect.update(inner)
+        return ''
+
+    def _rule(self, e: dict[str, Any]) -> list[str]:
+        import rule_effects
+        import world_rules
+        inner = {k: v for k, v in e.items() if k != 'type'}
+        done = rule_effects.run(self.json_ops, inner, inner['of'], rule_effects.new_chain(),
+                                "a consequence")
+        report = done.get('report') or done.get('states_report')
+        lines = [done['line']] if done.get('line') else []
+        if isinstance(report, dict):
+            lines += world_rules.report_lines(self.json_ops, report)
+        for c in done.get('fired') or []:
+            lines.append(f"that fired [{c['id']}] {c['consequence']}")
+        return lines
 
     def _check_tell(self, effect: dict[str, Any]) -> str:
         """tell: {"fact": <id>, "holders": [...]}: who learns which fact."""
@@ -281,6 +328,8 @@ class ConsequenceManager(EntityManager):
                     done.append(self._start_clock(e, hit.get('plots')))
                 elif e.get('type') == 'tell':
                     done.extend(self._tell(e))
+                elif e.get('type') == 'rule':
+                    done.extend(self._rule(e))
             if done:
                 hit['effects_done'] = done
 
@@ -716,7 +765,45 @@ def describe_effects(effects) -> str:
             parts.append(text)
         elif e.get('type') == 'tell':
             parts.append(f"tells {e.get('fact')} to {', '.join(e.get('holders') or [])}")
+        elif e.get('type') == 'rule':
+            parts.append(_rule_words(e))
     return "; ".join(parts)
+
+
+def _rule_words(e: dict[str, Any]) -> str:
+    """'Standing of faction:police -3', 'Standing of faction:kin: point +1'."""
+    whose = f" of {e['of']}" if e.get('of') else ""
+    if 'change' in e:
+        how = f"set to {e['set']}" if 'set' in e else f"{e['by']:+d}"
+        return f"{e['change']}{whose}{' ' + e['axis'] if e.get('axis') else ''} {how}"
+    if 'rate_of' in e:
+        how = [f"rate {e['by']:+d}" if 'by' in e else "",
+               f"point {e['toward']}" if 'toward' in e else "",
+               f"point {e['shift']:+d}" if 'shift' in e else ""]
+        return f"{e['rate_of']}{whose}: {', '.join(h for h in how if h)}"
+    if 'state' in e:
+        return f"{e['state']}{whose} to {e['to']}"
+    field = 'add' if 'add' in e else 'remove'
+    return f"{e['tokens']}{whose}: {field} " + ", ".join(f"{n} {k}" for k, n in e[field].items())
+
+
+def _rule_effects(raws, json_mode) -> list[dict[str, Any]]:
+    """--rule-effect '<json>'...: each a world rule's effect, as a consequence effect."""
+    import json
+
+    from cli_output import emit_error
+    out = []
+    for raw in raws:
+        try:
+            given = json.loads(raw)
+        except ValueError as error:
+            sys.exit(emit_error(f"--rule-effect is JSON, e.g. '{{\"change\": \"Standing\", "
+                                f"\"of\": \"faction:police\", \"by\": -3}}': {error}",
+                                json_mode=json_mode))
+        if not isinstance(given, dict):
+            sys.exit(emit_error("--rule-effect is one JSON object", json_mode=json_mode))
+        out.append({'type': 'rule', **given})
+    return out
 
 
 AFTER_FIRING = ("it fires once: play it out, then gm-consequence.sh resolve <id>; "
@@ -782,6 +869,11 @@ def main():
                             help='When it fires, these holders (--to) learn this fact')
     add_parser.add_argument('--to', action='append', default=[], metavar='HOLDER',
                             help='Who learns the --tells fact (repeatable)')
+    add_parser.add_argument('--rule-effect', dest='rule_effects', action='append', default=[],
+                            metavar='JSON',
+                            help='When it fires, a world rule\'s effect (repeatable), e.g. '
+                                 '\'{"change": "Standing", "of": "faction:police", "by": -3}\' '
+                                 'or \'{"rate_of": "Standing", "of": "faction:kin", "shift": 1}\'')
     add_parser.add_argument('--starts-clock', dest='starts_clock', metavar='NAME',
                             help='When it fires, start this clock (unless it already exists)')
     add_parser.add_argument('--clock-text', dest='clock_text',
@@ -845,6 +937,7 @@ def main():
                                 json_mode=json_mode))
         if args.tells:
             effects.append({'type': 'tell', 'fact': args.tells, 'holders': args.to})
+        effects += _rule_effects(args.rule_effects, json_mode)
         if args.starts_clock:
             effect = {'type': 'start_clock', 'name': args.starts_clock,
                       'segments': args.clock_segments, 'on': args.clock_on}

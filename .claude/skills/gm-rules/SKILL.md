@@ -198,7 +198,11 @@ The character's and the world's values move from the start; a faction's, a perso
 or a place's from its first value (`gm-rule.sh set` at creation if it should move from
 the start). One holder can get its own rate: `gm-rule.sh rate "<rule>" [holder] --by N
 [--every 90d]`, or the effect `rate_of`: `{"rate_of": "Sea level", "by": 1}` (a warm
-year speeds the sea up).
+year speeds the sea up). And its own point: `--toward N` (a faction's standing rests
+at +2, another's at −1), or `--shift N` to move the one it has; the effect takes
+`"toward": N` or `"shift": N` the same way (a debt repaid: the point rests one higher
+from now on). A change of the value itself (`gm-rule.sh change`) is at once, and the
+rate then carries it back toward the point.
 
 A hidden flaw that grows by itself:
 
@@ -552,6 +556,7 @@ The effects, a fixed list:
 | `{"change": "<rule>", "by": N}` or `"set": N` (a plane: `"axis": "<axis>"` too) | Bleed 6 sets Panic: `{"change": "Panic", "set": 6}` |
 | the same with `"of": "<holder>"` | a gang's Patience at 0 raises the character's Heat: `{"change": "Heat", "by": 2, "of": "player"}` |
 | `{"rate_of": "<rule>", "by": N}` (`of` too) | a warm year: `{"rate_of": "Sea level", "by": 1}` |
+| `{"rate_of": "<rule>", "toward": N}` or `"shift": N` (`by` too; `of` too) | a betrayal remembered: `{"rate_of": "Standing", "shift": -1, "of": "faction:kin"}` |
 | `{"state": "<rule>", "to": "<state>"}` (`of` too; an allowed move only) | Need at 5: `{"state": "Addiction", "to": "hooked"}` |
 | `{"tokens": "<bag>", "add": {"<kind>": N}}` or `"remove"` (`of` too) | a failed roll on the job: `{"tokens": "The Job", "add": {"trouble": 1}}` |
 | `{"clock": "<name>", "start": N, "text": "...", "due_in": "3d"}` (`"on": "event"`, `"consequence": "..."` too) | Patience at 0 starts their retaliation |
@@ -600,6 +605,42 @@ bash tools/gm-consequence.sh add "Imelda Strand sends the Floor Marshals" "Lull 
 It fires once, when the value reaches the number from either side; for states, when
 the holder enters the state (`"Addiction:hooked@npc:Precious Adeyemi"`). `@<holder>`
 names whose value, when the rule has several holders.
+
+The other way round, a consequence can change a rule when it fires, with the same
+effects a result has (`change`, `rate_of`, `state`, `tokens`), each with `of`:
+
+```bash
+bash tools/gm-consequence.sh add "The precinct learns who shot Officer Hale" "the witness talks" \
+  --trigger-type on_learn --match "faction:police learns f31" \
+  --rule-effect '{"change": "Standing", "of": "faction:police", "by": -4}' \
+  --rule-effect '{"rate_of": "Standing", "of": "faction:police", "shift": -1}'
+```
+
+### Standing: every campaign has it
+
+`Standing` is how each faction regards the character, and the scripts read it by this
+name: a counter held by factions (`"held_by": "faction"`; another shape is refused).
+It is the heat, too: the police's standing is how hot the character is. Define it in
+every world with its own words, as any counter: a range (−5 to +5 works), `start` 0,
+results at both ends that say how the faction acts (a `gm` line where it must be
+played at once: "they act against the character"), usually hidden (the player reads
+it from how they are treated), and a rate pulling it back to its point (laying low):
+
+```json
+{"name": "Standing", "block": "counter", "held_by": "faction", "known": false,
+ "range": [-5, 5], "start": 0,
+ "summary": "How a faction regards the character: friend, stranger, enemy.",
+ "when": "The character helps, crosses, robs or embarrasses a faction.",
+ "rate": {"by": 1, "every": "14d", "toward": 0},
+ "results": [{"from": -5, "to": -3, "text": "Enemies: they work against the character.",
+              "gm": "Bring their next move against the character into play."},
+             {"from": 3, "to": 5, "text": "Friends: favours, warnings, a door left open."}]}
+```
+
+Each faction's own point (`gm-rule.sh rate "Standing" "faction:<id>" --toward N`) is
+where it settles when nothing happens: above 0 for old friends, below for those who
+hate what the character is. Set its value too (`gm-rule.sh set "Standing"
+"faction:<id>" N`), so it moves from the start.
 
 ## 4. Writing them down
 
