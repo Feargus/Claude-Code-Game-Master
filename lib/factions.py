@@ -406,7 +406,18 @@ class FactionManager:
         fid = self.key(raw)
         row = known(self.json_ops)[fid]
         return "\n".join([f"{row['name']} (faction:{fid})", *_record_lines(row),
-                          *self._member_lines(fid), *self._world_lines(f"faction:{fid}")])
+                          *self._member_lines(fid), *self._plot_lines(f"faction:{fid}"),
+                          *self._world_lines(f"faction:{fid}")])
+
+    def _plot_lines(self, cid: str) -> list[str]:
+        plots = self.json_ops.load_json("plots.json") or {}
+        lines = [f"  Wants: {p.get('goal') or '(no goal written)'} (plot {k}, {p.get('status', 'open')})"
+                 for k, p in plots.items() if isinstance(p, dict) and p.get("owner") == cid]
+        involved = [k for k, p in plots.items() if isinstance(p, dict) and p.get("owner") != cid
+                    and cid in (p.get("involves") or [])]
+        if involved:
+            lines.append(f"  In plots: {', '.join(involved)}")
+        return lines
 
     def _member_lines(self, fid: str) -> list[str]:
         from entity_manager import is_dead

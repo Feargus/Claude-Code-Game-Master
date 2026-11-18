@@ -299,8 +299,57 @@ class Cards:
         pos = self.overview.get("player_position") or {}
         location = pos.get("current_location", "") if isinstance(pos, dict) else ""
         lines = self.location_card(location, waiting=waiting)
-        for name in npcs_present(self.npcs, location, self.overview.get("scene")):
+        present = npcs_present(self.npcs, location, self.overview.get("scene"))
+        for name in present:
             lines += [""] + self.npc_card(name)
+        for fid, why in self.factions_here(location, present):
+            lines += [""] + self.faction_card(fid, why)
+        return lines
+
+    # ---------- the faction card ----------
+
+    def factions_here(self, location: str, present) -> list[tuple[str, str]]:
+        """(faction id, why it is here) for each faction with a member present, or
+        that owns or is in an open plot involving this place (presence comes later)."""
+        from factions import load, members
+        from plot_manager import plot_order
+        plots = self.json_ops.load_json("plots.json") or {}
+        lid = f"location:{location}"
+        out = []
+        for fid in load(self.json_ops):
+            here = [(k, s) for k, s in members(self.npcs, fid) if k in present]
+            tied = [k for k in plot_order(self.json_ops, plots)
+                    if lid in (plots[k].get("involves") or [])
+                    and f"faction:{fid}" in [plots[k].get("owner"), *(plots[k].get("involves") or [])]]
+            if here:
+                out.append((fid, "members here: " + ", ".join(
+                    k + (" (SECRET member: only its members know)" if s else "") for k, s in here)))
+            elif tied:
+                out.append((fid, f"tied to this place by: {', '.join(tied)}"))
+        return out
+
+    def faction_card(self, fid: str, why: str) -> list[str]:
+        """How to play a faction: what it is, what drives it, what it never does,
+        its plots (in full above) and its rule values. What it knows is on its
+        members' cards."""
+        import world_rules
+        from factions import load
+        from plot_manager import plot_order
+        row = load(self.json_ops)[fid]
+        kind = f"; {row['kind']}" if row.get("kind") else ""
+        lines = [f"FACTION {row['name']} (faction:{fid}{kind}): {row.get('description', '')}",
+                 f"  {why}"]
+        for field in ("impulses", "values"):
+            if row.get(field):
+                lines.append(f"  {field}: " + " / ".join(row[field]))
+        for field in ("leader", "successor"):
+            if row.get(field):
+                lines.append(f"  {field}: {row[field].partition(':')[2]}")
+        plots = self.json_ops.load_json("plots.json") or {}
+        owned = [k for k in plot_order(self.json_ops, plots) if plots[k].get("owner") == f"faction:{fid}"]
+        if owned:
+            lines.append(f"  wants (its plots, above): {', '.join(owned)}")
+        lines += [f"  rule: {line}" for line in world_rules.holder_lines(self.json_ops, f"faction:{fid}")]
         return lines
 
 

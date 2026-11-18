@@ -5,13 +5,13 @@ plots.json, keyed by a short name that is the plot's id (`plot:<key>`), like a
 clock's. A plot holds:
 
     description   what it is about
-    owner         whose goal it is (player, npc:<key>); may be empty
+    owner         whose goal it is (player, npc:<key>, faction:<id>); may be empty
     goal          what the owner is after, one line
     kind          one of schemas.PLOT_KINDS (main, antagonist, mystery, ...)
     status        open, completed or failed
     stands        where it stands now, one line, replaced by each update
     stands_at     the game time of that update
-    involves      ids of the people and places it involves (npc:, location:)
+    involves      ids of the people, places and factions it involves (npc:, location:, faction:)
     follows       the plot this one replaces, if any (goals get replaced)
     summary       what came of it, written when it ends
     game_time, created   when it began, in the game and in real time
@@ -37,6 +37,8 @@ from game_time import STORED_FORMAT, stored_time
 from schemas import PLOT_KIND_ORDER, PLOT_KINDS, PLOT_STATUSES
 
 PLOTS = "plots.json"
+OWNERS = ("player", "npc", "faction")              # whose goal a plot can be
+INVOLVED = ("npc", "location", "faction")          # who and what it can involve
 MAX_KEY_WORDS = 4
 MAX_KEY_CHARS = 30
 
@@ -65,6 +67,12 @@ def find_plot(plots: dict[str, Any], raw) -> str:
     if wanted.lower().startswith("plot:"):
         wanted = wanted[5:].strip()
     return next((k for k in plots if k.lower() == wanted.lower()), "") if wanted else ""
+
+
+def owner_name(json_ops, owner: str) -> str:
+    """How an owner is named: the character's name, an NPC's key, a faction's name."""
+    import world_rules
+    return world_rules.holder_name(json_ops, owner)
 
 
 def moved_by(json_ops, key: str) -> list[str]:
@@ -230,9 +238,9 @@ class PlotManager(EntityManager):
         if not str(description or "").strip():
             raise PlotError("Say what the plot is about: --description \"...\".")
         row = {"description": " ".join(str(description).split()), "kind": kind,
-               "status": "open", "involves": self._ids(involves, ("npc", "location"))}
+               "status": "open", "involves": self._ids(involves, INVOLVED)}
         if owner:
-            row["owner"] = self._ids([owner], ("player", "npc"))[0]
+            row["owner"] = self._ids([owner], OWNERS)[0]
         if str(goal or "").strip():
             row["goal"] = " ".join(goal.split())
         if follows:
@@ -266,16 +274,16 @@ class PlotManager(EntityManager):
         return key, before
 
     def involve(self, raw_key: str, add=(), remove=()) -> list[str]:
-        """Add people and places to what a plot involves, or remove them."""
+        """Add people, places and factions to what a plot involves, or remove them."""
         key = self.key(raw_key)
         plots = self.plots()
         have = list(plots[key].get("involves") or [])
-        gone = self._ids(remove, ("npc", "location")) if remove else []
+        gone = self._ids(remove, INVOLVED) if remove else []
         missing = [g for g in gone if g not in have]
         if missing:
             raise PlotError(f"'{key}' doesn't involve {', '.join(missing)}.")
         have = [i for i in have if i not in gone]
-        have += [i for i in self._ids(add, ("npc", "location")) if i not in have]
+        have += [i for i in self._ids(add, INVOLVED) if i not in have]
         plots[key]["involves"] = have
         self._save(plots)
         return have
@@ -329,8 +337,8 @@ class PlotManager(EntityManager):
         lines = [f"=== {key} ({p.get('kind', '?')}, {p.get('status', 'open')}) ===",
                  p.get("description", "")]
         if p.get("owner"):
-            owner = p["owner"].partition(":")[2] or p["owner"]
-            lines.append(f"{owner} wants: {p.get('goal', '(no goal written)')}")
+            lines.append(f"{owner_name(self.json_ops, p['owner'])} wants: "
+                         f"{p.get('goal', '(no goal written)')}")
         elif p.get("goal"):
             lines.append(f"goal: {p['goal']}")
         if p.get("stands"):
@@ -380,11 +388,11 @@ def main() -> int:
     p = sub.add_parser("add", help="a new plot")
     p.add_argument("key", help='its short name, e.g. "Eleventh Question"')
     p.add_argument("--description", required=True, help="what it is about")
-    p.add_argument("--owner", default="", help="whose goal it is: player or an NPC")
+    p.add_argument("--owner", default="", help="whose goal it is: player, an NPC or a faction")
     p.add_argument("--goal", default="", help="what the owner is after, one line")
     p.add_argument("--kind", default="main", choices=list(PLOT_KINDS))
     p.add_argument("--involves", action="append", default=[],
-                   help="a person or place it involves (repeatable)")
+                   help="a person, place or faction it involves (repeatable)")
     p.add_argument("--follows", default="", help="the plot this one replaces")
     p.add_argument("--stands", default="", help="where it stands at the start")
     p.add_argument("--another", action="store_true", help="another plot, though the name is close")

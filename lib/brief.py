@@ -227,8 +227,9 @@ class Brief:
             p = plots[key]
             lines.append(f"[{p.get('kind', '?')}] {key}: {p.get('stands') or p.get('description', '')}")
             if p.get("owner"):
-                owner = p["owner"].partition(":")[2] or p["owner"]
-                lines.append(f"  {owner} wants: {p.get('goal') or '(no goal written)'}")
+                from plot_manager import owner_name
+                lines.append(f"  {owner_name(self.json_ops, p['owner'])} wants: "
+                             f"{p.get('goal') or '(no goal written)'}")
             sketches = horizon(key)
             if sketches:
                 lines.append(f"  still sketches (named, not built): {', '.join(sketches)}")
