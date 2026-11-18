@@ -34,9 +34,9 @@ in `/new-game` or `/import` (the `gm-rules` skill), and played from the brief.
 
 A rule says who can hold it (`held_by`: `player`, `npc`, `faction`, `location`,
 `world`). Each holder has its own value, which starts at the rule's `start` and is
-written to `rule-state.json` once it is set or changes. Holders use the facts' ids;
-`faction:<id>` names a faction of the world bible's factions graph until factions get
-records of their own, and `world` is one value for the whole world.
+written to `rule-state.json` once it is set or changes. Holders use the facts' ids
+(`faction:<id>` from `factions.json`; in an older campaign without it, a faction of the
+world bible's factions graph), and `world` is one value for the whole world.
 
 ## What reads them
 

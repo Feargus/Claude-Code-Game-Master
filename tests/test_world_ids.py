@@ -46,8 +46,8 @@ def test_unknown_is_refused_with_close_matches(ids):
     assert cid == "" and "did you mean" not in error
 
 
-def test_kinds_that_come_later_say_so(ids):
-    assert "factions" in ids.resolve("faction:Meridian")[1]
+def test_unknown_and_later_kinds_say_so(ids):
+    assert "No faction 'Meridian'" in ids.resolve("faction:Meridian")[1]
     assert "items" in ids.resolve("item:chip")[1]
     assert "unknown kind" in ids.resolve("god:Odin")[1]
 

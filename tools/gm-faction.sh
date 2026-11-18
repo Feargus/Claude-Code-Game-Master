@@ -1,0 +1,29 @@
+#!/bin/bash
+# gm-faction.sh - Factions: a group with a goal, impulses and values (wrapper for factions.py)
+#
+#   gm-faction.sh create "<name>" --description "..." [--id <short id>] [--kind "..."]
+#                  [--impulse "..."]... [--value "..."]... [--alias "..."]... [--tag <tag>]...
+#                  [--leader <npc>] [--successor <npc>] [--another]
+#                                      a new faction; its id (faction:<id>) never changes
+#   gm-faction.sh set <faction> <field> [<value>...]
+#                                      replace a field: name, kind, description, leader,
+#                                      successor, or a whole list: impulses, values, tags
+#                                      (each its own quoted value; none clears it)
+#   gm-faction.sh alias <faction> <alias>... [--remove <alias>]
+#   gm-faction.sh asset <faction> "<name>" "<what it is>" [--remove]
+#   gm-faction.sh show <faction>       the faction, its world-rule values, the facts it knows
+#   gm-faction.sh list                 every faction, one line each
+#
+# Its goal is a plot it owns, its secrets are facts it holds (gm-note.sh --holders
+# faction:<id>), its own numbers are world rules held by factions (gm-rule.sh).
+
+source "$(dirname "$0")/common.sh"
+
+if [ "$#" -lt 1 ] || [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    sed -n '3,18p' "$0" | sed 's/^# \{0,1\}//'
+    exit 0
+fi
+
+require_active_campaign
+
+$PYTHON_CMD "$LIB_DIR/factions.py" "$@"

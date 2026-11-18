@@ -99,16 +99,27 @@ in the author's voice at play (surfaced every beat by `get_full_context`):
   term with a line on what it means here, `{"glossary": {"Lantern papers":
   {"description": "the certificate of a ghost; forged ones are expensive and fragile",
   "plots": []}}}`. A few to start; more join in play (`gm-glossary.sh add`).
+**The factions** (3–5 groups with a goal: a gang, a corp, a church, the claimers on
+the plain) are records of their own, not part of the bible. Write each one, with a
+short id that never changes:
+```bash
+bash tools/gm-faction.sh create "<name>" --id <short id> --kind "<gang, megacorp…>" \
+  --description "<what it is, a sentence or two>" \
+  --impulse "<what drives it, a sentence>" --value "<what it stands for or never does>"
+```
+One to three impulses, one or two values; a value only where the faction really cares.
 Keep geography to the starting street plus a few horizon names. Do not author
-the continent. **Wire 2–4 edges** into the `factions`/`geography` graphs (a
-tension between two factions, an adjacency between two places) — nodes with no
-edges are a cast list, not a world. The world's own rules are not in the bible: they
-go into the ruleset in Phase C.
+the continent. **Wire 2–4 edges**: the bible's `factions` holds only the links
+between factions, by id (`{"edges": [{"from": "<id>", "to": "<id>", "relation":
+"<a tension, in words>"}]}`), and `geography` a graph of places (nodes and edges, an
+adjacency between two places). Groups with no links are a cast list, not a world. The
+world's own rules are not in the bible: they go into the ruleset in Phase C.
 
 Validate, then present for approval:
 ```bash
 uv run python lib/world_bible.py validate
 uv run python lib/world_bible.py show
+bash tools/gm-faction.sh list
 ```
 
 Show the user the `name`, voice style, themes, factions, and the world's own rules

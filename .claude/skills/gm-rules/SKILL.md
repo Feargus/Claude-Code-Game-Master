@@ -88,7 +88,7 @@ Every rule has these, whatever its block (the block's own fields follow below):
   Commands use it, so it never changes. What the rule is about goes into the summary.
 - **`held_by`**: who has a value of it: `player`, `npc`, `faction`, `location`,
   `world`, or a list of them. Each holder has its own value: with `"faction"`, every
-  faction of the bible has its own Patience. `world` is one value for everything
+  faction (`gm-faction.sh list`) has its own Patience. `world` is one value for everything
   (the sea level).
 - **`known`**: `true` (the default) means the HUD shows it and the narration can make
   it plain in the fiction, never with the number. `false` means the GM sees it and the

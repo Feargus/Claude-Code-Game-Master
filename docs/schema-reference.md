@@ -38,6 +38,7 @@ is named in `world-state/active-campaign.txt`.
 ├── character.json           # Player character sheet (FLAT shape)
 ├── npcs.json                # All NPCs
 ├── locations.json           # All locations
+├── factions.json            # Factions, by id (factions.py, gm-faction.sh)
 ├── facts.json               # World facts, one list
 ├── plots.json               # Plot hooks and quests
 ├── items.json               # Items (from imports)
@@ -45,7 +46,7 @@ is named in `world-state/active-campaign.txt`.
 ├── ruleset.json             # World Kit — how this world plays, with its own rules
 ├── rule-state.json          # Where the world's own rules stand, per holder (world_rules.py)
 ├── rules.log                # Every change of those values; per machine, not in git
-├── world-bible.json         # Fidelity spine (voice, factions, geography)
+├── world-bible.json         # Fidelity spine (voice, links between factions, geography)
 ├── session-log.md           # Session history — the canonical ledger
 ├── threat-clocks.json       # Named pressure clocks (optional)
 ├── embeddings.npz           # Vectors for recall by meaning; derived, not in git (embedding_store.py)
@@ -309,10 +310,10 @@ category; nothing read the categories any more, and a file in that form is refus
   wrong|partial|true [--version-of <id> | --no-version]` later.
 
 **Ids for what a fact is about or held by** (`lib/world_ids.py`, for `about` and the coming
-`holders`): `player`, `npc:<key>`, `location:<key>`, and the rungs `street` and
-`public`. The stored id is the exact key (`npc:Auntie Ro`); input may differ in case,
-punctuation, titles or use an alias, and the player character's name resolves to `player`.
-Unknown ids are refused with close matches. Faction and item ids come with those systems.
+`holders`): `player`, `npc:<key>`, `location:<key>`, `faction:<id>`, and the rungs `street` and
+`public`. The stored id is the exact key (`npc:Auntie Ro`, `faction:lull`); input may differ in case,
+punctuation, titles or use an alias (a faction is also found by its name), and the player character's name resolves to `player`.
+Unknown ids are refused with close matches. Item ids come with items that have ids.
 `python lib/world_ids.py list` prints every id; `check <id>…` tests some.
 
 Managers write the object form.
@@ -631,7 +632,8 @@ how a world plays without baking in D&D 5e.
 ## rule-state.json
 
 Where each of the world's own rules stands, per holder (the facts' ids, plus
-`faction:<id>` from the bible and `world`). A value is stored once it is set or
+`world`; in a campaign without `factions.json`, `faction:<id>` names a faction of the bible's
+older factions graph). A value is stored once it is set or
 changes; until then it is the rule's `start`.
 
 ```json
@@ -656,7 +658,7 @@ import; captures what makes a book feel like itself.
   "voice": { "style": "string", "vocab": ["..."], "sample_passages": ["..."] },
   "tone": "string",
   "themes": ["..."],
-  "factions":  { "nodes": [{"id","name"}], "edges": [{"from","to","relation"}] },
+  "factions":  { "edges": [{"from","to","relation"}] },
   "geography": { "nodes": [{"id","name"}], "edges": [{"from","to","adjacency"}] },
   "timeline": ["..."],
   "index": {
@@ -676,9 +678,31 @@ bibles); when present, `validate_bible` requires the four buckets to be lists of
 feeds the RAG coarse index (`lib/rag/coarse_index.py`) — it no longer writes into the
 bible.
 
-Required: name, voice, tone, themes, factions (graph), geography (graph). The bible
+Required: name, voice, tone, themes, factions (the links between them, by faction id),
+geography (graph). The factions themselves are in `factions.json`; an older bible lists
+them as `nodes` too, and in a campaign without `factions.json` those are its factions. The bible
 drafts the World Kit ruleset; the world's own rules are added to it with `gm-rule.sh
-define`. Faction ids name factions as holders of the world's rules (`faction:<id>`).
+define`.
+
+## factions.json
+
+The campaign's factions (`lib/factions.py`, `gm-faction.sh`), keyed by a short id that
+never changes: `faction:<id>` is how facts, triggers and world rules name it. The record
+only describes the faction; its goal is a plot it owns, its secrets are facts it holds,
+its own numbers are world rules held by factions.
+
+```json
+{
+  "lull": {"name": "Lull Corporation", "aliases": ["Lull"], "kind": "megacorp",
+           "description": "one or two sentences",
+           "impulses": ["what drives it"], "values": ["what it stands for or never does"],
+           "leader": "npc:<key>", "successor": "npc:<key>",
+           "assets": [{"name": "The Mesh", "note": "one sentence"}], "tags": ["corp"]}
+}
+```
+
+Only `name` and `description` are required. The first `gm-faction.sh create` in a campaign
+whose bible lists factions as `nodes` copies those in first, so values they hold carry over.
 
 A `confirmed: false` flag on a freshly auto-drafted bible holds the world for human review;
 **an absent flag counts as confirmed**, so hand-authored and legacy bibles are playable

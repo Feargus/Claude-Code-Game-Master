@@ -34,4 +34,12 @@ def test_validator_rejects_missing_graph():
     bad = {"name": "X", "voice": {}, "tone": "t", "themes": [],
            "factions": {"nodes": []}, "geography": {"nodes": [], "edges": []}}
     ok, errs = validate_bible(bad)
-    assert not ok and any("factions must be a graph" in e for e in errs)
+    assert not ok and any("factions must be {edges:[]}" in e for e in errs)
+
+
+def test_the_bible_keeps_only_the_links_between_factions():
+    """The factions themselves are in factions.json (design-notes.md, "Factions")."""
+    new = {"name": "X", "voice": {}, "tone": "t", "themes": [],
+           "factions": {"edges": [{"from": "lull", "to": "psm", "relation": "owns"}]},
+           "geography": {"nodes": [], "edges": []}}
+    assert validate_bible(new) == (True, [])

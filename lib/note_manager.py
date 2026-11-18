@@ -336,7 +336,7 @@ class NoteManager:
     def _learned(self, fact_id: str, entry: dict, new_holders) -> list:
         """Fire the on_learn consequences for holders who just learned a fact. A fact
         that becomes public is learned by everyone who didn't hold it: the player,
-        the street and every living NPC (todo.md, 2026-11-18). Returns the fired
+        the street, every living NPC and every faction (todo.md, 2026-11-18). Returns the fired
         consequences (also kept in `last_fired`)."""
         from consequence_manager import ConsequenceManager
         self.last_fired = []
@@ -348,8 +348,10 @@ class NoteManager:
             from entity_manager import is_dead
             knew = set(entry.get('holders') or []) - set(new_holders)
             npcs = self.json_ops.load_json("npcs.json") or {}
+            from factions import load as factions
             everyone = ['player', 'street'] + [f"npc:{k}" for k, v in npcs.items()
                                                if isinstance(v, dict) and not is_dead(v)]
+            everyone += [f"faction:{k}" for k in factions(self.json_ops)]
             learners += [w for w in everyone if w not in knew and w not in learners]
         values = []
         for who in learners + ['anyone']:

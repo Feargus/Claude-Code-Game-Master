@@ -113,7 +113,7 @@ def log_token_estimate(text: str, label: str = "import") -> int:
 _SKELETON = (
     ("tone", ""),
     ("themes", []),
-    ("factions", {"nodes": [], "edges": []}),
+    ("factions", {"edges": []}),          # the links; the factions are in factions.json
     ("geography", {"nodes": [], "edges": []}),
 )
 

@@ -293,21 +293,19 @@ def set_plain(json_ops, lines) -> list[str]:
 # ---------- holders ----------
 
 def factions(json_ops) -> dict[str, str]:
-    """{id: name} of the world bible's factions graph."""
-    graph = (json_ops.load_json(BIBLE) or {}).get("factions") or {}
-    nodes = graph.get("nodes") if isinstance(graph, dict) else []
-    out = {}
-    for node in nodes or []:
-        if isinstance(node, dict) and str(node.get("id") or "").strip():
-            out[str(node["id"]).strip()] = str(node.get("name") or node["id"]).strip()
-    return out
+    """{id: name} of the campaign's factions: factions.json, or for an older campaign
+    without it, the world bible's factions graph (factions.py)."""
+    import factions as faction_file
+    return {fid: str(f.get("name") or fid) for fid, f in faction_file.known(json_ops).items()}
 
 
 def _faction(json_ops, text: str) -> str:
-    """'faction:<id>' for a faction's id or name, or ''."""
+    """'faction:<id>' for a faction's id, name or alias, or ''."""
+    import factions as faction_file
     low = text.lower()
-    for fid, name in factions(json_ops).items():
-        if low in (fid.lower(), name.lower()):
+    for fid, f in faction_file.known(json_ops).items():
+        if low in [fid.lower(), str(f.get("name") or "").lower(),
+                   *(str(a).lower() for a in f.get("aliases") or [])]:
             return f"faction:{fid}"
     return ""
 
@@ -336,12 +334,12 @@ def resolve_holder(json_ops, rule: dict[str, Any], raw=None) -> str:
         found = _faction(json_ops, rest.strip())
         if not found:
             known = ", ".join(f"{i} ({n})" for i, n in factions(json_ops).items()) or "none yet"
-            raise RulesError(f"No faction '{rest.strip()}' in the world bible's factions: {known}.")
+            raise RulesError(f"No faction '{rest.strip()}'. The factions: {known}.")
     else:
         from world_ids import WorldIds
         faction = "" if sep else _faction(json_ops, text)
         cid, error = WorldIds(json_ops).resolve(text)
-        if faction and cid:
+        if faction and cid and faction != cid:
             raise RulesError(f"'{text}' fits several: {faction}, {cid}. Give the kind.")
         found = faction or cid
         if not found:

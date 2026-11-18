@@ -4,12 +4,14 @@
     player                  the player character
     npc:<key>               an NPC, by its key in npcs.json
     location:<key>          a location, by its key in locations.json
+    faction:<id>            a faction, by its id in factions.json; its name and
+                            aliases find it too (lib/factions.py)
     street, public          rungs of the knowledge ladder
     clock:<key>             a threat clock, by its short name in threat-clocks.json;
                             only where a clock is asked for (on_clock triggers,
                             gm-clock.sh): a fact is never about or held by one
 
-Faction and item ids come with those systems. The stored id uses the exact
+Item ids come with items that have ids. The stored id uses the exact
 existing key ("npc:Auntie Ro"), so there is no separate table to keep in sync.
 Input is forgiving: "npc:auntie-ro", "Auntie Ro" or an alias resolve to the same
 id, and the player's name resolves to `player`. Anything unknown is refused
@@ -28,9 +30,10 @@ from sheet import aliases as sheet_aliases
 from sheet import name as sheet_name
 
 RUNGS = ("street", "public")
-KINDS = ("npc", "location")
-LATER = {"faction": "factions", "item": "items with ids"}
-TABLE_FILES = {"npc": "npcs.json", "location": "locations.json", "player": "character.json"}
+KINDS = ("npc", "location", "faction")
+LATER = {"item": "items with ids"}
+TABLE_FILES = {"npc": "npcs.json", "location": "locations.json", "faction": "factions.json",
+               "player": "character.json"}
 RESERVED = ("player", "anyone") + RUNGS  # words ids and triggers use
 CLOCKS_FILE = "threat-clocks.json"
 
@@ -65,9 +68,11 @@ class WorldIds:
 
     def _load(self) -> dict[str, dict]:
         if self._tables is None:
+            from factions import resolver_table
             self._tables = {
                 "npc": self.json_ops.load_json("npcs.json") or {},
                 "location": self.json_ops.load_json("locations.json") or {},
+                "faction": resolver_table(self.json_ops),   # by id, name and aliases
             }
         return self._tables
 
@@ -209,7 +214,8 @@ class WorldIds:
         out += [("player", a) for a in self._player_aliases()]
         for kind in KINDS:
             for key, data in self._load()[kind].items():
-                out.append((f"{kind}:{key}", key))
+                if kind != "faction":            # a faction's id is no name ("psm")
+                    out.append((f"{kind}:{key}", key))
                 out += [(f"{kind}:{key}", a) for a in aliases_of(data)]
         return out
 
@@ -247,8 +253,8 @@ class WorldIds:
         a trigger type needs: a bare name is looked up only among those kinds,
         and an id of another kind is refused."""
         text = str(raw or "").strip()
-        wanted = " or ".join({"player": "the player", "npc": "an NPC",
-                              "location": "a place", "clock": "a clock"}.get(k, k) for k in kinds)
+        wanted = " or ".join({"player": "the player", "npc": "an NPC", "location": "a place",
+                              "faction": "a faction", "clock": "a clock"}.get(k, k) for k in kinds)
         if "clock" in kinds and (text.lower().startswith("clock:") or tuple(kinds) == ("clock",)):
             return self.resolve_clock(text)
         if ":" in text:
@@ -288,6 +294,9 @@ class WorldIds:
         if text.lower() in RESERVED or norm in RESERVED:
             return f"'{text}' is a word ids use ({', '.join(RESERVED)})."
         own = self.player_name() if owner == "player" else owner.partition(":")[2]
+        if owner.startswith("faction:"):
+            names = aliases_of(self._load()["faction"].get(own))
+            own = names[0] if names else ""            # its name, not its id
         if norm == normalize_entity_name(own):
             if text.lower() == own.lower():
                 return f"'{text}' is {owner}'s own name; an alias is another name for it."
@@ -334,9 +343,10 @@ def close_name_refusal(close: list[str], kind: str, name: str) -> str:
     """Why a new record with a name close to existing ones is refused, or ''."""
     if not close:
         return ""
-    tool = {"npc": "gm-npc.sh show", "location": "gm-location.sh get"}[kind]
+    tool = {"npc": "gm-npc.sh show", "location": "gm-location.sh get",
+            "faction": "gm-faction.sh show"}[kind]
     first = close[0].partition(":")[2]
-    what = "person" if kind == "npc" else "place"
+    what = {"npc": "person", "location": "place", "faction": "faction"}[kind]
     return (f"'{name}' is close to {', '.join(close[:3])}. The same {what} under two names "
             f"splits what is known about them, so this is refused: look at bash tools/{tool} "
             f"\"{first}\". A second name for them is an alias. If it really is another "
@@ -387,7 +397,7 @@ def change_aliases(json_ops, kind: str, name: str, add=(), remove=()) -> tuple[s
         key = cid.partition(":")[2]
         table = json_ops.load_json(TABLE_FILES[kind]) or {}
         entry = table[key]
-    holder = entry if kind == "location" else entry.setdefault("identity", {})
+    holder = entry if kind in ("location", "faction") else entry.setdefault("identity", {})
     have = {a.lower() for a in holder.get("aliases") or []}
     gone = {r.strip().lower() for r in remove}
     errors = [f"{key} has no alias '{r}'." for r in remove if r.strip().lower() not in have]
