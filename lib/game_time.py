@@ -24,3 +24,10 @@ def current_time(json_ops) -> datetime | None:
     """The game time as a datetime, or None if the campaign has none yet."""
     stored = stored_time(json_ops)
     return datetime.strptime(stored, STORED_FORMAT) if stored else None
+
+
+class TimeError(Exception):
+    """A time command that can't be carried out. The message says how to fix it.
+    Defined here, not in time_manager.py, so that it is one class however that module
+    is loaded: run as the script (`__main__`) and imported by time_stops.py, two
+    copies of a class defined there would not catch each other's errors."""

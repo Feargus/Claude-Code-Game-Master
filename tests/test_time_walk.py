@@ -146,11 +146,14 @@ def test_a_long_step_fires_a_time_of_day_on_the_way_and_a_clock_at_its_time(dcc_
     ThreatClockManager(dcc_world).add_clock("Tracker", 1, due_at=datetime(2187, 10, 26, 4, 5),
                                             consequence="The tracker arrives")
     manager = TimeManager(dcc_world)
-    manager.advance(10 * 60)
-    at = {m["at"]: m for m in manager.moments}
-    assert at[datetime(2187, 10, 26, 4, 5)]["clocks"]["Tracker"]["current"] == 1
-    assert [c["id"] for c in at[datetime(2187, 10, 26, 7, 0)]["fired"]] == [cid]
-    assert manager.get_game_time() == datetime(2187, 10, 26, 13, 53)
+    manager.advance(10 * 60)                                   # stops: the clock fills
+    assert manager.stopped == datetime(2187, 10, 26, 4, 5)
+    assert manager.moments[-1]["clocks"]["Tracker"]["current"] == 1
+    manager.advance(int((manager.end - manager.stopped).total_seconds() // 60))
+    assert manager.stopped == datetime(2187, 10, 26, 7, 0)      # stops: the market opens
+    assert [c["id"] for c in manager.moments[-1]["fired"]] == [cid]
+    manager.advance(int((manager.end - manager.stopped).total_seconds() // 60))
+    assert manager.stopped is None and manager.get_game_time() == datetime(2187, 10, 26, 13, 53)
 
 
 def test_the_output_gives_each_moment_its_time(dcc_world, ops):
@@ -162,5 +165,126 @@ def test_the_output_gives_each_moment_its_time(dcc_world, ops):
     root = Path(__file__).resolve().parent.parent
     out = subprocess.run(["bash", str(root / "tools/gm-time.sh"), "advance", "10h"],
                          capture_output=True, text=True, env=env, cwd=root).stdout
-    assert out.startswith("Time: 13:53 (Afternoon), Friday, 26 October 2187 (from 03:53")
+    assert out.startswith("Time: 07:00 (Morning), Friday, 26 October 2187 (from 03:53")
+    assert "TIME STOPPED: 3h 7m of the 10h passed, for what happens at 07:00" in out
     assert "\nAt 07:00 (Morning), Friday, 26 October 2187:\n[REACTIVITY] fired these 1" in out
+    assert '6h 53m left. To go on: bash tools/gm-time.sh advance "6h 53m"' in out
+
+
+# ---------- step 3: the stops ----------
+
+WEATHER = {"name": "Weather", "block": "bag", "held_by": "world", "summary": "The sky.",
+           "when": "Drawn every 4 hours.", "tokens": {"clear": 3, "acid": 1, "hail": 1},
+           "draw": "keep out", "draw_every": "4h",
+           "results": {"clear": {"text": "Clear."},
+                       "acid": {"text": "Acid rain.", "gm": "Anyone outside: Exposure +1."},
+                       "hail": {"text": "Hail.", "gm": "Anyone outside: a wound."}}}
+GRUDGE = _counter("Grudge", "faction", start=0, rate={"by": 1, "every": "1d"},
+                  results=[{"from": 2, "text": "They send someone.", "gm": "Start a clock for them."}])
+
+
+@pytest.fixture
+def quiet(dcc_world, ops):
+    """No waiting consequences or clocks of the fixture's own; the weather drawn in order."""
+    wr.define(ops, [WEATHER])
+    return ops
+
+
+def _weather_order(ops, kinds):
+    """Make the bag hold only these, in the order they'll come out (keep out, one each)."""
+    state = wr.load_state(ops)
+    state.setdefault("world", {})["Weather"] = {"tokens": dict.fromkeys(kinds, 1), "drawn": []}
+    wr.save_state(ops, state)
+
+
+def test_time_stops_at_the_first_draw_to_play_and_lists_the_rest(dcc_world, quiet):
+    from lib.time_manager import TimeManager
+    _weather_order(quiet, ["clear"])                      # only clear: never stops
+    manager = TimeManager(dcc_world)
+    manager.advance(12 * 60)
+    assert manager.stopped is None                          # 12 h: clear, then an empty bag
+    _weather_order(quiet, ["acid"])
+    manager.advance(24 * 60)
+    assert manager.stopped == START + timedelta(hours=16)  # the first draw after the start
+    assert manager.moments[-1]["stops"][0][0] == "rule"
+
+
+def test_through_a_rule_or_one_outcome(dcc_world, quiet):
+    from lib.time_manager import TimeManager
+    _weather_order(quiet, ["acid"])
+    manager = TimeManager(dcc_world)
+    manager.advance(24 * 60, through=["Weather"])
+    assert manager.stopped is None
+    _weather_order(quiet, ["acid"])
+    manager.advance(24 * 60, through=["weather:ACID"])     # names are found in any case
+    assert manager.stopped is None
+    _weather_order(quiet, ["hail"])
+    manager.advance(24 * 60, through=["Weather:acid"])
+    assert manager.stopped is not None                       # hail still stops it
+    assert manager.through.args() == ' --through "Weather:acid"'
+
+
+def test_a_misspelt_name_is_refused_before_time_passes(dcc_world, quiet):
+    from lib.time_manager import TimeError, TimeManager
+    manager = TimeManager(dcc_world)
+    with pytest.raises(TimeError, match="no world rule .* No time has passed"):
+        manager.advance(60, through=["Wether"])
+    with pytest.raises(TimeError, match="Weather has no outcome 'snow'"):
+        manager.advance(60, through=["Weather:snow"])
+    assert manager.get_game_time() == START
+
+
+def test_off_screen_does_not_stop_but_keeps_its_do_now(dcc_world, ops):
+    from lib import time_stops
+    from lib.time_manager import TimeManager
+    wr.define(ops, [GRUDGE])
+    wr.change(ops, "Grudge", "faction:crawlers", to=0)
+    cm = ConsequenceManager(dcc_world)
+    cid = cm.add_consequence("The Syndicate meets", "dusk", trigger_type="on_time",
+                             match="dusk", offscreen=True)
+    manager = TimeManager(dcc_world)
+    manager.advance(3 * 24 * 60)
+    assert manager.stopped is None
+    lines = "\n".join(time_stops.timeline_lines(ops, manager.moments, *manager.here, manager.through))
+    assert "Do now (off-screen, Grudge from 2): Start a clock for them." in lines
+    assert f"[{cid}] The Syndicate meets (off-screen)" in lines
+
+
+def test_the_output_when_time_stops(dcc_world, quiet):
+    import os
+    import subprocess
+    _weather_order(quiet, ["acid"])
+    root = Path(__file__).resolve().parent.parent
+    env = dict(os.environ, GM_WORLD_STATE_BASE=str(dcc_world))
+    out = subprocess.run(["bash", str(root / "tools/gm-time.sh"), "advance", "1d"],
+                         capture_output=True, text=True, env=env).stdout
+    assert "TIME STOPPED: 4h of the 1d passed, for what happens at 08:30" in out
+    assert "Do now: Anyone outside: Exposure +1." in out
+    assert 'To go on: bash tools/gm-time.sh advance "20h"' in out
+
+
+def test_a_journey_stops_on_the_way_and_does_not_arrive(dcc_world, quiet):
+    import os
+    import subprocess
+
+    from lib.location_manager import LocationManager
+    assert LocationManager(dcc_world).add_location(
+        "The Old Spine Bridge", "over the warehouse district", "A cracked span of old rebar.")
+    before = JsonOperations(str(quiet.world_state_dir)).load_json(
+        "campaign-overview.json")["player_position"]["current_location"]
+    _weather_order(quiet, ["acid"])
+    root = Path(__file__).resolve().parent.parent
+    env = dict(os.environ, GM_WORLD_STATE_BASE=str(dcc_world))
+    out = subprocess.run(["bash", str(root / "tools/gm-session.sh"), "move", "The Old Spine Bridge",
+                          "--takes", "6h"], capture_output=True, text=True, env=env)
+    assert out.returncode == 0, out.stderr
+    assert "passed on the way" in out.stdout
+    assert ('2h of the journey left; the character has not arrived. To go on: '
+            'bash tools/gm-session.sh move "The Old Spine Bridge" --takes "2h"') in out.stdout
+    overview = quiet.load_json("campaign-overview.json")
+    assert overview["player_position"]["current_location"] == before
+    went = subprocess.run(["bash", str(root / "tools/gm-session.sh"), "move", "The Old Spine Bridge",
+                           "--takes", "2h"], capture_output=True, text=True, env=env)
+    assert went.returncode == 0, went.stderr
+    assert quiet.load_json("campaign-overview.json")["player_position"]["current_location"] \
+        == "The Old Spine Bridge"

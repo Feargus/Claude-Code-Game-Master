@@ -99,7 +99,7 @@ def test_a_bag_drawn_by_itself_and_its_effects(dcc_world, ops):
     import random
     random.seed(4)
     manager = TimeManager(dcc_world)
-    manager.advance(720 * 24 * 60)                            # two years: two draws
+    manager.advance(720 * 24 * 60, through_all=True)                         # two years: two draws
     draws = [r for r in manager.rule_changes if r["rule"] == "The Melt"]
     assert len(draws) == 2 and all(len(d["draws"]) == 1 for d in draws)   # each at its moment
     at = [m["at"] for m in manager.moments if any(r["rule"] == "The Melt" for r in m["rules"])]

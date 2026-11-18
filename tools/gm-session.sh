@@ -11,7 +11,9 @@ show_usage() {
     echo "  status                   - Show current campaign status"
     echo "  move <location> [--takes <duration>]"
     echo "                           - Move party to a recorded, described place (gm-location.sh add);"
-    echo "                             --takes 20m lets that much time pass first"
+    echo "                             --takes 20m lets that much time pass first; it stops on"
+    echo "                             the way for what has to be played now (--through \"<name>\":"
+    echo "                             not for that, as gm-time.sh advance)"
     echo "  context                  - Full session context (character, party, consequences, rules)"
     echo "  choices [on|off|toggle]  - The action menu (three numbered options) on or off (no arg: show state)"
     echo "  opening <<'EOF' <json> EOF - Set up a new campaign's first scene in one go: place, exits,"
@@ -131,8 +133,17 @@ case "$ACTION" in
         # Split off `--takes <duration>`; everything else is the location.
         TAKES=""
         PLACE=()
+        THROUGH=()
         while [ "$#" -gt 0 ]; do
-            if [ "$1" = "--takes" ]; then
+            if [ "$1" = "--through" ]; then
+                if [ "$#" -ge 2 ] && [ "${2#--}" = "$2" ]; then
+                    THROUGH+=(--through "$2")
+                    shift 2
+                else
+                    THROUGH+=(--through)
+                    shift
+                fi
+            elif [ "$1" = "--takes" ]; then
                 if [ "$#" -lt 2 ]; then
                     echo "[ERROR] --takes requires a duration, e.g. 20m or 2h" >&2
                     exit 1
@@ -152,11 +163,14 @@ case "$ACTION" in
         # A place not recorded or not described is refused before any time passes.
         $PYTHON_CMD "$LIB_DIR/session_manager.py" move --check "$@" || exit 1
         # The journey's time passes first, so clocks fill and the time is right on
-        # arrival. On the way the character is at no place and with nobody, so only
-        # the time fires consequences there; the check below runs at the destination.
+        # arrival. On the way the character is at no place and only with the party,
+        # so only the time fires consequences there; the check below runs at the
+        # destination. Time stops on the way for what has to be played now (exit 3):
+        # then the party doesn't move, and the output says how to go on.
         if [ -n "$TAKES" ]; then
-            $PYTHON_CMD "$LIB_DIR/time_manager.py" advance "$TAKES" --on-the-way
+            $PYTHON_CMD "$LIB_DIR/time_manager.py" advance "$TAKES" --on-the-way --to "$*" "${THROUGH[@]}"
             RESULT=$?
+            if [ $RESULT -eq 3 ]; then exit 0; fi
             if [ $RESULT -ne 0 ]; then exit $RESULT; fi
             echo ""
         fi

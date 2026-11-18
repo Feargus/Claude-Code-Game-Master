@@ -104,8 +104,8 @@ def test_a_day_fills_one_segment_of_a_four_day_clock(dcc_world):
     manager.set_time(parse_time("2187-10-26 23:30"))
     ThreatClockManager(dcc_world).add_clock("Siege", segments=4, advance_on="time")
     ThreatClockManager(dcc_world).add_clock("Rumor", segments=4, advance_on="event")
-    manager.advance(parse_duration("1h"))  # crossing midnight alone is not a day
-    manager.advance(parse_duration("23h"))
+    manager.advance(parse_duration("1h"), through_all=True)  # crossing midnight alone is not a day
+    manager.advance(parse_duration("23h"), through_all=True)
     clocks = ThreatClockManager(dcc_world).get_clocks()
     assert clocks["Siege"]["current"] == 1
     assert clocks["Rumor"]["current"] == 0

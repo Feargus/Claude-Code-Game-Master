@@ -55,7 +55,7 @@ def _value(ops, rule, holder):
 
 def _days(dcc_world, n):
     manager = TimeManager(dcc_world)
-    manager.advance(n * 24 * 60)
+    manager.advance(n * 24 * 60, through_all=True)          # the rules, not the stops
     return manager.rule_changes
 
 
@@ -192,10 +192,12 @@ def test_wrong_options_are_refused(dcc_world, change, why):
 
 def test_time_prints_what_the_rates_did(dcc_world, ops):
     env = dict(os.environ, GM_WORLD_STATE_BASE=dcc_world)
-    out = subprocess.run(["bash", str(ROOT / "tools" / "gm-time.sh"), "advance", "91d"],
+    out = subprocess.run(["bash", str(ROOT / "tools" / "gm-time.sh"), "advance", "91d", "--through"],
                          capture_output=True, text=True, env=env)
     assert out.returncode == 0, out.stderr
-    assert "Sea level (the world): 2 → 3\n  now on:   from 3: The docks flood." in out.stdout
+    # no Do-now line: routine, in the timeline with its time and its text
+    assert ("  Sea level (the world): 2 → 3; now on: from 3: The docks flood. — Thu 24 Jan 04:30"
+            in out.stdout)
     rate = subprocess.run(["bash", str(ROOT / "tools" / "gm-rule.sh"), "rate", "Sea level",
                            "--by", "3"], capture_output=True, text=True, env=env)
     assert rate.stdout.strip() == ("[SUCCESS] Sea level (the world): rate +1 every 90d → "

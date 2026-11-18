@@ -90,7 +90,7 @@ def test_an_effect_moves_an_axis(ops):
 
 def test_an_axis_with_a_rate_moves_by_itself(dcc_world, ops):
     manager = TimeManager(dcc_world)
-    manager.advance(28 * 24 * 60)
+    manager.advance(28 * 24 * 60, through_all=True)
     assert [(c["axis"], c["before"], c["after"]) for c in manager.rule_changes] == [
         ("Anchor", 5, 4), ("Anchor", 4, 3)]                   # each 14 days, at its moment
     assert wr.entry(ops, wr.find_rule(ops, "Humanity"), "player")["axes"] == {"Chrome": 0, "Anchor": 3}

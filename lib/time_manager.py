@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import time_walk  # noqa: E402
 from campaign_manager import CampaignManager
-from game_time import STORED_FORMAT, current_time
+from game_time import STORED_FORMAT, TimeError, current_time  # TimeError: one class
 from json_ops import JsonOperations
 from threat_clocks import ThreatClockManager
 
@@ -58,10 +58,6 @@ MINUTES_PER_UNIT = {
     "w": 10080, "week": 10080, "weeks": 10080,
 }
 _DURATION_PART = re.compile(r"(\d+)\s*([a-z]+)")
-
-
-class TimeError(Exception):
-    """A time command that can't be carried out. The message says how to fix it."""
 
 
 def parse_duration(text: str) -> int:
@@ -180,28 +176,41 @@ class TimeManager:
         self._write(moment)
         moved = self._update_clocks(moment)
         self._apply_rates(before, moment)
-        self.moments = [{"at": moment, "clocks": moved, "rules": self.rule_changes, "fired": []}]
+        self.moments = [{"at": moment, "clocks": moved, "rules": self.rule_changes, "fired": [],
+                         "stops": []}]
         return moved
 
-    def advance(self, minutes: int, on_the_way: bool = False) -> dict[str, dict]:
+    def advance(self, minutes: int, on_the_way: bool = False, through: list[str] | None = None,
+                through_all: bool = False) -> dict[str, dict]:
         """Let time pass, from one moment at which something changes by itself to the
         next (time_walk.py): at each, the time is set, the time clocks move, the
         world's rules move, and the consequences are checked, so that each sees the
         time at which it happens. What each moment did is kept in `self.moments`
-        ({"at", "clocks", "rules", "fired"}). `on_the_way`: a journey's time (no
-        place, nobody present: only the time fires consequences). Returns the time
-        clocks that moved, as they stand at the end."""
+        ({"at", "clocks", "rules", "fired", "stops"}).
+
+        Time stops at the first moment with something to play now (time_stops.py),
+        before the end: `self.stopped` is that moment, `self.end` where the step
+        would have ended. `through`: names (a rule, "<rule>:<outcome>", a
+        consequence's id, a clock) that don't stop it; `through_all`: nothing does.
+        `on_the_way`: a journey's time (no place, only the party present). Returns
+        the time clocks that moved, as they stand at the end."""
+        import time_stops
         before = self.get_game_time()
         if before is None:
             raise TimeError("The campaign has no game time yet. "
                             "Set it once with: gm-time.sh set \"YYYY-MM-DD HH:MM\"")
         end = before + timedelta(minutes=minutes)
+        self.through = time_stops.Through(self.world_state_dir, self.json_ops, through, through_all)
+        place, present = time_stops.here(self.json_ops, on_the_way)
+        self.here = (place, present)
+        self.start, self.end, self.stopped = before, end, None
         self.moments, self.rule_changes, moved = [], [], {}
         moment = before
         for _ in range(MAX_MOMENTS):
             nxt = time_walk.next_moment(self.world_state_dir, self.json_ops, moment)
             to = end if nxt is None or nxt[0] >= end else max(nxt[0], moment + timedelta(minutes=1))
             step = self._step(moment, to, on_the_way)
+            step["stops"] = time_stops.judge(self.json_ops, step, self.through, place, present)
             self.moments.append(step)
             self.rule_changes += step["rules"]
             for name, clock in step["clocks"].items():
@@ -209,6 +218,9 @@ class TimeManager:
                 moved[name] = dict(clock, fired=fired)
             moment = to
             if moment >= end:
+                return moved
+            if step["stops"] and not through_all:
+                self.stopped = moment
                 return moved
         raise TimeError(f"Time stopped at {describe(moment)}: more than {MAX_MOMENTS} moments "
                         f"in one step. Advance in shorter steps.")
@@ -218,9 +230,10 @@ class TimeManager:
         import rule_time
         from consequence_manager import ConsequenceManager
         self._write(after)
-        clocks = self._update_clocks(after)
-        rules = rule_time.apply(self.json_ops, before, after)
         with contextlib.redirect_stdout(sys.stderr):        # the managers announce themselves
+            clocks = self._update_clocks(after)
+        rules = rule_time.apply(self.json_ops, before, after)
+        with contextlib.redirect_stdout(sys.stderr):
             fired = ConsequenceManager(self.world_state_dir).tick_from_session(on_the_way)["fired"]
         return {"at": after, "clocks": clocks, "rules": rules, "fired": fired}
 
@@ -232,22 +245,56 @@ def print_rule_changes(manager: "TimeManager") -> None:
         print("\n".join(world_rules.report_lines(manager.json_ops, report)))
 
 
-def print_moments(manager: "TimeManager", on_the_way: bool = False) -> None:
-    """What happened as time passed, moment by moment, each under its own time: the
-    clocks that moved, what the world's rules did, the consequences that fired. On
-    the way (a journey), "nothing triggered" is left to the check at the destination."""
+def format_duration(minutes: int) -> str:
+    """'3d 4h 20m', the zero parts left out; parse_duration reads it back."""
+    days, rest = divmod(int(minutes), 24 * 60)
+    parts = [f"{days}d"] if days else []
+    parts += [f"{rest // 60}h"] if rest // 60 else []
+    parts += [f"{rest % 60}m"] if rest % 60 else []
+    return " ".join(parts) or "0m"
+
+
+def print_moments(manager: "TimeManager", on_the_way: bool = False, going_to: str = "") -> None:
+    """What happened as time passed. The moments with something to play now are
+    printed in full, each under its time; the rest is the timeline, identical lines
+    grouped with their times (time_stops.py). When time stopped before the end, how
+    much passed and how much is left, and the command to go on. On the way (a
+    journey), "nothing triggered" is left to the check at the destination."""
+    import time_stops
     import world_rules
     from consequence_manager import print_fired
-    shown = [m for m in manager.moments if m["clocks"] or m["rules"] or m["fired"]]
-    for m in shown:
+    place, present = manager.here
+    full = [m for m in manager.moments if m["stops"]]
+    routine = [m for m in manager.moments if not m["stops"]]
+    passed = int((manager.get_game_time() - manager.start).total_seconds() // 60)
+    whole = int((manager.end - manager.start).total_seconds() // 60)
+    if manager.stopped:
+        print(f"TIME STOPPED: {format_duration(passed)} of the {format_duration(whole)} passed"
+              + (" on the way" if on_the_way else "") + ", for what happens at "
+              + f"{describe(manager.stopped)}. Narrate it, or go on (below).")
+    lines = time_stops.timeline_lines(manager.json_ops, routine, place, present, manager.through)
+    if lines:
+        print("\nMeanwhile (routine; narrate later what the character would notice):")
+        print("\n".join(lines))
+    for m in full:
         print(f"\nAt {describe(m['at'])}:")
         print_clocks(m["clocks"])
         for report in m["rules"]:
             print("\n".join(world_rules.report_lines(manager.json_ops, report)))
         print_fired(m["fired"])
     if not any(m["fired"] or any(c.get("fired") for c in m["clocks"].values())
-               for m in manager.moments) and not on_the_way:
+               or any(time_stops.fired(r) for r in m["rules"]) for m in manager.moments) \
+            and not on_the_way:
         print("[REACTIVITY] (nothing triggered)")
+    if manager.stopped:
+        left = format_duration(whole - passed)
+        flags = manager.through.args()
+        if going_to:
+            print(f"\n{left} of the journey left; the character has not arrived. To go on: "
+                  f"bash tools/gm-session.sh move \"{going_to}\" --takes \"{left}\"{flags}")
+        else:
+            print(f"\n{left} left. To go on: bash tools/gm-time.sh advance \"{left}\"{flags} "
+                  f"(add --through \"<name>\" for what shouldn't stop it again)")
 
 
 def print_clocks(moved: dict[str, dict]) -> None:
@@ -261,20 +308,50 @@ def print_clocks(moved: dict[str, dict]) -> None:
     print_fired([c for clock in moved.values() for c in clock.get("fired", [])])
 
 
+def _advance_args(args: list[str]) -> tuple[str, dict[str, Any]]:
+    """advance's words: the duration (one or more words, e.g. 1h 30m), then
+    --through ["<name>"] (repeatable; alone: through everything), --on-the-way and
+    --to "<place>" (gm-session.sh move --takes)."""
+    duration, flags = [], {"through": [], "through_all": False, "on_the_way": False, "to": ""}
+    i = 0
+    while i < len(args):
+        word = args[i]
+        if word == "--through":
+            if i + 1 < len(args) and not args[i + 1].startswith("--"):
+                flags["through"].append(args[i + 1])
+                i += 1
+            else:
+                flags["through_all"] = True
+        elif word == "--on-the-way":
+            flags["on_the_way"] = True
+        elif word == "--to" and i + 1 < len(args):
+            flags["to"] = args[i + 1]
+            i += 1
+        elif word.startswith("--"):
+            raise TimeError(f"Unknown option {word}: advance takes --through [\"<name>\"].")
+        else:
+            duration.append(word)
+        i += 1
+    return " ".join(duration), flags
+
+
 def main(argv) -> int:
-    usage = ("Usage: time_manager.py show | advance <duration> | set \"YYYY-MM-DD HH:MM\"")
+    usage = ("Usage: time_manager.py show | advance <duration> [--through [\"<name>\"]]... | "
+             "set \"YYYY-MM-DD HH:MM\"")
     action = argv[0] if argv else "show"
     value = " ".join(argv[1:])
     try:
         manager = TimeManager()
         if action == "advance" and value:
-            on_the_way = "--on-the-way" in value.split()
-            value = " ".join(w for w in value.split() if w != "--on-the-way")
+            duration, flags = _advance_args(argv[1:])
             start = manager.get_game_time()
-            manager.advance(parse_duration(value), on_the_way=on_the_way)
+            manager.advance(parse_duration(duration), on_the_way=flags["on_the_way"],
+                            through=flags["through"], through_all=flags["through_all"])
             print(f"Time: {describe(manager.get_game_time())}"
                   + (f" (from {describe(start)})" if start else ""))
-            print_moments(manager, on_the_way)
+            print_moments(manager, flags["on_the_way"], flags["to"])
+            if manager.stopped and flags["on_the_way"]:
+                return 3                    # stopped on the way: gm-session.sh doesn't move
         elif action == "set" and value:
             moved = manager.set_time(parse_time(value))
             print(f"Time set: {describe(manager.get_game_time())}")
@@ -292,7 +369,7 @@ def main(argv) -> int:
             print(usage, file=sys.stderr)
             return 1
     except TimeError as error:
-        print(f"Error: {error}", file=sys.stderr)
+        print(f"[ERROR] {error}", file=sys.stderr)
         return 1
     return 0
 

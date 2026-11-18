@@ -63,7 +63,8 @@ class ConsequenceManager(EntityManager):
     def add_consequence(self, description: str, trigger: str,
                         trigger_type: str = None, match: str = None,
                         triggers: list[dict[str, str]] = None,
-                        effects: list[dict[str, Any]] = None, plots=None) -> str:
+                        effects: list[dict[str, Any]] = None, plots=None,
+                        offscreen: bool = False) -> str:
         """
         Add a new consequence.
 
@@ -160,6 +161,8 @@ class ConsequenceManager(EntityManager):
             consequence['effects'] = effects
         if plot_keys:
             consequence['plots'] = plot_keys
+        if offscreen:                        # happens where the character isn't: never stops time
+            consequence['offscreen'] = True
 
         if 'active' not in data:
             data['active'] = []
@@ -168,7 +171,8 @@ class ConsequenceManager(EntityManager):
         if self.json_ops.save_json(self.consequences_file, data):
             then = describe_effects(effects)
             print(f"[SUCCESS] Added consequence [{consequence_id}]: {description} "
-                  f"(triggers: {trigger}{'; when it fires, ' + then if then else ''})")
+                  f"(triggers: {trigger}{'; when it fires, ' + then if then else ''})"
+                  + (" (off-screen: it doesn't stop time)" if offscreen else ""))
             return consequence_id
         return ""
 
@@ -630,8 +634,9 @@ class ConsequenceManager(EntityManager):
         location = pos.get("current_location", "") if isinstance(pos, dict) else ""
         npcs = self.json_ops.load_json("npcs.json") or {}
         present = list(npcs_present(npcs, location, overview.get("scene")).keys())
-        if on_the_way:
-            location, present = "", []
+        if on_the_way:                       # no place; only the party travels along
+            location = ""
+            present = list(npcs_present(npcs, "", overview.get("scene")).keys())
         world_state = {
             "location": location,
             "time": overview.get("time_of_day", ""),
@@ -768,6 +773,9 @@ def main():
                                  '--match for several triggers; any one fires it.')
     add_parser.add_argument('--match', action='append',
                             help='Structured trigger match value, one per --trigger-type, in order')
+    add_parser.add_argument('--offscreen', action='store_true',
+                            help="It happens where the character isn't: when it fires, time "
+                                 "doesn't stop for it (it goes into the timeline)")
     add_parser.add_argument('--plot', action='append', dest='plots', default=[],
                             help='The plot it belongs to (repeatable)')
     add_parser.add_argument('--tells', metavar='FACT_ID',
@@ -852,7 +860,8 @@ def main():
         with contextlib.redirect_stdout(io.StringIO()):  # keep stdout JSON-only
             cid = manager.add_consequence(args.description, args.trigger,
                                           triggers=triggers,
-                                          effects=effects, plots=args.plots)
+                                          effects=effects, plots=args.plots,
+                                          offscreen=args.offscreen)
         if cid:
             emit({"id": cid}, json_mode=True)
         else:
@@ -868,7 +877,8 @@ def main():
     if args.action == 'add':
         if not manager.add_consequence(args.description, args.trigger,
                                        triggers=triggers,
-                                       effects=effects, plots=args.plots):
+                                       effects=effects, plots=args.plots,
+                                       offscreen=args.offscreen):
             sys.exit(1)
 
     elif args.action == 'check':

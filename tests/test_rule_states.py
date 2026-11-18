@@ -89,7 +89,7 @@ def test_time_in_a_state_moves_it_on(dcc_world, ops):
     rule_states.move(ops, "Addiction", "Carl", "user")
     rule_states.move(ops, "Addiction", "Carl", "hooked")
     manager = TimeManager(dcc_world)
-    manager.advance(9 * 24 * 60)                              # hooked 1d → withdrawal 7d → recovering
+    manager.advance(9 * 24 * 60, through_all=True)                           # hooked 1d → withdrawal 7d → recovering
     moves = [(r["before"], r["after"]) for r in manager.rule_changes]
     assert moves == [("hooked", "withdrawal"), ("withdrawal", "recovering")]
     stored = wr.load_state(ops)["npc:Carl"]["Addiction"]

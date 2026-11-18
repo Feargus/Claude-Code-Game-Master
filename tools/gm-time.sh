@@ -2,7 +2,11 @@
 # gm-time.sh - In-game time (wrapper for time_manager.py)
 #
 #   gm-time.sh                          Show the current time
-#   gm-time.sh advance <duration>       Let time pass: 10m, 4h, 2d, 1w, "1h 30m"
+#   gm-time.sh advance <duration>       Let time pass: 10m, 4h, 2d, 1w, "1h 30m"; it stops
+#                                       at the first moment with something to play now
+#       --through "<name>"              ...but not for this rule, "<rule>:<outcome>",
+#                                       consequence id or clock (repeatable)
+#       --through                       never stops: a montage, with the timeline
 #   gm-time.sh set "YYYY-MM-DD HH:MM"   Set the time outright (campaign start, or a correction)
 #
 # `advance` walks from one moment at which something changes to the next (clocks,
@@ -12,7 +16,11 @@ source "$(dirname "$0")/common.sh"
 
 usage() {
     echo "Usage: gm-time.sh                          Show the current time"
-    echo "       gm-time.sh advance <duration>       e.g. 10m, 4h, 2d, 1w, \"1h 30m\""
+    echo "       gm-time.sh advance <duration>       e.g. 10m, 4h, 2d, 1w, \"1h 30m\"; stops at the"
+    echo "                                           first moment with something to play now"
+    echo "           --through \"<name>\"              not for this rule, \"<rule>:<outcome>\","
+    echo "                                           consequence id or clock (repeatable)"
+    echo "           --through                       never stops (a montage)"
     echo "       gm-time.sh set \"YYYY-MM-DD HH:MM\"   Campaign start, or a correction"
 }
 

@@ -74,9 +74,9 @@ def test_a_wrong_split_is_refused(ops, words, why):
 def test_a_budget_with_a_period_refills_by_itself(dcc_world, ops):
     rule_budget.split(ops, "Soldiers", "faction:crawlers", ["turf=6", "raids=4"])
     manager = TimeManager(dcc_world)
-    manager.advance(6 * 24 * 60)
+    manager.advance(6 * 24 * 60, through_all=True)
     assert manager.rule_changes == []
-    manager.advance(2 * 24 * 60)
+    manager.advance(2 * 24 * 60, through_all=True)
     assert [(r["rule"], r["holder"]) for r in manager.rule_changes] == [("Soldiers", "faction:crawlers")]
     assert not wr.load_state(ops)["faction:crawlers"]["Soldiers"]["spent"]
 
