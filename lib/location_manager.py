@@ -271,6 +271,22 @@ class LocationManager(EntityManager):
         return results
 
 
+def _presence(manager, args) -> None:
+    """gm-location.sh presence <place> [<faction>=N ...] [--remove <faction>]."""
+    from factions import FactionError, FactionManager, known
+    m = FactionManager(manager.json_ops)
+    try:
+        key, here = m.set_presence(args.name, args.values, args.remove)
+    except FactionError as error:
+        print(f"[ERROR] {error}", file=sys.stderr)
+        sys.exit(1)
+    for note in m.notes:
+        print(f"[NOTE] {note}")
+    names = known(manager.json_ops)
+    print(f"{key}: " + (", ".join(f"{names.get(f, {}).get('name', f)} {n}" for f, n in here.items())
+                        or "no presence written"))
+
+
 def main():
     """CLI interface for location management"""
     import argparse
@@ -312,6 +328,12 @@ def main():
     get_parser = subparsers.add_parser('get', help='Get location info')
     get_parser.add_argument('name', help='Location name')
 
+    # Presence of factions
+    presence_parser = subparsers.add_parser('presence', help="Factions' presence at a place (0-5)")
+    presence_parser.add_argument('name', help='Location name')
+    presence_parser.add_argument('values', nargs='*', help='<faction>=N, N from 0 to 5')
+    presence_parser.add_argument('--remove', action='append', default=[], help='forget a faction here')
+
     # List locations
     subparsers.add_parser('list', help='List all locations')
 
@@ -349,6 +371,9 @@ def main():
     elif args.action == 'describe':
         if not manager.set_description(args.name, args.description):
             sys.exit(1)
+
+    elif args.action == 'presence':
+        _presence(manager, args)
 
     elif args.action == 'get':
         location = manager.get_location(args.name)

@@ -397,3 +397,63 @@ def test_a_faction_tied_to_the_place_by_a_plot_gets_a_card(borant, ops, dcc_worl
                           goal="own every guard post", involves=[f"location:{_here(ops)}"])
     scene = "\n".join(_cards(ops).scene())
     assert "FACTION Meridian Group" in scene and "tied to this place by: Hostile Takeover" in scene
+
+
+# ---------- step 4a: presence ----------
+
+def test_presence_is_written_on_the_place(borant, ops):
+    place = _here(ops)
+    key, here = borant.set_presence(place, ["Meridian=4", "system=0"])
+    assert key == place and here == {"meridian-group": 4, "system": 0}
+    stored = json.loads((Path(ops.world_state_dir) / "locations.json").read_text())[place]
+    assert stored["presence"] == {"meridian-group": 4, "system": 0}
+    _, here = borant.set_presence(place, [], remove=["system"])
+    assert here == {"meridian-group": 4}
+    assert "Presence: " + place + " 4" in borant.show("Meridian")
+
+
+@pytest.mark.parametrize("given, words", [
+    (["Meridian=6"], "from 0 \\(not there\\) to 5"),
+    (["Meridian"], "<faction>=N"),
+    (["Nobody=2"], "No faction"),
+])
+def test_presence_is_checked(borant, ops, given, words):
+    with pytest.raises(FactionError, match=words):
+        borant.set_presence(_here(ops), given)
+
+
+def test_a_present_faction_gets_a_card_and_zero_means_not_here(borant, ops):
+    borant.set_presence(_here(ops), ["Meridian=3", "system=0"])
+    scene = "\n".join(_cards(ops).scene())
+    assert "Presence (0–5): Meridian Group 3; not here: The System / Borant Corp" in scene
+    assert "FACTION Meridian Group" in scene and "presence here: 3" in scene
+    assert "FACTION The System" not in scene
+
+
+def test_a_faction_with_eyes_here_is_a_hint_when_a_fact_is_recorded(borant, ops, dcc_world, capsys):
+    borant.set_presence(_here(ops), ["Meridian=4", "system=3"])
+    notes = NoteManager(dcc_world)
+    fid = notes.add_fact("Carl kicks the vending machine open.")
+    out = capsys.readouterr().out
+    assert (f"Meridian Group has eyes here (presence 4): if they'd see it, "
+            f"bash tools/gm-note.sh tell {fid} faction:meridian-group") in out
+    assert "The System" not in out.split("eyes here")[0].splitlines()[-1]    # 3 is no eyes
+    notes.add_fact("Carl hides the key in his boot.", secret=True)
+    assert "eyes here" not in capsys.readouterr().out                       # a secret: nobody saw
+    held = load(ops)                                                        # nothing automatic
+    assert fid not in borant.show("Meridian") and held
+
+
+def test_the_presence_command(borant, ops, dcc_world):
+    env = dict(os.environ, GM_WORLD_STATE_BASE=dcc_world)
+
+    def run(*words):
+        return subprocess.run(["bash", str(ROOT / "tools" / "gm-location.sh"), "presence", *words],
+                              capture_output=True, text=True, env=env)
+
+    done = run(_here(ops), "Meridian=2", "crawlers=5")
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == f"{_here(ops)}: The Crawlers 5, Meridian Group 2"
+    assert run(_here(ops)).stdout.strip() == f"{_here(ops)}: The Crawlers 5, Meridian Group 2"
+    bad = run(_here(ops), "Meridian=9")
+    assert bad.returncode == 1 and bad.stderr.startswith("[ERROR]")

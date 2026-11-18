@@ -215,6 +215,7 @@ class NoteManager:
         print(f"  known to: {', '.join(holder_ids) if holder_ids else 'nobody (a secret)'}")
         if where:
             print(f"  at: {where}")
+            self._eyes(fact_id, where, holder_ids if not secret else None)
         if plot_keys:
             print(f"  plot: {', '.join(plot_keys)}"
                   + (f" (as its truth, {version_of})" if inherited else ""))
@@ -231,6 +232,18 @@ class NoteManager:
         if list_waiting:
             self._list_waiting(fact_id)
         return fact_id
+
+    def _eyes(self, fact_id: str, where: str, holders) -> None:
+        """A faction with eyes where it happened (presence 4 or 5) may have seen it:
+        a hint, never automatic (a faction learns only through someone, design-notes.md)."""
+        if holders is None:                       # a secret: a GM-only truth nobody saw
+            return
+        from factions import eyes, known
+        names = known(self.json_ops)
+        for fid, n in eyes(self.json_ops, where):
+            if f"faction:{fid}" not in holders:
+                print(f"  {names.get(fid, {}).get('name', fid)} has eyes here (presence {n}): if "
+                      f"they'd see it, bash tools/gm-note.sh tell {fact_id} faction:{fid}")
 
     def set_attitude(self, owner: str, adjectives: str, towards: str = "player") -> str:
         """Record how `owner` (an NPC) regards `towards` (the player or another

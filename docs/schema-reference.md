@@ -229,6 +229,7 @@ A dictionary keyed by location name.
       {"to": "Other Location", "path": "rocky trail"}
     ],
     "discovered": "ISO timestamp",
+    "presence": {"<faction id>": 4, "<another>": 0},
     "notes": "optional string",
     "source": "optional string",
     "background": true,
@@ -239,6 +240,11 @@ A dictionary keyed by location name.
 
 Notes:
 
+- **`presence`**: how much each faction is around here, 0 (known not to be there: an
+  enemy's headquarters) to 5 (they run it); a faction not listed was never written
+  (`gm-location.sh presence`, `lib/factions.py`). A faction present (1 or more) gets a
+  card in the scene; at 4 or 5 a fact recorded here says "they have eyes here", a hint
+  for `gm-note.sh tell`, never automatic.
 - **`low_confidence: true` marks a reconcile stub** (`location_reconcile`): the source
   referenced this place from a plot, an NPC tag, or a connection, but no extractor
   produced a node for it, so the import created one and wired it to the most-connected

@@ -15,6 +15,10 @@ if [ "$#" -lt 1 ]; then
     echo "                                       names the story will use, e.g. \"the Yard\""
     echo "  alias <name> <alias>... [--remove <alias>]"
     echo "                                     - Add or remove a location's shorter names"
+    echo "  presence <name> [<faction>=N]... [--remove <faction>]"
+    echo "                                     - Factions' presence here, 0 (not there: an"
+    echo "                                       enemy's headquarters) to 5 (they run it);"
+    echo "                                       without values: show it"
     echo "  connect <from> <to> <path>         - Connect two locations"
     echo "  describe <name> <description>      - Replace the description with a fuller one"
     echo "                                       (prints the old one)"
@@ -49,6 +53,14 @@ case "$ACTION" in
             exit 1
         fi
         $PYTHON_CMD "$LIB_DIR/location_manager.py" alias "$@"
+        ;;
+
+    presence)
+        if [ "$#" -lt 1 ]; then
+            echo "Usage: gm-location.sh presence <name> [<faction>=N]... [--remove <faction>]"
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/location_manager.py" presence "$@"
         ;;
 
     connect)
@@ -91,7 +103,7 @@ case "$ACTION" in
 
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: add, alias, connect, describe, get, list, connections"
+        echo "Valid actions: add, alias, presence, connect, describe, get, list, connections"
         exit 1
         ;;
 esac

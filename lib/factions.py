@@ -128,6 +128,32 @@ def members(npcs: dict[str, Any], fid: str, living: bool = True) -> list[tuple[s
             for m in memberships(npc) if m["id"] == fid]
 
 
+# ---------- presence ----------
+
+PRESENCE = (0, 5)     # 0 not there (an enemy's headquarters), 1 a few, 3 a strong hand, 5 they run it
+EYES = 4              # from here, a fact recorded at the place gets the hint "they have eyes here"
+
+
+def presence(json_ops, place: str) -> dict[str, int]:
+    """{faction id: 0–5} at a place (its key); a faction not listed: never written."""
+    loc = (json_ops.load_json("locations.json") or {}).get(place) or {}
+    found = loc.get("presence") if isinstance(loc, dict) else None
+    return dict(found) if isinstance(found, dict) else {}
+
+
+def eyes(json_ops, place_id: str) -> list[tuple[str, int]]:
+    """(faction id, presence) of the factions with eyes at `location:<key>`, most first."""
+    here = presence(json_ops, place_id.partition(":")[2])
+    return sorted(((f, n) for f, n in here.items() if n >= EYES), key=lambda x: -x[1])
+
+
+def presence_of(json_ops, fid: str) -> list[tuple[str, int]]:
+    """(place key, presence) of one faction, most first."""
+    places = json_ops.load_json("locations.json") or {}
+    found = [(k, (v.get("presence") or {}).get(fid)) for k, v in places.items() if isinstance(v, dict)]
+    return sorted(((k, n) for k, n in found if n is not None), key=lambda x: -x[1])
+
+
 # ---------- the manager ----------
 
 class FactionManager:
@@ -395,6 +421,38 @@ class FactionManager:
         lost = [i for i in knew if not knows(cid, by_id[i].get("holders"), npcs)]
         return {"faction": fid, "npc": key, "lost": lost}
 
+    def set_presence(self, raw_place, given: list[str], remove=()) -> tuple[str, dict[str, int]]:
+        """Presence at a place: "<faction>=N" each (0–5), `remove` forgets one. Returns
+        (place key, presence)."""
+        self._seed()
+        cid, error = self._ids().resolve_as(raw_place, ("location",))
+        if error:
+            raise FactionError(error)
+        place = cid.partition(":")[2]
+        here = presence(self.json_ops, place)
+        for raw in given:
+            name, sep, number = str(raw).rpartition("=")
+            if not sep or not number.strip().lstrip("-").isdigit():
+                raise FactionError(f"Presence is <faction>=N, N from {PRESENCE[0]} to "
+                                   f"{PRESENCE[1]} (\"kin=4\"); got '{raw}'.")
+            n = int(number)
+            if not PRESENCE[0] <= n <= PRESENCE[1]:
+                raise FactionError(f"Presence goes from {PRESENCE[0]} (not there) to "
+                                   f"{PRESENCE[1]} (they run it), not {n}.")
+            here[self.key(name)] = n
+        for raw in remove:
+            fid = self.key(raw)
+            if fid not in here:
+                raise FactionError(f"{place} has no presence of faction:{fid} written.")
+            del here[fid]
+        places = self.json_ops.load_json("locations.json") or {}
+        if here:
+            places[place]["presence"] = dict(sorted(here.items(), key=lambda x: -x[1]))
+        else:
+            places[place].pop("presence", None)
+        self.json_ops.save_json("locations.json", places)
+        return place, presence(self.json_ops, place)
+
     # ---------- showing ----------
 
     def line(self, fid: str, row: dict[str, Any]) -> str:
@@ -406,8 +464,13 @@ class FactionManager:
         fid = self.key(raw)
         row = known(self.json_ops)[fid]
         return "\n".join([f"{row['name']} (faction:{fid})", *_record_lines(row),
-                          *self._member_lines(fid), *self._plot_lines(f"faction:{fid}"),
+                          *self._member_lines(fid), *self._presence_lines(fid),
+                          *self._plot_lines(f"faction:{fid}"),
                           *self._world_lines(f"faction:{fid}")])
+
+    def _presence_lines(self, fid: str) -> list[str]:
+        found = presence_of(self.json_ops, fid)
+        return [f"  Presence: {', '.join(f'{k} {n}' for k, n in found)}"] if found else []
 
     def _plot_lines(self, cid: str) -> list[str]:
         plots = self.json_ops.load_json("plots.json") or {}

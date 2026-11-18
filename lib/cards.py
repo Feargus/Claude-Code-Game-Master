@@ -145,6 +145,7 @@ class Cards:
             if exits:
                 lines.append("Exits: " + "; ".join(
                     f"{c['to']} ({c['path']})" if c.get("path") else c["to"] for c in exits))
+            lines += self._presence_line(location)
         present = set(npcs_present(self.npcs, location, self.overview.get("scene")))
         usual = [n for n in npcs_usually_at(self.npcs, location) if n not in present]
         if usual:
@@ -308,25 +309,43 @@ class Cards:
 
     # ---------- the faction card ----------
 
+    def _presence_line(self, location: str) -> list[str]:
+        """'Presence: The Kin 4, Red Fork Police 2; not here: Hardtop Holdings (0)'."""
+        from factions import known, presence
+        here = presence(self.json_ops, location)
+        if not here:
+            return []
+        names = known(self.json_ops)
+        name = lambda f: names.get(f, {}).get("name", f)    # noqa: E731
+        there = [f"{name(f)} {n}" for f, n in here.items() if n > 0]
+        absent = [name(f) for f, n in here.items() if n == 0]
+        return ["Presence (0–5): " + ", ".join(there or ["none written above 0"])
+                + (f"; not here: {', '.join(absent)}" if absent else "")]
+
     def factions_here(self, location: str, present) -> list[tuple[str, str]]:
-        """(faction id, why it is here) for each faction with a member present, or
-        that owns or is in an open plot involving this place (presence comes later)."""
-        from factions import load, members
+        """(faction id, why it is here) for each faction present at this place
+        (presence 1 or more), with a member in the scene, or with an open plot
+        involving the place; most present first."""
+        from factions import load, members, presence
         from plot_manager import plot_order
         plots = self.json_ops.load_json("plots.json") or {}
         lid = f"location:{location}"
+        strength = presence(self.json_ops, location)
         out = []
         for fid in load(self.json_ops):
             here = [(k, s) for k, s in members(self.npcs, fid) if k in present]
             tied = [k for k in plot_order(self.json_ops, plots)
                     if lid in (plots[k].get("involves") or [])
                     and f"faction:{fid}" in [plots[k].get("owner"), *(plots[k].get("involves") or [])]]
+            why = [f"presence here: {strength[fid]}"] if strength.get(fid) else []
             if here:
-                out.append((fid, "members here: " + ", ".join(
-                    k + (" (SECRET member: only its members know)" if s else "") for k, s in here)))
-            elif tied:
-                out.append((fid, f"tied to this place by: {', '.join(tied)}"))
-        return out
+                why.append("members here: " + ", ".join(
+                    k + (" (SECRET member: only its members know)" if s else "") for k, s in here))
+            if tied:
+                why.append(f"tied to this place by: {', '.join(tied)}")
+            if why:
+                out.append((fid, "; ".join(why)))
+        return sorted(out, key=lambda x: -strength.get(x[0], 0))
 
     def faction_card(self, fid: str, why: str) -> list[str]:
         """How to play a faction: what it is, what drives it, what it never does,
