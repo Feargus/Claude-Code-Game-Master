@@ -27,10 +27,14 @@ CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 ```
 (If the name exists: offer switch / rename / recreate.)
 
-Run the questionnaire with **AskUserQuestion**. Ask for: a one-line **premise**
-(free text — "Conan but on a drowned coast"), **tone**, **magic level**, and
-**setting type** (reuse the classic options). Then ALWAYS ask the **genre bend** —
-the single most important anti-generic lever:
+Run the questionnaire in plain text, one question at a time: each a numbered list
+of **six** suggestions that fit what the player has said so far, each a few words
+and a short line, and a last line saying they can answer in their own words. (Not
+AskUserQuestion: it holds only four.) Phone-friendly, no box-drawing frames. Ask for:
+a one-line **premise** (free text — "Conan but on a drowned coast"), **tone**, **magic
+level** (in a world without magic: the tech, and how much chrome is in people), and
+**setting type**. Then ALWAYS ask the **genre bend** — the single most important
+anti-generic lever:
 
 Also ask the **voice** question — *"Whose voice should this world be narrated in?"*
 — with genre-adaptive suggestions + free text (e.g. sword-and-sorcery → Robert E.
@@ -38,7 +42,8 @@ Howard; high fantasy → Tolkien / Le Guin; sci-fantasy → Gibson; whimsical �
 Pratchett). Store as `voice_exemplar`. This is what makes narration read like a
 real author instead of a generic narrator.
 
-Genre bend options:
+Genre bend options (examples of the kind: suggest six that fit the premise, a
+climate cyberpunk world gets cyberpunk bends):
 
 - *Sword-and-sorcery (Conan):* magic = blood/curse-priced and villainous; bronze-age
   tech; decadent kingdoms vs. barbarian frontier.
