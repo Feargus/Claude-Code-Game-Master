@@ -182,6 +182,10 @@ class NoteManager:
                 print(f"[ERROR] {error}", file=sys.stderr)
             print("[ERROR] Fact not recorded.", file=sys.stderr)
             return ""
+        inherited = False
+        if version_of and not plot_keys:          # a version belongs where its truth does
+            plot_keys = list(self._entry(facts, version_of).get('plots') or [])
+            inherited = bool(plot_keys)
         fact_id = fact_file.next_id(facts)
         entry = {'id': fact_id, 'fact': fact}
         if about_ids:
@@ -212,7 +216,8 @@ class NoteManager:
         if where:
             print(f"  at: {where}")
         if plot_keys:
-            print(f"  plot: {', '.join(plot_keys)}")
+            print(f"  plot: {', '.join(plot_keys)}"
+                  + (f" (as its truth, {version_of})" if inherited else ""))
         elif offer_plot:
             self._offer_plot(fact_id, about_ids + ([where] if where else []))
         for note in version_notes:
@@ -396,6 +401,9 @@ class NoteManager:
                 entry[key] = value
             else:
                 entry.pop(key, None)
+        if version_of and not entry.get('plots') and self._entry(facts, version_of).get('plots'):
+            entry['plots'] = list(self._entry(facts, version_of)['plots'])    # as its truth
+            notes.append(f"plot: {', '.join(entry['plots'])} (as its truth, {version_of})")
         fact_file.save(self.json_ops, facts)
         for note in notes:
             print(f"  {note}")

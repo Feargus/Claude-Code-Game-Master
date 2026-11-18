@@ -159,3 +159,18 @@ def test_the_brief_is_ordered_by_plot(world):
     latest = brief.split("--- LATEST")[1]
     assert f"newer, above: {secret}" in latest and "rigged" not in latest   # named, not printed again
     assert "KEY FACTS" not in brief and "THREAT CLOCKS" not in brief
+
+
+def test_an_owners_plot_with_nothing_to_move_it_says_so(world):
+    import os
+    import subprocess
+    root = Path(__file__).resolve().parent.parent
+    env = dict(os.environ, GM_WORLD_STATE_BASE=str(world))
+
+    def add(*words):
+        return subprocess.run(["bash", str(root / "tools/gm-plot.sh"), "add", *words],
+                              capture_output=True, text=True, env=env).stdout
+    out = add("The Heist", "--description", "Kira robs the vault.", "--owner", "player",
+              "--goal", "the vault")
+    assert "[NOTE] Nothing will move this plot by itself" in out and '--plot "The Heist"' in out
+    assert "[NOTE] Nothing will move" not in add("The Rot", "--description", "Something spreads.")

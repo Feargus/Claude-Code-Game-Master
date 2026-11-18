@@ -162,3 +162,25 @@ def test_cli(world):
     assert "npc:Tod would learn 0 fact(s)" in r.stdout and "f2" in r.stdout  # Tod knew f1
     r = run("add", "It rained there", "--at", "The Sanguine Ring", "--nowhere")
     assert r.returncode == 1 and "not both" in r.stderr
+
+
+def test_a_version_belongs_to_its_truths_plot(world, capsys):
+    """The fooled one's wrong version was offered the plot its truth already had
+    (todo.md): now it inherits it, in a beat, with --version-of and with `truth`."""
+    ws, camp = world
+    (camp / "plots.json").write_text(json.dumps({"The Ring": {"status": "open", "involves": []}}))
+    notes = NoteManager(ws)
+    truth_id, lie_id = notes.beat([
+        {"fact": "Tod palmed the token.", "holders": ["player"], "plot": "The Ring"},
+        {"fact": "Benno thinks the token fell.", "holders": ["npc:Benno Rusk"],
+         "truth": "wrong", "version_of": "#1"}])
+    facts = {f["id"]: f for f in json.loads((camp / "facts.json").read_text())}
+    assert facts[lie_id]["plots"] == ["The Ring"]
+    assert f"plot: The Ring (as its truth, {truth_id})" in capsys.readouterr().out
+    own = notes.add_fact("Benno half-saw it.", holders=["npc:Benno Rusk"], truth="partial",
+                         version_of=truth_id, plots=[])
+    assert json.loads((camp / "facts.json").read_text())[-1]["plots"] == ["The Ring"]
+    later = notes.add_fact("Tod says it rolled under the cage.", holders=["npc:Benno Rusk"])
+    notes.set_truth(later, "wrong", truth_id)
+    facts = {f["id"]: f for f in json.loads((camp / "facts.json").read_text())}
+    assert facts[later]["plots"] == ["The Ring"] and facts[own]["plots"] == ["The Ring"]

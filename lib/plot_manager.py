@@ -67,6 +67,18 @@ def find_plot(plots: dict[str, Any], raw) -> str:
     return next((k for k in plots if k.lower() == wanted.lower()), "") if wanted else ""
 
 
+def moved_by(json_ops, key: str) -> list[str]:
+    """What will move a plot by itself: its clocks and waiting consequences, by name
+    or id (an owner's goal goes nowhere without one, 2026-11-18)."""
+    clocks = json_ops.load_json("threat-clocks.json") or {}
+    store = json_ops.load_json("consequences.json") or {}
+    found = [f"clock {n}" for n, c in clocks.items()
+             if isinstance(c, dict) and key in (c.get("plots") or [])]
+    found += [f"consequence {c.get('id')}" for c in store.get("active", [])
+              if isinstance(c, dict) and key in (c.get("plots") or []) and not c.get("fired")]
+    return found
+
+
 def resolve_plots(json_ops, raws) -> tuple[list[str], list[str]]:
     """(plot keys, errors) for names given on a command line; duplicates collapse."""
     import difflib
@@ -402,6 +414,11 @@ def main() -> int:
             key = m.add(args.key, args.description, args.owner, args.goal, args.kind,
                         args.involves, args.follows, args.stands, args.another)
             print(f"[SUCCESS] Plot {key} ({args.kind})")
+            if args.owner and not moved_by(m.json_ops, key):
+                print(f"[NOTE] Nothing will move this plot by itself: the world moves only on "
+                      f"/gm world. Give {key} a clock (bash tools/gm-clock.sh add \"<short name>\" 4 "
+                      f"--text \"<what it is about>\" --due-in <when> --plot \"{key}\"), or a "
+                      f"consequence with --plot \"{key}\".")
             _suggest_facts(key)
         elif args.action == "stands":
             key, before = m.set_stands(args.key, args.stands)
