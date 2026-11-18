@@ -164,6 +164,16 @@ def test_about_them_but_not_known_to_them(dcc_world):
     assert "knows, and Tandy doesn't: Griselda's brother" not in block
 
 
+def test_a_public_fact_about_them_is_one_they_know(dcc_world):
+    """Public is known to everyone, them too: shared, not "they don't know" (todo.md)."""
+    _add_npc(dcc_world, "Griselda", _current_location(dcc_world))
+    _add_facts(dcc_world, ["Griselda was fined by the Syndicate."],
+               about=["npc:Griselda"], holders=["public"])
+    block = _npc_block(SessionManager(dcc_world).get_full_context(), "Griselda")
+    assert "they don't know: Griselda was fined" not in block
+    assert "fact they share with Tandy" in block or "facts they share with Tandy" in block
+
+
 def test_named_in_a_new_fact_is_not_knowing_it(dcc_world):
     """A new fact (with holders) that names them but has no `about` for them
     isn't attached by the name check: the about list at write time decides."""

@@ -143,9 +143,16 @@ def find_sheet(campaign_dir: Path, name: str) -> dict[str, Any]:
 
     cid, error = ids.resolve_as(name, ("player", "npc"))
     if cid == "player":
-        return {**(ops.load_json("character.json") or {}), "is_player": True}
+        sheet = {**(ops.load_json("character.json") or {}), "is_player": True}
+    elif cid:
+        sheet = (ops.load_json("npcs.json") or {})[cid.partition(":")[2]]
     if cid:
-        return (ops.load_json("npcs.json") or {})[cid.partition(":")[2]]
+        from entity_manager import is_dead
+        if is_dead(sheet):
+            who = "The player character" if cid == "player" else cid.partition(":")[2]
+            raise ContestError(f"{who} is dead and can't roll. (A death that was a mistake is a "
+                               f"correction for the player to decide, out of character.)")
+        return sheet
 
     mobs = {**json.loads(REPO_MOBS.read_text(encoding="utf-8")), **(ops.load_json("mobs.json") or {})}
     sheet = _find(mobs, name.strip())

@@ -475,3 +475,14 @@ def test_an_improvised_skill_needs_an_anchor_and_a_banned_one_is_refused(campaig
     with pytest.raises(ContestError, match="Larceny is anchored on DFT"):
         run_contest(_args("--active", "Fearghas", "Larceny", "AGI", "AGI", "ITU",
                           "--reactive-dc", "13", "a lock"), ScriptedDice(5, 5, 5))
+
+
+def test_the_dead_do_not_roll(campaign):
+    for filename, key in (("character.json", None), ("npcs.json", "Dekker")):
+        data = json.loads((campaign / filename).read_text())
+        (data[key] if key else data)["status"] = {"state": "dead"}
+        (campaign / filename).write_text(json.dumps(data))
+    with pytest.raises(ContestError, match="The player character is dead and can't roll"):
+        run_contest(_args(*SHOOT, "--reactive-dc", "15", "a wall"), ScriptedDice(4, 4, 4))
+    with pytest.raises(ContestError, match="Dekker is dead and can't roll"):
+        run_contest(_args("--active-dc", "15", "a shove", *DODGE), ScriptedDice(4, 4, 4))

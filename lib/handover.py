@@ -54,8 +54,8 @@ def _learn_match(match: str, old: str, new: str) -> str:
 
 def move_id(json_ops, old: str, new: str) -> list[str]:
     """Rewrite `old` to `new` in the facts (holders, about), the active
-    consequences (triggers, tell effects) and the world's rules' values. Returns notes for the GM about
-    anything that no longer makes sense."""
+    consequences (triggers, tell effects), the plots (owner, involves) and the world's
+    rules' values. Returns notes for the GM about anything that no longer makes sense."""
     notes = []
     facts = fact_file.load(json_ops)
     changed = 0
@@ -92,9 +92,28 @@ def move_id(json_ops, old: str, new: str) -> list[str]:
                 changed += 1
     if changed:
         json_ops.save_json("consequences.json", store)
+    _move_in_plots(json_ops, old, new)
     import world_rules
     notes += world_rules.move_holder(json_ops, old, new)
     return notes
+
+
+def _move_in_plots(json_ops, old: str, new: str) -> None:
+    """A plot's owner moves with the person; in `involves` (people and places, never
+    the character, who is part of every plot) someone who becomes the player is
+    dropped."""
+    plots = json_ops.load_json("plots.json") or {}
+    changed = False
+    for plot in plots.values() if isinstance(plots, dict) else []:
+        if plot.get("owner") == old:
+            plot["owner"] = new
+            changed = True
+        if old in (plot.get("involves") or []):
+            plot["involves"] = ([i for i in plot["involves"] if i != old] if new == "player"
+                                else _swap(plot["involves"], old, new))
+            changed = True
+    if changed:
+        json_ops.save_json("plots.json", plots)
 
 
 def _former_record(old: dict[str, Any], npcs: dict[str, Any]) -> str:

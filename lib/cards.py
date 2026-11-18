@@ -223,7 +223,7 @@ class Cards:
                 if nid in (f.get("about") or self._world_ids().mentioned(str(f["fact"]))):
                     about.append(f)
                 continue
-            if nid in holders:
+            if nid in holders or "public" in holders:  # public: known to everyone, them too
                 if f.get("truth") in ("wrong", "partial"):
                     wrong.append(f)                   # play them from the belief
                 elif {"player", "public"} & set(holders):

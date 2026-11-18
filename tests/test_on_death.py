@@ -126,6 +126,11 @@ def test_player_death_fires_on_death_player(dcc_world):
     result = pm.kill_character(cause="fell")
     assert result["success"]
     assert [c["id"] for c in result["fired"]] == [cid]
+    again = pm.kill_character(cause="fell again")              # a death is recorded once
+    assert again["success"] is False and "dead already (fell)" in again["error"]
+    deaths = [f for f in _load(dcc_world, "facts.json")
+              if isinstance(f, dict) and "(the player character) died" in f.get("fact", "")]
+    assert len(deaths) == 1
 
 
 def _fact(world, fid):

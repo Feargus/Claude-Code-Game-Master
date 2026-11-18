@@ -150,7 +150,6 @@ class CombatManager(EntityManager):
 
 def main():
     import argparse
-    import json
 
     from cli_output import emit, emit_error, strip_json_flag, wants_json
 
@@ -208,8 +207,12 @@ def main():
         sys.exit(1)
     if json_mode:
         emit(out, json_mode=True)
+    elif args.action == 'end':
+        defeated = ", ".join(out['defeated']) or "nobody"
+        print(f"Fight over. Defeated: {defeated}"
+              + (f"; +{out['xp']} XP" if out['xp'] else "")
+              + (f"; growth due: {out['growth_due']} level(s) (gm-growth)" if out.get('growth_due') else ""))
     else:
-        print(json.dumps(out, indent=2))
         print(m.header())
 
 

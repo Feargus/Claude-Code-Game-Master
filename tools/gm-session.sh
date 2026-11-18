@@ -174,9 +174,6 @@ case "$ACTION" in
             if [ $RESULT -ne 0 ]; then exit $RESULT; fi
             echo ""
         fi
-        echo "Moving Party"
-        echo "============"
-        echo ""
         $PYTHON_CMD "$LIB_DIR/session_manager.py" move "$@"
         RESULT=$?
         if [ $RESULT -ne 0 ]; then exit $RESULT; fi

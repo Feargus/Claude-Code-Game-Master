@@ -276,6 +276,11 @@ class PlayerManager(EntityManager):
             return {'success': False}
         char_name = sheet_mod.name(char)
         status = sheet_mod.section(char, "status")
+        if status.get('state') == 'dead':
+            return self._refuse(
+                f"{char_name} is dead already" + (f" ({status['cause']})" if status.get('cause') else "")
+                + ": a death is recorded once. Go on with the Death Protocol (gm-death): the "
+                "hand-off to the next character.")
         status['state'] = 'dead'
         status['died_at'] = self.get_timestamp()
         if cause:

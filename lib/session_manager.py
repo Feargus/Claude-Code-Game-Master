@@ -299,9 +299,7 @@ def main():
             sys.exit(1)
         if json_mode:
             emit(result, json_mode=True)
-        else:
-            print(json.dumps(result, indent=2))
-        return
+        return                               # move_party printed the one line
 
     if args.action == 'start':
         summary = manager.start_session()

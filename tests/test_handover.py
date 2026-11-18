@@ -114,3 +114,20 @@ def test_the_interview_example_saves(camp):
     assert result["success"], result
     skills = result["character"]["stats"]["skills"]
     assert "Brawling" not in skills and skills["Guard"] == 0 and skills["Piloting"] == 4
+
+
+def test_the_plots_follow_the_people(camp):
+    """A takeover moved facts and consequences but left the plots on the old NPC, who
+    then showed among the plot's sketches (todo.md, 2026-11-18)."""
+    ws, directory = camp
+    assert CharacterCreator().create({"identity": {"name": "Lullaby"}})["success"]
+    (directory / "plots.json").write_text(json.dumps({
+        "Her Song": {"status": "open", "owner": "player", "involves": ["location:The Pens"]},
+        "The Boot Key": {"status": "open", "owner": "npc:Tod Brask",
+                         "involves": ["npc:Tod Brask", "npc:Benno"]},
+    }))
+    assert CharacterCreator().create({}, canon="tod", replace=True)["success"]
+    plots = json.loads((directory / "plots.json").read_text())
+    assert plots["Her Song"]["owner"] == "npc:Lullaby"        # the former character's goal
+    assert plots["The Boot Key"]["owner"] == "player"
+    assert plots["The Boot Key"]["involves"] == ["npc:Benno"]  # the character is in every plot

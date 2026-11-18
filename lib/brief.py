@@ -47,9 +47,6 @@ class Brief:
     def get_preferences(self) -> dict[str, Any]:
         return self.session.get_preferences()
 
-    def _scene(self):
-        return self.session._scene()
-
     @staticmethod
     def _normalize_connection_list(connections):
         from session_manager import SessionManager
