@@ -334,23 +334,34 @@ class NoteManager:
                   f"gm-note.sh tell {fact_id} {' '.join('npc:' + n for n in absent)}")
 
     def _learned(self, fact_id: str, entry: dict, new_holders) -> list:
-        """Fire the on_learn consequences for holders who just learned a fact.
-        Returns the fired consequences (also kept in `last_fired`)."""
+        """Fire the on_learn consequences for holders who just learned a fact. A fact
+        that becomes public is learned by everyone who didn't hold it: the player,
+        the street and every living NPC (todo.md, 2026-11-18). Returns the fired
+        consequences (also kept in `last_fired`)."""
         from consequence_manager import ConsequenceManager
         self.last_fired = []
         if not new_holders:
             return []
         about = entry.get('about') or []
+        learners = list(new_holders)
+        if 'public' in learners:                  # public is everyone: all of them learn it
+            from entity_manager import is_dead
+            knew = set(entry.get('holders') or []) - set(new_holders)
+            npcs = self.json_ops.load_json("npcs.json") or {}
+            everyone = ['player', 'street'] + [f"npc:{k}" for k, v in npcs.items()
+                                               if isinstance(v, dict) and not is_dead(v)]
+            learners += [w for w in everyone if w not in knew and w not in learners]
         values = []
-        for who in list(new_holders) + ['anyone']:
+        for who in learners + ['anyone']:
             values.append(f"{who} learns {fact_id}")
             values += [f"{who} learns about:{a}" for a in about]
         try:
             cm = ConsequenceManager(self.world_state_dir)
         except RuntimeError:
             return []
-        self.last_fired = cm.fire_event(
-            'on_learn', values, f"{', '.join(new_holders)} learned {fact_id}: {entry['fact']}")
+        who = ("it became public (everyone)" if 'public' in new_holders
+               else f"{', '.join(new_holders)} learned")
+        self.last_fired = cm.fire_event('on_learn', values, f"{who} {fact_id}: {entry['fact']}")
         return self.last_fired
 
     def _check_version(self, facts: list, truth=None, version_of=None, fact_id=None):

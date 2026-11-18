@@ -116,3 +116,20 @@ def test_cli_tell_prints_what_fired(dcc_world):
                        capture_output=True, text=True, cwd=str(Path(dcc_world).parent))
     assert r.returncode == 0, r.stderr
     assert "street now know(s) it" in r.stdout and "The secret is out" in r.stdout
+
+
+def test_a_fact_that_becomes_public_is_learned_by_everyone(dcc_world):
+    """Public counts as known to everyone, so it fires what waits for anyone in
+    particular to learn it (todo.md, 2026-11-18); not for who knew it already."""
+    nm = NoteManager(dcc_world)
+    fid = nm.add_fact("Tandy cheated the Syndicate.", about=["player"], secret=True)
+    mordecai = _on_learn(dcc_world, "Mordecai learns about Tandy")
+    street = _on_learn(dcc_world, f"street learns {fid}")
+    nm.tell(fid, ["npc:Mordecai"])                        # he knows it first, privately
+    assert _stored(dcc_world, mordecai)["fired"]
+    again = _on_learn(dcc_world, f"Mordecai learns {fid}")
+    imani = _on_learn(dcc_world, "Imani learns about Tandy")    # she never heard it privately
+    nm.tell(fid, ["public"])
+    fired = {c["id"] for c in nm.last_fired}
+    assert {street, imani} <= fired and again not in fired  # knowing already isn't learning
+    assert "it became public (everyone)" in _stored(dcc_world, street)["fired"]["reason"]
