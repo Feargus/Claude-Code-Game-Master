@@ -63,14 +63,14 @@ def test_grow_applies_exactly_one_level(campaign, isolated_world_state):
     assert result["success"] and result["level"] == 1
     sheet = _sheet(campaign)
     assert sheet["stats"]["attributes"]["AGI"] == 12
-    assert sheet["stats"]["skills"] == {"Long guns": 3, "Stealth": 1}
+    assert sheet["stats"]["skills"] == {"Long guns": 3, "Stealth": 0}      # untrained → 0
     assert sheet["stats"]["perks"] == {"Cat eyes": "+2 Awareness at night, -2 by day"}
     assert sheet["progress"]["level"] == 1
     assert "already" in mgr.grow("DFT", ["Tech", "Stealth"], "cat eyes", "x")["error"]
     assert mgr.grow("DFT", ["Tech", "Stealth"], "Steady hand", "+1 Tech")["level"] == 2
     assert mgr.grow("DFT", ["Tech", "Stealth"], "One more", "x")["success"] is False   # nothing due
     log = (campaign / "xp.log").read_text()
-    assert "growth applied: level 1: AGI d11 -> d12; Long guns 2 -> 3; Stealth new -> 1" in log
+    assert "growth applied: level 1: AGI d11 -> d12; Long guns 2 -> 3; Stealth new -> 0" in log
 
 
 def test_the_brief_tells_the_gm_when_growth_is_due(campaign, isolated_world_state):
@@ -113,8 +113,9 @@ def test_raise_skill_adds_one_and_keeps_the_sheets_spelling(campaign, isolated_w
     assert _sheet(campaign)["stats"]["skills"] == {"Long guns": 3}
 
 
-def test_a_new_skill_starts_at_one(campaign, isolated_world_state):
+def test_an_untrained_skill_is_raised_to_zero(campaign, isolated_world_state):
     mgr = PlayerManager(str(isolated_world_state))
+    assert mgr.raise_stat("skill", "Medicine")["current"] == 0      # learned, then 1, 2, ...
     assert mgr.raise_stat("skill", "Medicine")["current"] == 1
     assert mgr.raise_stat("skill", "default")["success"] is False
     # A name that is no skill would sit on the sheet where no roll finds it.

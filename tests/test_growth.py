@@ -31,14 +31,27 @@ def test_learning_raises_skills_and_books_xp(tmp_path):
     assert character["stats"]["skills"]["Brawling"] == 3
     assert character["progress"]["practice"]["Brawling"] == 0
     assert character["progress"]["xp"] == 30 and growth.next_level_xp(character) == 100
-    # Untrained: the first point costs 3, and the canon spelling is used.
-    assert growth.learn(tmp_path, character, "long guns", 2)[0] == {
+    # Untrained: learning it (0) costs 3 like a first point, and the canon spelling is used.
+    assert growth.learn(tmp_path, character, "long guns", 2) == [
+        {"skill": "Long guns", "value": 0, "xp": 10}]
+    assert character["progress"]["practice"]["Long guns"] == 0
+    assert growth.learn(tmp_path, character, "Long guns", 0)[0] == {
         "skill": "Long guns", "value": 1, "xp": 10}
     assert growth.learn(tmp_path, character, "Tech", 25) == []          # a blowout teaches nothing
     assert "Tech" not in character["progress"]["practice"]
     log = (tmp_path / growth.LOG_FILE).read_text()
     assert "+30 XP  skill: Brawling rose to 3 through use" in log
-    assert "total 40 · level 0" in log
+    assert "+10 XP  skill: Long guns rose to 0 through use (learned: no longer untrained)" in log
+    assert "total 50 · level 0" in log
+
+
+def test_an_untrained_skill_never_holds_enough_to_skip_a_step(tmp_path):
+    """Five learnings on an untrained skill: 3 make it 0, 2 are left, short of 1."""
+    character = {"identity": {"name": "Lullaby"}, "progress": {"level": 0}, "stats": {"skills": {}}}
+    growth.learn(tmp_path, character, "Tech", 2)        # 3
+    growth.learn(tmp_path, character, "Tech", 4)        # 2 more
+    assert character["stats"]["skills"]["Tech"] == 0
+    assert character["progress"]["practice"]["Tech"] == 2
 
 
 def test_xp_makes_growth_due_but_does_not_level(tmp_path):

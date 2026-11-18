@@ -169,7 +169,7 @@ class PlayerManager(EntityManager):
 
     def raise_stat(self, kind: str, target: str) -> dict[str, Any]:
         """A correction: one attribute one die size up, or one skill +1 (a skill
-        not on the sheet starts at 1). Growth goes through `grow`."""
+        not on the sheet, untrained, becomes 0). Growth goes through `grow`."""
         from sheet import ATTRIBUTES
         char = self._sheet()
         if not char:
@@ -193,7 +193,7 @@ class PlayerManager(EntityManager):
             except ValueError as error:
                 return self._refuse(str(error))
             old = table.get(key)
-            table[key] = new = 1 if old is None else old + 1
+            table[key] = new = 0 if old is None else max(old, 0) + 1
         if not self._save_character(char):
             return {'success': False}
         shown = f"d{old} -> d{new}" if kind == 'attribute' else (
@@ -217,7 +217,7 @@ class PlayerManager(EntityManager):
 
     def grow(self, attribute: str, skills: list[str], perk: str, effect: str) -> dict[str, Any]:
         """Apply one level of growth that XP has made due: exactly one attribute
-        one die size up, two different skills +1 (a new one starts at 1) and one
+        one die size up, two different skills +1 (an untrained one becomes 0) and one
         new perk. Raises the level by one and logs it."""
         from growth import growth_due, level, log_growth
         from sheet import ATTRIBUTES
@@ -254,7 +254,7 @@ class PlayerManager(EntityManager):
         changes = [f"{key} d{attributes[key] - 1} -> d{attributes[key]}"]
         for skill in names:
             old = table.get(skill)
-            table[skill] = 1 if old is None or old < 1 else old + 1
+            table[skill] = 0 if old is None else max(old, 0) + 1
             changes.append(f"{skill} {old if old is not None else 'new'} -> {table[skill]}")
         perks[perk.strip()] = effect.strip()
         changes.append(f"perk {perk.strip()}: {effect.strip()}")

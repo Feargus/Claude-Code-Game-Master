@@ -5,8 +5,12 @@ The rules (gm-growth has the GM's side):
 - Learning by use: after every skill contest the player's skill earns learnings
   from the final quality: within ±2 three, ±5 two, ±10 one, beyond nothing.
   You learn at the edge of your ability; a walkover or a hopeless attempt teaches
-  nothing. Reaching skill N costs 3 × N learnings (untrained counts as 0, so the
-  first point costs 3) and grants 10 × N XP.
+  nothing. Reaching skill N costs 3 × N learnings and grants 10 × N XP. An
+  untrained skill (not on the sheet, rolled at −3) is learned first: reaching 0
+  costs 3 learnings and grants 10 XP, the same as reaching 1 (decided 2026-11-18:
+  simple, if too easy for brain surgery). So an untrained skill never holds 3
+  learnings, and a level-up that makes it 0 (`gm-player.sh grow`) leaves fewer
+  than 1 needs.
 - XP: from skill gains, defeated enemies (wounds² × 10) and achievements
   (20 / 50 / 100 % of the current level's span). Level N needs 100 × N² XP in
   total, unbounded.
@@ -132,17 +136,21 @@ def learn(campaign_dir: Path, character: dict[str, Any], skill: str,
     practice = character.setdefault("progress", {}).setdefault("practice", {})
     pkey = next((k for k in practice if k.lower() == key.lower()), key)
     points = int(practice.pop(pkey, 0)) + gained
-    value = int(skills.get(key, 0)) if key in skills else 0
+    value = int(skills[key]) if key in skills else None      # None: untrained
     gains = []
-    while points >= LEARNINGS_PER_RANK * (max(value, 0) + 1):
-        value = max(value, 0) + 1
-        points -= LEARNINGS_PER_RANK * value
-        skills[key] = value
-        gains.append({"skill": key, "value": value, "xp": XP_PER_RANK * value})
+    while True:
+        new = 0 if value is None else max(value, 0) + 1
+        cost = LEARNINGS_PER_RANK * max(new, 1)               # 0 costs as much as 1
+        if points < cost:
+            break
+        points -= cost
+        value = skills[key] = new
+        gains.append({"skill": key, "value": new, "xp": XP_PER_RANK * max(new, 1)})
     practice[key] = points
     for gain in gains:
         add_xp(campaign_dir, character, gain["xp"], "skill",
-               f"{gain['skill']} rose to {gain['value']} through use")
+               f"{gain['skill']} rose to {gain['value']} through use"
+               + (" (learned: no longer untrained)" if gain["value"] == 0 else ""))
     return gains
 
 
