@@ -322,9 +322,15 @@ def run(json_ops, effect: dict[str, Any], holder: str, chain: dict[str, Any],
             return _state(json_ops, effect, holder, chain, cause)
         if kind == "tokens":
             return _tokens(json_ops, effect, holder, cause)
+        if kind in ("condition", "credits") and holder != "player":
+            import world_rules
+            return {"line": f"not done ({kind}): {world_rules.holder_name(json_ops, holder)} "
+                            f"is not the character, and only the character has "
+                            f"{'conditions' if kind == 'condition' else 'credits'}; "
+                            f"play it from the result's text"}
         with contextlib.redirect_stdout(sys.stderr):    # the managers announce themselves
             if kind == "clock":
-                return _clock(json_ops, effect)
+                return _clock(json_ops, _for_holder(json_ops, effect, holder))
             if kind == "condition":
                 return _condition(json_ops, effect, chain)
             return _credits(json_ops, effect, chain)
@@ -388,6 +394,16 @@ def _rate_of(json_ops, effect, holder) -> dict[str, Any]:
     old, new = rule_time.set_rate(json_ops, target["name"], whose, add=effect["by"])
     return {"line": f"{target['name']} ({world_rules.holder_name(json_ops, whose)}): rate "
                     f"{rule_time.describe(old)} → {rule_time.describe(new)}"}
+
+
+def _for_holder(json_ops, effect, holder) -> dict[str, Any]:
+    """A clock started for someone other than the character or the world says whose
+    it is in its text (its name stays the short key the rule gave)."""
+    if holder in ("player", "world") or "advance" in effect:
+        return effect
+    import world_rules
+    who = world_rules.holder_name(json_ops, holder)
+    return {**effect, "text": f"For {who}: {effect.get('text') or effect['clock']}"}
 
 
 def _clock(json_ops, effect) -> dict[str, Any]:

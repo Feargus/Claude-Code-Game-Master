@@ -2,7 +2,11 @@
 """Rates: a counter that moves by itself as game time passes (rules-proposal.md §4.2).
 
     "rate": {"by": 1, "every": "90d"}                      +1 every 90 days
-    "rate": {"by": 1, "every": "7d", "toward": 5}           and stops at 5
+    "rate": {"by": 1, "every": "7d", "toward": 5}           1 a week toward 5, from
+                                                            either side, and stops there
+                                                            (with `toward`, `by` is the
+                                                            step's size: its sign is
+                                                            ignored)
     "rate": {"share": 0.5, "every": "1d", "toward": 0}      half the way to 0 a day,
                                                             at least 1 (8 → 4 → 2 → 1 → 0)
 
@@ -56,12 +60,13 @@ def check(rate: Any, low: int, high: int) -> list[str]:
 
 
 def describe(rate: dict[str, Any]) -> str:
-    """'+1 every 90d (toward 5)' or 'half the way to 0 every 1d'."""
+    """'+1 every 90d', '1 every 7d toward 5' or 'half the way to 0 every 1d'."""
     if "share" in rate:
         share = {0.5: "half", 0.25: "a quarter", 1: "all"}.get(rate["share"], f"{rate['share']:g} of")
         return f"{share} the way to {rate['toward']} every {rate['every']} (at least 1)"
-    toward = f" (toward {rate['toward']})" if rate.get("toward") is not None else ""
-    return f"{rate['by']:+d} every {rate['every']}{toward}"
+    if rate.get("toward") is not None:
+        return f"{abs(rate['by'])} every {rate['every']} toward {rate['toward']}"
+    return f"{rate['by']:+d} every {rate['every']}"
 
 
 def step(value: int, rate: dict[str, Any], periods: int, low: int, high: int) -> int:
@@ -76,10 +81,12 @@ def step(value: int, rate: dict[str, Any], periods: int, low: int, high: int) ->
         else:
             if value == toward:
                 break                                             # there: it stays
-            nxt = value + rate["by"]
-            if toward is not None and (value < toward <= nxt or nxt <= toward < value):
-                nxt = toward                                      # it stops there
-            value = nxt
+            if toward is None:
+                value += rate["by"]
+            else:                                                 # a step toward it,
+                size = abs(rate["by"])                            # from either side,
+                value = (min(toward, value + size) if value < toward   # stopping there
+                         else max(toward, value - size))
         value = max(low, min(high, value))
     return value
 

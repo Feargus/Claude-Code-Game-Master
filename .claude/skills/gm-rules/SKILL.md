@@ -178,6 +178,10 @@ a change by hand doesn't reset the count.
 "rate": {"share": 0.5, "every": "1d", "toward": 0}    half the way to 0 a day (heat cools: 8, 4, 2, 1, 0)
 ```
 
+With `toward`, `by` is the size of the step, and the value moves toward it from
+either side: `{"by": 1, "every": "7d", "toward": 0}` heals 1 a week down to 0. Without
+`toward`, `by`'s sign says which way, for ever (up to the end of the range).
+
 The character's and the world's values move from the start; a faction's, a person's
 or a place's from its first value (`gm-rule.sh set` at creation if it should move from
 the start). One holder can get its own rate: `gm-rule.sh rate "<rule>" [holder] --by N
@@ -542,6 +546,12 @@ The effects, a fixed list:
 | `{"clock": "<name>", "advance": N}` | a rumour counter pushes an event clock on |
 | `{"condition": "<name>"}`, `"add": false` to remove | Panic on: the condition Panicked; off: removed |
 | `{"credits": N}` (negative spends; refused if there isn't enough) | a debt result takes 50 |
+
+Conditions and credits are the character's only: in a rule held by NPCs too, they act
+when the character reaches the result, and for an NPC the output says "not done" and
+you play it from the text. A clock started for someone else says whose it is in its
+text; its name is the rule's, so a second holder reaching the result while it runs is
+refused ("exists already"): advance it or start another by hand.
 
 A change made by an effect turns that rule's results on and off in turn, with their
 own effects: a **chain**. The output shows it indented, and ends with what changed on

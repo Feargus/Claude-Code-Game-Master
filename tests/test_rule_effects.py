@@ -126,6 +126,25 @@ def test_an_effect_that_cant_be_done_says_why(ops):
     assert _character(ops)["possessions"]["credits"] == 5 and not report["character"]
 
 
+def test_conditions_and_credits_are_the_characters_only(ops):
+    """A rule held by NPCs too: when an NPC reaches the result, its condition and
+    credits are not given to the character (hard-country trial, 2026-11-18)."""
+    wr.define(ops, [_counter("Lungs", held_by=["player", "npc"], results=[
+        {"from": 4, "text": "Short of breath.",
+         "effects": [{"condition": "Short of breath"}, {"credits": -5}]}])])
+    start = _character(ops)["possessions"]["credits"]
+    report = wr.change(ops, "Lungs", "Carl", by=4)
+    lines = [d["line"] for d in report["did"]["from 4"]]
+    assert lines == [f"not done ({kind}): Carl is not the character, and only the character "
+                     f"has {what}; play it from the result's text"
+                     for kind, what in (("condition", "conditions"), ("credits", "credits"))]
+    character = _character(ops)
+    assert "Short of breath" not in (character["status"].get("conditions") or [])
+    assert character["possessions"]["credits"] == start and not report["character"]
+    mine = wr.change(ops, "Lungs", "player", by=4)
+    assert [d["line"] for d in mine["did"]["from 4"]][0] == "condition Short of breath added"
+
+
 def test_an_effect_starts_and_advances_clocks(ops):
     overview = ops.load_json("campaign-overview.json")
     overview["game_time"] = "2187-10-26T04:30"                 # a duration needs a game time
@@ -133,7 +152,9 @@ def test_an_effect_starts_and_advances_clocks(ops):
     report = wr.change(ops, "Patience", "faction:crawlers", to=0)
     assert report["did"]["at 0"][0]["line"] == "clock Retaliation started (3 segments, due in 3d)"
     clocks = ops.load_json("threat-clocks.json")
-    assert clocks["Retaliation"]["max"] == 3 and clocks["Retaliation"]["text"].startswith("They come")
+    assert clocks["Retaliation"]["max"] == 3
+    # a clock started for someone other than the character says whose it is
+    assert clocks["Retaliation"]["text"] == f"For {wr.holder_name(ops, 'faction:crawlers')}: They come for the character"
     again = wr.change(ops, "Patience", "faction:system", to=0)
     assert again["did"]["at 0"][0]["line"].startswith("not done (clock): A clock 'Retaliation' exists")
     wr.define(ops, [_counter("Rumour", results=[

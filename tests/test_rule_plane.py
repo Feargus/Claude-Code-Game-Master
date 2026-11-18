@@ -134,7 +134,7 @@ def test_planes_in_the_brief_the_cards_the_summary_and_the_hud(dcc_world, ops):
     wr.change(ops, "Alignment", "Carl", to=2, axis="Law")
     text = "\n".join(wr.rule_lines(ops, wr.find_rule(ops, "Humanity")))
     assert text.startswith("Humanity (plane: Chrome 0–10 × Anchor 0–10, held by the player)")
-    assert "  Rate of Anchor: -1 every 14d (toward 0), by itself as game time passes." in text
+    assert "  Rate of Anchor: 1 every 14d toward 0, by itself as game time passes." in text
     assert "  Drifting (Chrome > Anchor and Chrome < Anchor + 4): Cold moments." in text
     assert 'Command: gm-rule.sh change "Humanity" --axis <Chrome|Anchor> +N|-N' in text
     assert "Now, Tandy: Chrome 0, Anchor 5 (Steady)" in text

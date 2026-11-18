@@ -80,6 +80,17 @@ def test_toward_stops_there_and_only_holders_with_a_value_move(dcc_world, ops):
     assert "faction:system" not in wr.load_state(ops)
 
 
+def test_toward_sets_the_direction_from_either_side(dcc_world, ops):
+    """'+1 a week toward 5' from above 5 comes down: `by` is the step's size (the
+    hard-country trial's Exposure, "by 1 toward 0", climbed away from 0, 2026-11-18)."""
+    from lib import rule_time
+    assert rule_time.step(3, {"by": 1, "every": "7d", "toward": 0}, 2, 0, 6) == 1
+    assert rule_time.step(1, {"by": -2, "every": "7d", "toward": 4}, 5, 0, 6) == 4
+    assert rule_time.step(5, {"by": 2, "every": "7d", "toward": 0}, 1, 0, 6) == 3
+    assert rule_time.describe({"by": -1, "every": "7d", "toward": 0}) == "1 every 7d toward 0"
+    assert rule_time.describe({"by": 1, "every": "90d"}) == "+1 every 90d"
+
+
 def test_a_share_moves_part_of_the_way(dcc_world, ops):
     wr.change(ops, "Heat", "Bone Garden", to=8)
     _days(dcc_world, 2)
