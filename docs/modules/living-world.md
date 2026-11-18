@@ -27,9 +27,22 @@ developments. **They are wired to very different degrees.** Verified 2026-08-13:
 
 | System | Automatic trigger | How it actually runs |
 |---|---|---|
-| Consequences | **Yes** | `gm-session.sh move` and `gm-time.sh advance` both call `gm-consequence.sh tick` after they write |
+| Consequences | **Yes** | `gm-time.sh advance` checks them at each moment of its walk (below), `set` once, `gm-session.sh move` at the destination (on the way only the time can fire one) |
 | Threat clocks | **Time-clocks: yes** (since 2026-08-13) | `gm-time.sh advance <duration>` (or `set`) moves the campaign's `game_time`, and every `advance_on: "time"` clock is recomputed from it: it stores `starts_at` and `due_at`, and its filled share is the share of that span that has passed. A clock with no due time gets one day per segment. Event clocks stay manual: `gm-clock.sh advance "<name>" [--ticks N]`; a time clock is refused there, since a push by hand would only stall it until time caught up. A time clock is sped up or slowed down by moving its due time instead: `gm-clock.sh due "<name>" --earlier|--later <duration>` (or `--due-in`, `--due`). The start stays, and the clock is recomputed at once, so bringing it forward may fill segments and fire them on the spot; pushing it back never empties it. Filling one fires its consequence (below) |
 | World tick | **No** — GM-invoked by design (`/gm world`) | the developments are a model call; `gm-session.sh world-tick <<'EOF'` (the JSON, then `EOF`) records each as a fact, plus an optional consequence (with real triggers) and/or clock (since 2026-11-06; before, each was a consequence with no usable trigger), is all-or-nothing, warns (naming the overflow) when the count exceeds the advisory cap of 3, and stays logged / rollback-able. Before 2026-08-13 `WorldTick` had no caller at all |
+
+**The walk, and where time stops (since 2026-11-18, `lib/time_walk.py`, `lib/time_stops.py`).**
+`advance` doesn't jump: every source of change says when it next changes (a time
+clock's next segment, each world rule's block `next_time`, the time-of-day words a
+waiting consequence is on), and the step goes from one such moment to the next,
+setting the time, moving clocks and rules and checking consequences at each. It stops
+at the first moment with something to play now (a consequence that fires and isn't
+`offscreen`, a clock that fills, a rule's result with a Do-now line for a holder who
+is here) and prints the timeline of the routine rest, how much is left and the
+command to go on. `--through "<name>"` (a rule, `"<rule>:<outcome>"`, a consequence id,
+a clock) doesn't stop for those; `--through` alone never stops. `gm-session.sh move
+--takes` stops on the way (exit 3 from `time_manager.py`; the party doesn't move).
+Eight days of a bag drawn every 4 hours take about 0.9 s on the RPi.
 
 So three weeks and ten minutes are not the same pressure: the GM passes how much time
 actually elapsed, a clock is full exactly when its due time arrives, and a full clock announces

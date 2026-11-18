@@ -570,6 +570,16 @@ own effects: a **chain**. The output shows it indented, and ends with what chang
 the character (credits, conditions). In one chain a rule changes once per holder; a
 second change is stopped and the output says so. A result can't change its own rule.
 
+**A Do-now line stops time.** In a long time step (sleep, travel, downtime), a result,
+state, region or token with a `gm` line stops the step when it comes on for someone
+here (the character, the world, the current place, a person present), so the GM can
+play it; one without a `gm` line goes into the timeline, to be narrated later. So give
+a `gm` line only to what must be played the moment it happens (a storm breaking, a
+contact turning on the character), never to a slow process (healing, a sea rising a
+step, a lease ticking over): its `text` is enough. Results for holders elsewhere (a
+faction, a place the character isn't at) never stop time; their Do-now line is printed
+in the timeline in full.
+
 **What is never an effect**, and goes into `gm` instead: a death (the Death Protocol
 needs the GM), a fact (its holders and truth need the GM), wounds (the zone and the
 cause), and anything in the scene. That last is a consequence's job:
@@ -633,6 +643,8 @@ EOF
   in the fiction, not only a number.
 - Effects do only what is mechanical; deaths, facts, wounds and arrivals are a `gm`
   line or a consequence.
+- A `gm` line stops a long time step: only for what must be played the moment it
+  happens, not for slow processes.
 - Hidden rules are hidden for a reason: the player should feel their signs.
 - One to three rules, each touching play often; prices and customs are plain lines.
 - The numbers are first guesses: say so, and let play correct them.

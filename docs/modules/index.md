@@ -9,7 +9,7 @@
 * [Book search](rag-stack.md) - Two retrieval paths over a campaign's source book: pieces searched by meaning with the facts' model, and a chapter index for the Loremaster.
 * [Scene context — the two doors](scene-context.md) - What the harness pushes to the model each beat, and why "context" means two different things depending on which tool you call.
 * [The entity graph and name resolution](entity-graph.md) - Why entities cross-reference by name, how the alias resolver keeps that from breaking, and the ordered repair passes an import runs before the gate.
-* [The living world — consequences, clocks, world tick](living-world.md) - The three systems that make the world move on its own, and which of them are actually wired to fire.
+* [The living world — consequences, clocks, world tick, the time walk](living-world.md) - The systems that make the world move on its own, which of them are actually wired to fire, and how a time step walks from moment to moment and stops at the first event.
 * [The NPC model](npc-model.md) - What an NPC carries beyond a description — inner life, canonical voice lines, party-member sheets, and proxy combat stats.
 * [The player character sheet](player-character.md) - Why the sheet has two shapes, which one is canonical, and how XP, death, and growth are persisted.
 * [The world's own rules](world-rules.md) - A campaign's own mechanics (Bleed, a sea level, a gang's patience) built from a few building blocks, defined once in the ruleset, with a value per holder in rule-state.json.
