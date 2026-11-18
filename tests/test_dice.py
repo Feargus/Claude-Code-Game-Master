@@ -67,3 +67,13 @@ def test_the_command_prints_the_sum_and_nothing_else():
 
     bad = subprocess.run([sys.executable, str(DICE), "2d6+1x4"], capture_output=True, text=True)
     assert bad.returncode == 1 and bad.stdout == "" and "Can't read the dice" in bad.stderr
+
+
+def test_the_wrapper_rolls_and_says_how_to_use_it():
+    root = Path(__file__).parent.parent
+    out = subprocess.run(["bash", str(root / "tools" / "gm-dice.sh"), "2d6"], capture_output=True, text=True)
+    assert out.returncode == 0 and 2 <= int(out.stdout) <= 12
+    bad = subprocess.run(["bash", str(root / "tools" / "gm-dice.sh"), "2d6+1x4"], capture_output=True, text=True)
+    assert bad.returncode == 1 and bad.stderr.startswith("[ERROR] Can't read the dice")
+    usage = subprocess.run(["bash", str(root / "tools" / "gm-dice.sh")], capture_output=True, text=True)
+    assert usage.returncode == 1 and "gm-rule.sh roll" in usage.stdout

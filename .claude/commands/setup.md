@@ -48,7 +48,7 @@ Run this command to install GM Claude dependencies. This runs automatically on f
 
 6. **Verify installation**
    ```bash
-   uv run python lib/dice.py "1d20"
+   bash tools/gm-dice.sh "1d20"
    ```
 
    If the dice roll works, installation is complete.

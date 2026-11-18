@@ -6,9 +6,10 @@
     dice.py "d6"            one die
     dice.py "2d6+1d4-1"     dice of different sizes and constants, added or subtracted
 
-Skill contests don't use this (skill_contest.py rolls its own dice). It is for the
-rolls a campaign's own rules name, and for pure chance (a d6 with the odds set
-before the roll). Anything it can't read in full is refused, never half-rolled.
+Skill contests don't use this (skill_contest.py rolls its own dice). A world rule's
+roll uses `roll` (rule_roll.py, gm-rule.sh roll); the GM rolls a one-off chance in
+the story with `tools/gm-dice.sh` (a d6 with the odds set before the roll). Anything
+it can't read in full is refused, never half-rolled.
 """
 
 import random
@@ -66,7 +67,7 @@ def main() -> int:
     try:
         print(roll(sys.argv[1]))
     except DiceError as error:
-        print(f"Error: {error}", file=sys.stderr)
+        print(f"[ERROR] {error}", file=sys.stderr)
         return 1
     return 0
 

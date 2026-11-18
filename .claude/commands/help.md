@@ -54,6 +54,7 @@ Display all available commands and tools.
   gm-condition.sh   Conditions
   Rolls and fights
   gm-skill-contest.sh  Roll a skill contest
+  gm-dice.sh        Plain dice for a one-off chance (a world rule's roll: gm-rule.sh roll)
   gm-combat.sh      Enemies' wounds in a fight
   gm-mob.sh         Mobs: interchangeable enemies with stats
   People and story

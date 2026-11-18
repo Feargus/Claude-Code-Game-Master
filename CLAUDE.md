@@ -68,14 +68,14 @@ outcome is genuinely certain (trivial, or literally impossible).
   behind it (no skill names, qualities, margins or "nat 20"; `skill-contest.log`
   already keeps every roll). The HUD line and `gm-body.sh show` are the exceptions.
 - **Other dice:** a world rule that rolls (a price, a first reaction: YOUR WORLD'S
-  RULES) rolls with `gm-rule.sh roll`, which reads its result. Any other dice in the
-  story: `uv run python lib/dice.py "1d20+5"` (also `2d6`, `2d6+1d4-1`). It prints
+  RULES) rolls with `gm-rule.sh roll`, which reads its result. A one-off chance in
+  the story: `bash tools/gm-dice.sh "1d20+5"` (also `2d6`, `2d6+1d4-1`). It prints
   the sum and nothing else.
 - **Things nobody does:** a skill contest is for an action someone takes. A process
   that just runs its course (water seeping into a cracked seal, a fire spreading,
   a cheap part failing) or pure chance (a coin toss, a die rolled in the story)
   takes no skill. Decide it from the established facts when the outcome follows
-  from them; when it is truly uncertain, roll plain dice (`dice.py`, e.g. a d6 with
+  from them; when it is truly uncertain, roll plain dice (`gm-dice.sh`, e.g. a d6 with
   the odds set before the roll); when it unfolds over time, use a clock. A character
   who steers the process (working the water in by hand) is acting again: a skill.
 
