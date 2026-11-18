@@ -21,7 +21,7 @@ HUMANITY = {
     "name": "Humanity", "block": "plane", "held_by": "player",
     "summary": "Machine against what ties you to people.", "when": "Cyberware; time with friends.",
     "axes": {"Chrome": [0, 10], "Anchor": [0, 10]}, "start": {"Chrome": 0, "Anchor": 5},
-    "rates": {"Anchor": {"by": -1, "every": "14d", "toward": 0}},
+    "rates": {"Anchor": {"by": 1, "every": "14d", "toward": 0}},
     "regions": [
         {"name": "Steady", "where": "Chrome <= Anchor", "text": "Themselves."},
         {"name": "Drifting", "where": "Chrome > Anchor and Chrome < Anchor + 4", "text": "Cold moments."},

@@ -80,15 +80,35 @@ def test_toward_stops_there_and_only_holders_with_a_value_move(dcc_world, ops):
     assert "faction:system" not in wr.load_state(ops)
 
 
-def test_toward_sets_the_direction_from_either_side(dcc_world, ops):
-    """'+1 a week toward 5' from above 5 comes down: `by` is the step's size (the
-    hard-country trial's Exposure, "by 1 toward 0", climbed away from 0, 2026-11-18)."""
+def test_toward_pulls_or_pushes_from_either_side(dcc_world, ops):
+    """With `toward`, + pulls and - pushes, whichever side the value is on (the
+    hard-country trial's Exposure, "by 1 toward 0", climbed away from 0; decided
+    2026-11-18)."""
     from lib import rule_time
-    assert rule_time.step(3, {"by": 1, "every": "7d", "toward": 0}, 2, 0, 6) == 1
-    assert rule_time.step(1, {"by": -2, "every": "7d", "toward": 4}, 5, 0, 6) == 4
-    assert rule_time.step(5, {"by": 2, "every": "7d", "toward": 0}, 1, 0, 6) == 3
-    assert rule_time.describe({"by": -1, "every": "7d", "toward": 0}) == "1 every 7d toward 0"
+
+    def step(value, by, toward, periods, low=0, high=20):
+        return rule_time.step(value, {"by": by, "every": "1d", "toward": toward}, periods, low, high)
+    # a mood, -5 to 5, its point at 0
+    assert step(3, 1, 0, 2, -5, 5) == 1 and step(-3, 1, 0, 5, -5, 5) == 0
+    assert step(3, -1, 0, 9, -5, 5) == 5 and step(-3, -1, 0, 9, -5, 5) == -5
+    assert step(0, -1, 0, 9, -5, 5) == 0                     # on the knife-edge: it stays
+    # a crowd's temper, 0 to 20, its point at 10
+    assert step(13, 1, 10, 9) == 10 and step(7, 2, 10, 1) == 9
+    assert step(13, -1, 10, 3) == 16 and step(7, -1, 10, 9) == 0
+    assert step(13, 0, 10, 9) == 13                          # held
+    # Exposure, 0 to 6, its point at the edge: a pull heals, a push is a drift up
+    assert step(3, 1, 0, 2, 0, 6) == 1 and step(3, -1, 0, 9, 0, 6) == 6
+    assert rule_time.describe({"by": 1, "every": "7d", "toward": 0}) == "1 every 7d toward 0"
+    assert rule_time.describe({"by": -1, "every": "7d", "toward": 0}) == "1 every 7d away from 0"
     assert rule_time.describe({"by": 1, "every": "90d"}) == "+1 every 90d"
+
+
+def test_a_rate_of_effect_can_tip_a_pull_into_a_push(dcc_world, ops):
+    wr.change(ops, "Patience", "faction:crawlers", to=3)
+    from lib import rule_time
+    rule_time.set_rate(ops, "Patience", "faction:crawlers", by=-1)
+    _days(dcc_world, 14)                                     # 2 periods: pushed from 5, down
+    assert _value(ops, "Patience", "faction:crawlers") == 1
 
 
 def test_a_share_moves_part_of_the_way(dcc_world, ops):

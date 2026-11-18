@@ -89,8 +89,9 @@ A result's `effects` run when it comes on, its `when_off` when it goes off; its 
 line is printed as "Do now:". The effects: `change` (another rule's value, for the
 same holder or `of` another), `rate_of` (a holder's rate in steps), `state` (a move, allowed ones only), `tokens` (into or out of a bag), `clock` (`start` or `advance`), `condition` and `credits`
 (the character's: for any other holder they are "not done", and a clock started for
-another holder names them in its text). A rate with `toward` steps by `abs(by)` toward
-it from either side (`rule_time.step`). `world_rules.change` runs them and passes a chain along: a change an
+another holder names them in its text). A rate with `toward` pulls the value
+toward it (`by` above 0) or pushes it away (below 0), from either side
+(`rule_time.step`); `rate_of` can turn a pull into a push. `world_rules.change` runs them and passes a chain along: a change an
 effect makes runs its own results' effects, a rule changes once per holder in a chain,
 and a chain stops after `MAX_STEPS` effects. Clocks and consequences are opened through
 the active campaign, so a change on a campaign that isn't active runs neither (it says

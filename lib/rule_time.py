@@ -2,11 +2,18 @@
 """Rates: a counter that moves by itself as game time passes (rules-proposal.md §4.2).
 
     "rate": {"by": 1, "every": "90d"}                      +1 every 90 days
-    "rate": {"by": 1, "every": "7d", "toward": 5}           1 a week toward 5, from
-                                                            either side, and stops there
-                                                            (with `toward`, `by` is the
-                                                            step's size: its sign is
-                                                            ignored)
+    "rate": {"by": 1, "every": "7d", "toward": 5}           pulled 1 a week toward 5,
+                                                            from either side, and stays
+                                                            there (a stable point)
+    "rate": {"by": -1, "every": "7d", "toward": 5}          pushed 1 a week away from 5,
+                                                            to the end of the range; at
+                                                            exactly 5 it stays, until
+                                                            something moves it (a
+                                                            tipping point)
+
+With `toward`, the sign of `by` belongs to the point, not to up or down: + pulls,
+- pushes, 0 holds (decided 2026-11-18). So an effect `rate_of` that adds -2 to a
+pull of 1 turns it into a push: the crowd has tipped over.
     "rate": {"share": 0.5, "every": "1d", "toward": 0}      half the way to 0 a day,
                                                             at least 1 (8 → 4 → 2 → 1 → 0)
 
@@ -60,12 +67,16 @@ def check(rate: Any, low: int, high: int) -> list[str]:
 
 
 def describe(rate: dict[str, Any]) -> str:
-    """'+1 every 90d', '1 every 7d toward 5' or 'half the way to 0 every 1d'."""
+    """'+1 every 90d', '1 every 7d toward 5', '1 every 7d away from 5' or 'half the
+    way to 0 every 1d'."""
     if "share" in rate:
         share = {0.5: "half", 0.25: "a quarter", 1: "all"}.get(rate["share"], f"{rate['share']:g} of")
         return f"{share} the way to {rate['toward']} every {rate['every']} (at least 1)"
     if rate.get("toward") is not None:
-        return f"{abs(rate['by'])} every {rate['every']} toward {rate['toward']}"
+        if rate["by"] == 0:
+            return f"held at its value (0 every {rate['every']}, toward {rate['toward']})"
+        way = "toward" if rate["by"] > 0 else "away from"
+        return f"{abs(rate['by'])} every {rate['every']} {way} {rate['toward']}"
     return f"{rate['by']:+d} every {rate['every']}"
 
 
@@ -79,14 +90,16 @@ def step(value: int, rate: dict[str, Any], periods: int, low: int, high: int) ->
                 break
             value += int(math.copysign(max(1, math.ceil(abs(gap) * rate["share"])), gap))
         else:
-            if value == toward:
-                break                                             # there: it stays
+            by = rate["by"]
             if toward is None:
-                value += rate["by"]
-            else:                                                 # a step toward it,
-                size = abs(rate["by"])                            # from either side,
-                value = (min(toward, value + size) if value < toward   # stopping there
-                         else max(toward, value - size))
+                value += by                                       # a drift, up or down
+            elif value == toward or by == 0:
+                break                                             # at the point, or held
+            elif by > 0:                                          # pulled: a step toward
+                value = (min(toward, value + by) if value < toward   # it, stopping there
+                         else max(toward, value - by))
+            else:                                                 # pushed: a step away
+                value = value + by if value < toward else value - by
         value = max(low, min(high, value))
     return value
 

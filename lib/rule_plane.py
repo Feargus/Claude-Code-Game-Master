@@ -7,7 +7,7 @@ anchor, and cyberpsychosis without one.
      "summary": "...", "when": "Chrome: each piece of cyberware. Anchor: time with the people who matter.",
      "axes": {"Chrome": [0, 10], "Anchor": [0, 10]},
      "start": {"Chrome": 0, "Anchor": 5},
-     "rates": {"Anchor": {"by": -1, "every": "14d", "toward": 0}},
+     "rates": {"Anchor": {"by": 1, "every": "14d", "toward": 0}},
      "regions": [
        {"name": "Steady", "where": "Chrome <= Anchor", "text": "..."},
        {"name": "Cyberpsychosis", "where": "Chrome >= Anchor + 4", "text": "...",

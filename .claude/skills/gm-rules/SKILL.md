@@ -178,9 +178,21 @@ a change by hand doesn't reset the count.
 "rate": {"share": 0.5, "every": "1d", "toward": 0}    half the way to 0 a day (heat cools: 8, 4, 2, 1, 0)
 ```
 
-With `toward`, `by` is the size of the step, and the value moves toward it from
-either side: `{"by": 1, "every": "7d", "toward": 0}` heals 1 a week down to 0. Without
-`toward`, `by`'s sign says which way, for ever (up to the end of the range).
+Without `toward`, the sign of `by` says up or down: a drift, to the end of the range.
+With `toward`, the sign belongs to the point, whichever side the value is on:
+
+- **`by` above 0 pulls:** `{"by": 1, "every": "7d", "toward": 0}` heals 1 a week down to
+  0 and stays there. Write it this way for anything that settles: patience coming
+  back, a wound healing, heat cooling. Never `-1` for "down to 0".
+- **`by` below 0 pushes:** `{"by": -1, "every": "1d", "toward": 10}` is a tipping point.
+  Above 10 a crowd's temper feeds itself up to the top; below 10 it dies away to the
+  bottom; at exactly 10 it waits for a push (a `change`).
+- **`by` 0 holds** it where it is.
+
+`rate_of` adds to a holder's `by`, so `{"rate_of": "Temper", "by": -2}` turns a pull of
+1 into a push of 1: the crowd has tipped over, until another effect turns it back.
+`gm-rule.sh list` says it in words ("1 every 7d toward 0", "away from 10"): read it
+back before the player approves.
 
 The character's and the world's values move from the start; a faction's, a person's
 or a place's from its first value (`gm-rule.sh set` at creation if it should move from
@@ -384,7 +396,7 @@ when the combination matters.
 {
   "name": "Humanity", "block": "plane", "held_by": "player",
   "axes": {"Chrome": [0, 10], "Anchor": [0, 10]}, "start": {"Chrome": 0, "Anchor": 5},
-  "rates": {"Anchor": {"by": -1, "every": "14d", "toward": 0}},
+  "rates": {"Anchor": {"by": 1, "every": "14d", "toward": 0}},
   "summary": "How much of the character is machine (Chrome), and how much still ties them to people (Anchor).",
   "when": "Chrome: +1 or +2 for each piece of cyberware put in. Anchor: +1 for time with the people who matter to them, -1 for letting them down. Unless tended, the anchor fades.",
   "regions": [
