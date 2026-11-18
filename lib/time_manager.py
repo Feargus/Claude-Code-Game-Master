@@ -12,13 +12,16 @@ Every change, `advance` or `set`, recomputes the time clocks from the new time
 (see threat_clocks.py).
 """
 
+import contextlib
 import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import time_walk  # noqa: E402
 from campaign_manager import CampaignManager
 from game_time import STORED_FORMAT, current_time
 from json_ops import JsonOperations
@@ -27,6 +30,8 @@ from threat_clocks import ThreatClockManager
 # (first hour of the day, word), in order. Same words as validators.py. Midnight
 # wraps around 00:00, so it appears at both ends; "Small hours" keeps the night
 # from being cut in two.
+MAX_MOMENTS = 5000                   # moments in one step, at most (a runaway guard)
+
 TIMES_OF_DAY = [
     (0, "Midnight"),
     (1, "Small hours"),
@@ -169,24 +174,55 @@ class TimeManager:
         self.rule_changes = rule_time.apply(self.json_ops, before, after)
 
     def set_time(self, moment: datetime) -> dict[str, dict]:
-        """Set the time outright. Returns the time clocks that moved."""
+        """Set the time outright: one jump (a campaign's start, a correction), with no
+        consequence check (main does one). Returns the time clocks that moved."""
         before = self.get_game_time()
         self._write(moment)
         moved = self._update_clocks(moment)
         self._apply_rates(before, moment)
+        self.moments = [{"at": moment, "clocks": moved, "rules": self.rule_changes, "fired": []}]
         return moved
 
-    def advance(self, minutes: int) -> dict[str, dict]:
-        """Let time pass. Returns the time clocks that moved."""
+    def advance(self, minutes: int, on_the_way: bool = False) -> dict[str, dict]:
+        """Let time pass, from one moment at which something changes by itself to the
+        next (time_walk.py): at each, the time is set, the time clocks move, the
+        world's rules move, and the consequences are checked, so that each sees the
+        time at which it happens. What each moment did is kept in `self.moments`
+        ({"at", "clocks", "rules", "fired"}). `on_the_way`: a journey's time (no
+        place, nobody present: only the time fires consequences). Returns the time
+        clocks that moved, as they stand at the end."""
         before = self.get_game_time()
         if before is None:
             raise TimeError("The campaign has no game time yet. "
                             "Set it once with: gm-time.sh set \"YYYY-MM-DD HH:MM\"")
-        after = before + timedelta(minutes=minutes)
+        end = before + timedelta(minutes=minutes)
+        self.moments, self.rule_changes, moved = [], [], {}
+        moment = before
+        for _ in range(MAX_MOMENTS):
+            nxt = time_walk.next_moment(self.world_state_dir, self.json_ops, moment)
+            to = end if nxt is None or nxt[0] >= end else max(nxt[0], moment + timedelta(minutes=1))
+            step = self._step(moment, to, on_the_way)
+            self.moments.append(step)
+            self.rule_changes += step["rules"]
+            for name, clock in step["clocks"].items():
+                fired = (moved.get(name) or {}).get("fired", []) + clock.get("fired", [])
+                moved[name] = dict(clock, fired=fired)
+            moment = to
+            if moment >= end:
+                return moved
+        raise TimeError(f"Time stopped at {describe(moment)}: more than {MAX_MOMENTS} moments "
+                        f"in one step. Advance in shorter steps.")
+
+    def _step(self, before: datetime, after: datetime, on_the_way: bool) -> dict[str, Any]:
+        """One moment of the walk: everything that happens at `after`."""
+        import rule_time
+        from consequence_manager import ConsequenceManager
         self._write(after)
-        moved = self._update_clocks(after)
-        self._apply_rates(before, after)
-        return moved
+        clocks = self._update_clocks(after)
+        rules = rule_time.apply(self.json_ops, before, after)
+        with contextlib.redirect_stdout(sys.stderr):        # the managers announce themselves
+            fired = ConsequenceManager(self.world_state_dir).tick_from_session(on_the_way)["fired"]
+        return {"at": after, "clocks": clocks, "rules": rules, "fired": fired}
 
 
 def print_rule_changes(manager: "TimeManager") -> None:
@@ -194,6 +230,24 @@ def print_rule_changes(manager: "TimeManager") -> None:
     import world_rules
     for report in manager.rule_changes:
         print("\n".join(world_rules.report_lines(manager.json_ops, report)))
+
+
+def print_moments(manager: "TimeManager", on_the_way: bool = False) -> None:
+    """What happened as time passed, moment by moment, each under its own time: the
+    clocks that moved, what the world's rules did, the consequences that fired. On
+    the way (a journey), "nothing triggered" is left to the check at the destination."""
+    import world_rules
+    from consequence_manager import print_fired
+    shown = [m for m in manager.moments if m["clocks"] or m["rules"] or m["fired"]]
+    for m in shown:
+        print(f"\nAt {describe(m['at'])}:")
+        print_clocks(m["clocks"])
+        for report in m["rules"]:
+            print("\n".join(world_rules.report_lines(manager.json_ops, report)))
+        print_fired(m["fired"])
+    if not any(m["fired"] or any(c.get("fired") for c in m["clocks"].values())
+               for m in manager.moments) and not on_the_way:
+        print("[REACTIVITY] (nothing triggered)")
 
 
 def print_clocks(moved: dict[str, dict]) -> None:
@@ -214,15 +268,22 @@ def main(argv) -> int:
     try:
         manager = TimeManager()
         if action == "advance" and value:
-            moved = manager.advance(parse_duration(value))
-            print(f"Time: {describe(manager.get_game_time())}")
-            print_clocks(moved)
-            print_rule_changes(manager)
+            on_the_way = "--on-the-way" in value.split()
+            value = " ".join(w for w in value.split() if w != "--on-the-way")
+            start = manager.get_game_time()
+            manager.advance(parse_duration(value), on_the_way=on_the_way)
+            print(f"Time: {describe(manager.get_game_time())}"
+                  + (f" (from {describe(start)})" if start else ""))
+            print_moments(manager, on_the_way)
         elif action == "set" and value:
             moved = manager.set_time(parse_time(value))
             print(f"Time set: {describe(manager.get_game_time())}")
             print_clocks(moved)
             print_rule_changes(manager)
+            from consequence_manager import ConsequenceManager, _print_tick_report
+            with contextlib.redirect_stdout(sys.stderr):
+                result = ConsequenceManager(manager.world_state_dir).tick_from_session()
+            _print_tick_report(result)
         elif action == "show" and not value:
             moment = manager.get_game_time()
             print(f"Time: {describe(moment)}" if moment else

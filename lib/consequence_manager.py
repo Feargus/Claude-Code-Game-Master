@@ -621,13 +621,17 @@ class ConsequenceManager(EntityManager):
         self.json_ops.save_json(self.consequences_file, data)
         return c
 
-    def tick_from_session(self) -> dict[str, list[dict[str, Any]]]:
-        """Build world_state from current campaign state, then tick()."""
+    def tick_from_session(self, on_the_way: bool = False) -> dict[str, list[dict[str, Any]]]:
+        """Build world_state from current campaign state, then tick(). `on_the_way`
+        (a journey's time, gm-session.sh move --takes): the character is at no place
+        and nobody is present, so only the time can fire a consequence."""
         overview = self.json_ops.load_json("campaign-overview.json") or {}
         pos = overview.get("player_position", {})
         location = pos.get("current_location", "") if isinstance(pos, dict) else ""
         npcs = self.json_ops.load_json("npcs.json") or {}
         present = list(npcs_present(npcs, location, overview.get("scene")).keys())
+        if on_the_way:
+            location, present = "", []
         world_state = {
             "location": location,
             "time": overview.get("time_of_day", ""),

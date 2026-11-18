@@ -5,7 +5,8 @@
 #   gm-time.sh advance <duration>       Let time pass: 10m, 4h, 2d, 1w, "1h 30m"
 #   gm-time.sh set "YYYY-MM-DD HH:MM"   Set the time outright (campaign start, or a correction)
 #
-# Both `advance` and `set` recompute the time clocks from the new time.
+# `advance` walks from one moment at which something changes to the next (clocks,
+# the world's rules, consequences), each printed with its time; `set` is one jump.
 
 source "$(dirname "$0")/common.sh"
 
@@ -26,10 +27,8 @@ case "${1:-show}" in
             usage
             exit 1
         fi
+        # The consequences are checked at each moment as time passes (time_manager.py).
         $PYTHON_CMD "$LIB_DIR/time_manager.py" "$@" || exit $?
-        # Reactivity: time passing can fire on_time consequences (e.g. nightfall, deadlines).
-        echo ""
-        bash "$TOOLS_DIR/gm-consequence.sh" tick
         ;;
     *)
         usage

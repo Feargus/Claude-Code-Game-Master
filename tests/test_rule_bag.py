@@ -101,7 +101,9 @@ def test_a_bag_drawn_by_itself_and_its_effects(dcc_world, ops):
     manager = TimeManager(dcc_world)
     manager.advance(720 * 24 * 60)                            # two years: two draws
     draws = [r for r in manager.rule_changes if r["rule"] == "The Melt"]
-    assert len(draws) == 1 and len(draws[0]["draws"]) == 2
+    assert len(draws) == 2 and all(len(d["draws"]) == 1 for d in draws)   # each at its moment
+    at = [m["at"] for m in manager.moments if any(r["rule"] == "The Melt" for r in m["rules"])]
+    assert (at[1] - at[0]).days == 360
     assert _tokens(ops, "The Melt")["calm year"] == 6           # put back
     report = rule_bag.draw(ops, "The Melt", rng=Fixed(99))      # the last token: collapse
     assert report["draws"][0]["kind"] == "collapse"

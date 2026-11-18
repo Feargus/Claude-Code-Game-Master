@@ -126,3 +126,41 @@ def test_the_first_of_everything(dcc_world, ops):
     ThreatClockManager(dcc_world).add_clock("Tracker", 1, due_at=START + timedelta(hours=4))
     moment, due = time_walk.next_moment(dcc_world, ops, START)
     assert moment == START + timedelta(hours=4) and due == ["clock Tracker", "rule Sky"]
+
+
+# ---------- step 2: the walk ----------
+
+def _set_time(ops, moment):
+    overview = ops.load_json("campaign-overview.json")
+    overview["game_time"] = moment.strftime("%Y-%m-%dT%H:%M")
+    ops.save_json("campaign-overview.json", overview)
+
+
+def test_a_long_step_fires_a_time_of_day_on_the_way_and_a_clock_at_its_time(dcc_world, ops):
+    """todo.md: `advance 10h` from 03:53 never fired an on_time morning consequence,
+    and a clock due at 04:05 was only reported at 13:53."""
+    from lib.time_manager import TimeManager
+    _set_time(ops, datetime(2187, 10, 26, 3, 53))
+    cm = ConsequenceManager(dcc_world)
+    cid = cm.add_consequence("The market opens", "morning", trigger_type="on_time", match="morning")
+    ThreatClockManager(dcc_world).add_clock("Tracker", 1, due_at=datetime(2187, 10, 26, 4, 5),
+                                            consequence="The tracker arrives")
+    manager = TimeManager(dcc_world)
+    manager.advance(10 * 60)
+    at = {m["at"]: m for m in manager.moments}
+    assert at[datetime(2187, 10, 26, 4, 5)]["clocks"]["Tracker"]["current"] == 1
+    assert [c["id"] for c in at[datetime(2187, 10, 26, 7, 0)]["fired"]] == [cid]
+    assert manager.get_game_time() == datetime(2187, 10, 26, 13, 53)
+
+
+def test_the_output_gives_each_moment_its_time(dcc_world, ops):
+    import subprocess
+    _set_time(ops, datetime(2187, 10, 26, 3, 53))
+    ConsequenceManager(dcc_world).add_consequence("The market opens", "morning",
+                                                  trigger_type="on_time", match="morning")
+    env = dict(__import__("os").environ, GM_WORLD_STATE_BASE=str(dcc_world))
+    root = Path(__file__).resolve().parent.parent
+    out = subprocess.run(["bash", str(root / "tools/gm-time.sh"), "advance", "10h"],
+                         capture_output=True, text=True, env=env, cwd=root).stdout
+    assert out.startswith("Time: 13:53 (Afternoon), Friday, 26 October 2187 (from 03:53")
+    assert "\nAt 07:00 (Morning), Friday, 26 October 2187:\n[REACTIVITY] fired these 1" in out

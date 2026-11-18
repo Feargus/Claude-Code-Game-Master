@@ -152,10 +152,10 @@ case "$ACTION" in
         # A place not recorded or not described is refused before any time passes.
         $PYTHON_CMD "$LIB_DIR/session_manager.py" move --check "$@" || exit 1
         # The journey's time passes first, so clocks fill and the time is right on
-        # arrival. time_manager.py is called directly, not gm-time.sh, so the
-        # consequence check below runs once, at the destination.
+        # arrival. On the way the character is at no place and with nobody, so only
+        # the time fires consequences there; the check below runs at the destination.
         if [ -n "$TAKES" ]; then
-            $PYTHON_CMD "$LIB_DIR/time_manager.py" advance "$TAKES"
+            $PYTHON_CMD "$LIB_DIR/time_manager.py" advance "$TAKES" --on-the-way
             RESULT=$?
             if [ $RESULT -ne 0 ]; then exit $RESULT; fi
             echo ""
