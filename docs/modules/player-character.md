@@ -1,14 +1,6 @@
----
-type: Module
-title: The player character sheet
-description: Why the sheet has two shapes, which one is canonical, and how XP, death, and growth are persisted.
-sources:
-  - { resource: /lib/new_character.py }
-  - { resource: /lib/player_manager.py }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T19:39:48Z }
----
-
 # The player character sheet
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 ## One sheet shape
 

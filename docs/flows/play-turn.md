@@ -1,18 +1,6 @@
----
-type: Flow
-title: A play turn
-description: The play loop, the three things that fire unasked, and the rule that a missing face or place is read from the book and written into the journal — not scraped ahead.
-sources:
-  - { resource: /CLAUDE.md }
-  - { resource: /tools/gm-session.sh }
-  - { resource: /tools/gm-context.sh }
-  - { resource: /tools/gm-enhance.sh }
-  - { resource: /.claude/settings.json }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:24:29Z }
-verified: { by: cursor-grok-4.6, at: 2026-08-14T18:59:59Z }
----
-
 # A play turn
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 **CONTEXT → DECIDE → EXECUTE → PERSIST → NARRATE.** The order is the product. Everything
 the harness adds over "a model pretending to be a GM" lives in the first and fourth steps.
@@ -61,7 +49,7 @@ does any campaign exist (else route to `/gm` → New Adventure), do campaigns ex
 active (else campaign selection — `gm-campaign.sh list`, then `switch <name>`), does the
 active campaign have a `character.json` (else the one question and the `/create-character` interview). Each failure has a
 specific destination — see [onboarding and the death hand-off](onboarding-and-death.md) and
-[install and setup](../playbooks/install-and-setup.md).
+install and setup.
 
 The "exists but none active" state is its own branch because it is not a broken install and
 `/setup` does not fix it. `world-state/active-campaign.txt` is what every tool resolves state

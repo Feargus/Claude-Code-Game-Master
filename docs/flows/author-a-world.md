@@ -1,18 +1,6 @@
----
-type: Flow
-title: Authoring an original world
-description: /new-game builds one stage — kit, voice, one street — then grows the world from the table.
-sources:
-  - { resource: /.claude/commands/new-game.md }
-  - { resource: /lib/world_bible.py }
-  - { resource: /lib/opening.py }
-  - { resource: /tools/gm-extract.sh }
-  - { resource: /lib/player_manager.py }
-  - { resource: /lib/new_character.py }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:45:56Z }
----
-
 # Authoring an original world
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 `/new-game` is `/import` with the book replaced by generation. The door is the
 same: kit, voice, one street. There is no fan-out — you author

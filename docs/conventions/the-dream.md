@@ -1,18 +1,6 @@
----
-type: Convention
-title: The dream — holodeck, not gazetteer
-description: The campaign file is a journal of where the table has been. The book is the world. Play writes the next page.
-sources:
-  - { resource: /.claude/commands/import.md }
-  - { resource: /.claude/commands/gm.md }
-  - { resource: /.claude/skills/gm-craft/SKILL.md }
-  - { resource: /lib/new_character.py }
-  - { resource: /lib/session_manager.py }
-  - { resource: /lib/opening.py }
-generated: { by: cursor-grok-4.6, at: 2026-08-15T11:52:48Z }
----
-
 # The dream
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 Star Trek holodeck. A fresh D&D table in 1983. Those are the same feeling.
 

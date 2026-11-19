@@ -1,16 +1,6 @@
----
-type: Module
-title: The World Bible
-description: The fidelity spine a world is played from — what it must contain, the draft-then-confirm gate, and the mechanical artifacts drafted out of it.
-sources:
-  - { resource: /lib/world_bible.py }
-  - { resource: /lib/book_bible.py }
-  - { resource: /tools/gm-extract.sh }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T15:41:00Z }
-verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
----
-
 # The World Bible
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 `world-bible.json` is what makes playing Dune feel like Dune rather than d20-fantasy in a
 desert. It is authored once (drafted from the book by `gm-extract.sh draft-bible` on

@@ -1,20 +1,6 @@
----
-type: Convention
-title: The tool wrapper contract
-description: Every capability is a bash wrapper over a Python manager over per-campaign JSON — and every manager speaks the same --json envelope.
-sources:
-  - { resource: /tools/common.sh }
-  - { resource: /lib/cli_output.py }
-  - { resource: /lib/campaign_manager.py }
-  - { resource: /tools/gm-extract.sh }
-  - { resource: /lib/agent_extractor.py }
-  - { resource: /lib/json_ops.py }
-  - { resource: /tests/test_cli_output_json.py }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:24:29Z }
-verified: { by: claude-fable-5, at: 2026-08-13T15:15:46Z }
----
-
 # The tool wrapper contract
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 Three layers, no exceptions: **`tools/gm-*.sh` → `lib/*.py` → per-campaign JSON**. The
 wrapper resolves the interpreter and the campaign; the manager holds the logic; state lives

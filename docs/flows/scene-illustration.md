@@ -1,16 +1,6 @@
----
-type: Flow
-title: Illustrating a scene
-description: Beat to picture — the enablement gate, the background agent, and the two auto-injections that keep a campaign on-model.
-sources:
-  - { resource: /lib/image_gen.py }
-  - { resource: /lib/visual_appearance.py }
-  - { resource: /tools/gm-image.sh }
-  - { resource: /.claude/agents/scene-illustrator.md }
-generated: { by: claude-opus-5, at: 2026-08-14T14:46:17Z }
----
-
 # Illustrating a scene
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 The image model has no memory between calls. Everything that makes a campaign's gallery
 look like one artist drew one cast is state on disk, injected into every prompt.

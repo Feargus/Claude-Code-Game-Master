@@ -1,23 +1,6 @@
----
-type: Module
-title: World state JSON schema reference
-description: The on-disk shape of every per-campaign file — the contract no single source file states.
-sources:
-  - { resource: /lib/schemas.py }
-  - { resource: /lib/minor_stubs.py }
-  - { resource: /lib/npc_manager.py }
-  - { resource: /lib/extraction_cap.py }
-  - { resource: /lib/location_reconcile.py }
-  - { resource: /lib/consequence_manager.py }
-  - { resource: /lib/world_kit.py }
-  - { resource: /lib/world_bible.py }
-  - { resource: /lib/session_manager.py }
-  - { resource: /lib/opening.py }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T16:22:00Z }
-verified: { by: claude-fable-5, at: 2026-08-13T14:27:33Z }
----
-
 # World State JSON Schema Reference
+
+*Claude, 2026-11-19: kept in step with the code since 2026-11; the npcs.json and plots.json sections are known to be stale.*
 
 The on-disk shape of a campaign, which no single source file declares — the managers each
 write their own slice. **`lib/schemas.py` is the authority on every enum below**; where
@@ -150,7 +133,7 @@ Notes:
   `voice` describes the sound. See [NPC model](modules/npc-model.md).
 - **`tags.locations` is the only location field** (since 2026-08-13). A campaign imported
   earlier may still carry a legacy `location_tags` — migrate with
-  `gm-npc.sh unify-tags`. See [the tag-split gotcha](gotchas/npc-location-tag-split.md).
+  `gm-npc.sh unify-tags`. See the tag-split gotcha.
 - **`background: true` is the import's entity tier** (`extraction_cap`), present on
   npcs, locations, items and plots alike. It marks everything the importance ranking
   put below the top-N — a real entity the book named, kept whole on disk, just not part
@@ -728,5 +711,5 @@ immediately. See [the World Bible](modules/world-bible.md).
 ## Related
 
 - [The entity graph](modules/entity-graph.md) — why these files cross-reference by name
-- [Extraction schema is not the runtime schema](gotchas/extraction-vs-runtime-schema.md)
+- Extraction schema is not the runtime schema
 - [Importing a book](flows/import-a-book.md) — how these files get populated

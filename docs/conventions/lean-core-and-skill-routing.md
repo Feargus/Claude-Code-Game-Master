@@ -1,18 +1,6 @@
----
-type: Convention
-title: Lean core, skills on demand
-description: Why CLAUDE.md stays thin, what the router is allowed to keep inline, and the kit-awareness trap in two of the seven skills.
-sources:
-  - { resource: /tests/test_lean_core.py }
-  - { resource: /.claude/skills/gm-combat/SKILL.md }
-  - { resource: /.claude/skills/gm-skills/SKILL.md }
-  - { resource: /.claude/skills/gm-craft/SKILL.md }
-  - { resource: /lib/session_manager.py }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T19:24:32Z }
-verified: { by: cursor-grok-4.6, at: 2026-08-14T18:59:59Z }
----
-
 # Lean core, skills on demand
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 `CLAUDE.md` is always in context; the seven `gm-*` Skills are not. The core routes; the
 Skills hold the mechanics. The alternative — one large always-on ruleset — spends the

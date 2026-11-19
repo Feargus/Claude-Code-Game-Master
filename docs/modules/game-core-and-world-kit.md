@@ -1,14 +1,6 @@
----
-type: Module
-title: Game core and World Kit
-description: The system-agnostic engine and the per-campaign ruleset that sits on top of it.
-sources:
-  - { resource: /lib/game_core.py }
-  - { resource: /lib/world_kit.py }
-  - { resource: /lib/overview_seed.py }
----
-
 # Game core and World Kit
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 `game_core.py` is the engine every world runs on; `ruleset.json` is the per-campaign
 declaration of what *this* world adds; `WorldKit` reads it. The docstrings on both

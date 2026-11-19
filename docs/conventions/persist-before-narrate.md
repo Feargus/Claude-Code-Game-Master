@@ -1,14 +1,6 @@
----
-type: Convention
-title: Persist before narrate
-description: The rule the whole harness exists to enforce — and the honest state of its enforcement, which is advisory.
-sources:
-  - { resource: /.claude/settings.json }
-  - { resource: /.claude/hooks/session-autosave.sh }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
----
-
 # Persist before narrate
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 **Nothing happened until it is written to disk.** Every state change — wounds, XP, credits,
 inventory, mood, location, condition, consequence, death — is persisted *before* a word of

@@ -1,17 +1,6 @@
----
-type: Module
-title: Recall by meaning, and the Loremaster
-description: How the GM finds a fact by what it means (semantic recall over the facts, places and plots), and the cached deep read over a campaign's source book.
-sources:
-  - { resource: /lib/recall.py }
-  - { resource: /lib/embedder.py }
-  - { resource: /lib/embedding_store.py }
-  - { resource: /lib/loremaster.py }
-  - { resource: /tools/gm-recall.sh }
-  - { resource: /tools/gm-lore.sh }
----
-
 # Recall by meaning, and the Loremaster
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 ## Recall by meaning (since 2026-11-15)
 

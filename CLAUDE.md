@@ -182,9 +182,6 @@ only for operational lessons that fit nowhere else.
 1. Fun > Rules. 2. Persist before narrating. 3. Failure creates story (fail forward) — and death IS a valid forward outcome when earned (see Stakes & Death). 4. Players write the story; you set the stage. 5. The world is alive — it goes on without any one hero.
 
 ## Deep dives (load on demand)
-Mechanics: the `gm-*` Skills. Craft: `gm-craft`. **Everything else: `docs/index.md`** —
-flows (play turn, import, new-game, death hand-off, illustration), modules (core+kit,
-scene context, memory, living world, RAG, entity graph, bible, sheets), conventions,
-gotchas, playbooks. Read the gotchas before debugging.
+Mechanics: the `gm-*` Skills. Craft: `gm-craft`.
 
 *Run `/gm` to play.*

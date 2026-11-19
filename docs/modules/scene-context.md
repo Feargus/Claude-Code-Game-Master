@@ -1,19 +1,6 @@
----
-type: Module
-title: Scene context — the two doors
-description: What the harness pushes to the model each beat, and why "context" means two different things depending on which tool you call.
-sources:
-  - { resource: /lib/session_manager.py }
-  - { resource: /lib/world_kit.py }
-  - { resource: /lib/scene_context.py }
-  - { resource: /lib/search.py }
-  - { resource: /lib/entity_manager.py }
-  - { resource: /tools/gm-context.sh }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-16T00:00:00Z }
-verified: { by: claude-fable-5, at: 2026-08-14T12:19:52Z }
----
-
 # Scene context — the two doors
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 This is the mechanism the whole product rests on: instead of hoping the model remembers,
 the harness *pushes* the campaign at it every beat. Two different commands both call
@@ -95,7 +82,7 @@ Substring was the place-brief bug — "The Inn" must not count as "The Inner San
 and an untagged party member must still stand in the room. CLI `gm-search.sh
 --tag-location` / `--tag-quest` may still substring-search for discovery; that is not
 presence. The field those tags live in used to have two spellings — see
-[the NPC location tag split](../gotchas/npc-location-tag-split.md).
+the NPC location tag split.
 
 ## Related
 

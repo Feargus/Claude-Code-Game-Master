@@ -1,20 +1,6 @@
----
-type: Flow
-title: Importing a book
-description: Index the book, ask who they are, open one stage. The rest stays in the binder until play walks toward it.
-sources:
-  - { resource: /.claude/commands/import.md }
-  - { resource: /tools/gm-extract.sh }
-  - { resource: /lib/campaign_manager.py }
-  - { resource: /lib/book_bible.py }
-  - { resource: /lib/world_bible.py }
-  - { resource: /lib/new_character.py }
-  - { resource: /lib/session_manager.py }
-  - { resource: /lib/opening.py }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T16:10:00Z }
----
-
 # Importing a book
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 `/import` puts a book on the GM's chair and opens a door. It does not finish a
 database of the book. The invariant lives in [the dream](../conventions/the-dream.md):
@@ -74,7 +60,7 @@ desert` and walk-ons a plot string named. **`/import` must not run the census.**
 The extractor agents do have one sanctioned use: the light one-sentence **World
 Index** (`gm-extract.sh write-index`, capped at 6 agents) — a scannable roster of
 what exists, pointers not records. Operators repairing a legacy gazetteer import
-use [the operations guide](../import-guide.md).
+use the operations guide.
 
 `integrity` failing strict on unresolved names is the old product saying the
 wiki is incomplete. The new product says those names are not on stage yet.
@@ -86,10 +72,10 @@ wiki is incomplete. The new product says those names are not on stage yet.
   a `tr | sed` pipeline. See the same landmine in older notes: an empty slug
   joined onto `campaigns/` is what `clean` would read as every campaign.
 - Agents validating against a live campaign file — see
-  [extraction vs runtime schema](../gotchas/extraction-vs-runtime-schema.md)
+  extraction vs runtime schema
   (legacy extractors only).
 - Silent entity loss at a merge — see
-  [wrapped vs unwrapped](../gotchas/wrapped-vs-unwrapped-merge.md) (legacy).
+  wrapped vs unwrapped (legacy).
 
 ## Related
 

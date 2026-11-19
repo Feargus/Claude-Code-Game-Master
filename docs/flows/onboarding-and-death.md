@@ -1,19 +1,6 @@
----
-type: Flow
-title: Onboarding and the death hand-off
-description: The holodeck door — one question, then the room — and how the story continues after the PC dies rather than ending.
-sources:
-  - { resource: /lib/new_character.py }
-  - { resource: /tools/gm-player.sh }
-  - { resource: /lib/player_manager.py }
-  - { resource: /lib/opening.py }
-  - { resource: /CLAUDE.md }
-  - { resource: /.claude/commands/create-character.md }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:45:56Z }
-verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
----
-
 # Onboarding and the death hand-off
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 Two flows, one shared conviction: **the mechanics are not the point, and the player should
 never be made to do bookkeeping to keep playing.** Entering a world is the holodeck

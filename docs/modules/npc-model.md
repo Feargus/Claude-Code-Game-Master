@@ -1,15 +1,6 @@
----
-type: Module
-title: The NPC model
-description: What an NPC carries beyond a description — inner life, canonical voice lines, party-member sheets, and combat stats.
-sources:
-  - { resource: /lib/npc_manager.py }
-  - { resource: /lib/skill_contest.py }
-generated: { by: gk-a8r14q, at: 2026-08-14T18:00:37Z }
-verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
----
-
 # The NPC model
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 An NPC in `npcs.json` is four things stacked on one key: a description, an **inner life**,
 a **voice**, and — if promoted — a full **character sheet**. The stacking is additive by
@@ -66,7 +57,7 @@ and says so. (The old `npc_stats.py`, which assigned D&D HP/CR tiers, is gone.)
 `tags.locations` is the only location field — the legacy `location_tags` split was
 unified (`lib/tag_unify.py`, run at import normalize). Campaigns imported before then
 need the one-time `gm-npc.sh unify-tags`; see
-[the tag-split gotcha](../gotchas/npc-location-tag-split.md).
+the tag-split gotcha.
 
 ## Related
 

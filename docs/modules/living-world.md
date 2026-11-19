@@ -1,25 +1,6 @@
----
-type: Module
-title: The living world — consequences, clocks, world tick
-description: The three systems that make the world move on its own, and which of them are actually wired to fire.
-sources:
-  - { resource: /lib/consequence_manager.py }
-  - { resource: /lib/entity_manager.py }
-  - { resource: /lib/threat_clocks.py }
-  - { resource: /lib/world_tick.py }
-  - { resource: /lib/time_manager.py }
-  - { resource: /lib/plot_manager.py }
-  - { resource: /lib/session_manager.py }
-  - { resource: /tools/gm-time.sh }
-  - { resource: /tools/gm-session.sh }
-  - { resource: /tools/gm-clock.sh }
-  - { resource: /tools/gm-plot.sh }
-  - { resource: /.claude/agents/plot-weaver.md }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-16T00:00:00Z }
-verified: { by: cursor-grok-4.6, at: 2026-08-14T19:13:47Z }
----
-
 # The living world
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 Three systems claim to run without the player: consequences fire on triggers, threat
 clocks tick toward a beat, and a between-sessions world tick advances off-screen

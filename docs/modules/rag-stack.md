@@ -1,17 +1,6 @@
----
-type: Module
-title: Book search
-description: Two retrieval paths over a campaign's source book: pieces of 1,500 characters searched by meaning (the facts' model), and a chapter index the Loremaster reads whole chapters from.
-sources:
-  - { resource: /lib/rag/__init__.py }
-  - { resource: /lib/rag/rag_extractor.py }
-  - { resource: /lib/rag/vector_store.py }
-  - { resource: /lib/rag/coarse_index.py }
-  - { resource: /lib/embedder.py }
-  - { resource: /lib/entity_enhancer.py }
----
-
 # Book search
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 Two independent retrieval paths over the same book. They do not share an index.
 

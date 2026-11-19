@@ -1,22 +1,6 @@
----
-type: Module
-title: The entity graph and name resolution
-description: Why entities cross-reference by name, how the alias resolver keeps that from breaking, and the ordered repair passes an import runs before the gate.
-sources:
-  - { resource: /lib/entity_aliases.py }
-  - { resource: /lib/entity_manager.py }
-  - { resource: /lib/connection_normalize.py }
-  - { resource: /lib/tag_unify.py }
-  - { resource: /lib/location_reconcile.py }
-  - { resource: /lib/integrity_gate.py }
-  - { resource: /lib/extraction_cap.py }
-  - { resource: /lib/minor_stubs.py }
-  - { resource: /lib/plot_manager.py }
-  - { resource: /lib/search.py }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T19:59:23Z }
----
-
 # The entity graph and name resolution
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 Campaign state is a graph held together by **names, not IDs**: `plots.npcs`,
 `plots.locations`, `npc.tags.locations`, `location.connections[].to`. That choice makes
@@ -120,4 +104,4 @@ tiering that the GM cannot see reads as data loss.
 
 - [Importing a book](../flows/import-a-book.md) — the full pipeline these passes sit in
 - [NPC model](npc-model.md) — the location-tag field these passes read
-- [The NPC location tag split](../gotchas/npc-location-tag-split.md)
+- The NPC location tag split

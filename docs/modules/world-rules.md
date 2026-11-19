@@ -1,23 +1,6 @@
----
-type: Module
-title: The world's own rules
-description: A campaign's own mechanics (Bleed, a sea level, a gang's patience) built from a few building blocks, defined once in the ruleset, with a value per holder in rule-state.json.
-sources:
-  - { resource: /lib/world_rules.py }
-  - { resource: /lib/rule_counter.py }
-  - { resource: /lib/rule_errors.py }
-  - { resource: /lib/rule_effects.py }
-  - { resource: /lib/rule_roll.py }
-  - { resource: /lib/rule_time.py }
-  - { resource: /lib/rule_states.py }
-  - { resource: /lib/rule_plane.py }
-  - { resource: /lib/rule_bag.py }
-  - { resource: /lib/rule_budget.py }
-  - { resource: /tools/gm-rule.sh }
-  - { resource: /.claude/skills/gm-rules/SKILL.md }
----
-
 # The world's own rules
+
+*Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 Every campaign plays by the repo's rules (skill contests, wounds, growth, clocks,
 consequences, facts). A world adds a few rules of its own on top, made with the world
