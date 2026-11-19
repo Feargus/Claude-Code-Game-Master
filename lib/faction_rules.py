@@ -183,7 +183,10 @@ def card_lines(json_ops, fid: str) -> list[str]:
     lines = ["power (0–10, hidden from the player): "
              + ", ".join(f"{k} {v}" for k, v in power(json_ops, fid).items())]
     rel = relations(json_ops, fid)
-    if rel:
-        lines.append("relations (−5 war … +5 allies): " + ", ".join(
-            f"{names.get(o, {}).get('name', o)} {v:+d}" for o, v in sorted(rel.items(), key=lambda x: x[1])))
+    ties = (names.get(fid) or {}).get("ties") or {}
+    others = sorted(set(rel) | set(ties), key=lambda o: (rel.get(o, 0), o))
+    if others:
+        lines.append("relations (−5 war … +5 allies; why, as they see it): " + "; ".join(
+            f"{names.get(o, {}).get('name', o)} {rel.get(o, 0):+d}"
+            + (f" ({ties[o]})" if ties.get(o) else "") for o in others))
     return lines

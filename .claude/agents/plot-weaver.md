@@ -46,7 +46,7 @@ bash tools/gm-search.sh "<seed>" --world-only   # established NPCs / locations /
 ```
 - Use the real names of the records (people, places, kinds of enemy, glossary terms),
   not invented ones.
-- Connect to an existing **faction/geography edge** or a **running clock** where one fits
+- Connect to an existing **faction tie** (`gm-faction.sh show <faction>`), **geography edge** or **running clock** where one fits
   (e.g. tie a new thread to the villain's aim already ticking).
 - **Dedup-or-extend:** if an existing plot already covers this seed, do NOT add a new one —
   move it instead: `bash tools/gm-plot.sh stands "<that plot>" "<where it stands now>"`, then

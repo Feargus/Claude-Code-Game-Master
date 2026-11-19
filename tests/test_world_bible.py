@@ -31,15 +31,13 @@ def test_voice_present_and_the_rules_not_required(dcc_world):
 
 
 def test_validator_rejects_missing_graph():
-    bad = {"name": "X", "voice": {}, "tone": "t", "themes": [],
-           "factions": {"nodes": []}, "geography": {"nodes": [], "edges": []}}
+    bad = {"name": "X", "voice": {}, "tone": "t", "themes": [], "geography": {"nodes": []}}
     ok, errs = validate_bible(bad)
-    assert not ok and any("factions must be {edges:[]}" in e for e in errs)
+    assert not ok and any("geography must be a graph" in e for e in errs)
 
 
-def test_the_bible_keeps_only_the_links_between_factions():
-    """The factions themselves are in factions.json (design-notes.md, "Factions")."""
+def test_the_bible_has_no_factions():
+    """The factions and their ties are in factions.json (design-notes.md, "Factions")."""
     new = {"name": "X", "voice": {}, "tone": "t", "themes": [],
-           "factions": {"edges": [{"from": "lull", "to": "psm", "relation": "owns"}]},
            "geography": {"nodes": [], "edges": []}}
     assert validate_bible(new) == (True, [])

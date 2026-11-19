@@ -344,7 +344,8 @@ class NPCManager(EntityManager):
         lines = [f"=== {key} ==="]
         if sheet_mod.aliases(npc):
             lines.append(f"also called: {', '.join(sheet_mod.aliases(npc))}")
-        lines += sheet_mod.describe(npc)
+        from factions import known
+        lines += sheet_mod.describe(npc, {fid: f.get("name", fid) for fid, f in known(self.json_ops).items()})
         if not npc.get("look") and not npc.get("personality"):
             lines.append("only a sketch: no look or personality yet; give them before playing "
                          "this person (gm-npc.sh set ...)")

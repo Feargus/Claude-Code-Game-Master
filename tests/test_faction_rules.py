@@ -94,7 +94,23 @@ def test_power_and_relations_are_on_the_faction_card_not_in_the_rules(ops, dcc_w
     wr.change(ops, "Relation", "Meridian+system", by=-2)
     scene = "\n".join(Cards(ops).scene())
     assert "power (0–10, hidden from the player): Military 3, Economic 3, Political 3, Covert 3" in scene
-    assert "relations (−5 war … +5 allies): The System / Borant Corp -2" in scene
+    assert "relations (−5 war … +5 allies; why, as they see it): The System / Borant Corp -2" in scene
     assert "Power (0–10" in m.show("Meridian")
     brief = SessionManager(dcc_world).get_full_context()
     assert "Military (counter" not in brief and "Relation (counter" not in brief
+
+
+def test_a_tie_says_why(ops):
+    from lib.factions import FactionError, load
+    m = FactionManager(ops)
+    fid, other, before = m.tie("Meridian", "system", "rents it guards, and resents the fee")
+    assert (fid, other, before) == ("meridian-group", "system", "")
+    assert load(ops)["meridian-group"]["ties"] == {"system": "rents it guards, and resents the fee"}
+    lines = "\n".join(fr.card_lines(ops, "meridian-group"))
+    assert "The System / Borant Corp +0 (rents it guards, and resents the fee)" in lines
+    assert m.tie("Meridian", "system")[2] == "rents it guards, and resents the fee"   # removed
+    assert "ties" not in load(ops)["meridian-group"]
+    with pytest.raises(FactionError, match="between two factions"):
+        m.tie("Meridian", "Meridian", "x")
+    with pytest.raises(FactionError, match="No faction"):
+        m.tie("Meridian", "Nobody", "x")

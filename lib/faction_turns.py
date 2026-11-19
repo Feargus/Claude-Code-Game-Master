@@ -474,5 +474,8 @@ def run(json_ops, actions, rng=None, only: str | None = None) -> list[str]:
     import faction_rules
     paid = faction_rules.settle(json_ops, checked[0]["faction"] if only is not None else faction_rules.JOKER)
     if paid:
-        lines.append(f"(This was the turn owed since {paid['at'].replace('T', ' ') or '?'}.)")
+        when = paid["at"].replace("T", " ")
+        lines.append(f"(This was the turn owed since {when or '?'}"
+                     + (f": give its facts the time it happened, --when \"{when}\" (in a beat: "
+                        f"\"when\": \"{when}\").)" if when else ".)"))
     return lines

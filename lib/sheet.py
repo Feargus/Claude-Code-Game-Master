@@ -384,8 +384,9 @@ def _item_text(entry: dict[str, Any]) -> str:
     return entry["name"] + (f" ({', '.join(extra)})" if extra else "")
 
 
-def describe(sheet: dict[str, Any]) -> list[str]:
-    """The sheet as readable lines, section by section; empty fields left out."""
+def describe(sheet: dict[str, Any], names: dict[str, str] | None = None) -> list[str]:
+    """The sheet as readable lines, section by section; empty fields left out.
+    `names`: {faction id: name}, so memberships read by name."""
     lines = []
     for sec in ("identity", "look", "personality", "status", "places", "possessions", "progress"):
         content = sheet.get(sec) or {}
@@ -393,7 +394,8 @@ def describe(sheet: dict[str, Any]) -> list[str]:
             if value in ("", [], {}, None) or (sec, field) == ("identity", "name"):
                 continue
             if (sec, field) == ("identity", "factions"):
-                value = [f"{m.get('id')} (secret)" if m.get("secret") else m.get("id")
+                value = [(names or {}).get(m.get("id"), m.get("id"))
+                         + (" (secret: only its members know)" if m.get("secret") else "")
                          for m in value if isinstance(m, dict)]
             if isinstance(value, list):
                 value = ", ".join(str(v) for v in value)

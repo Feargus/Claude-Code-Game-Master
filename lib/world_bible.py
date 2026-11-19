@@ -3,8 +3,8 @@
 The Book Bible — the structured fidelity spine of a world.
 
 world-bible.json is what makes "playing Dune" feel unmistakably like Dune rather
-than d20-fantasy-in-a-desert. It captures VOICE, TONE, THEMES, the links between FACTIONS
-(the factions themselves are in factions.json), GEOGRAPHY (as a place graph), and TIMELINE, and is the canonical spine loaded at session start. The import pipeline
+than d20-fantasy-in-a-desert. It captures VOICE, TONE, THEMES, (the FACTIONS
+and their ties are in factions.json), GEOGRAPHY (as a place graph), and TIMELINE, and is the canonical spine loaded at session start. The import pipeline
 (import-longcontext-read) auto-drafts it; here we define + validate the shape and
 ship a hand-authored DCC bible to prove it.
 """
@@ -19,18 +19,11 @@ import world_rules
 from campaign_manager import CampaignManager
 from json_ops import JsonOperations
 
-_REQUIRED = ('name', 'voice', 'tone', 'themes', 'factions', 'geography')
+_REQUIRED = ('name', 'voice', 'tone', 'themes', 'geography')   # factions: factions.json
 
 
 def _is_graph(g: Any) -> bool:
     return isinstance(g, dict) and isinstance(g.get('nodes'), list) and isinstance(g.get('edges'), list)
-
-
-def _is_links(g: Any) -> bool:
-    """The bible's factions: the links between them (`edges`); the factions
-    themselves are in factions.json. Older bibles list them as `nodes` too."""
-    return isinstance(g, dict) and isinstance(g.get('edges'), list) \
-        and isinstance(g.get('nodes', []), list)
 
 
 def validate_bible(bible: dict[str, Any]) -> tuple[bool, list[str]]:
@@ -44,9 +37,6 @@ def validate_bible(bible: dict[str, Any]) -> tuple[bool, list[str]]:
         errors.append('themes must be a list')
     if 'geography' in bible and not _is_graph(bible['geography']):
         errors.append('geography must be a graph {nodes:[], edges:[]}')
-    if 'factions' in bible and not _is_links(bible['factions']):
-        errors.append('factions must be {edges:[]}: the links between factions (the factions '
-                      'themselves are in factions.json)')
     voice = bible.get('voice')
     if voice is not None and not isinstance(voice, dict):
         errors.append('voice must be an object (style/sample_passages)')

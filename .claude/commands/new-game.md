@@ -109,10 +109,11 @@ bash tools/gm-faction.sh create "<name>" --id <short id> --kind "<gang, megacorp
 ```
 One to three impulses, one or two values; a value only where the faction really cares.
 Keep geography to the starting street plus a few horizon names. Do not author
-the continent. **Wire 2–4 edges**: the bible's `factions` holds only the links
-between factions, by id (`{"edges": [{"from": "<id>", "to": "<id>", "relation":
-"<a tension, in words>"}]}`), and `geography` a graph of places (nodes and edges, an
-adjacency between two places). Groups with no links are a cast list, not a world. The
+the continent. **Wire 2–4 ties** between factions, each as one of them sees the other
+(`gm-faction.sh tie <id> <other id> "<a tension, in words>"`; a tie can run both ways,
+seen differently from each side), and give `geography` a graph of places (nodes and
+edges, an adjacency between two places). Groups with no ties are a cast list, not a
+world. The bible has no factions: they and their ties are in `factions.json`. The
 world's own rules are not in the bible: they go into the ruleset in Phase C.
 
 Validate, then present for approval:

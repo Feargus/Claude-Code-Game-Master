@@ -71,7 +71,8 @@ def test_a_drawn_faction_owes_a_turn_and_playing_it_settles_it(ops):
     assert "FACTION TURNS OWED" in lines and f"turn --only {first}" in lines
     done = ft.run(ops, [{"faction": first, "action": "build", "power": "Covert"}],
                   random.Random(1), only=first)
-    assert "(This was the turn owed since 2187-10-26 04:30.)" in done
+    assert done[-1].startswith("(This was the turn owed since 2187-10-26 04:30: give its facts")
+    assert '--when "2187-10-26 04:30"' in done[-1]
     assert len(fr.owed(ops)) == len(owed) - 1
 
 
@@ -108,3 +109,11 @@ def test_a_new_faction_gets_its_full_share_at_once(ops):
     after = _stored(ops)["tokens"]
     assert after["grey"] == 4 and after["blank"] == before["blank"] + 2
     assert "grey gets its share of the bag" in m.notes[-1]
+
+
+def test_the_timeline_names_who_owes_a_turn_and_leaves_out_blanks(ops):
+    from lib.time_stops import brief
+    report = {"rule": fr.BAG, "holder": "world", "known": False,
+              "draws": [{"kind": "blank"}, {"kind": "meridian-group", "owed": True}]}
+    assert brief(ops, report) == "Faction turns: Meridian Group owes a turn"
+    assert brief(ops, {**report, "draws": [{"kind": "blank"}]}) == ""

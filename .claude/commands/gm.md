@@ -201,7 +201,7 @@ The world moves while the character is away or resting: the end of a session, a 
 
 ### The factions' turn
 
-Factions also act between `/gm world`s: the faction bag draws them as game time passes, and the turns it draws are listed as FACTION TURNS OWED (after a time step or a journey, and in the brief). Play each when it is listed, oldest first: `gm-faction.sh turn --only <faction>` with that faction's one action, or a full turn for a joker; it settles the owed turn. Same rules as below.
+Factions also act between `/gm world`s: the faction bag draws them as game time passes, and the turns it draws are listed as FACTION TURNS OWED (after a time step or a journey, and in the brief). Play each when it is listed, oldest first: `gm-faction.sh turn --only <faction>` with that faction's one action, or a full turn for a joker; it settles the owed turn. Record its facts at the time it was drawn: `--when "<time>"` (in a beat `"when"`), as the output says. Same rules as below.
 
 You play the factions; the script referees. Read each faction (`gm-faction.sh show <id>`: its plot, power, presence, relations, members) and give **every faction one action** (a faction that lies low builds up; a turn with one missing is refused), mostly from its current plot: the plot is its plan, its values and impulses made concrete. Play to its strengths (strong in Political: it talks, it doesn't shoot). Prefer actions that leave a thread the character can pull (a kidnapping, not a killing; a theft, a lie that can be exposed). Give them all at once: each is judged from the state before any of them, and the script applies everything together.
 

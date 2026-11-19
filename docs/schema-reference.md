@@ -46,7 +46,7 @@ is named in `world-state/active-campaign.txt`.
 ├── ruleset.json             # World Kit — how this world plays, with its own rules
 ├── rule-state.json          # Where the world's own rules stand, per holder (world_rules.py)
 ├── rules.log                # Every change of those values; per machine, not in git
-├── world-bible.json         # Fidelity spine (voice, links between factions, geography)
+├── world-bible.json         # Fidelity spine (voice, glossary, geography)
 ├── session-log.md           # Session history — the canonical ledger
 ├── threat-clocks.json       # Named pressure clocks (optional)
 ├── embeddings.npz           # Vectors for recall by meaning; derived, not in git (embedding_store.py)
@@ -664,7 +664,6 @@ import; captures what makes a book feel like itself.
   "voice": { "style": "string", "vocab": ["..."], "sample_passages": ["..."] },
   "tone": "string",
   "themes": ["..."],
-  "factions":  { "edges": [{"from","to","relation"}] },
   "geography": { "nodes": [{"id","name"}], "edges": [{"from","to","adjacency"}] },
   "timeline": ["..."],
   "index": {
@@ -684,9 +683,9 @@ bibles); when present, `validate_bible` requires the four buckets to be lists of
 feeds the RAG coarse index (`lib/rag/coarse_index.py`) — it no longer writes into the
 bible.
 
-Required: name, voice, tone, themes, factions (the links between them, by faction id),
-geography (graph). The factions themselves are in `factions.json`; an older bible lists
-them as `nodes` too, and in a campaign without `factions.json` those are its factions. The bible
+Required: name, voice, tone, themes, geography (graph). The factions and their ties are in
+`factions.json`; an older bible lists them as a `factions` graph, and in a campaign without
+`factions.json` those are its factions. The bible
 drafts the World Kit ruleset; the world's own rules are added to it with `gm-rule.sh
 define`.
 
@@ -703,11 +702,14 @@ its own numbers are world rules held by factions.
            "description": "one or two sentences",
            "impulses": ["what drives it"], "values": ["what it stands for or never does"],
            "leader": "npc:<key>", "successor": "npc:<key>",
-           "assets": [{"name": "The Mesh", "note": "one sentence"}], "tags": ["corp"]}
+           "assets": [{"name": "The Mesh", "note": "one sentence"}], "tags": ["corp"],
+           "ties": {"psm": "how Lull sees PSM, one line"}}
 }
 ```
 
-Only `name` and `description` are required. A leader or successor is also a member.
+Only `name` and `description` are required. A leader or successor is also a member. `ties`
+(`gm-faction.sh tie`): the history with another faction as this one sees it; the number
+is the Relation (a world rule held by the pair).
 
 **Membership** is on the NPC's sheet, `identity.factions`: `[{"id": "lull"}, {"id": "coven",
 "secret": true}]` (`gm-faction.sh join` / `leave`, `gm-npc.sh create --faction`). An NPC knows

@@ -171,11 +171,17 @@ def judge(json_ops, moment: dict[str, Any], through: Through, place: str,
 # ---------- the timeline ----------
 
 def brief(json_ops, report: dict[str, Any]) -> str:
-    """One short line for a rule's report."""
+    """One short line for a rule's report; '' for nothing worth a line (a faction bag
+    that drew only blanks). The repo's own rules carry no hidden mark: the player
+    never sees any of them."""
+    import faction_rules
     import world_rules
+    if report["rule"] == faction_rules.BAG:
+        return _bag_line(json_ops, report)
     who = world_rules.holder_name(json_ops, report["holder"])
     head = f"{report['rule']} ({who})"
-    hidden = "" if report.get("known", True) else f" {world_rules.HIDDEN}"
+    hidden = "" if report.get("known", True) or faction_rules.is_built_in(report["rule"]) \
+        else f" {world_rules.HIDDEN}"
     if "draws" in report:
         kinds = ", ".join(d["kind"] for d in report["draws"]) or "nothing"
         return f"{head}: drew {kinds}{'; ' + report['empty'] if report.get('empty') else ''}{hidden}"
@@ -192,6 +198,16 @@ def brief(json_ops, report: dict[str, Any]) -> str:
     if report.get("off"):
         what += f"; off: {', '.join(map(str, report['off']))}"
     return f"{head}: {what}{hidden}"
+
+
+def _bag_line(json_ops, report: dict[str, Any]) -> str:
+    """'Faction turns: Hardtop Holdings owes a turn', or '' if only blanks were drawn."""
+    import faction_rules
+    import factions
+    names = factions.known(json_ops)
+    owed = [("every faction (a joker)" if d["kind"] == faction_rules.JOKER
+             else names.get(d["kind"], {}).get("name", d["kind"])) for d in report["draws"] if d.get("owed")]
+    return f"{faction_rules.BAG}: {', '.join(owed)} owes a turn" if owed else ""
 
 
 def _texts(json_ops, name: str) -> dict[str, str]:
@@ -221,7 +237,9 @@ def timeline_lines(json_ops, moments: list[dict[str, Any]], place: str, present:
         for name, clock in m["clocks"].items():
             grouped.setdefault(f"Clock {name}: {clock['current']}/{clock['max']}", []).append(when)
         for report in m["rules"]:
-            grouped.setdefault(brief(json_ops, report), []).append(when)
+            line = brief(json_ops, report)
+            if line:
+                grouped.setdefault(line, []).append(when)
             for rule, holder, label, line in do_now(report):
                 if not holder_here(holder, place, present):
                     full.append(f"  {when}: Do now (off-screen, {rule} {label}): {line}")

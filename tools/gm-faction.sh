@@ -11,6 +11,9 @@
 #                                      (each its own quoted value; none clears it)
 #   gm-faction.sh alias <faction> <alias>... [--remove <alias>]
 #   gm-faction.sh asset <faction> "<name>" "<what it is>" [--remove]
+#   gm-faction.sh tie <faction> <other> ["<how it sees the other, a line>"]
+#                                      a history between two factions (no text removes it);
+#                                      the number is the Relation (gm-rule.sh)
 #   gm-faction.sh join <faction> <npc> [--secret | --open]
 #                                      a member: knows what the faction knows (their on_learn
 #                                      consequences fire); --secret: only its members know it;
@@ -35,7 +38,7 @@
 source "$(dirname "$0")/common.sh"
 
 if [ "$#" -lt 1 ] || [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-    sed -n '3,33p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,36p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
 fi
 

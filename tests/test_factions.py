@@ -480,3 +480,26 @@ def test_a_bible_only_campaign_is_told_to_copy_its_factions(ops):
         ft.check(ops, [{"faction": "crawlers", "action": "build", "power": "Military"}])
     with pytest.raises(wr.RulesError, match="comes with the factions.*from-bible"):
         wr.find_rule(ops, "Military")
+
+
+def test_a_fact_can_say_when_it_happened(ops, dcc_world, capsys):
+    overview = ops.load_json("campaign-overview.json")
+    overview["game_time"] = "2187-10-26T04:30"
+    ops.save_json("campaign-overview.json", overview)
+    notes = NoteManager(dcc_world)
+    fid = notes.add_fact("Meridian hired two more guards.", when="2187-10-25 22:00", nowhere=True)
+    fact = next(f for f in json.loads((Path(ops.world_state_dir) / "facts.json").read_text()) if f["id"] == fid)
+    assert fact["game_time"] == "2187-10-25T22:00"
+    assert notes.add_fact("Something that hasn't happened yet.", when="2187-10-27 10:00") == ""
+    assert "later than now" in capsys.readouterr().err
+    written = notes.beat([{"fact": "The guards arrived.", "when": "2187-10-26 01:00", "nowhere": True}])
+    fact = next(f for f in json.loads((Path(ops.world_state_dir) / "facts.json").read_text())
+                if f["id"] == written[0])
+    assert fact["game_time"] == "2187-10-26T01:00"
+
+
+def test_npc_show_names_the_factions(borant, dcc_world):
+    from lib.npc_manager import NPCManager
+    borant.join("Meridian", "Mordecai", secret=True)
+    shown = NPCManager(dcc_world).show("Mordecai")
+    assert "factions: Meridian Group (secret: only its members know)" in shown

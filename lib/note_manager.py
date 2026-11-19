@@ -128,6 +128,22 @@ class NoteManager:
         cid, _ = ids.resolve_as(here, ("location",)) if here else ("", "")
         return (cid or None), []
 
+    def _when(self, when) -> tuple[str, list[str]]:
+        """(the stored game time, errors) for a fact's `when`: not later than now."""
+        if not when:
+            return "", []
+        from time_manager import TimeError, parse_time
+        try:
+            moment = parse_time(when)
+        except TimeError as error:
+            return "", [f"when: {error}"]
+        now = stored_time(self.json_ops)
+        stored = moment.strftime(STORED_FORMAT)
+        if now and stored > now:
+            return "", [f"when: {when} is later than now ({now.replace('T', ' ')}); a fact is "
+                        f"something that has happened."]
+        return stored, []
+
     def _holders(self, holders=None, secret: bool = False, also=None):
         """(holder ids, errors) for a new fact. None = the default: the player and
         the NPCs present; `also` adds to the default. `secret` = nobody (a GM-only
@@ -148,7 +164,8 @@ class NoteManager:
     def add_fact(self, fact: str, *, list_waiting: bool = True,
                  about=None, not_about=None, holders=None, secret: bool = False,
                  also=None, truth=None, version_of=None, at=None, nowhere: bool = False,
-                 auto_at: bool = True, plots=None, offer_plot: bool = True) -> str:
+                 auto_at: bool = True, plots=None, offer_plot: bool = True,
+                 when=None) -> str:
         """Record a fact. Returns its id, or "" on failure. Everything but the
         text is given by name (a fact has no category any more: facts.py).
 
@@ -164,7 +181,9 @@ class NoteManager:
         `at` is where it happened: the place given, else the current location
         (with `auto_at`), or none with `nowhere`. `plots`: the plots it belongs to;
         with none, and `offer_plot`, the one open plot that involves who or where
-        the fact is about is offered (only when exactly one fits).
+        the fact is about is offered (only when exactly one fits). `when`: the game
+        time it happened ("YYYY-MM-DD HH:MM"), if earlier than now (a faction turn
+        owed since it was drawn, something recorded after the fact).
         """
         about_ids, found, errors = self._about(fact, about, not_about)
         where, more = self._where(at, nowhere, auto_at)
@@ -176,6 +195,8 @@ class NoteManager:
         errors += more
         from plot_manager import resolve_plots
         plot_keys, more = resolve_plots(self.json_ops, plots)
+        errors += more
+        happened, more = self._when(when)
         errors += more
         if errors:
             for error in errors:
@@ -199,7 +220,7 @@ class NoteManager:
             entry['at'] = where
         if plot_keys:
             entry['plots'] = plot_keys
-        game_time = stored_time(self.json_ops)
+        game_time = happened or stored_time(self.json_ops)
         if game_time:
             entry['game_time'] = game_time
         entry['timestamp'] = datetime.now(UTC).isoformat()
@@ -631,7 +652,7 @@ class NoteManager:
         nothing if any item is refused.
         """
         allowed = {"fact", "about", "not_about", "holders", "also", "secret",
-                   "truth", "version_of", "at", "nowhere", "plot"}
+                   "truth", "version_of", "at", "nowhere", "plot", "when"}
         def as_list(value):
             return None if value is None else [value] if isinstance(value, str) else list(value)
         if not isinstance(items, list) or not items:
@@ -661,6 +682,8 @@ class NoteManager:
             errors += [f"{where}: {e}" for e in more]
             _, more = self._where(item.get("at"), bool(item.get("nowhere")))
             errors += [f"{where}: {e}" for e in more]
+            _, more = self._when(item.get("when"))
+            errors += [f"{where}: {e}" for e in more]
             ref = str(item.get("version_of") or "")
             if ref.startswith("#"):
                 k = int(ref[1:]) if ref[1:].isdigit() else 0
@@ -686,7 +709,7 @@ class NoteManager:
                                 secret=bool(item.get("secret")), also=as_list(item.get("also")),
                                 truth=item.get("truth"), version_of=ref or None,
                                 at=item.get("at"), nowhere=bool(item.get("nowhere")),
-                                plots=as_list(item.get("plot")))
+                                plots=as_list(item.get("plot")), when=item.get("when"))
             if not fid:
                 self.remove_facts(written)
                 raise ValueError("A fact was refused (see above); none of this beat was kept.")
@@ -777,6 +800,7 @@ def main():
                        help="it happened nowhere in particular (a truth, a secret, off-screen)")
     p_add.add_argument("--plot", action="append", dest="plots", default=[],
                        help="the plot it belongs to (repeatable)")
+    p_add.add_argument("--when", help="when it happened, if earlier than now: \"YYYY-MM-DD HH:MM\"")
     p = sub.add_parser("plot", help="add a recorded fact to a plot, or take it out")
     p.add_argument("fact_id")
     p.add_argument("--add", action="append", default=[])
@@ -849,7 +873,7 @@ def main():
                                     holders=args.holders, secret=args.secret,
                                     also=args.also, truth=args.truth,
                                     version_of=args.version_of, at=args.at,
-                                    nowhere=args.nowhere, plots=args.plots):
+                                    nowhere=args.nowhere, plots=args.plots, when=args.when):
                 sys.exit(1)
         elif args.action == 'truth':
             entry = manager.set_truth(args.fact_id, args.truth, args.version_of,

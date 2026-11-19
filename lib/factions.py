@@ -9,7 +9,11 @@ fact is about, and learns things (on_learn). The record only describes the facti
     "lull": {"name": "Lull Corporation", "aliases": ["Lull"], "kind": "megacorp",
              "description": "…", "impulses": ["…"], "values": ["…"],
              "leader": "npc:…", "successor": "npc:…",
-             "assets": [{"name": "The Mesh", "note": "…"}], "tags": ["corp"]}
+             "assets": [{"name": "The Mesh", "note": "…"}], "tags": ["corp"],
+             "ties": {"psm": "pays the building's bills; one creature, two logos"}}
+
+`ties`: how this faction sees each other one it has history with, a line of text;
+the Relation (faction_rules.py) is the number, the tie says why.
 
 Everything else lives where it already has a home: its goal is a plot it owns, its
 secrets are facts it holds, the world's own numbers for it (Patience, Alert) are
@@ -344,6 +348,28 @@ class FactionManager:
         self._save(table)
         return fid, assets
 
+    def tie(self, raw, raw_other, text: str = "") -> tuple[str, str, str]:
+        """How faction `raw` sees `raw_other`, one line; an empty text removes it.
+        Returns (id, other id, the text before)."""
+        self._seed()
+        fid, other = self.key(raw), self.key(raw_other)
+        if fid == other:
+            raise FactionError("A tie is between two factions.")
+        table = load(self.json_ops)
+        ties = dict(table[fid].get("ties") or {})
+        before = ties.pop(other, "")
+        text = " ".join(str(text or "").split())
+        if text:
+            ties[other] = text
+        elif not before:
+            raise FactionError(f"{fid} has no tie to {other} to remove; give the text.")
+        if ties:
+            table[fid]["ties"] = ties
+        else:
+            table[fid].pop("ties", None)
+        self._save(table)
+        return fid, other, before
+
     # ---------- membership ----------
 
     def _npc(self, raw) -> tuple[str, str]:
@@ -553,6 +579,12 @@ def _cmd_asset(m, args):
     print(f"faction:{fid} assets: {', '.join(a['name'] for a in assets) or 'none'}")
 
 
+def _cmd_tie(m, args):
+    fid, other, before = m.tie(args.faction, args.other, args.text)
+    what = f"sees {other}: {' '.join(args.text.split())}" if args.text.strip() else f"has no tie to {other} now"
+    print(f"[SUCCESS] faction:{fid} {what}" + (f" (was: {before})" if before else ""))
+
+
 def _cmd_leave(m, args):
     done = m.leave(args.faction, args.npc)
     print(f"[SUCCESS] npc:{done['npc']} left faction:{done['faction']}")
@@ -689,6 +721,10 @@ def main() -> int:
     p.add_argument("name")
     p.add_argument("note", nargs="?", default="")
     p.add_argument("--remove", action="store_true")
+    p = sub.add_parser("tie", help="how one faction sees another, a line; no text removes it")
+    p.add_argument("faction")
+    p.add_argument("other")
+    p.add_argument("text", nargs="?", default="")
     p = sub.add_parser("join", help="an NPC joins: they learn what the faction knows")
     p.add_argument("faction")
     p.add_argument("npc")
@@ -728,7 +764,7 @@ def main() -> int:
 COMMANDS = {
     "create": _cmd_create, "set": _cmd_set, "alias": _cmd_alias, "asset": _cmd_asset,
     "join": lambda m, args: _print_join(m.join(args.faction, args.npc, args.secret), args.secret),
-    "leave": _cmd_leave, "from-bible": lambda m, args: _from_bible(m), "turn": _cmd_turn, "show": lambda m, args: print(m.show(args.faction)), "list": _cmd_list,
+    "leave": _cmd_leave, "tie": _cmd_tie, "from-bible": lambda m, args: _from_bible(m), "turn": _cmd_turn, "show": lambda m, args: print(m.show(args.faction)), "list": _cmd_list,
 }
 
 

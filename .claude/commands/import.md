@@ -120,20 +120,20 @@ bash tools/gm-extract.sh draft-bible --fields-json <<'EOF'
 {
   "tone": "...",
   "themes": ["..."],
-  "factions": {"edges": [{"from":"yara","to":"thieves","relation":"preys on / is feared by"}]},
   "geography": {"nodes": [{"id":"maul","name":"The Maul"},{"id":"tower","name":"Elephant Tower"}], "edges": [{"from":"maul","to":"tower","adjacency":"across the temple quarter"}]}
 }
 EOF
 uv run python lib/world_bible.py validate
 ```
 
-The factions themselves are records, written before the bible's links name their ids
-(`gm-faction.sh create "Thieves of the Maul" --id thieves --kind "guild" --description
-"…" --impulse "…" --value "…"`, then `--id yara` for the Priesthood of Yara); the
-bible's `factions` holds only the links between them.
+The factions are records of their own, not part of the bible (`gm-faction.sh create
+"Thieves of the Maul" --id thieves --kind "guild" --description "…" --impulse "…"
+--value "…"`, then `--id yara` for the Priesthood of Yara), and so are their ties
+(`gm-faction.sh tie yara thieves "preys on them"`, `gm-faction.sh tie thieves yara
+"fears them"`).
 
 Keep factions/geography as a **handful of horizon names**, not a gazetteer — but
-**wire 2–4 edges** (a tension between two factions, an adjacency between two
+**wire 2–4 ties and edges** (a tension between two factions, an adjacency between two
 places). Nodes with no edges are a cast list, not a world; a couple of real
 relationships (the villain's faction vs the player's, the caravan vs the hunt)
 pay off in every scene. Do not build a full relationship map.
