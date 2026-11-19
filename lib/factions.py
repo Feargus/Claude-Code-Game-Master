@@ -231,14 +231,7 @@ class FactionManager:
             raise FactionError("A faction needs a name.")
         if not description:
             raise FactionError(f"{name} needs a description: what it is, in a sentence or two.")
-        fid = (fid or make_id(name)).strip().lower()
-        import faction_rules
-        if fid in (faction_rules.BLANK, faction_rules.JOKER):
-            raise FactionError(f"'{fid}' is a kind of token in the faction bag; give the faction "
-                               f"another id with --id.")
-        if not ID_RE.match(fid):
-            raise FactionError(f"A faction's id is short, lowercase letters, digits and "
-                               f"dashes (\"lull\", \"red-hand\"); got '{fid}'. Give one with --id.")
+        fid = _check_id((fid or make_id(name)).strip().lower())
         table = self._seed()
         if fid in table:
             raise FactionError(f"There is a faction '{fid}' already ({table[fid].get('name')}). "
@@ -588,6 +581,17 @@ def _print_join(done: dict[str, Any], secret) -> None:
     if done["learned"]:
         print(f"  Now knows what the faction knows: {', '.join(done['learned'])}")
     print_fired(done["fired"])
+
+
+def _check_id(fid: str) -> str:
+    import faction_rules
+    if fid in (faction_rules.BLANK, faction_rules.JOKER):
+        raise FactionError(f"'{fid}' is a kind of token in the faction bag; give the faction "
+                           f"another id with --id.")
+    if not ID_RE.match(fid):
+        raise FactionError(f"A faction's id is short, lowercase letters, digits and "
+                           f"dashes (\"lull\", \"red-hand\"); got '{fid}'. Give one with --id.")
+    return fid
 
 
 def _record_lines(row: dict[str, Any]) -> list[str]:
