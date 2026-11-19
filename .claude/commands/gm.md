@@ -201,7 +201,7 @@ The world moves while the character is away or resting: the end of a session, a 
 
 ### The factions' turn
 
-You play the factions; the script referees. Read each faction (`gm-faction.sh show <id>`: its plot, power, presence, relations, members) and give it **one action**, mostly from its current plot: the plot is its plan, its values and impulses made concrete. Play to its strengths (strong in Political: it talks, it doesn't shoot). Prefer actions that leave a thread the character can pull (a kidnapping, not a killing; a theft, a lie that can be exposed). Give them all at once: each is judged from the state before any of them, and the script applies everything together.
+You play the factions; the script referees. Read each faction (`gm-faction.sh show <id>`: its plot, power, presence, relations, members) and give **every faction one action** (a faction that lies low builds up; a turn with one missing is refused), mostly from its current plot: the plot is its plan, its values and impulses made concrete. Play to its strengths (strong in Political: it talks, it doesn't shoot). Prefer actions that leave a thread the character can pull (a kidnapping, not a killing; a theft, a lie that can be exposed). Give them all at once: each is judged from the state before any of them, and the script applies everything together.
 
 ```bash
 bash tools/gm-faction.sh turn <<'EOF'

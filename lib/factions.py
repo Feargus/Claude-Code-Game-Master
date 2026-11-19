@@ -660,7 +660,8 @@ def main() -> int:
     sub.add_parser("from-bible", help="an older campaign: copy the bible's factions in")
     p = sub.add_parser("turn", help="a faction turn: the JSON list of actions after the command")
     p.add_argument("actions", nargs="?", default="-")
-    p.add_argument("--only", help="this one faction takes its turn, nobody else")
+    p.add_argument("--only", help="this one faction takes its turn, nobody else (without it, "
+                                  "every faction needs an action)")
     args = parser.parse_args()
 
     campaign = CampaignManager().get_active_campaign_dir()

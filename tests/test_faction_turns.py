@@ -120,10 +120,9 @@ def test_prepare_moves_the_plan_clock_and_its_portents(ops, dcc_world):
     cid = ConsequenceManager(dcc_world).add_consequence(
         "Rumour: Meridian is hiring.", "y", trigger_type="on_clock", match="Takeover:1",
         offscreen=True)
-    lines = ft.run(ops, [{"faction": "Meridian", "action": "prepare"}], Dice())
+    lines = ft.run(ops, [{"faction": "Meridian", "action": "prepare"}], Dice(), only="Meridian")
     text = "\n".join(lines)
     assert "plan clock Takeover (Hostile Takeover): 1/3" in text and f"[{cid}]" in text
-    assert "Not acting this turn: " in text and "system" in text.split("Not acting")[1]
 
 
 def test_enact_needs_a_full_plan_clock(ops, dcc_world):
@@ -133,8 +132,9 @@ def test_enact_needs_a_full_plan_clock(ops, dcc_world):
     ThreatClockManager(dcc_world).add_clock("Takeover", 1, advance_on="event", plots=["Hostile Takeover"])
     with pytest.raises(ft.TurnError, match="has no full plan clock yet"):
         ft.check(ops, [{"faction": "Meridian", "action": "enact", "power": "Political"}])
-    ft.run(ops, [{"faction": "Meridian", "action": "prepare"}], Dice())
-    lines = ft.run(ops, [{"faction": "Meridian", "action": "enact", "power": "Political"}], Dice(6, 1))
+    ft.run(ops, [{"faction": "Meridian", "action": "prepare"}], Dice(), only="Meridian")
+    lines = ft.run(ops, [{"faction": "Meridian", "action": "enact", "power": "Political"}], Dice(6, 1),
+                   only="Meridian")
     assert "the plan succeeds: gm-plot.sh complete \"Hostile Takeover\"" in "\n".join(lines)
 
 
@@ -173,7 +173,8 @@ def test_the_command(ops, dcc_world):
     env = dict(os.environ, GM_WORLD_STATE_BASE=dcc_world)
     turn = json.dumps([{"faction": "Meridian", "action": "build", "power": "Economic",
                         "note": "new contracts"}])
-    done = subprocess.run(["bash", str(ROOT / "tools" / "gm-faction.sh"), "turn"], input=turn,
+    done = subprocess.run(["bash", str(ROOT / "tools" / "gm-faction.sh"), "turn", "--only",
+                           "Meridian"], input=turn,
                           capture_output=True, text=True, env=env)
     assert done.returncode == 0, done.stderr
     assert "Meridian Group: Build up (Economic) (new contracts): d6" in done.stdout
@@ -183,10 +184,13 @@ def test_the_command(ops, dcc_world):
     assert bad.returncode == 1 and bad.stderr.startswith("[ERROR]")
 
 
-def test_one_faction_alone(ops):
+def test_every_faction_acts_or_one_alone(ops):
+    with pytest.raises(ft.TurnError, match="every faction acts: no action for") as error:
+        ft.run(ops, [{"faction": "Meridian", "action": "build", "power": "Covert"}], Dice(1))
+    assert "crawlers" in str(error.value) and "--only" in str(error.value)
     lines = ft.run(ops, [{"faction": "Meridian", "action": "build", "power": "Covert"}], Dice(1),
                    only="meridian")
-    assert not any("Not acting" in line for line in lines)
+    assert lines[1].startswith("Meridian Group: Build up (Covert)")
     with pytest.raises(ft.TurnError, match="--only meridian-group: give its one action"):
         ft.run(ops, [{"faction": "system", "action": "build", "power": "Covert"}], Dice(1),
                only="Meridian")

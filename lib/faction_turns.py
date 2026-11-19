@@ -31,7 +31,8 @@ cost 2 of the power used, 3 if they fail; a margin below 0 fails):
     enact      the plot's goal, when its plan clock is full (against a rival, or the
                world: d6 + 2)
 
-`--only <faction>`: that one faction takes its turn and nobody else (a turn drawn for
+A full turn needs an action from every faction. `--only <faction>`: that one faction
+takes its turn and nobody else (a turn drawn for
 one faction, later from a bag of tokens).
 
 The contest: d6 + the actor's power against d6 + the rival's same power; the
@@ -439,8 +440,10 @@ def run(json_ops, actions, rng=None, only: str | None = None) -> list[str]:
         if [a["faction"] for a in checked] != [fid]:
             raise TurnError(f"--only {fid}: give its one action, and no other faction's. "
                             f"Nothing was changed.")
-    lines = apply(json_ops, resolve(json_ops, checked, rng))
-    rest = idle(json_ops, checked) if only is None else []
-    if rest:
-        lines.append(f"Not acting this turn: {', '.join(rest)}")
-    return lines
+    else:
+        missing = idle(json_ops, checked)
+        if missing:
+            raise TurnError(f"In a full turn every faction acts: no action for "
+                            f"{', '.join(missing)} (one that lies low builds up). For one "
+                            f"faction alone: --only <faction>. Nothing was changed.")
+    return apply(json_ops, resolve(json_ops, checked, rng))
