@@ -166,6 +166,11 @@ Write only what tonight needs:
    found here" whenever the story goes there), or a part in the opening's clock or
    consequences. A sketch tied only to "when they are in the scene" is forgotten,
    since nothing brings them into the scene.
+2d. **Each faction's first plot**, its plan: written from its values and impulses and
+   where it stands (power, presence, relations, leader), with its plan clock, the true
+   plan as a fact it holds, and its portents, as the `/gm` command file says under "A
+   faction's plot". These are the world's own business, going on beside the character;
+   the opening's plot (below) may grow out of one.
 3. **Sketch the opening; don't write it yet.** It is written in Phase D with
    `gm-session.sh opening`, once the character exists and the player has said where
    and when to start, so it fits them. Until then nothing of it is stored. Sketch:

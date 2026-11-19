@@ -59,7 +59,7 @@ Display all available commands and tools.
   gm-mob.sh         Mobs: interchangeable enemies with stats
   People and story
   gm-npc.sh         NPC sheets: create, set fields, stats, items, places, party
-  gm-faction.sh     Factions: create, show, set fields, aliases, assets, members
+  gm-faction.sh     Factions: create, show, set fields, aliases, assets, members, turns
   gm-note.sh        Facts: what happened, who knows it
   gm-consequence.sh What happens later, and what triggers it
   gm-clock.sh       Threat clocks

@@ -197,7 +197,36 @@ not "1 wound").
 
 **Invoked via:** `/gm world`. Only when the player asks; never on your own, and never as part of a plain `/gm end`.
 
-The world moves while the character is away or resting: the end of a session, a long rest, a week in hiding. Propose a few SMALL developments grounded in the plots, clocks, consequences and NPC goals. Each development is something that **has happened** off-screen, so it is always a fact. If it also sets something in motion, add a consequence with a real trigger (who or where it waits for), and/or a clock for a time limit:
+The world moves while the character is away or resting: the end of a session, a long rest, a week in hiding. **First the factions take a turn** (below, if the campaign has factions), **then** the people.
+
+### The factions' turn
+
+You play the factions; the script referees. Read each faction (`gm-faction.sh show <id>`: its plot, power, presence, relations, members) and give it **one action**, mostly from its current plot: the plot is its plan, its values and impulses made concrete. Play to its strengths (strong in Political: it talks, it doesn't shoot). Prefer actions that leave a thread the character can pull (a kidnapping, not a killing; a theft, a lie that can be exposed). Give them all at once: each is judged from the state before any of them, and the script applies everything together.
+
+```bash
+bash tools/gm-faction.sh turn <<'EOF'
+[{"faction": "kin", "action": "build", "power": "Political", "note": "door-to-door in Lowtown"},
+ {"faction": "hardtop", "action": "push", "power": "Economic", "rival": "kin", "at": "Culvert Street"},
+ {"faction": "almanac", "action": "prepare"},
+ {"faction": "afters", "action": "strike", "power": "Military", "rival": "hardtop", "at": "The Spine"}]
+EOF
+```
+
+- **Simple, numbers only, never a cost:** `build` (+1 to +3 power), `reinforce` (+1 or +2 presence `at` a place), `push` (a `rival`'s presence `at` a place −0 to −2, contested), `prepare` (its plot's plan clock +1; the portents on it fire by themselves).
+- **Complex, they cost 2 of the power used (3 if they fail) and make facts:** `strike` (rival's presence −1 to −3), `seize` (an `asset` of the rival, or a place: ±1 or ±2), `take` (`who`: kidnap, arrest, blackmail), `spy` (learn a fact the rival holds), `expose` (a fact about the rival up the ladder), `deal` (a pact, a truce, a bribe), `enact` (the plot's goal, when its plan clock is full).
+- **Contests:** d6 + the power used against d6 + the rival's same power. A defender has no action; its power is its defence.
+- **After the turn:** for each complex action the output says what to record. Record at least two facts with `gm-note.sh beat`: the truth, held by the acting faction, and versions for the others (`"truth": "partial"` or `"wrong"`, `"version_of": "#1"`, held by the victims, the street or the public: "a gas main blew at the depot"). An `enact` ends its plot (`gm-plot.sh complete|fail`) and needs the next one (below). A deal's terms, and the lasting effects of a plot's success or failure, are consequences that move resting points (`--rule-effect '{"rate_of": "Relation", "of": "kin+hardtop", "shift": 1}'`). Simple actions need nothing: a change of presence is background (more patrols, a shop shut), narrated only if the character is there.
+- A turn can't be undone (every power change is in `rules.log`). Faction actions are about the world, not the character: their facts are held by factions, the street or the public, and time doesn't stop for them.
+
+**A faction's plot** (its first, and each that replaces it) is written from its values and impulses and where it stands now: power, assets, leader, presence, relations. With it, in one go:
+1. `gm-plot.sh add "<short name>" --owner faction:<id> --goal "<what they are after>" --description "…"`;
+2. its plan clock, an event clock: `gm-clock.sh add "<short name>" <2–6> --on event --text "<the plan>" --plot "<plot>"`;
+3. the true plan as a fact the faction holds (`gm-note.sh "<the plan>" --holders faction:<id> --nowhere --plot "<plot>"`);
+4. its portents: a lie or a half-truth each, recorded as a secret version of the plan (`--secret --truth wrong|partial --version-of <id>`), and an `--offscreen` consequence that tells it to the street or the public when the clock reaches its segment (`--trigger-type on_clock --match "<clock>:<segment>" --tells <id> --to street`). One portent on a clock of 2–3 segments, two on 4–6, spread evenly.
+
+### The people
+
+Then propose a few SMALL developments grounded in the plots, clocks, consequences and NPC goals. Each development is something that **has happened** off-screen, so it is always a fact. If it also sets something in motion, add a consequence with a real trigger (who or where it waits for), and/or a clock for a time limit:
 
 ```bash
 bash tools/gm-session.sh world-tick <<'EOF'
