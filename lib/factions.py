@@ -251,10 +251,24 @@ class FactionManager:
             row["tags"] = tags
         table[fid] = row
         self._save(table)
+        self._into_bag(fid)
         for field in PEOPLE_FIELDS:
             if row.get(field):
                 self._ensure_member(fid, row[field], field)
         return fid
+
+    def _into_bag(self, fid: str) -> None:
+        """A new faction gets its full share of the faction bag at once, as if it had
+        been there from the start (decided 2026-11-19): 4 tokens and 2 blanks. A bag
+        never drawn yet holds them already (its start is built from the factions)."""
+        import faction_rules
+        import rule_bag
+        import world_rules
+        if faction_rules.BAG not in (world_rules.load_state(self.json_ops).get("world") or {}):
+            return
+        for kind, n in ((fid, 4), (faction_rules.BLANK, 2)):
+            rule_bag.put(self.json_ops, faction_rules.BAG, "world", kind, n, cause="a new faction")
+        self.notes.append(f"{faction_rules.BAG}: {fid} gets its share of the bag, 4 tokens and 2 blanks.")
 
     def _checked_aliases(self, name: str, fid: str, aliases) -> list[str]:
         from entity_aliases import normalize_entity_name

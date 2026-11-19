@@ -635,7 +635,8 @@ not in YOUR WORLD'S RULES:
 - **Faction turns**: a bag held by the world that drives the factions as game time
   passes: 4 tokens per faction, 2 blanks per faction and a joker, one drawn every 6 h +
   25 h ÷ the number of factions, topped up with one per faction and half as many blanks
-  (and a joker if none is left) when fewer than 4 per faction remain. A drawn faction
+  (and a joker if none is left) when fewer than 4 per faction remain; a faction created
+  in play gets its 4 tokens and 2 blanks at once. A drawn faction
   owes a turn, a joker a full turn: they are listed as FACTION TURNS OWED at the end of
   a time step or journey and in the brief. To make one faction busier for a while:
   `gm-rule.sh put "Faction turns" hardtop 2`, or a consequence's `--rule-effect

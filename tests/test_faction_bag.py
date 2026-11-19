@@ -98,3 +98,13 @@ def test_the_owed_turns_are_in_the_brief(ops, dcc_world):
     if fr.owed(ops):
         assert "FACTION TURNS OWED" in brief
     assert "Faction turns (bag" not in brief               # the bag itself is the repo's
+
+
+def test_a_new_faction_gets_its_full_share_at_once(ops):
+    rule_bag.draw(ops, fr.BAG, "world", count=3, rng=random.Random(2))
+    before = dict(_stored(ops)["tokens"])
+    m = FactionManager(ops)
+    m.create("Grey Hands", "Pickpockets.", fid="grey")
+    after = _stored(ops)["tokens"]
+    assert after["grey"] == 4 and after["blank"] == before["blank"] + 2
+    assert "grey gets its share of the bag" in m.notes[-1]
