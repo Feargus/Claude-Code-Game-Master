@@ -11,16 +11,16 @@ import pytest
 
 from lib.campaign_manager import CampaignManager
 from lib.new_character import CharacterCreator
+from lib.sheet import ATTRIBUTES
 
 ROOT = Path(__file__).resolve().parent.parent
-ATTRIBUTES = ("STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP")
 COMMON = ("Brawling", "Throwing", "Evasion", "Guard", "Endurance", "Composure", "Athletics",
           "Acrobatics", "Stealth", "Awareness", "Investigation", "Insight", "Persuasion",
           "Deception")
-RULESET = {
-    "stat_schema": {"vitals": ["drift"]},
-    "systems": [{"primitive": "named_track", "name": "Drift", "config": {"max": 10}}],
-}
+RULESET = {"rules": [{"name": "Drift", "block": "counter", "held_by": "player",
+                      "range": [0, 10], "start": 0, "known": True,
+                      "summary": "How far the self has drifted.", "when": "After a resleeve.",
+                      "results": [{"from": 5, "text": "Strangers' memories."}]}]}
 
 
 @pytest.fixture
@@ -63,10 +63,10 @@ def test_a_name_alone_gets_every_default(campaign):
     assert sheet == _sheet(campaign)
     assert set(sheet) == {"identity", "stats", "body", "items", "possessions", "progress", "status"}
     assert sheet["progress"] == {"level": 0, "xp": 0, "practice": {}}
-    assert sheet["stats"]["attributes"] == {a: 12 for a in ATTRIBUTES}
+    assert sheet["stats"]["attributes"] == dict.fromkeys(ATTRIBUTES, 12)
     assert sheet["stats"]["luck"] == {"current": 7, "max": 7}
     assert sheet["possessions"] == {"credits": 20}
-    assert sheet["stats"]["skills"] == {name: 0 for name in COMMON}
+    assert sheet["stats"]["skills"] == dict.fromkeys(COMMON, 0)
     assert sheet["stats"]["traits"] == {} and sheet["stats"]["perks"] == {}
     assert set(sheet["body"]["zones"]) == {"head", "chest", "groin", "left_arm", "right_arm",
                                            "left_leg", "right_leg"}
@@ -74,14 +74,26 @@ def test_a_name_alone_gets_every_default(campaign):
     assert sheet["items"] == {"gear": [], "inventory": []}
 
 
-def test_the_campaigns_counters_come_from_its_ruleset(campaign):
-    assert _ok(_create(data=_named("Mara")))["stats"]["counters"] == {"drift": {"current": 0, "max": 10}}
+def test_the_worlds_rules_start_at_their_start_or_the_interviews_value(campaign):
+    """The world's own rules are not on the sheet (world_rules.py): a rule the player
+    holds starts at its start, or at the value the interview gives under "rules"."""
+    sheet = _ok(_create(data=dict(_named("Mara"), rules={"drift": 6})))
+    assert "counters" not in sheet["stats"] and "rules" not in sheet
+    state = json.loads((campaign / "rule-state.json").read_text())
+    assert state["player"]["Drift"]["value"] == 6 and state["player"]["Drift"]["on"] == ["from 5"]
+    for wrong, why in (({"Drift": 11}, "goes from 0 to 10"), ({"Heat": 1}, "No rule 'Heat'")):
+        assert why in _error(_create("--replace", data=dict(_named("Ines"), rules=wrong)))
+    assert _sheet(campaign)["identity"]["name"] == "Mara"          # nothing was saved
 
 
-def test_a_counter_without_a_track_is_a_plain_number(campaign):
-    (campaign / "ruleset.json").write_text(json.dumps(dict(RULESET, stat_schema={"vitals": ["heat"]})))
-    sheet = _ok(_create(data=_named("Mara", stats={"counters": {"heat": 2}})))
-    assert sheet["stats"]["counters"] == {"heat": 2}
+def test_a_hand_over_moves_the_values_with_the_people(campaign):
+    _ok(_create(data=dict(_named("Mara"), rules={"Drift": 3})))
+    ruleset = json.loads((campaign / "ruleset.json").read_text())
+    ruleset["rules"][0]["held_by"] = ["player", "npc"]
+    (campaign / "ruleset.json").write_text(json.dumps(ruleset))
+    _ok(_create("--replace", data=_named("Ines")))
+    state = json.loads((campaign / "rule-state.json").read_text())
+    assert state["npc:Mara"]["Drift"]["value"] == 3 and "player" not in state
 
 
 def test_given_values_are_kept_whatever_they_are(campaign):
@@ -96,7 +108,7 @@ def test_given_values_are_kept_whatever_they_are(campaign):
     assert sheet["look"]["style"] == "chrome and denim"
     assert sheet["personality"]["big_five"] == "O1 C-2 E3 A-1 N2"
     assert sheet["stats"]["attributes"]["AGI"] == 18 and sheet["stats"]["attributes"]["LOG"] == 6
-    assert sheet["stats"]["skills"] == dict({n: 0 for n in COMMON}, Piloting=5)
+    assert sheet["stats"]["skills"] == dict(dict.fromkeys(COMMON, 0), Piloting=5)
     assert sheet["stats"]["luck"] == {"current": 1, "max": 1}
     assert sheet["progress"]["level"] == 2
 
@@ -144,6 +156,7 @@ def test_left_out_attributes_are_named_in_the_human_output(campaign):
     (_named("Mara", stats={"attributes": {"AGI": 1}}), "die size"),
     (_named("Mara", body={"cyberware": [{"name": "Tail", "zone": "tail"}]}), "Unknown zone"),
     (_named("Mara", stats={"skills": {"default": 2}}), "not a skill"),
+    (_named("Mara", stats={"skills": {"Lockpicking": 2}}), "No skill 'Lockpicking'. Did you mean: Larceny"),
     (_named("Mara", stats={"skills": {"Handguns": -1}}), "Leave an untrained skill off the sheet"),
     (dict(_named("Mara"), untrained=["Handguns"]), "not a common skill"),
     (dict(_named("Mara", stats={"skills": {"Brawling": 1}}), untrained=["brawling"]), "both"),
@@ -210,3 +223,57 @@ def test_creating_a_character_moves_nothing(isolated_world_state):
     ov = json.loads((cdir / "campaign-overview.json").read_text())
     assert ov["player_position"] == {"current_location": "The Tigress"}
     assert "opening_hook" not in ov
+
+
+# ---------- aliases: the shorter names the story uses ----------
+
+def _npcs(campaign, **npcs):
+    (campaign / "npcs.json").write_text(json.dumps(
+        {name: {"identity": dict({"name": name}, **identity)} for name, identity in npcs.items()}))
+
+
+def test_a_name_of_several_words_needs_its_aliases(campaign):
+    """"Dogen" for Dogen Mabuchi was unknown to facts, triggers and rolls: the
+    player's aliases can only be given at creation, and nothing asked for them."""
+    refused = CharacterCreator().create(_named("Dogen Mabuchi"))
+    assert not refused["success"] and '"aliases"' in refused["error"] and '["Dogen"]' in refused["error"]
+    assert not (campaign / "character.json").exists()
+
+    made = CharacterCreator().create(_named("Dogen Mabuchi", identity={"aliases": ["Dogen", " Dogen "]}))
+    assert made["success"] and made["character"]["identity"]["aliases"] == ["Dogen"]
+
+
+def test_no_shorter_name_is_an_answer_and_one_word_needs_none(campaign):
+    made = CharacterCreator().create(_named("Old Iron", identity={"aliases": []}))
+    assert made["success"] and "aliases" not in made["character"]["identity"]
+    assert CharacterCreator().create(_named("Tandy"), replace=True)["success"]
+
+
+def test_an_alias_that_names_someone_else_is_refused(campaign):
+    _npcs(campaign, **{"Mama Seo": {"aliases": ["Seo"]}})
+    for alias, why in [("Seo", "already names npc:Mama Seo"), ("player", "a word ids use"),
+                       ("Dogen Mabuchi", "own name")]:
+        refused = CharacterCreator().create(_named("Dogen Mabuchi", identity={"aliases": [alias]}))
+        assert not refused["success"] and why in refused["error"], (alias, refused["error"])
+
+
+def test_a_canon_character_keeps_the_npcs_aliases(campaign):
+    _npcs(campaign, **{"Mama Seo": {"aliases": ["Seo"]}, "Tomas Reyes": {}})
+    made = CharacterCreator().create({}, canon="Mama Seo")
+    assert made["success"] and made["character"]["identity"]["aliases"] == ["Seo"]
+    refused = CharacterCreator().create({}, canon="Tomas Reyes", replace=True)
+    assert not refused["success"] and '["Tomas"]' in refused["error"]
+
+
+def test_aliases_are_corrected_with_the_alias_command(campaign):
+    from lib.player_manager import PlayerManager
+    from lib.world_ids import WorldIds
+    _npcs(campaign, **{"Mama Seo": {"aliases": ["Seo"]}})
+    CharacterCreator().create(_named("Dogen Mabuchi", identity={"aliases": []}))
+    manager = PlayerManager()
+    assert manager.change_aliases(["Dogen", "the Dog"], [])["aliases"] == ["Dogen", "the Dog"]
+    assert not manager.change_aliases(["Seo"], [])["success"]
+    assert manager.change_aliases([], ["the dog"])["aliases"] == ["Dogen"]
+    ids = WorldIds(manager.json_ops)
+    assert ids.resolve("dogen") == ("player", "")
+    assert ids.mentioned("Juniper told Dogen about the key.") == ["player"]

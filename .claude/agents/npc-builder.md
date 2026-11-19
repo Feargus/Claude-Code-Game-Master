@@ -23,7 +23,7 @@ You are the NPC Builder - a character enrichment specialist who deepens NPCs by 
 ### Step 1: DISCOVER
 - Check if NPC exists: `bash tools/gm-npc.sh show "[Name]"`
 - If not found, check variations or similar names
-- Read session log for context about this NPC
+- Read the facts about this NPC for context: `gm-note.sh find --about "npc:<name>"`
 - Note what's already there so you add rather than repeat
 
 ### Step 2: RESEARCH
@@ -53,7 +53,7 @@ Build logical additions that:
     --fears "[fears, exploitable flaws]" --affiliation "[crew, corp, gang]"
   ```
   The Big Five: openness, conscientiousness, extraversion, agreeableness, neuroticism, each −3 to +3, 0 the average person.
-- What they know or hide (a secret, a plot hook, a relationship): a fact they hold, `bash tools/gm-note.sh <category> "[the fact, names written out]" --holders "npc:[Name]"`
+- What they know or hide (a secret, a plot hook, a relationship): a fact they hold, `bash tools/gm-note.sh "[the fact, names written out]" --holders "npc:[Name]"`
 - How they feel about the player is written during play, as facts; not your job
 - Usual places: `bash tools/gm-npc.sh tag-location "[Name]" "[Location name]"...` (known locations only, by their full name)
 - Confirm success
@@ -130,7 +130,7 @@ Allies who travel with the player. Give them their own goals and limits, so they
 Link NPCs to:
 - **Locations**: Where they work/live/frequent
   - `gm-npc.sh tag-location "[Name]" "[Location name]"` (where they're usually found)
-- **Plots**: Current story involvement (the plot names them: `gm-plot.sh`)
+- **Plots**: Current story involvement (the plots that involve them: `gm-plot.sh list`, and their card)
 - **Other NPCs**: Family, rivals, employers
 - **Factions**: Guilds, cults, governments
 - **Events**: Past consequences, future plans

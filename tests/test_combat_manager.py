@@ -59,3 +59,28 @@ def test_combat_is_optional(dcc_world):
     # Never starting combat is a valid state (narrated skirmish).
     assert CombatManager(dcc_world).is_active() is False
     assert CombatManager(dcc_world).header() == "(no active combat)"
+
+
+def test_start_refuses_while_a_fight_is_running(dcc_world):
+    """Starting over wiped the running fight without a word: an enemy already
+    taken out was gone, and `end` paid no XP for it."""
+    import os
+    import subprocess
+    from pathlib import Path
+
+    import pytest
+    m = CombatManager(dcc_world)
+    m.start()
+    m.start()                                    # an empty fight may be started again
+    m.add_combatant("rat 1", 1)
+    m.add_combatant("rat 2", 1)
+    m.wound("rat 1", 1)
+    with pytest.raises(ValueError, match="A fight is running \\(rat 1, rat 2\\)"):
+        m.start()
+    tool = Path(__file__).resolve().parent.parent / "tools" / "gm-combat.sh"
+    result = subprocess.run(["bash", str(tool), "start"], capture_output=True, text=True,
+                            env=dict(os.environ, GM_WORLD_STATE_BASE=dcc_world))
+    assert result.returncode == 1 and "[ERROR] A fight is running" in result.stderr
+    assert "gm-combat.sh end" in result.stderr
+    assert m.end()["defeated"] == ["rat 1"]      # the fight is as it was
+    m.start()                                    # after `end`, a new one starts

@@ -3,7 +3,7 @@ are saved, and enemies in a fight that read their wounds from them (--as). In pl
 the GM wrote these into npcs.json and mobs.json by hand."""
 
 import json
-import random
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -113,6 +113,17 @@ def test_mobs_are_added_checked_and_kept_apart_from_npcs(world):
         mobs.save("Rook", entry, create=True)
     with pytest.raises(ValueError, match="needs --note"):
         mobs.save("Hound", merged({}, {"STR": 12}, wounds=1), create=True)
+    # A kind of enemy can be named before it has stats; it gets them before a fight.
+    assert mobs.save("Hollow", merged({}, note="a body still running on routine"), create=True) == []
+    assert "not ready: give it attributes and wounds" in describe("Hollow", mobs.campaign()["Hollow"])
+    from lib.skill_contest import ContestError, find_sheet
+    with pytest.raises(ContestError, match="no stats yet"):
+        from lib.skill_contest import dice_sizes
+        dice_sizes(find_sheet(camp, "Hollow"), "Hollow", ["STR"])
+    with pytest.raises(ValueError, match="has no wounds on its sheet"):
+        CombatManager(ws).add_combatant("hollow 1", sheet="Hollow")
+    mobs.save("Hollow", merged(mobs.campaign()["Hollow"], {"default": 8}, wounds=2), create=False)
+    assert "not ready" not in describe("Hollow", mobs.campaign()["Hollow"])
     with pytest.raises(ValueError, match="repo's example mobs, which stay"):
         mobs.save("street thug", entry, create=False)
     warnings = mobs.save("street thug", entry, create=True)
@@ -157,3 +168,13 @@ def test_cli(world):
     assert "street thug" in run("stat_block.py", "list").stdout
     r = run("combat_manager.py", "add-enemy", "Mastiff", "--as", "Mastiff")
     assert r.returncode == 0 and "Mastiff: ○○○○○○" in r.stdout
+
+
+def test_a_mob_without_stats_is_added_as_a_sketch(dcc_world):
+    """Adding a mob with no stats prints one line; the roll says what it needs."""
+    root = Path(__file__).resolve().parent.parent
+    env = {**os.environ, "GM_WORLD_STATE_BASE": str(Path(dcc_world))}
+    r = subprocess.run([sys.executable, str(root / "lib" / "stat_block.py"), "add", "Hollow",
+                        "--note", "a husk"], capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert r.stdout.strip() == "[SUCCESS] Added mob: Hollow (sketch)"

@@ -5,8 +5,8 @@ Handles location creation, connections, and descriptions
 """
 
 import sys
-from typing import Dict, List, Optional, Any
 from pathlib import Path
+from typing import Any
 
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -21,13 +21,28 @@ class LocationManager(EntityManager):
         super().__init__(world_state_dir)
         self.locations_file = "locations.json"
 
-    def add_location(self, name: str, position: str, aliases=None) -> bool:
+    @staticmethod
+    def _report_added(name: str, position: str, aliases, description: str) -> None:
+        """What add_location prints once the place is saved: one line, "(sketch)"
+        while it has no description (a move there says what to do)."""
+        called = f"; also called {', '.join(aliases)}" if aliases else ""
+        print(f"[SUCCESS] Added location: {name} ({position}){called}"
+              + ("" if description else " (sketch)"))
+
+    def add_location(self, name: str, position: str, description: str = "", aliases=None,
+                     another: bool = False) -> bool:
         """
-        Add a new location. `aliases`: shorter names the story will use ("the
-        Yard" for "Old Iron's Yard"), each checked (world_ids.check_alias).
+        Add a new location. `position`: where it is ("two streets down from
+        Lantern Row"); `description`: what it is like, a sentence or two. A place
+        named in the story but not yet seen can be a sketch, without one:
+        `gm-session.sh move` refuses it until it is described (set_description),
+        so a place is on disk before it is narrated. `aliases`: shorter names the story will use ("the Yard"
+        for "Old Iron's Yard"), each checked (world_ids.check_alias). A name close
+        to an existing place's (world_ids.close_names) is refused unless `another`.
         Returns True on success, False on failure
         """
-        from world_ids import WorldIds, alias_hint
+        from world_ids import WorldIds
+        description = str(description or "").strip()
         aliases = [a.strip() for a in aliases or []]
         ids = WorldIds(self.json_ops)
         errors = [e for a in aliases if (e := ids.check_alias(a, f"location:{name}"))]
@@ -46,11 +61,25 @@ class LocationManager(EntityManager):
             print(f"[ERROR] Location '{name}' already exists")
             return False
 
+        from world_ids import close_name_refusal
+        refusal = "" if another else close_name_refusal(
+            ids.close_names(name, "location"), "location", name)
+        if refusal:
+            print(f"[ERROR] {refusal}")
+            return False
+        if not another:                           # somewhere like this exists (recall.py)
+            from embedding_store import location_text
+            from recall import close_in_meaning, meaning_refusal
+            hit = close_in_meaning(self.json_ops, "location", location_text(
+                name, {"description": description, "position": position}))
+            if hit:
+                print(f"[ERROR] {meaning_refusal('location', name, hit)}")
+                return False
         # Create location data
         location_data = {
             'position': position,
             'connections': [],
-            'description': '',
+            'description': description,
             'discovered': self.get_timestamp()
         }
         if aliases:
@@ -58,11 +87,7 @@ class LocationManager(EntityManager):
 
         # Save to file
         if self._add_entity(self.locations_file, name, location_data):
-            print(f"[SUCCESS] Added location: {name} ({position})")
-            if aliases:
-                print(f"  Also called: {', '.join(location_data['aliases'])}")
-            elif alias_hint("location", name):
-                print(alias_hint("location", name))
+            self._report_added(name, position, location_data.get('aliases'), description)
             return True
         return False
 
@@ -116,26 +141,29 @@ class LocationManager(EntityManager):
 
     def set_description(self, name: str, description: str) -> bool:
         """
-        Set or update location description
+        Replace a location's description with a fuller one (a later visit, or
+        someone talking about the place), written before it is narrated. The
+        old text is printed, so nothing said before is lost by accident.
         """
-        # Validate name
-        valid, error = self.validators.validate_name(name)
-        if not valid:
+        from world_ids import WorldIds
+        description = str(description or "").strip()
+        if not description:
+            print("[ERROR] An empty description: write what the place is like")
+            return False
+        cid, error = WorldIds(self.json_ops).resolve_as(name, ("location",))
+        if error:
             print(f"[ERROR] {error}")
             return False
-
-        # Check if location exists
-        if not self._entity_exists(self.locations_file, name):
-            print(f"[ERROR] Location '{name}' not found")
-            return False
-
-        # Update description
-        if self._update_entity(self.locations_file, name, {'description': description}):
-            print(f"[SUCCESS] Updated description for {name}")
+        key = cid.partition(":")[2]
+        old = (self._get_entity(self.locations_file, key) or {}).get('description') or ''
+        if self._update_entity(self.locations_file, key, {'description': description}):
+            print(f"[SUCCESS] Updated description for {key}")
+            if old:
+                print(f"  It was: {old}")
             return True
         return False
 
-    def get_location(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_location(self, name: str) -> dict[str, Any] | None:
         """
         Get location data
         """
@@ -151,14 +179,14 @@ class LocationManager(EntityManager):
 
         return location
 
-    def list_locations(self) -> List[str]:
+    def list_locations(self) -> list[str]:
         """
         List all location names
         """
         locations = self._load_entities(self.locations_file)
         return list(locations.keys())
 
-    def get_connections(self, name: str) -> List[Dict[str, str]]:
+    def get_connections(self, name: str) -> list[dict[str, str]]:
         """
         Get connections for a location
         """
@@ -167,7 +195,7 @@ class LocationManager(EntityManager):
             return location.get('connections', [])
         return []
 
-    def create_batch(self, locations_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def create_batch(self, locations_data: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Create multiple locations in batch
 
@@ -243,6 +271,22 @@ class LocationManager(EntityManager):
         return results
 
 
+def _presence(manager, args) -> None:
+    """gm-location.sh presence <place> [<faction>=N ...] [--remove <faction>]."""
+    from factions import FactionError, FactionManager, known
+    m = FactionManager(manager.json_ops)
+    try:
+        key, here = m.set_presence(args.name, args.values, args.remove)
+    except FactionError as error:
+        print(f"[ERROR] {error}", file=sys.stderr)
+        sys.exit(1)
+    for note in m.notes:
+        print(f"[NOTE] {note}")
+    names = known(manager.json_ops)
+    print(f"{key}: " + (", ".join(f"{names.get(f, {}).get('name', f)} {n}" for f, n in here.items())
+                        or "no presence written"))
+
+
 def main():
     """CLI interface for location management"""
     import argparse
@@ -255,6 +299,11 @@ def main():
     add_parser = subparsers.add_parser('add', help='Add new location')
     add_parser.add_argument('name', help='Location name')
     add_parser.add_argument('position', help='Relative position')
+    add_parser.add_argument('description', nargs='?', default='',
+                            help='What it is like, a sentence or two; leave it out for a place '
+                                 'named but not seen yet (a move there waits for it)')
+    add_parser.add_argument('--another', action='store_true',
+                            help='another place, though the name is close to an existing one')
     add_parser.add_argument('--alias', action='append', dest='aliases',
                             help='a shorter name the story will use (repeatable)')
 
@@ -279,6 +328,12 @@ def main():
     get_parser = subparsers.add_parser('get', help='Get location info')
     get_parser.add_argument('name', help='Location name')
 
+    # Presence of factions
+    presence_parser = subparsers.add_parser('presence', help="Factions' presence at a place (0-5)")
+    presence_parser.add_argument('name', help='Location name')
+    presence_parser.add_argument('values', nargs='*', help='<faction>=N, N from 0 to 5')
+    presence_parser.add_argument('--remove', action='append', default=[], help='forget a faction here')
+
     # List locations
     subparsers.add_parser('list', help='List all locations')
 
@@ -295,7 +350,8 @@ def main():
     manager = LocationManager()
 
     if args.action == 'add':
-        if not manager.add_location(args.name, args.position, aliases=args.aliases):
+        if not manager.add_location(args.name, args.position, args.description,
+                                    aliases=args.aliases, another=args.another):
             sys.exit(1)
 
     elif args.action == 'alias':
@@ -315,6 +371,9 @@ def main():
     elif args.action == 'describe':
         if not manager.set_description(args.name, args.description):
             sys.exit(1)
+
+    elif args.action == 'presence':
+        _presence(manager, args)
 
     elif args.action == 'get':
         location = manager.get_location(args.name)

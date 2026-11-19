@@ -37,6 +37,6 @@ the same commit as the code — `okf.mjs status <files>` says which ones those a
 * [conventions/](conventions/) - 4 concepts
 * [flows/](flows/) - 5 concepts
 * [gotchas/](gotchas/) - 4 concepts
-* [modules/](modules/) - 9 concepts
+* [modules/](modules/) - 10 concepts
 * [playbooks/](playbooks/) - 2 concepts
 

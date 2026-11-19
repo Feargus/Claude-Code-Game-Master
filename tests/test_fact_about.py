@@ -26,7 +26,7 @@ def _cdir(world):
 
 def _fact(world, fid):
     facts = json.loads((_cdir(world) / "facts.json").read_text(encoding="utf-8"))
-    return next(f for items in facts.values() for f in items
+    return next(f for f in facts
                 if isinstance(f, dict) and f.get("id") == fid)
 
 
@@ -68,7 +68,7 @@ def test_aliases_count(dcc_world):
 # ---------- recording ----------
 
 def test_names_in_the_text_are_added_and_reported(dcc_world, capsys):
-    fid = NoteManager(dcc_world).add_fact("session_events", "Mordecai paid the debt",
+    fid = NoteManager(dcc_world).add_fact("Mordecai paid the debt",
                                           about=["location:bone garden"])
     assert _fact(dcc_world, fid)["about"] == ["location:Bone Garden", "npc:Mordecai"]
     out = capsys.readouterr().out
@@ -78,19 +78,19 @@ def test_names_in_the_text_are_added_and_reported(dcc_world, capsys):
 
 
 def test_not_about_drops_a_found_name(dcc_world):
-    fid = NoteManager(dcc_world).add_fact("lore", "Carl's mother named a cat after Mordecai",
+    fid = NoteManager(dcc_world).add_fact("Carl's mother named a cat after Mordecai",
                                           not_about=["Mordecai"])
     assert _fact(dcc_world, fid)["about"] == ["npc:Carl"]
 
 
 def test_no_names_no_about_field(dcc_world):
-    fid = NoteManager(dcc_world).add_fact("lore", "The rain is acid")
+    fid = NoteManager(dcc_world).add_fact("The rain is acid")
     assert "about" not in _fact(dcc_world, fid)
 
 
 def test_an_unknown_id_refuses_the_fact(dcc_world, capsys):
     before = (_cdir(dcc_world) / "facts.json").read_text(encoding="utf-8")
-    assert NoteManager(dcc_world).add_fact("lore", "x", about=["npc:Mordekai"]) == ""
+    assert NoteManager(dcc_world).add_fact("x", about=["npc:Mordekai"]) == ""
     err = capsys.readouterr().err
     assert "did you mean: npc:Mordecai" in err and "not recorded" in err
     assert (_cdir(dcc_world) / "facts.json").read_text(encoding="utf-8") == before
@@ -98,7 +98,7 @@ def test_an_unknown_id_refuses_the_fact(dcc_world, capsys):
 
 def test_set_about_adds_and_removes(dcc_world):
     nm = NoteManager(dcc_world)
-    fid = nm.add_fact("lore", "Carl sleeps")
+    fid = nm.add_fact("Carl sleeps")
     assert nm.set_about(fid, add=["Mordecai"], remove=["npc:Carl"]) == ["npc:Mordecai"]
     assert _fact(dcc_world, fid)["about"] == ["npc:Mordecai"]
     assert nm.set_about(fid, remove=["Mordecai"]) == []
@@ -136,11 +136,11 @@ def test_cli(dcc_world):
     run = lambda *a: subprocess.run(  # noqa: E731
         [sys.executable, str(root / "lib" / "note_manager.py"), *a],
         capture_output=True, text=True, cwd=str(Path(dcc_world).parent))
-    r = run("add", "lore", "Carl hums", "--about", "Bone Garden", "--not-about", "Carl")
+    r = run("add", "Carl hums", "--about", "Bone Garden", "--not-about", "Carl")
     assert r.returncode == 0, r.stderr
     assert "about: location:Bone Garden" in r.stdout
-    fid = r.stdout.split("Recorded fact ")[1].split()[0]
+    fid = r.stdout.split("Recorded fact ")[1].split()[0].rstrip(":")
     r = run("about", fid, "--add", "player")
     assert r.returncode == 0 and "location:Bone Garden, player" in r.stdout
-    r = run("add", "lore", "x", "--about", "npc:Nobody")
+    r = run("add", "Somebody hums", "--about", "npc:Nobody")
     assert r.returncode == 1 and "not recorded" in r.stderr

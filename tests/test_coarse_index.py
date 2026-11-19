@@ -27,7 +27,7 @@ def test_query_returns_pointers_not_text_blobs():
 
 def test_embedder_is_pluggable_via_config():
     assert CoarseIndex(embedder="keyword").embedder == "keyword"
-    assert CoarseIndex(embedder="all-MiniLM-L6-v2").embedder == "all-MiniLM-L6-v2"
+    assert CoarseIndex(embedder="meaning").embedder == "meaning"
 
 
 def test_query_templates_branch_by_content_type():

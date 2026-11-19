@@ -34,7 +34,7 @@ def test_describe_effects():
 
 
 def test_brief_and_check_show_effects(dcc_world):
-    fid = NoteManager(dcc_world).add_fact("plot_local", "The vault code is 4471.", secret=True)
+    fid = NoteManager(dcc_world).add_fact("The vault code is 4471.", secret=True)
     cm = ConsequenceManager(dcc_world)
     cid = cm.add_consequence(
         "The crew hears of the job", "the job goes loud",

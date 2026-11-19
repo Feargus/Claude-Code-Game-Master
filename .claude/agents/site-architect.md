@@ -48,8 +48,7 @@ Description (a few sentences of what's there), then any of: **security** (camera
 Each area is a location named `<Site> - <Area>`:
 
 ```
-bash tools/gm-location.sh add "Vey Vault - Loading Dock" "street level, under the Vey tower"
-bash tools/gm-location.sh describe "Vey Vault - Loading Dock" "Bare concrete, two shutters, a camera over each. Security: camera loop to the guard room. Enemies: 2 corp guard. HIDDEN: a maintenance hatch behind the compactor (Awareness 20)."
+bash tools/gm-location.sh add "Vey Vault - Loading Dock" "street level, under the Vey tower" "Bare concrete, two shutters, a camera over each. Security: camera loop to the guard room. Enemies: 2 corp guard. HIDDEN: a maintenance hatch behind the compactor (Awareness 20)."
 bash tools/gm-location.sh connect "Vey Vault - Loading Dock" "Vey Vault - Freight Lift" "locked: freight lift, keycard or Tech 20"
 ```
 

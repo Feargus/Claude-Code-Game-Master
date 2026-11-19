@@ -52,3 +52,18 @@ def test_conditions_take_just_the_condition(dcc_world):
     assert old_form.returncode == 1 and "Usage" in old_form.stdout
     assert _run(dcc_world, "gm-condition.sh", "remove", "grappled").returncode == 0
     assert "grappled" not in _sheet(dcc_world)["status"]["conditions"]
+
+
+def test_spending_more_than_there_is_is_refused(dcc_world):
+    """`credits -500` with less than that set the credits to 0, printed "spent 500
+    credits" and succeeded, so the GM narrated a purchase that couldn't be paid."""
+    before = _credits(dcc_world)
+    result = _run(dcc_world, "gm-player.sh", "credits", f"-{before + 1}")
+    assert result.returncode == 1
+    assert f"has {before} credits, not the {before + 1}" in result.stdout + result.stderr
+    assert "CREDITS_SPENT" not in result.stdout and _credits(dcc_world) == before
+    assert _run(dcc_world, "gm-player.sh", "credits", f"-{before}").returncode == 0   # all of it
+    assert _credits(dcc_world) == 0
+    result = _run(dcc_world, "gm-player.sh", "loot", "--credits=-5", "--items", "a key")
+    assert result.returncode == 1 and "Loot is a gain" in result.stdout + result.stderr
+    assert _credits(dcc_world) == 0 and "a key" not in json.dumps(_sheet(dcc_world).get("items", {}))

@@ -11,60 +11,67 @@ after the character exists and the player has said where and when to start.
    "place": {"name": "Lanternside", "position": "Level 40 of the Spine",
              "description": "...", "aliases": ["..."]},
    "exits": [{"name": "The Lantern noodle stall", "position": "...",
-              "path": "visible from here", "aliases": ["the Lantern"]}],
+              "description": "...", "path": "visible from here",
+              "aliases": ["the Lantern"]}],
    "npcs": [{"name": "Auntie Ro", "who": "...", "attitude": "friendly",
              "aliases": ["Ro"], "location": ["The Lantern noodle stall"],
              "present": true, "physique": "...", "big_five": "O0 C2 E1 A1 N-1",
              "voice": "..."}],
-   "plot": {"name": "The Writ", "type": "main", "description": "...",
+   "plot": {"name": "The Writ", "kind": "main", "description": "...",
             "hook": "Dekker's crew walks into the market with a writ ...",
-            "npcs": ["Dekker", "Seraphine Halcyon-Vey"], "locations": ["The Chrome"]},
+            "owner": "Dekker", "goal": "clear the market by the end of the week",
+            "involves": ["Dekker", "Seraphine Halcyon-Vey", "The Chrome"]},
    "developments": [...]}
 
 - A place or NPC that already exists (an import made it) is given by its name
-  alone and used as it is. A new place needs a `position` (an exit's defaults to
-  "next to <the place>"); a new NPC needs `who`, and is usually found in the
-  place unless `location` or `"nowhere": true` says otherwise. NPCs are in the
+  alone and used as it is; a place with no description yet needs one given. A new place, exits included, needs a `description`
+  (what it is like, a sentence or two: on disk before it is narrated) and a
+  `position` (an exit's defaults to "next to <the place>"). A new NPC needs
+  `who`, and is usually found in the place unless `location` or
+  `"nowhere": true` says otherwise. NPCs are in the
   scene unless `"present": false`. Any sheet text field can be given too
   (sheet.TEXT_FIELDS: physique, style, presence, big_five, voice, tells, want,
-  fears, ...). `attitude`, how they regard the player, becomes a fact they hold.
-- The plot is required: every campaign starts with at least one. Its `hook`, the
-  problem that won't wait, becomes its first beat, so STORY THREADS carries it
-  on from there. Its `npcs` and `locations` that have no record yet are the
-  horizon: named, and not built until play walks there. An existing plot can be
-  given by name ("plot": "<name>", plus "hook" next to it).
+  fears, ...). `attitude`, their attitude towards the player as one or more adjectives
+  ("wary", "fond, exasperated"; leave it out if they have none), becomes a fact
+  they hold. A new NPC or place whose name is close to an existing one is
+  refused unless the entry has `"another": true`.
+- The plot is required: every campaign starts with at least one. Its `name` is a
+  short key (plot_manager.check_key); its `hook`, the problem that won't wait, is
+  where it stands at the start. `owner` and `goal` say whose goal it is, if
+  anyone's; `kind` is one of schemas.PLOT_KINDS (default main). `involves` names
+  people and places that exist already, sketches included (/new-game step 2c);
+  those still sketches are the horizon: named, and not built until play walks
+  there. An existing plot can be given by name ("plot": "<name>", plus "hook").
 - `developments`: the premise, the secrets, the antagonist's clock and any
   consequences, in the form /gm world takes (world_tick.py): each a fact with its
   holders (none given: nobody knows it), optionally a consequence and a clock.
-  Clocks link to the opening's plot unless they name another.
+  Each belongs to the opening's plot unless it names another ("plot").
 """
 
 import contextlib
 import io
-import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
-from sheet import TEXT_FIELDS, name as sheet_name
-
-PLAY_BEGUN = "### Session Ended:"  # what session-log.md holds once a session has ended
+from sheet import TEXT_FIELDS
+from sheet import name as sheet_name
 
 
 class OpeningError(ValueError):
     """The opening can't be set up. Nothing of it was kept."""
 
 
-def _as_list(value) -> List[Any]:
+def _as_list(value) -> list[Any]:
     if value is None:
         return []
     return [value] if isinstance(value, (str, dict)) else list(value)
 
 
-def _entry(raw) -> Dict[str, Any]:
+def _entry(raw) -> dict[str, Any]:
     """A place or NPC given as a bare name or as an object."""
     return raw if isinstance(raw, dict) else {"name": raw}
 
@@ -114,27 +121,23 @@ class Opening:
         overview = self.json_ops.load_json("campaign-overview.json") or {}
         if overview.get("opened"):
             raise OpeningError(f"This campaign's opening was set up already ({overview['opened']}).")
-        log = self.campaign_dir / "session-log.md"
-        if log.exists() and PLAY_BEGUN in log.read_text(encoding="utf-8"):
-            raise OpeningError("Play has begun here (a session has ended); the opening "
-                               "is for a new campaign.")
         if not sheet_name(self.json_ops.load_json("character.json") or {}):
             raise OpeningError("Create the character first (/create-character): the "
                                "opening is built for them.")
 
     # ---------- all or nothing ----------
 
-    def _snapshot(self) -> Dict[str, bytes]:
+    def _snapshot(self) -> dict[str, bytes]:
         return {p.name: p.read_bytes() for p in self.campaign_dir.iterdir() if p.is_file()}
 
-    def _restore(self, snapshot: Dict[str, bytes]) -> None:
+    def _restore(self, snapshot: dict[str, bytes]) -> None:
         for p in self.campaign_dir.iterdir():
             if p.is_file() and p.name not in snapshot:
                 p.unlink()
         for name, data in snapshot.items():
             (self.campaign_dir / name).write_bytes(data)
 
-    def apply(self, spec: Dict[str, Any]) -> Dict[str, Any]:
+    def apply(self, spec: dict[str, Any]) -> dict[str, Any]:
         """Set up the opening. Returns what it made (see `summary`). Raises
         OpeningError and keeps nothing if any part is malformed or refused:
         every campaign file goes back to what it was."""
@@ -165,23 +168,33 @@ class Opening:
         cid, _ = WorldIds(self.json_ops).resolve_as(name, (kind,))
         return cid.partition(":")[2]
 
-    def _place(self, raw, near: str = None) -> Tuple[str, bool]:
+    def _place(self, raw, near: str = None) -> tuple[str, bool]:
         """(key, created) for a place: an existing one, or a new one made with
         gm-location.sh add's function."""
         from location_manager import LocationManager
         entry = _entry(raw)
         name = str(entry["name"]).strip()
         key = self._resolve(name, "location")
+        description = str(entry.get("description") or "").strip()
         if key:
+            stored = (self.json_ops.load_json("locations.json") or {}).get(key) or {}
+            if not str(stored.get("description") or "").strip():
+                if not description:
+                    raise OpeningError(f"'{key}' has no description yet: give one, "
+                                       f"{{\"name\": \"{key}\", \"description\": \"...\"}}.")
+                LocationManager(self.wsd).set_description(key, description)
             return key, False
         position = entry.get("position") or (f"next to {near}" if near else "")
         if not position:
             raise OpeningError(f"The new place '{name}' needs a \"position\": where it is.")
+        if not description:
+            raise OpeningError(f"The new place '{name}' needs a \"description\": what it is "
+                               f"like, a sentence or two.")
         locations = LocationManager(self.wsd)
-        if not locations.add_location(name, position, aliases=_as_list(entry.get("aliases"))):
+        if not locations.add_location(name, position, description,
+                                      aliases=_as_list(entry.get("aliases")),
+                                      another=bool(entry.get("another"))):
             raise OpeningError(f"The place '{name}' was refused")
-        if entry.get("description"):
-            locations.set_description(name, entry["description"])
         return name, True
 
     def _connect(self, a: str, b: str, path: str) -> None:
@@ -209,39 +222,46 @@ class Opening:
                   for key in (flag, flag.replace("-", "_")) if entry.get(key)}
         if not NPCManager(self.wsd).create_npc(
                 name, entry["who"], entry.get("attitude"), locations=usual,
-                nowhere=nowhere, aliases=_as_list(entry.get("aliases")), fields=fields):
+                nowhere=nowhere, aliases=_as_list(entry.get("aliases")), fields=fields,
+                another=bool(entry.get("another"))):
             raise OpeningError(f"The NPC '{name}' was refused")
         return name
 
-    def _plot(self, spec: Dict[str, Any]) -> Tuple[str, str]:
-        """(plot key, hook): the opening's plot, made or found, with the hook as
-        its first beat."""
-        from plot_manager import PlotManager
+    def _plot(self, spec: dict[str, Any]) -> tuple[str, str]:
+        """(plot key, hook): the opening's plot, made or found; the hook is where it
+        stands at the start."""
+        from plot_manager import PlotError, PlotManager
         plots = PlotManager(self.wsd)
         plot = spec["plot"]
-        if isinstance(plot, str):
-            key, hook = plots._find_entity_name(plots.plots_file, plot), spec["hook"]
-            if not key:
-                raise OpeningError(f"No plot '{plot}'")
-        else:
-            key, hook = str(plot["name"]).strip(), plot["hook"]
-            if not plots.add_plot(key, plot.get("type") or "main", plot.get("description") or "",
-                                  status="active", objectives=_as_list(plot.get("objectives")),
-                                  npcs=_as_list(plot.get("npcs")),
-                                  locations=_as_list(plot.get("locations")),
-                                  first_event=str(hook).strip()):
-                raise OpeningError(f"The plot '{key}' was refused")
-            return key, str(hook).strip()
-        plots.update_plot(key, str(hook).strip())
-        return key, str(hook).strip()
+        try:
+            if isinstance(plot, str):
+                key, hook = plots.key(plot), str(spec["hook"]).strip()
+                plots.set_stands(key, hook)
+                return key, hook
+            hook = str(plot["hook"]).strip()
+            key = plots.add(plot["name"], plot.get("description") or hook,
+                            owner=plot.get("owner") or "", goal=plot.get("goal") or "",
+                            kind=plot.get("kind") or "main",
+                            involves=_as_list(plot.get("involves")), stands=hook,
+                            another=bool(plot.get("another")))
+        except PlotError as error:
+            raise OpeningError(str(error)) from error
+        return key, hook
 
-    def horizon(self, plot_key: str) -> List[str]:
-        """The plot's people and places that have no record yet."""
+    def horizon(self, plot_key: str) -> list[str]:
+        """The plot's people and places that are still sketches: a person with no
+        look or personality, a place with no description."""
         plot = (self.json_ops.load_json("plots.json") or {}).get(plot_key) or {}
-        return ([n for n in plot.get("npcs") or [] if not self._resolve(n, "npc")]
-                + [n for n in plot.get("locations") or [] if not self._resolve(n, "location")])
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        places = self.json_ops.load_json("locations.json") or {}
+        out = []
+        for cid in plot.get("involves") or []:
+            kind, _, key = cid.partition(":")
+            if kind == "npc" and not (npcs.get(key, {}).get("look") or npcs.get(key, {}).get("personality")) or kind == "location" and not str(places.get(key, {}).get("description") or "").strip():
+                out.append(key)
+        return out
 
-    def _apply(self, spec: Dict[str, Any]) -> Dict[str, Any]:
+    def _apply(self, spec: dict[str, Any]) -> dict[str, Any]:
         from scene_manager import SceneManager
         from session_manager import SessionManager
         from time_manager import TimeManager, describe, parse_time
@@ -270,9 +290,9 @@ class Opening:
         developments = [dict(d) for d in spec.get("developments") or [] if isinstance(d, dict)]
         if len(developments) != len(spec.get("developments") or []):
             raise OpeningError("Every development is a JSON object")
-        for d in developments:
-            if isinstance(d.get("clock"), dict):
-                d["clock"] = {"linked_plot": plot, **d["clock"]}
+        for d in developments:                # they belong to the opening's plot
+            if not d.get("plot"):
+                d["plot"] = plot
         try:
             applied, written = WorldTick(self.wsd).record(developments)
         except ValueError as error:
@@ -289,7 +309,7 @@ class Opening:
                 "clocks": written["clocks"], "consequences": written["consequences"]}
 
 
-def summary(result: Dict[str, Any]) -> str:
+def summary(result: dict[str, Any]) -> str:
     lines = ["[SUCCESS] The opening is set up. Narrate the first scene from this:"]
     if result["time"]:
         lines.append(f"  Time: {result['time']}")
@@ -315,14 +335,15 @@ def main() -> int:
     from cli_output import emit, emit_error, strip_json_flag, wants_json
     json_mode = wants_json()
     args = strip_json_flag(sys.argv[1:])
-    if len(args) != 1:
-        print("Usage: gm-session.sh opening '<json>'   (the fields: lib/opening.py)",
+    if len(args) > 1:
+        print("Usage: gm-session.sh opening <<'EOF' (the JSON) EOF   (the fields: lib/opening.py)",
               file=sys.stderr)
         return 1
+    from cli_output import json_input
     try:
-        spec = json.loads(args[0])
+        spec = json_input(args[0] if args else None, "the opening")
     except ValueError as error:
-        return emit_error(f"The opening isn't valid JSON: {error}", json_mode=json_mode)
+        return emit_error(str(error), json_mode=json_mode)
     try:
         result = Opening().apply(spec)
     except OpeningError as error:

@@ -34,27 +34,29 @@ is named in `world-state/active-campaign.txt`.
 
 ```
 <campaign-name>/
-├── campaign-overview.json   # Campaign settings, player position, campaign_rules
+├── campaign-overview.json   # Campaign settings, player position
 ├── character.json           # Player character sheet (FLAT shape)
 ├── npcs.json                # All NPCs
 ├── locations.json           # All locations
-├── facts.json               # World facts by category
+├── factions.json            # Factions, by id (factions.py, gm-faction.sh)
+├── facts.json               # World facts, one list
 ├── plots.json               # Plot hooks and quests
 ├── items.json               # Items (from imports)
 ├── consequences.json        # Pending/resolved events + firing provenance
-├── ruleset.json             # World Kit — how this world plays
-├── world-bible.json         # Fidelity spine (voice, factions, geography, systems)
-├── rules.md                 # Optional long-form rules prose (ruleset.rules_doc)
+├── ruleset.json             # World Kit — how this world plays, with its own rules
+├── rule-state.json          # Where the world's own rules stand, per holder (world_rules.py)
+├── rules.log                # Every change of those values; per machine, not in git
+├── world-bible.json         # Fidelity spine (voice, glossary, geography)
 ├── session-log.md           # Session history — the canonical ledger
 ├── threat-clocks.json       # Named pressure clocks (optional)
-├── campaign-memory.json     # Recall index, rebuilt on save
+├── embeddings.npz           # Vectors for recall by meaning; derived, not in git (embedding_store.py)
 ├── chronicler.json          # Locked art style + in-world artist
 ├── world-tick-log.json      # Between-session tick provenance
 ├── loremaster-cache.json    # Per-location grounded briefs
 ├── saves/                   # Snapshot saves
 ├── fallen/                  # Archived sheets of dead PCs
 ├── images/                  # Generated scene images + _gen-log.jsonl
-├── chunks/ · vectors/       # RAG source chunks and the ChromaDB index
+├── chunks/ · vectors/       # the book's pieces (chunks.json) and their vectors (book.npz)
 └── extracted/               # Legacy census-import staging
 ```
 
@@ -86,11 +88,6 @@ Most of these are created lazily — a campaign that has never been illustrated 
   "current_character": "string (character name)",
   "session_count": 0,
 
-  "campaign_rules": {
-    "description": "…runs on its own systems — follow them exactly.",
-    "signature_systems": ["the book's distinctive mechanics"],
-    "tone": "string"
-  },
   "story_spine": {"arc": ["ordered plot names"], "through_line": "string"},
   "preferences": {"action_menu": true, "rag_inspiration": false},
   "scene": {"location": "string", "present": ["NPC keys in the scene"]},
@@ -98,11 +95,8 @@ Most of these are created lazily — a campaign that has never been illustrated 
 }
 ```
 
-**`campaign_rules` is the block that reaches the model verbatim and untruncated** every
-beat — it is where a world's signature systems must live to have any effect. Putting them
-in `ruleset.json` instead is a silent no-op for narration. See
-[game core and World Kit](modules/game-core-and-world-kit.md). Worlds are free to add
-their own keys here (the shipped DCC fixture carries `viewer_stats`, `pending_boxes`, and
+The world's own rules are not here: they are `ruleset.json`'s (see below). Worlds are
+free to add their own keys here (the shipped DCC fixture carries `viewer_stats`, `pending_boxes`, and
 `pending_interview_topics`).
 
 **The opening leaves no record of its own** except `opened`: `gm-session.sh opening`
@@ -235,6 +229,7 @@ A dictionary keyed by location name.
       {"to": "Other Location", "path": "rocky trail"}
     ],
     "discovered": "ISO timestamp",
+    "presence": {"<faction id>": 4, "<another>": 0},
     "notes": "optional string",
     "source": "optional string",
     "background": true,
@@ -245,6 +240,11 @@ A dictionary keyed by location name.
 
 Notes:
 
+- **`presence`**: how much each faction is around here, 0 (known not to be there: an
+  enemy's headquarters) to 5 (they run it); a faction not listed was never written
+  (`gm-location.sh presence`, `lib/factions.py`). A faction present (1 or more) gets a
+  card in the scene; at 4 or 5 a fact recorded here says "they have eyes here", a hint
+  for `gm-note.sh tell`, never automatic.
 - **`low_confidence: true` marks a reconcile stub** (`location_reconcile`): the source
   referenced this place from a plot, an NPC tag, or a connection, but no extractor
   produced a node for it, so the import created one and wired it to the most-connected
@@ -275,24 +275,21 @@ Dungeon rooms (stored in `locations.json`) may include:
 
 ## facts.json
 
-A dictionary with category keys, each containing an array of fact **objects**.
+One list of fact **objects**, in the order they were recorded (`lib/facts.py`: every
+script reads and writes the file through it). Until 2026-11-16 the file held one list per
+category; nothing read the categories any more, and a file in that form is refused.
 
 ```json
-{
-  "world_building": [
-    {"id": "f1", "fact": "The kingdom has been at peace for 100 years",
-     "game_time": "2187-10-23T04:30", "timestamp": "2026-01-28T21:50:30Z"}
-  ],
-  "session_events": [
-    {"id": "f2", "fact": "The party met the king on day 1", "about": ["npc:King Harald"],
-     "holders": ["player", "npc:King Harald"], "timestamp": "..."}
-  ]
-}
+[
+  {"id": "f1", "fact": "The kingdom has been at peace for 100 years",
+   "game_time": "2187-10-23T04:30", "timestamp": "2026-01-28T21:50:30Z"},
+  {"id": "f2", "fact": "The party met the king on day 1", "about": ["npc:King Harald"],
+   "holders": ["player", "npc:King Harald"], "timestamp": "..."}
+]
 ```
 
-- `id`: `f1`, `f2`, … unique across all categories, so other records can point to a fact.
-  `gm-note.sh` numbers any fact without one (older facts, or facts the import scripts
-  write directly), oldest first, the next time it records a fact.
+- `id`: `f1`, `f2`, … counted up, so other records can point to a fact and the list is in
+  id order.
 - `game_time`: the in-game time when the fact was recorded, copied from
   `campaign-overview.json`. Missing on facts from before it existed.
 - `timestamp`: the real-world time it was recorded.
@@ -313,24 +310,22 @@ A dictionary with category keys, each containing an array of fact **objects**.
   truth is one step away; a wrong fact with no truth behind it can't be pointed at.
   `fact_text()` (`lib/note_manager.py`) marks such text `[WRONG; the truth is fN]` /
   `[PARTIAL; fuller: fN]`, a fact nobody holds (`holders: []`) `[SECRET]`, and one
-  that others hold but not the player (nor `public`) `[HIDDEN FROM PLAYER]`, in KEY FACTS, the NPC lists, long-term memory and search; the
+  that others hold but not the player (nor `public`) `[HIDDEN FROM PLAYER]`, in the brief, the NPC lists, long-term memory and search; the
   brief lists what the player holds wrongly or partly next to the truth.
   `gm-note.sh … --truth --version-of` sets them at recording, `gm-note.sh truth <id>
   wrong|partial|true [--version-of <id> | --no-version]` later.
 
 **Ids for what a fact is about or held by** (`lib/world_ids.py`, for `about` and the coming
-`holders`): `player`, `npc:<key>`, `location:<key>`, and the rungs `street` and
-`public`. The stored id is the exact key (`npc:Auntie Ro`); input may differ in case,
-punctuation, titles or use an alias, and the player character's name resolves to `player`.
-Unknown ids are refused with close matches. Faction and item ids come with those systems.
+`holders`): `player`, `npc:<key>`, `location:<key>`, `faction:<id>`, and the rungs `street` and
+`public`. The stored id is the exact key (`npc:Auntie Ro`, `faction:lull`); input may differ in case,
+punctuation, titles or use an alias (a faction is also found by its name), and the player character's name resolves to `player`.
+Unknown ids are refused with close matches. Item ids come with items that have ids.
 `python lib/world_ids.py list` prints every id; `check <id>…` tests some.
 
-Bare strings are tolerated on read (`lib/campaign_memory.py:60` falls back to `str(it)`)
-but managers write the object form.
+Managers write the object form.
 
-**Category names are load-bearing.** `campaign_memory` classifies a fact as book-canon
-only when its category is `plot_world` or `world_building`; everything else is filed as
-our-story. See [campaign memory](modules/campaign-memory.md).
+Categories are provisional; nothing depends on their names any more (KEY FACTS and the
+keyword recall that read them are gone). Recall by meaning: [recall](modules/campaign-memory.md).
 
 ### Common Categories
 
@@ -386,10 +381,8 @@ Tracks events that will trigger in the future.
   ],
 
   "provenance": [
-    {"id": "…", "consequence": "…", "reason": "why it matched",
-     "ctx_key": "location|time|date", "fired_at": "ISO timestamp"}
-  ],
-  "_snapshot": {"active": [], "resolved": []}
+    {"id": "…", "consequence": "…", "reason": "why it matched", "fired_at": "ISO timestamp"}
+  ]
 }
 ```
 
@@ -416,19 +409,18 @@ a later learning until it is resolved.
 A `start_clock` effect runs however the consequence fires (scene check, event, or by hand),
 after `consequences.json` is saved; a clock of that name that already exists is left as it
 is. The fired consequence comes back with `effects_done` (what happened, in words; not
-saved). `gm-consequence.sh rollback` does not remove a clock an effect started.
+saved).
 
 A `tell` effect (`--tells <fact id> --to <holder>`, checked when added) adds holders to
 the fact through `gm-note.sh tell`'s own path, so their `on_learn` consequences fire too
 and are listed in `effects_done`. Someone who already knows learns nothing, which is what
-ends a chain. Rollback doesn't remove the holders.
-Both `kill` commands also record the death as a fact
-(category `session_events`). A dead NPC carries `status: "dead"`, `cause`, `died_at` and
+ends a chain.
+Both `kill` commands also record the death as a fact. A dead NPC carries `status: "dead"`, `cause`, `died_at` and
 `died_game_time`.
 
-A fired consequence also carries `last_fired_key` (the scene key that fired it) and stays
-in `active` — firing is not resolving. `_snapshot` is the **one-beat** rollback buffer,
-overwritten by the next tick. See [the living world](modules/living-world.md).
+A fired consequence carries `fired` (`reason`, `at`, `game_time`, and `fact` when a fact
+set it off) and stays in `active` until it is resolved; it matches no trigger any more.
+`gm-consequence.sh rearm` removes `fired`. See [the living world](modules/living-world.md).
 
 **Structured triggers** (`triggers`) are additive and
 optional. Entries written before 2026-11-06 store a single trigger as top-level
@@ -549,9 +541,9 @@ See [the player character sheet](modules/player-character.md).
 }
 ```
 
-`xp` accepts a bare integer and is normalized to `{current, next_level}` on load. Kit
-vitals a schema has never heard of (`water`, `heat`, `corruption`) live at the top level
-and survive the flat↔open round trip.
+`xp` accepts a bare integer and is normalized to `{current, next_level}` on load. The
+world's own rules (Bleed, a sea level) are not on the sheet: their values are in
+`rule-state.json`.
 
 ---
 
@@ -591,18 +583,17 @@ items otherwise stay mixed in — do not treat a legacy save as a whole-world re
     "campaign-overview.json": {},
     "npcs.json": {},
     "locations.json": {},
-    "facts.json": {},
+    "facts.json": [],
     "plots.json": {},
     "items.json": {},
     "consequences.json": {},
     "ruleset.json": {},
     "world-bible.json": {},
     "threat-clocks.json": {},
-    "campaign-memory.json": {},
     "chronicler.json": {},
     "world-tick-log.json": {},
     "combat_state.json": {},
-    "rules.md": "text...",
+    "rule-state.json": {},
     "session-log.md": "text...",
     "fallen/hero.json": {},
     "characters": { "character": {} }
@@ -627,23 +618,40 @@ how a world plays without baking in D&D 5e.
 
 ```json
 {
-  "name": "Dungeon Crawler Carl",
-  "stat_schema": { "vitals": ["hp"] },
-  "progression": { "model": "milestone | xp-levels | resource-axis", "...": "model config (thresholds/tiers/resource)" },
-  "systems": [ {"primitive": "named_track|price_roll|reaction_roll|guarded_payoff", "name": "Menace", "config": {}} ],
+  "name": "Idle Cycles",
   "active_agents": ["npc-builder"],
-  "rules_doc": "rules.md"
+  "rules": [
+    {"name": "Bleed", "block": "counter", "held_by": "player", "known": true,
+     "range": [0, 6], "start": 0,
+     "summary": "what it is about", "when": "when the GM changes it", "notes": "the rest",
+     "results": [{"from": 2, "text": "what happens"}, {"from": 0, "to": 1, "text": "only in 0–1"}]}
+  ],
+  "plain_rules": ["Credits are zeds (Lull scrip). A meal costs 1."]
 }
 ```
 
-- `systems` (optional) instantiates the `game_core` signature-system primitives
-  (`WorldKit.systems()`); each rides scene context as an executable ROLL-these
-  block. Written by `book_bible.write_systems` (`gm-extract.sh write-systems`).
+- `rules` and `plain_rules` are written by `gm-rule.sh define` and `plain`
+  (`lib/world_rules.py`); every rule is checked when it is defined.
+- The attributes are not set here: every campaign uses the nine in `lib/skill_contest.py`.
+  Growth is the same for every campaign (`lib/growth.py`).
 
-- The attributes are not set here: every campaign uses the nine in `lib/skill_contest.py`. `stat_schema.vitals` names the counters.
-- `progression.model` selects one of the core's three models; its config
-  (`thresholds` for xp-levels, `resource`+`tiers` for resource-axis) is supplied here.
-- World-flavor systems (loot boxes, viewers) stay in campaign-overview `campaign_rules`.
+## rule-state.json
+
+Where each of the world's own rules stands, per holder (the facts' ids, plus
+`world`; in a campaign without `factions.json`, `faction:<id>` names a faction of the bible's
+older factions graph). A value is stored once it is set or
+changes; until then it is the rule's `start`.
+
+```json
+{
+  "player": {"Bleed": {"value": 4, "on": ["from 2", "from 4"], "since": "2089-08-15T22:10"}},
+  "faction:lull": {"Patience": {"value": 1, "on": ["from 0 to 1"], "known": true}},
+  "location:The Middens": {"Heat": {"value": 4, "on": ["from 3"]}}
+}
+```
+
+`on` lists the results on now, `since` the game time of the last change, `known` is
+there only when one holder's value differs from the rule's.
 
 ## world-bible.json (Book Bible)
 
@@ -656,10 +664,8 @@ import; captures what makes a book feel like itself.
   "voice": { "style": "string", "vocab": ["..."], "sample_passages": ["..."] },
   "tone": "string",
   "themes": ["..."],
-  "factions":  { "nodes": [{"id","name"}], "edges": [{"from","to","relation"}] },
   "geography": { "nodes": [{"id","name"}], "edges": [{"from","to","adjacency"}] },
   "timeline": ["..."],
-  "signature_systems": ["..."],
   "index": {
     "npcs":      [{"name": "string", "note": "one sentence"}],
     "locations": [{"name": "string", "note": "one sentence"}],
@@ -677,8 +683,41 @@ bibles); when present, `validate_bible` requires the four buckets to be lists of
 feeds the RAG coarse index (`lib/rag/coarse_index.py`) — it no longer writes into the
 bible.
 
-Required: name, voice, tone, themes, factions (graph), geography (graph),
-signature_systems. The bible auto-generates the World Kit ruleset + campaign_rules.
+Required: name, voice, tone, themes, geography (graph). The factions and their ties are in
+`factions.json`; an older bible lists them as a `factions` graph, and in a campaign without
+`factions.json` those are its factions. The bible
+drafts the World Kit ruleset; the world's own rules are added to it with `gm-rule.sh
+define`.
+
+## factions.json
+
+The campaign's factions (`lib/factions.py`, `gm-faction.sh`), keyed by a short id that
+never changes: `faction:<id>` is how facts, triggers and world rules name it. The record
+only describes the faction; its goal is a plot it owns, its secrets are facts it holds,
+its own numbers are world rules held by factions.
+
+```json
+{
+  "lull": {"name": "Lull Corporation", "aliases": ["Lull"], "kind": "megacorp",
+           "description": "one or two sentences",
+           "impulses": ["what drives it"], "values": ["what it stands for or never does"],
+           "leader": "npc:<key>", "successor": "npc:<key>",
+           "assets": [{"name": "The Mesh", "note": "one sentence"}], "tags": ["corp"],
+           "ties": {"psm": "how Lull sees PSM, one line"}}
+}
+```
+
+Only `name` and `description` are required. A leader or successor is also a member. `ties`
+(`gm-faction.sh tie`): the history with another faction as this one sees it; the number
+is the Relation (a world rule held by the pair).
+
+**Membership** is on the NPC's sheet, `identity.factions`: `[{"id": "lull"}, {"id": "coven",
+"secret": true}]` (`gm-faction.sh join` / `leave`, `gm-npc.sh create --faction`). An NPC knows
+a fact they hold or one held by a faction they belong to (`factions.knows`); joining fires
+their `on_learn` consequences for the faction's facts, and what a faction learns its living
+members learn. `secret`: only the faction's members know of it (marked on the card; anyone
+else finding out is a fact). The first `gm-faction.sh create` in a campaign
+whose bible lists factions as `nodes` copies those in first, so values they hold carry over.
 
 A `confirmed: false` flag on a freshly auto-drafted bible holds the world for human review;
 **an absent flag counts as confirmed**, so hand-authored and legacy bibles are playable

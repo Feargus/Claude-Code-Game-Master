@@ -65,13 +65,17 @@ def test_a_clashing_alias_refuses_the_npc(world, capsys):
     assert "Ishbel Rue" not in json.loads((camp / "npcs.json").read_text())
 
 
-def test_the_nudge_only_for_names_of_several_words(world, capsys):
+def test_creating_prints_one_line_with_the_aliases(world, capsys):
+    """Creating says what was made, in one line, "(sketch)" while no look or
+    personality is given; hints wait until the record is first used (2026-11-15)."""
     ws, _ = world
     manager = NPCManager(ws)
-    manager.create_npc("Sister Lacuna", "a scrub-priest", "hostile", nowhere=True)
-    assert 'gm-npc.sh alias "Sister Lacuna"' in capsys.readouterr().out
-    manager.create_npc("Tally", "a sentry", "friendly", nowhere=True)
-    assert "alias" not in capsys.readouterr().out
+    manager.create_npc("Sister Lacuna", "a scrub-priest", nowhere=True, aliases=["Lacuna"])
+    out = capsys.readouterr().out.strip().splitlines()
+    assert out == ["[SUCCESS] Created NPC: Sister Lacuna - a scrub-priest; usually found: "
+                   "no usual place; also called Lacuna (sketch)"]
+    manager.create_npc("Tally", "a sentry", nowhere=True, fields={"physique": "small"})
+    assert "(sketch)" not in capsys.readouterr().out
 
 
 def test_add_and_remove_aliases_later(world):
@@ -94,10 +98,10 @@ def test_places_get_aliases_too(world, capsys):
     ops = JsonOperations(str(camp))
     change_aliases(ops, "location", "Old Iron's Yard", add=["the Yard"])
     assert _ids(camp).mentioned("Priests came to the Yard at dawn.") == ["location:Old Iron's Yard"]
-    assert LocationManager(ws).add_location("The Mercy Line stairwells", "down from Lanternside",
+    assert LocationManager(ws).add_location("The Mercy Line stairwells", "down from Lanternside", "Wet stairs.",
                                             aliases=["the Mercy Line"])
-    assert "Also called: the Mercy Line" in capsys.readouterr().out
-    assert not LocationManager(ws).add_location("Yard Two", "nearby", aliases=["the Yard"])
+    assert "also called the Mercy Line" in capsys.readouterr().out
+    assert not LocationManager(ws).add_location("Yard Two", "nearby", "A yard.", aliases=["the Yard"])
     assert "already names location:Old Iron's Yard" in capsys.readouterr().out
 
 
@@ -121,6 +125,36 @@ def test_an_alias_the_name_check_already_finds_is_explained(world, capsys):
     """In play the GM gave 'Saint Ayo's' the alias "Ayo's" and was told it was the
     place's 'own name', which made no sense; titles are ignored, so it is found."""
     ws, camp = world
-    assert not LocationManager(ws).add_location("Saint Ayo's", "a clinic", aliases=["Ayo's"])
+    assert not LocationManager(ws).add_location("Saint Ayo's", "a clinic", "A clinic.", aliases=["Ayo's"])
     out = capsys.readouterr().out
     assert "needs no alias: the name check already finds it as 'Saint Ayo's'" in out
+
+
+def test_a_new_name_close_to_an_existing_one_is_refused_unless_another(world, capsys):
+    """The same person under a second name ("Ilse Varga" beside "Director Ilse
+    Varga") splits what is known about them, and a record can't be deleted. So
+    a close name is refused; --another says it really is someone else."""
+    from lib.world_ids import WorldIds
+    ws, camp = world
+    manager = NPCManager(ws)
+    assert manager.create_npc("Director Ilse Varga", "head of Asset Recovery")
+    assert manager.create_npc("Mama Seo", "runs the noodle counter", aliases=["Seo"])
+    capsys.readouterr()
+    ids = WorldIds(manager.json_ops)
+    assert ids.close_names("Ilse Varga", "npc") == ["npc:Director Ilse Varga"]
+    assert ids.close_names("Director Ilse Vargas", "npc") == ["npc:Director Ilse Varga"]
+    assert ids.close_names("Grandma Seo", "npc") == ["npc:Mama Seo"]       # through the alias
+    assert ids.close_names("Juniper", "npc") == [] and ids.close_names("Ilse", "location") == []
+    assert not manager.create_npc("Ilse Varga", "a Hesper director")
+    out = capsys.readouterr().out
+    assert "close to npc:Director Ilse Varga" in out and "--another" in out
+    assert 'gm-npc.sh show "Director Ilse Varga"' in out
+    assert "Ilse Varga" not in json.loads((camp / "npcs.json").read_text())
+    assert manager.create_npc("Ilse Varga", "her niece", another=True)
+    assert manager.create_npc("Juniper", "a Lark-series android")
+    places = LocationManager(ws)
+    assert places.add_location("The Lantern noodle stall", "on Lantern Row", "A stall.")
+    capsys.readouterr()
+    assert not places.add_location("The Lantern", "on Lantern Row", "A stall.")
+    assert "close to location:The Lantern noodle stall" in capsys.readouterr().out
+    assert places.add_location("The Lantern", "on Lantern Row", "A bar.", another=True)

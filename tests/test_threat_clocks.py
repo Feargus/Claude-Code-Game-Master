@@ -2,14 +2,13 @@
 
 import json
 from datetime import timedelta
-
-import pytest
 from pathlib import Path
 
-from lib.threat_clocks import ThreatClockManager
-from lib.session_manager import SessionManager
-from lib.time_manager import TimeManager, parse_time
+import pytest
 
+from lib.session_manager import SessionManager
+from lib.threat_clocks import ThreatClockManager
+from lib.time_manager import TimeManager, parse_time
 
 
 def _active(dcc_world):
@@ -58,8 +57,7 @@ def test_clocks_surface_in_session_context(dcc_world):
     ThreatClockManager(dcc_world).add_clock("Floor Collapse", segments=4, advance_on="event")
     ThreatClockManager(dcc_world).advance("Floor Collapse", 2)
     ctx = SessionManager(dcc_world).get_full_context()
-    assert "THREAT CLOCKS" in ctx
-    assert "Floor Collapse" in ctx and "2/4" in ctx
+    assert "clock Floor Collapse: 2/4" in ctx           # in no plot
 
 
 def _start_time(dcc_world, text="2187-10-26 10:00"):
@@ -144,7 +142,7 @@ def test_context_shows_when_a_time_clock_is_due(dcc_world):
     _start_time(dcc_world)
     ThreatClockManager(dcc_world).add_clock("Siege", segments=4)
     ctx = SessionManager(dcc_world).get_full_context()
-    assert "Siege: [○○○○] 0/4, due 10:00, Tuesday, 30 October 2187" in ctx
+    assert "clock Siege: 0/4, due 10:00, Tuesday, 30 October 2187" in ctx
 
 
 def test_a_clock_needs_a_segment_and_a_known_mode(dcc_world):
@@ -180,3 +178,52 @@ def test_clocks_are_listed_most_urgent_first():
     order = [name for name, _ in ThreatClockManager.by_urgency(clocks)]
     assert order == ["Raid", "Slow scrub", "Foreclosure", "Tracker", "Vendetta"]
     assert ThreatClockManager.render(clocks).splitlines()[0].startswith("Raid:")
+
+
+def test_adding_a_clock_twice_is_refused_and_keeps_its_progress(dcc_world):
+    """`gm-clock.sh add` with an existing name silently replaced the clock, so a
+    clock at 3/4 was back at 0/4. The name is compared without regard to case."""
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Hunt", 4, advance_on="event")
+    m.advance("Hunt", 3)
+    with pytest.raises(ValueError, match="exists already"):
+        m.add_clock("hunt", 6, advance_on="event")
+    assert m.get_clocks() == {"Hunt": {"current": 3, "max": 4, "advance_on": "event"}}
+
+
+def test_a_clock_has_a_short_name_and_a_text(dcc_world):
+    """The name is the key triggers and commands use; what the clock is about is
+    its text. A description as the name is refused, and says where it goes."""
+    m = ThreatClockManager(dcc_world)
+    with pytest.raises(ValueError, match="short key"):
+        m.add_clock("Slow scrub (stops if the flush needle is removed)", 4)
+    with pytest.raises(ValueError, match="short key"):
+        m.add_clock("Hunt:2", 4)
+    m.add_clock("Slow  scrub", 4, advance_on="event",
+                text="Stops if the flush needle is removed with fine tools")
+    clock = m.get_clocks()["Slow scrub"]
+    assert clock["text"] == "Stops if the flush needle is removed with fine tools"
+    assert "Slow scrub: [○○○○] 0/4 (on event) — Stops if the flush" in m.render(m.get_clocks())
+
+
+def test_a_clock_is_found_by_its_name_in_any_case_or_by_its_text(dcc_world):
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Tracker", 3, advance_on="event", text="The tracker closes in")
+    assert m.advance("tracker")["current"] == 1
+    assert m.advance("clock:Tracker")["current"] == 2
+    assert m.advance("The tracker closes in")["current"] == 3
+    assert m.is_full("TRACKER")
+    assert m.advance("Trakcer") is None
+
+
+def test_rewording_a_clock_keeps_its_name_and_its_progress(dcc_world):
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Tracker", 3, advance_on="event", text="The tracker closes in")
+    m.advance("Tracker")
+    m.set_text("tracker", "The tracker has the scent")
+    assert m.get_clocks() == {"Tracker": {"text": "The tracker has the scent", "current": 1,
+                                          "max": 3, "advance_on": "event"}}
+    m.set_text("Tracker", "")
+    assert "text" not in m.get_clocks()["Tracker"]
+    with pytest.raises(ValueError):
+        m.set_text("Nobody", "x")

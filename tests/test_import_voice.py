@@ -12,8 +12,8 @@ LIB = str(Path(__file__).resolve().parent.parent / "lib")
 if LIB not in sys.path:
     sys.path.insert(0, LIB)
 
-from book_bible import draft_voice
-from world_bible import validate_bible
+from book_bible import draft_voice  # noqa: E402 (after lib/ is put on the path)
+from world_bible import validate_bible  # noqa: E402 (after lib/ is put on the path)
 
 SOURCE = (
     "The sea gave back its dead, and the dead remembered the names of the living. "

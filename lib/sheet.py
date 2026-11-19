@@ -6,11 +6,11 @@ sections; some only make sense for one kind, and most fields are optional, fille
 in when play needs them. Scripts read and write sheets through this module, so
 they can rely on the structure.
 
-    identity     name, aliases, race, role, background, affiliation
+    identity     name, aliases, race, role, background, affiliation, factions (memberships)
     look         physique, style, presence
     personality  big_five, demeanor, voice, tells, want, need, values, fears
-    stats        attributes, skills, traits, perks, luck (the player only), counters
-                 (the campaign's own, e.g. Drift: its ruleset's vitals)
+    stats        attributes, skills, traits, perks, luck (the player only); the world's
+                 own rules (Bleed and the like) are kept apart: world_rules.py
     body         the player: zones, armor, cyberware
                  NPCs and mobs: wounds, armor, cyberware
     items        gear (holstered, in pockets, slung within reach: visible unless an
@@ -39,24 +39,27 @@ mobs in mobs.json (both keyed by name; identity.name is the same name).
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 KINDS = ("player", "npc", "mob")
+# The nine attributes, in the order rolls are written. Defined here only: every
+# script that names an attribute imports this list.
 ATTRIBUTES = ("STR", "AGI", "DFT", "VIG", "LOG", "ITU", "NRV", "PRS", "EMP")
 
 TEXT, LIST, DICT, INT, BOOL = "text", "list", "dict", "int", "bool"
 
 # section -> field -> type. A section lists every field it can hold.
-SECTIONS: Dict[str, Dict[str, str]] = {
+SECTIONS: dict[str, dict[str, str]] = {
     "identity": {"name": TEXT, "aliases": LIST, "race": TEXT, "role": TEXT,
-                 "background": TEXT, "affiliation": TEXT},
+                 "background": TEXT, "affiliation": TEXT,
+                 "factions": LIST},          # memberships: [{"id": "lull", "secret": true}] (factions.py)
     "look": {"physique": TEXT, "style": TEXT, "presence": TEXT},
     "personality": {"big_five": TEXT, "demeanor": TEXT, "voice": TEXT, "tells": TEXT,
                     "want": TEXT, "need": TEXT, "values": TEXT, "fears": TEXT},
     "stats": {"attributes": DICT, "skills": DICT, "traits": DICT, "perks": DICT,
-              "luck": DICT, "counters": DICT},
+              "luck": DICT},
     "body": {"zones": DICT, "wounds": INT, "armor": LIST, "cyberware": LIST},
     "items": {"gear": LIST, "inventory": LIST},
     "possessions": {"credits": INT, "vehicles": LIST, "lodging": LIST, "stashes": LIST},
@@ -79,7 +82,7 @@ ALLOWED = {
 REQUIRED = {
     "player": (("identity", "name"), ("stats", "attributes"), ("body", "zones")),
     "npc": (("identity", "name"),),
-    "mob": (("identity", "name"), ("stats", "attributes"), ("body", "wounds")),
+    "mob": (("identity", "name"),),   # stats and wounds come before the first roll or fight
 }
 
 BIG_FIVE = "OCEAN"
@@ -91,18 +94,27 @@ class SheetError(ValueError):
     """A sheet that doesn't fit the format. The message says what to fix."""
 
 
-def blank(kind: str, name: str) -> Dict[str, Any]:
+def blank(kind: str, name: str) -> dict[str, Any]:
     """The smallest valid start of a sheet of `kind`; the rest is filled in later."""
     if kind not in KINDS:
         raise SheetError(f"A sheet is one of {', '.join(KINDS)}, not {kind!r}.")
-    sheet: Dict[str, Any] = {"identity": {"name": name}}  # a mob's note: identity.background
+    sheet: dict[str, Any] = {"identity": {"name": name}}  # a mob's note: identity.background
     if kind == "player":
         sheet["stats"] = {"attributes": {}}
         sheet["body"] = {"zones": {}}
-    if kind == "mob":
-        sheet["stats"] = {"attributes": {}}
-        sheet["body"] = {"wounds": 1}
     return sheet
+
+
+def is_die(size: Any) -> bool:
+    """An attribute is a die size: a whole number of at least 2."""
+    return isinstance(size, int) and not isinstance(size, bool) and size >= 2
+
+
+def check_die(attribute: str, size: Any) -> int:
+    """`size` if it is a die size, else SheetError naming the attribute."""
+    if not is_die(size):
+        raise SheetError(f"{attribute}: a die size is a whole number of at least 2, not {size!r}.")
+    return size
 
 
 def check_big_five(text: str) -> str:
@@ -132,7 +144,7 @@ def _type_ok(value: Any, kind: str) -> bool:
     return True
 
 
-def check(sheet: Dict[str, Any], kind: str) -> Dict[str, Any]:
+def check(sheet: dict[str, Any], kind: str) -> dict[str, Any]:
     """Check a sheet of `kind` against the format; returns it with big_five tidied.
     Raises SheetError naming the first problem."""
     if kind not in KINDS:
@@ -167,8 +179,7 @@ def check(sheet: Dict[str, Any], kind: str) -> Dict[str, Any]:
     for key, size in attributes.items():
         if key != "default" and key not in ATTRIBUTES:
             raise SheetError(f"Unknown attribute '{key}'. Use: {', '.join(ATTRIBUTES)}.")
-        if not isinstance(size, int) or size < 2:
-            raise SheetError(f"{key}: a die size is a whole number of at least 2, not {size!r}.")
+        check_die(key, size)
     for name, value in ((sheet.get("stats") or {}).get("skills") or {}).items():
         if not isinstance(value, int) or isinstance(value, bool):
             raise SheetError(f"{name}: a skill value is a whole number, not {value!r}.")
@@ -177,40 +188,40 @@ def check(sheet: Dict[str, Any], kind: str) -> Dict[str, Any]:
 
 # ---------- reading a sheet ----------
 
-def name(sheet: Dict[str, Any]) -> str:
+def name(sheet: dict[str, Any]) -> str:
     return str((sheet.get("identity") or {}).get("name") or "")
 
 
-def section(sheet: Dict[str, Any], key: str) -> Dict[str, Any]:
+def section(sheet: dict[str, Any], key: str) -> dict[str, Any]:
     """A section, created empty if missing (for writing into it)."""
     return sheet.setdefault(key, {})
 
 
-def get(sheet: Dict[str, Any], key: str, field: str, default: Any = None) -> Any:
+def get(sheet: dict[str, Any], key: str, field: str, default: Any = None) -> Any:
     return (sheet.get(key) or {}).get(field, default)
 
 
-def attributes(sheet: Dict[str, Any]) -> Dict[str, int]:
+def attributes(sheet: dict[str, Any]) -> dict[str, int]:
     return get(sheet, "stats", "attributes") or {}
 
 
-def skills(sheet: Dict[str, Any]) -> Dict[str, int]:
+def skills(sheet: dict[str, Any]) -> dict[str, int]:
     return get(sheet, "stats", "skills") or {}
 
 
-def aliases(sheet: Dict[str, Any]) -> List[str]:
+def aliases(sheet: dict[str, Any]) -> list[str]:
     return [a for a in get(sheet, "identity", "aliases") or [] if a]
 
 
-def is_dead(sheet: Dict[str, Any]) -> bool:
+def is_dead(sheet: dict[str, Any]) -> bool:
     return get(sheet, "status", "state") == "dead"
 
 
-def conditions(sheet: Dict[str, Any]) -> List[str]:
+def conditions(sheet: dict[str, Any]) -> list[str]:
     return list(get(sheet, "status", "conditions") or [])
 
 
-def look_line(sheet: Dict[str, Any]) -> str:
+def look_line(sheet: dict[str, Any]) -> str:
     """The look in one line, for narration and image prompts."""
     look = sheet.get("look") or {}
     return "; ".join(look[f] for f in ("physique", "style", "presence") if look.get(f))
@@ -221,7 +232,7 @@ def look_line(sheet: Dict[str, Any]) -> str:
 ITEM_PLACES = ("gear", "inventory")
 
 
-def item(value: Any) -> Dict[str, Any]:
+def item(value: Any) -> dict[str, Any]:
     """An item as stored: {"name", "concealed"?, "note"?}. A plain string is a name."""
     if isinstance(value, str):
         return {"name": value}
@@ -234,18 +245,18 @@ def item(value: Any) -> Dict[str, Any]:
     raise SheetError(f"An item is a name or {{\"name\": ...}}, not {value!r}.")
 
 
-def items(sheet: Dict[str, Any], place: str) -> List[Dict[str, Any]]:
+def items(sheet: dict[str, Any], place: str) -> list[dict[str, Any]]:
     return [item(i) for i in get(sheet, "items", place) or []]
 
 
-def visible_items(sheet: Dict[str, Any]) -> List[str]:
+def visible_items(sheet: dict[str, Any]) -> list[str]:
     """What others see at a glance: gear that isn't concealed. The inventory is hidden."""
     return [i["name"] for i in items(sheet, "gear") if not i.get("concealed")]
 
 
 # ---------- moving between kinds ----------
 
-def merge(base: Dict[str, Any], given: Dict[str, Any]) -> Dict[str, Any]:
+def merge(base: dict[str, Any], given: dict[str, Any]) -> dict[str, Any]:
     """`base` with `given` laid over it, section by section (given wins per field)."""
     out = {key: dict(value) if isinstance(value, dict) else value for key, value in base.items()}
     for key, value in given.items():
@@ -256,7 +267,7 @@ def merge(base: Dict[str, Any], given: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-def as_npc(player: Dict[str, Any], wounds: int = 3) -> Dict[str, Any]:
+def as_npc(player: dict[str, Any], wounds: int = 3) -> dict[str, Any]:
     """An outgoing player character as an NPC sheet: the same sheet, with an NPC's
     wound count next to the zones, no luck, and marked as a former player character."""
     npc = merge(player, {})
@@ -267,13 +278,11 @@ def as_npc(player: Dict[str, Any], wounds: int = 3) -> Dict[str, Any]:
     return npc
 
 
-def from_npc(npc: Dict[str, Any]) -> Dict[str, Any]:
+def from_npc(npc: dict[str, Any]) -> dict[str, Any]:
     """A canon NPC's sheet as the base of a player sheet: what carries over (identity,
     look, personality, stats, items, possessions); body and status start fresh."""
     keep = ("identity", "look", "personality", "stats", "items", "possessions")
-    base = {key: merge(npc, {})[key] for key in keep if key in npc}
-    base.get("stats", {}).pop("counters", None)
-    return base
+    return {key: merge(npc, {})[key] for key in keep if key in npc}
 
 
 # ---------- editing: the text fields every `set` command takes ----------
@@ -301,7 +310,7 @@ def add_field_flags(parser) -> None:
                                                     if field == "big_five" else ""))
 
 
-def fields_from_args(args) -> Dict[str, str]:
+def fields_from_args(args) -> dict[str, str]:
     """{flag: value} for the field flags given (an empty string clears a field)."""
     out = {}
     for flag, (_, field) in TEXT_FIELDS.items():
@@ -311,7 +320,7 @@ def fields_from_args(args) -> Dict[str, str]:
     return out
 
 
-def set_fields(sheet: Dict[str, Any], values: Dict[str, str]) -> List[str]:
+def set_fields(sheet: dict[str, Any], values: dict[str, str]) -> list[str]:
     """Set text fields by flag name; an empty value clears the field. Returns what
     changed, as "section.field" names. Raises SheetError for an unknown flag or a
     bad big_five."""
@@ -336,8 +345,8 @@ def set_fields(sheet: Dict[str, Any], values: Dict[str, str]) -> List[str]:
 
 # ---------- items ----------
 
-def add_item(sheet: Dict[str, Any], place: str, name: str, concealed: bool = False,
-             note: str = "") -> Dict[str, Any]:
+def add_item(sheet: dict[str, Any], place: str, name: str, concealed: bool = False,
+             note: str = "") -> dict[str, Any]:
     if place not in ITEM_PLACES:
         raise SheetError(f"An item goes into gear or inventory, not {place!r}.")
     if not str(name).strip():
@@ -351,7 +360,7 @@ def add_item(sheet: Dict[str, Any], place: str, name: str, concealed: bool = Fal
     return entry
 
 
-def remove_item(sheet: Dict[str, Any], name: str) -> Dict[str, Any]:
+def remove_item(sheet: dict[str, Any], name: str) -> dict[str, Any]:
     """Remove the first item whose name matches (exactly, then as part of the name),
     gear before inventory. Returns it with its place; SheetError if none."""
     wanted = str(name).strip().lower()
@@ -370,19 +379,24 @@ def remove_item(sheet: Dict[str, Any], name: str) -> Dict[str, Any]:
 
 # ---------- showing ----------
 
-def _item_text(entry: Dict[str, Any]) -> str:
+def _item_text(entry: dict[str, Any]) -> str:
     extra = [x for x in ("concealed" if entry.get("concealed") else "", entry.get("note", "")) if x]
     return entry["name"] + (f" ({', '.join(extra)})" if extra else "")
 
 
-def describe(sheet: Dict[str, Any]) -> List[str]:
-    """The sheet as readable lines, section by section; empty fields left out."""
+def describe(sheet: dict[str, Any], names: dict[str, str] | None = None) -> list[str]:
+    """The sheet as readable lines, section by section; empty fields left out.
+    `names`: {faction id: name}, so memberships read by name."""
     lines = []
     for sec in ("identity", "look", "personality", "status", "places", "possessions", "progress"):
         content = sheet.get(sec) or {}
         for field, value in content.items():
             if value in ("", [], {}, None) or (sec, field) == ("identity", "name"):
                 continue
+            if (sec, field) == ("identity", "factions"):
+                value = [(names or {}).get(m.get("id"), m.get("id"))
+                         + (" (secret: only its members know)" if m.get("secret") else "")
+                         for m in value if isinstance(m, dict)]
             if isinstance(value, list):
                 value = ", ".join(str(v) for v in value)
             elif isinstance(value, dict):
@@ -400,9 +414,6 @@ def describe(sheet: Dict[str, Any]) -> List[str]:
             lines.append(f"{kind[:-1]}: {key}" + (f": {effect}" if effect else ""))
     if stats.get("luck"):
         lines.append(f"luck: {stats['luck'].get('current')}/{stats['luck'].get('max')}")
-    for key, value in (stats.get("counters") or {}).items():
-        shown = f"{value.get('current')}/{value.get('max')}" if isinstance(value, dict) else value
-        lines.append(f"{key}: {shown}")
     if "wounds" in (sheet.get("body") or {}):
         lines.append(f"wounds: {sheet['body']['wounds']}")
     for place in ITEM_PLACES:

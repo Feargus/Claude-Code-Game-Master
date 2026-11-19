@@ -1,5 +1,6 @@
 # Virtual Environment
 .venv/
+models/
 venv/
 ENV/
 env/
@@ -23,6 +24,9 @@ eggs/
 # A link to the campaign repo's campaigns/ folder (see that repo's README)
 world-state/campaigns
 world-state/active-campaign.txt
+world-state/sessions/
+world-state/locks/
+world-state/book-index/
 
 # Source Material (User-provided documents for import)
 source-material/*

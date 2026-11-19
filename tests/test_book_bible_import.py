@@ -8,8 +8,6 @@ import json
 from pathlib import Path
 
 from lib import book_bible
-from lib.world_bible import validate_bible
-
 
 SAMPLE = (
     "Chapter One\nThe spice must flow. Paul looked across the dunes.\n\n"
@@ -39,14 +37,6 @@ def test_draft_ruleset_from_bible_is_valid_kit():
     ruleset = book_bible.draft_ruleset_from_bible(bible)
     assert ruleset["name"] == "Dungeon Crawler Carl"
     assert "resolution" not in ruleset and "progression" not in ruleset
-
-
-def test_bible_to_campaign_rules_carries_signature_systems():
-    bible = {"name": "DCC", "tone": "comedy-horror",
-             "signature_systems": ["loot boxes", "viewer counts"]}
-    rules = book_bible.bible_to_campaign_rules(bible)
-    assert rules["signature_systems"] == ["loot boxes", "viewer counts"]
-    assert "follow them exactly" in rules["description"]
 
 
 def test_token_estimate_is_observable_not_a_cap():

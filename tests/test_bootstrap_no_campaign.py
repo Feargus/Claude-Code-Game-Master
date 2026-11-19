@@ -89,7 +89,7 @@ def test_no_tool_dies_silently(no_active_campaign, argv):
     assert output.strip(), f"{argv} produced no output (exit {result.returncode})"
 
 
-@pytest.mark.parametrize("verb", ["draft-bible", "draft-ruleset", "campaign-rules", "write-index"])
+@pytest.mark.parametrize("verb", ["draft-bible", "draft-ruleset"])
 def test_extract_verbs_needing_a_campaign_fail_loudly(no_active_campaign, verb):
     """The raw-cat sites: each of these verbs needs a campaign and had none, so it
     must name the problem and the fix — not exit 1 with an empty terminal."""
@@ -253,7 +253,7 @@ def test_legacy_campaign_directory_is_reachable_from_extract_verbs(tmp_path):
     assert (tmp_path / "world-state" / "active-campaign.txt").read_text() == "curse_of_strahd"
 
     result = subprocess.run(
-        ["bash", str(script), "write-index", "--index-json", '{"npcs": []}'],
+        ["bash", str(script), "draft-ruleset"],
         cwd=PROJECT_ROOT,  # so `uv run python` resolves this project's environment
         env=env, capture_output=True, text=True, timeout=120,
     )

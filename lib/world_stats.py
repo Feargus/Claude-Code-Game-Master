@@ -4,20 +4,21 @@ World statistics module for GM tools
 Provides counts and summaries of world state
 """
 
-import sys
 import json
-from typing import Dict, Any
+import sys
 from pathlib import Path
+from typing import Any
 
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from json_ops import JsonOperations
+import facts as fact_file
 from campaign_manager import CampaignManager
-from schemas import PLOT_TYPES, PLOT_TYPE_SORT
+from json_ops import JsonOperations
+from schemas import PLOT_KINDS
 
 # Canonical plot types in display order — the counter keys are derived, never hand-listed.
-PLOT_TYPE_ORDER = sorted(PLOT_TYPES, key=PLOT_TYPE_SORT.get)
+PLOT_TYPE_ORDER = list(PLOT_KINDS)
 
 
 class WorldStats:
@@ -35,7 +36,7 @@ class WorldStats:
         # Character file (single character.json per campaign)
         self.character_file = self.world_state_dir / "character.json"
 
-    def get_counts(self) -> Dict[str, int]:
+    def get_counts(self) -> dict[str, int]:
         """Get counts of all world entities"""
         counts = {
             "npcs": 0,
@@ -44,7 +45,6 @@ class WorldStats:
             "consequences_active": 0,
             "consequences_resolved": 0,
             "characters": 0,
-            "sessions": 0,
             "plots_total": 0,
             "plots_active": 0,
             "plots_completed": 0,
@@ -60,9 +60,7 @@ class WorldStats:
         counts["locations"] = len(locations) if isinstance(locations, dict) else 0
 
         # Facts
-        facts = self.json_ops.load_json("facts.json")
-        if isinstance(facts, dict):
-            counts["facts"] = sum(len(v) for v in facts.values() if isinstance(v, list))
+        counts["facts"] = len(fact_file.load(self.json_ops))
 
         # Consequences
         consequences = self.json_ops.load_json("consequences.json")
@@ -74,32 +72,26 @@ class WorldStats:
         plots = self.json_ops.load_json("plots.json")
         if isinstance(plots, dict):
             counts["plots_total"] = len(plots)
-            for name, data in plots.items():
+            for _name, data in plots.items():
                 if isinstance(data, dict):
                     # Count by status (default to 'active')
-                    status = data.get('status', 'active').lower()
-                    if status == 'active':
+                    status = str(data.get('status') or 'open').lower()
+                    if status == 'open':
                         counts["plots_active"] += 1
                     elif status == 'completed':
                         counts["plots_completed"] += 1
                     # Count by type
-                    plot_type = data.get('type', '').lower()
-                    if plot_type in PLOT_TYPES:
+                    plot_type = str(data.get('kind') or '').lower()
+                    if plot_type in PLOT_KINDS:
                         counts[f"plots_{plot_type}"] += 1
 
         # Characters (single character.json per campaign)
         if self.character_file.exists():
             counts["characters"] = 1
 
-        # Sessions
-        session_log = self.world_state_dir / "session-log.md"
-        if session_log.exists():
-            content = session_log.read_text()
-            counts["sessions"] = content.count("Session Started:")
-
         return counts
 
-    def get_current_status(self) -> Dict[str, Any]:
+    def get_current_status(self) -> dict[str, Any]:
         """Get current campaign status"""
         overview = self.json_ops.load_json("campaign-overview.json")
         return {
@@ -110,7 +102,7 @@ class WorldStats:
             "active_character": overview.get("current_character")
         }
 
-    def get_overview(self, detailed: bool = False) -> Dict[str, Any]:
+    def get_overview(self, detailed: bool = False) -> dict[str, Any]:
         """Get full world overview"""
         result = {
             "status": self.get_current_status(),
@@ -122,7 +114,7 @@ class WorldStats:
 
         return result
 
-    def _get_details(self) -> Dict[str, Any]:
+    def _get_details(self) -> dict[str, Any]:
         """Get detailed entity lists"""
         details = {}
 
@@ -143,13 +135,6 @@ class WorldStats:
                 for name, data in sorted(locations.items())[:10]
             ]
             details["locations_total"] = len(locations)
-
-        # Facts by category
-        facts = self.json_ops.load_json("facts.json")
-        if facts:
-            details["fact_categories"] = {
-                cat: len(items) for cat, items in sorted(facts.items())[:5]
-            }
 
         # Active consequences (first 3)
         consequences = self.json_ops.load_json("consequences.json")
@@ -212,9 +197,6 @@ class WorldStats:
                 print(f"  ... and {overview['details']['locations_total'] - 10} more")
 
         print(f"\nFacts: {counts['facts']}")
-        if detailed and "details" in overview and "fact_categories" in overview["details"]:
-            for cat, count in overview["details"]["fact_categories"].items():
-                print(f"  - {cat}: {count} facts")
 
         print(f"\nConsequences: {counts['consequences_active']} active, {counts['consequences_resolved']} resolved")
         if detailed and "details" in overview and "active_consequences" in overview["details"]:
@@ -238,7 +220,6 @@ class WorldStats:
             for char in overview["details"]["characters"]:
                 print(f"  - {char['name']} - Level {char['level']}")
 
-        print(f"\nSessions: {counts['sessions']}")
 
     def print_counts(self):
         """Print simple counts for preview"""
@@ -248,7 +229,6 @@ class WorldStats:
         print(f"  - {counts['facts']} Facts")
         print(f"  - {counts['consequences_active'] + counts['consequences_resolved']} Consequences")
         print(f"  - {counts['characters']} Characters")
-        print(f"  - {counts['sessions']} Sessions logged")
 
 
 def main():

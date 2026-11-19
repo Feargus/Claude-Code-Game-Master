@@ -31,8 +31,8 @@ and the player changes what they like. It is not a rules engine: the GM suggests
 The interview is a command, not an agent: an agent runs once and can't ask the player
 anything.
 
-The finished interview is saved with **`bash tools/gm-player.sh create '<json>'
-[--canon "<NPC>"] [--replace]`** (`lib/new_character.py`). It fills everything left out
+The finished interview is saved with **`bash tools/gm-player.sh create [--canon "<NPC>"] [--replace] <<'EOF'`**,
+the JSON, then a line `EOF` (`lib/new_character.py`). It fills everything left out
 with defaults, checks only what scripts rely on (attribute names and die sizes, zone
 names), and wires the new PC in the same places [`become()`](#become-is-the-only-path-that-moves-a-sheet)
 does:

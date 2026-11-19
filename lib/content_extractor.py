@@ -7,7 +7,6 @@ Extract plain text from PDFs, Word documents, Markdown, and text files.
 import os
 import re
 from pathlib import Path
-from typing import Optional
 
 
 class PDFExtractor:
@@ -19,9 +18,9 @@ class PDFExtractor:
         self.pdfplumber_available = False
 
         try:
-            import PyPDF2
+            import pypdf
             self.pypdf_available = True
-            self.PyPDF2 = PyPDF2
+            self.pypdf = pypdf
         except ImportError:
             pass
 
@@ -33,7 +32,7 @@ class PDFExtractor:
             pass
 
         if not self.pypdf_available and not self.pdfplumber_available:
-            print("Warning: No PDF libraries available. Install PyPDF2 or pdfplumber.")
+            print("Warning: No PDF libraries available. Install pypdf or pdfplumber.")
 
     def extract(self, filepath: str) -> str:
         """
@@ -55,16 +54,16 @@ class PDFExtractor:
             except Exception as e:
                 print(f"pdfplumber extraction failed: {e}")
                 if self.pypdf_available:
-                    print("Falling back to PyPDF2...")
+                    print("Falling back to pypdf...")
 
-        # Fall back to PyPDF2
+        # Fall back to pypdf
         if self.pypdf_available:
             try:
-                return self._extract_with_pypdf2(filepath)
+                return self._extract_with_pypdf(filepath)
             except Exception as e:
-                print(f"PyPDF2 extraction failed: {e}")
+                print(f"pypdf extraction failed: {e}")
 
-        raise RuntimeError("No PDF extraction library available. Install PyPDF2 or pdfplumber.")
+        raise RuntimeError("No PDF extraction library available. Install pypdf or pdfplumber.")
 
     def _extract_with_pdfplumber(self, filepath: str) -> str:
         """Extract text using pdfplumber."""
@@ -82,11 +81,11 @@ class PDFExtractor:
 
         return ''.join(text)
 
-    def _extract_with_pypdf2(self, filepath: str) -> str:
-        """Extract text using PyPDF2."""
+    def _extract_with_pypdf(self, filepath: str) -> str:
+        """Extract text using pypdf (the maintained successor of PyPDF2)."""
         text = []
         with open(filepath, 'rb') as file:
-            pdf_reader = self.PyPDF2.PdfReader(file)
+            pdf_reader = self.pypdf.PdfReader(file)
             num_pages = len(pdf_reader.pages)
 
             for page_num in range(num_pages):
@@ -119,13 +118,12 @@ class MarkdownExtractor:
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"Markdown file not found: {filepath}")
 
-        with open(filepath, 'r', encoding='utf-8') as file:
+        with open(filepath, encoding='utf-8') as file:
             content = file.read()
 
         # Clean up excessive whitespace while preserving structure
-        content = re.sub(r'\n{3,}', '\n\n', content)
+        return re.sub(r'\n{3,}', '\n\n', content)
 
-        return content
 
 
 class DocxExtractor:
@@ -195,10 +193,9 @@ class DocxExtractor:
                 # Try to decode as UTF-8, ignoring errors
                 text = content.decode('utf-8', errors='ignore')
                 # Remove binary garbage
-                text = re.sub(r'[^\x20-\x7E\n\r\t]', '', text)
-                return text
+                return re.sub(r'[^\x20-\x7E\n\r\t]', '', text)
         except Exception as e:
-            raise RuntimeError(f"Cannot extract text from Word document: {e}")
+            raise RuntimeError(f"Cannot extract text from Word document: {e}") from e
 
 
 class TextExtractor:
@@ -221,13 +218,13 @@ class TextExtractor:
 
         for encoding in encodings:
             try:
-                with open(filepath, 'r', encoding=encoding) as file:
+                with open(filepath, encoding=encoding) as file:
                     return file.read()
             except UnicodeDecodeError:
                 continue
 
         # If all encodings fail, try with error handling
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as file:
+        with open(filepath, encoding='utf-8', errors='ignore') as file:
             return file.read()
 
 

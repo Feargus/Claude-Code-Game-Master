@@ -32,12 +32,12 @@ That check failing is what routes a session to `/setup` before it greets you.
 
 | Extra | Contains | Missing it means |
 |---|---|---|
-| *(core)* | `pdfplumber`, `pypdf2`, `python-docx`, `python-dotenv`, `anthropic` | nothing works |
-| `rag` | `sentence-transformers`, `chromadb` | **`/import` cannot vectorize**, and every source-passage lookup silently returns empty |
+| *(core)* | `pdfplumber`, `pypdf`, `python-docx`, `python-dotenv`, `anthropic` | nothing works |
+| `recall` | `numpy`, `onnxruntime`, `tokenizers` (plus the model: `gm-recall.sh setup`) | facts rank by recency instead of meaning, `find --like` falls back to keywords, and **`/import` cannot index the book**: source-passage lookups return empty |
 | `voice` | `elevenlabs` | nothing — see below |
 | `dev` | `pytest`, `black`, `ruff`, `mypy`, `pre-commit` | can't run the suite |
 
-`rag` is the one that changes behaviour rather than failing loudly: retrieval degrades to
+`recall` is the one that changes behaviour rather than failing loudly: retrieval degrades to
 empty rather than erroring, so a campaign imported without it looks like a book with
 nothing in it. See [RAG stack](../modules/rag-stack.md). Its first run downloads roughly
 500MB of model files.

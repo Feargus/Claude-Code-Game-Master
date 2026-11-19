@@ -71,4 +71,4 @@ need the one-time `gm-npc.sh unify-tags`; see
 ## Related
 
 - [Entity graph](entity-graph.md) — how NPC names resolve despite drift
-- [RAG stack](rag-stack.md) — what fills `context` with real dialogue
+- [Book search](rag-stack.md) — what fills `context` with real dialogue

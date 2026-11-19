@@ -19,7 +19,7 @@ import argparse
 import random
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -44,12 +44,12 @@ def zone_key(text: str) -> str:
     return zone
 
 
-def _section(sheet: Dict[str, Any]) -> Dict[str, Any]:
+def _section(sheet: dict[str, Any]) -> dict[str, Any]:
     """The sheet's body section (sheet.py): zones, armor, cyberware."""
     return sheet.setdefault("body", {})
 
 
-def body(sheet: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+def body(sheet: dict[str, Any]) -> dict[str, dict[str, Any]]:
     """The body's zones, every zone present."""
     zones = _section(sheet).setdefault("zones", {})
     for zone in ZONES:
@@ -57,15 +57,15 @@ def body(sheet: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     return zones
 
 
-def _items(sheet: Dict[str, Any], kind: str) -> List[Dict[str, Any]]:
+def _items(sheet: dict[str, Any], kind: str) -> list[dict[str, Any]]:
     return (sheet.get("body") or {}).get(kind) or []
 
 
-def _left(row: Dict[str, int]) -> int:
+def _left(row: dict[str, int]) -> int:
     return row["boxes"] - row["damage"]
 
 
-def _find_item(sheet: Dict[str, Any], name: str) -> Optional[Dict[str, Any]]:
+def _find_item(sheet: dict[str, Any], name: str) -> dict[str, Any] | None:
     for item in _items(sheet, "armor") + _items(sheet, "cyberware"):
         if item["name"].lower() == name.lower():
             return item
@@ -77,7 +77,7 @@ def _flesh_event(zone: str, wounds: int) -> str:
     return f"{zone}: wound {wounds} of {FLESH_BOXES}, {effect}"
 
 
-def hit(sheet: Dict[str, Any], zone: str, wounds: int, rng=random) -> List[str]:
+def hit(sheet: dict[str, Any], zone: str, wounds: int, rng=random) -> list[str]:
     """Deal wounds to a zone: DR first, then armor from the outside in, then a random
     empty box of flesh or chrome. Returns what happened, one line each."""
     zone = zone_key(zone)
@@ -117,7 +117,7 @@ def hit(sheet: Dict[str, Any], zone: str, wounds: int, rng=random) -> List[str]:
     return events
 
 
-def heal(sheet: Dict[str, Any], zone: str, wounds: int) -> List[str]:
+def heal(sheet: dict[str, Any], zone: str, wounds: int) -> list[str]:
     zone = zone_key(zone)
     part = body(sheet)[zone]
     if part["wounds"] >= FLESH_BOXES:
@@ -126,7 +126,7 @@ def heal(sheet: Dict[str, Any], zone: str, wounds: int) -> List[str]:
     return [f"{zone}: {part['wounds']} wound{'s' if part['wounds'] != 1 else ''} left"]
 
 
-def repair(sheet: Dict[str, Any], name: str) -> List[str]:
+def repair(sheet: dict[str, Any], name: str) -> list[str]:
     """Restore every box of a piece of armor or cyberware."""
     item = _find_item(sheet, name)
     if item is None:
@@ -136,7 +136,7 @@ def repair(sheet: Dict[str, Any], name: str) -> List[str]:
     return [f"{item['name']} repaired"]
 
 
-def note(sheet: Dict[str, Any], zone: str, text: str) -> List[str]:
+def note(sheet: dict[str, Any], zone: str, text: str) -> list[str]:
     """The story of a zone's wounds, e.g. "lost at the elbow". Empty text clears it."""
     zone = zone_key(zone)
     part = body(sheet)[zone]
@@ -151,13 +151,13 @@ def _whole_number(text: str, smallest: int) -> int:
     try:
         number = int(text)
     except ValueError:
-        raise BodyError(f"Expected a whole number, got '{text}'.")
+        raise BodyError(f"Expected a whole number, got '{text}'.") from None
     if number < smallest:
         raise BodyError(f"Expected {smallest} or more, got {number}.")
     return number
 
 
-def add_armor(sheet: Dict[str, Any], name: str, zones: List[str], dr: int = 0) -> List[str]:
+def add_armor(sheet: dict[str, Any], name: str, zones: list[str], dr: int = 0) -> list[str]:
     """Wear armor. `zones` are ZONE:BOXES pairs. New armor goes on the outside."""
     if _find_item(sheet, name):
         raise BodyError(f"'{name}' is already on the sheet. Remove it first, or pick another name.")
@@ -172,8 +172,8 @@ def add_armor(sheet: Dict[str, Any], name: str, zones: List[str], dr: int = 0) -
     return [f"{name} worn on the {', '.join(rows)}"]
 
 
-def add_cyberware(sheet: Dict[str, Any], name: str, zone: str, boxes: int,
-                  effect: str = "") -> List[str]:
+def add_cyberware(sheet: dict[str, Any], name: str, zone: str, boxes: int,
+                  effect: str = "") -> list[str]:
     if _find_item(sheet, name):
         raise BodyError(f"'{name}' is already on the sheet. Remove it first, or pick another name.")
     item = {"name": name, "zone": zone_key(zone), "boxes": boxes, "damage": 0, "effect": effect}
@@ -181,7 +181,7 @@ def add_cyberware(sheet: Dict[str, Any], name: str, zone: str, boxes: int,
     return [f"{name} installed in the {item['zone']}"]
 
 
-def remove(sheet: Dict[str, Any], name: str) -> List[str]:
+def remove(sheet: dict[str, Any], name: str) -> list[str]:
     item = _find_item(sheet, name)
     if item is None:
         raise BodyError(f"No armor or cyberware called '{name}'.")
@@ -200,7 +200,7 @@ def _boxes(filled: int, size: int, full: str, empty: str) -> str:
     return full * filled + empty * (size - filled)
 
 
-def cell(sheet: Dict[str, Any], zone: str) -> str:
+def cell(sheet: dict[str, Any], zone: str) -> str:
     """One zone: armor bars, three wound circles (or a cross), chrome diamonds.
     A filled symbol always means hit."""
     parts = [LABELS[zone]]
@@ -217,7 +217,7 @@ def cell(sheet: Dict[str, Any], zone: str) -> str:
     return " ".join(parts)
 
 
-def picture(sheet: Dict[str, Any]) -> str:
+def picture(sheet: dict[str, Any]) -> str:
     """Three lines, stacked roughly like a body."""
     rows = [("left_arm", "chest", "right_arm"), ("left_leg", "groin", "right_leg")]
     cells = [[cell(sheet, zone) for zone in row] for row in rows]
@@ -228,7 +228,7 @@ def picture(sheet: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def details(sheet: Dict[str, Any]) -> List[str]:
+def details(sheet: dict[str, Any]) -> list[str]:
     """Everything the picture leaves out: notes, and what each item is."""
     lines = [f"{zone}: {part['note']}" for zone, part in body(sheet).items() if part.get("note")]
     for item in _items(sheet, "armor"):
@@ -243,7 +243,7 @@ def details(sheet: Dict[str, Any]) -> List[str]:
     return lines
 
 
-def summary(sheet: Dict[str, Any]) -> str:
+def summary(sheet: dict[str, Any]) -> str:
     """One line for the scene context: wounded zones and broken chrome, or "unhurt"."""
     short = {1: "bruised", 2: "injured", 3: "nearly unusable", 4: "destroyed"}
     parts = []
@@ -255,7 +255,7 @@ def summary(sheet: Dict[str, Any]) -> str:
     return ", ".join(parts) or "unhurt"
 
 
-def show(sheet: Dict[str, Any]) -> str:
+def show(sheet: dict[str, Any]) -> str:
     return "\n".join([picture(sheet), *details(sheet)])
 
 

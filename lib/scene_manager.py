@@ -13,7 +13,6 @@ on_npc triggers, a fact's default holders, the ready-threads nudge.
 
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -42,7 +41,7 @@ class SceneManager:
     def _npcs(self) -> dict:
         return self.json_ops.load_json("npcs.json") or {}
 
-    def _listed(self, overview: dict) -> List[str]:
+    def _listed(self, overview: dict) -> list[str]:
         """The stored list, if it belongs to the current location."""
         scene = overview.get("scene") or {}
         pos = overview.get("player_position") or {}
@@ -51,21 +50,21 @@ class SceneManager:
             return []
         return list(scene.get("present") or [])
 
-    def _save(self, overview: dict, listed: List[str]) -> None:
+    def _save(self, overview: dict, listed: list[str]) -> None:
         pos = overview.get("player_position") or {}
         overview["scene"] = {"location": pos.get("current_location", ""), "present": listed}
         self.json_ops.save_json(OVERVIEW, overview)
 
-    def present(self) -> Dict[str, dict]:
+    def present(self) -> dict[str, dict]:
         overview = self._overview()
         return npcs_present(self._npcs(), self.location(), overview.get("scene"))
 
-    def usually_here(self) -> List[str]:
+    def usually_here(self) -> list[str]:
         """NPCs tagged with this place who aren't in the scene."""
         here = self.present()
         return [n for n in npcs_usually_at(self._npcs(), self.location()) if n not in here]
 
-    def _resolve(self, names) -> Tuple[List[str], List[str]]:
+    def _resolve(self, names) -> tuple[list[str], list[str]]:
         """(NPC keys, errors), through the shared resolver."""
         from world_ids import WorldIds
         ids = WorldIds(self.json_ops)
@@ -79,7 +78,7 @@ class SceneManager:
                 keys.append(cid[4:])
         return keys, errors
 
-    def enter(self, names) -> Dict[str, List[str]]:
+    def enter(self, names) -> dict[str, list[str]]:
         """NPCs join the scene. Returns {"entered", "already"}; raises ValueError
         (and changes nothing) for an unknown or dead NPC."""
         keys, errors = self._resolve(names)
@@ -95,7 +94,7 @@ class SceneManager:
             self._save(overview, listed + entered)
         return {"entered": entered, "already": already}
 
-    def leave(self, names, strict: bool = True) -> List[str]:
+    def leave(self, names, strict: bool = True) -> list[str]:
         """NPCs leave the scene. Returns those who left. A party member can't
         leave this way (gm-npc.sh demote). `strict=False` ignores unknown names."""
         keys, errors = self._resolve(names)
@@ -119,8 +118,10 @@ class SceneManager:
 
     def describe(self) -> str:
         here = self.present()
+        import sheet as sheet_mod
+        character = sheet_mod.name(self.json_ops.load_json("character.json") or {}) or "the character"
         lines = [f"Scene: {self.location() or '(no location)'}",
-                 f"Present: {', '.join(here) if here else 'nobody but the player'}"]
+                 f"Present: {', '.join(here) if here else f'nobody but {character}'}"]
         usual = self.usually_here()
         if usual:
             lines.append(f"Usually found here, not in the scene: {', '.join(usual)} "
@@ -134,14 +135,18 @@ def main() -> int:
     try:
         sm = SceneManager()
         if action == "show" and len(args) <= 1:
-            print(sm.describe())
+            from cards import Cards
+            print("\n".join(Cards(sm.json_ops).scene()))
         elif action == "enter" and args[1:]:
             result = sm.enter(args[1:])
-            if result["entered"]:
-                print(f"Entered: {', '.join(result['entered'])}")
             if result["already"]:
                 print(f"Already here: {', '.join(result['already'])}")
             print(sm.describe())
+            if result["entered"]:
+                from cards import Cards
+                cards = Cards(sm.json_ops)
+                for name in result["entered"]:
+                    print("\nEntered: " + "\n".join(cards.npc_card(name)))
         elif action == "leave" and args[1:]:
             gone = sm.leave(args[1:])
             print(f"Left: {', '.join(gone)}" if gone else "Nobody left: they weren't in the scene.")

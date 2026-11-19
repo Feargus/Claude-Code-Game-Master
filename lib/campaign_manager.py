@@ -4,15 +4,15 @@ Campaign management module for GM tools
 Handles multi-campaign support with CRUD operations
 """
 
-import os
-import re
-import sys
+import contextlib
 import hashlib
 import json
+import os
+import re
 import shutil
-from typing import Dict, List, Optional, Any
+import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -34,7 +34,7 @@ def resolve_world_state_base(world_state_dir):
 
 
 class CampaignManager:
-    """Manage multiple D&D campaigns"""
+    """Manage multiple campaigns"""
 
     def __init__(self, world_state_dir: str = DEFAULT_WORLD_STATE):
         self.world_state_dir = Path(resolve_world_state_base(world_state_dir))
@@ -104,7 +104,7 @@ class CampaignManager:
     def _resolve_name(self, name: str) -> str:
         return self._resolve_in(self.campaigns_dir, name)
 
-    def list_campaigns(self) -> List[Dict[str, Any]]:
+    def list_campaigns(self) -> list[dict[str, Any]]:
         """
         List all campaigns with their metadata
         Returns list of dicts with name, path, character info
@@ -124,23 +124,22 @@ class CampaignManager:
             overview_file = campaign_dir / "campaign-overview.json"
             if overview_file.exists():
                 try:
-                    with open(overview_file, 'r', encoding='utf-8') as f:
+                    with open(overview_file, encoding='utf-8') as f:
                         overview = json.load(f)
                     campaign_info["campaign_name"] = overview.get("campaign_name", "Unnamed")
                     campaign_info["current_location"] = overview.get("player_position", {}).get("current_location")
-                    campaign_info["session_count"] = overview.get("session_count", 0)
-                    log = campaign_dir / "session-log.md"
-                    if log.exists():  # the log is the record; the overview's count was never kept up
-                        campaign_info["session_count"] = log.read_text(
-                            encoding="utf-8").count("### Session Ended:")
-                except (json.JSONDecodeError, IOError):
+                    bible = campaign_dir / "world-bible.json"
+                    if bible.exists():
+                        campaign_info["campaign_name"] = (json.loads(bible.read_text(encoding="utf-8"))
+                                                          .get("name") or campaign_info["campaign_name"])
+                except (OSError, json.JSONDecodeError):
                     campaign_info["campaign_name"] = "Unknown"
 
             # Try to read character info
             char_file = campaign_dir / "character.json"
             if char_file.exists():
                 try:
-                    with open(char_file, 'r', encoding='utf-8') as f:
+                    with open(char_file, encoding='utf-8') as f:
                         char = json.load(f)
                     identity = char.get("identity") or {}
                     campaign_info["character"] = {
@@ -149,29 +148,49 @@ class CampaignManager:
                         "role": identity.get("role", ""),
                         "level": (char.get("progress") or {}).get("level", 0)
                     }
-                except (json.JSONDecodeError, IOError) as e:
+                except (OSError, json.JSONDecodeError) as e:
                     print(f"[WARNING] Could not read character for {campaign_dir.name}: {e}", file=sys.stderr)
 
             campaigns.append(campaign_info)
 
         return campaigns
 
-    def get_active(self) -> Optional[str]:
+    def _session_file(self) -> Path | None:
+        """Where this Claude Code session keeps the campaign it switched to.
+
+        Two sessions playing different campaigns would otherwise switch the one
+        shared active campaign under each other (2026-11-15: Salt Roads' /gm end
+        found Idle Cycles active). Claude Code gives each session an id
+        (CLAUDE_CODE_SESSION_ID); `switch` records the campaign under it, and
+        this session reads its own. Without an id, or before a switch, the
+        shared active-campaign.txt counts, as before."""
+        sid = os.environ.get("CLAUDE_CODE_SESSION_ID", "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", sid):
+            return None
+        return self.world_state_dir / "sessions" / sid
+
+    def get_active(self) -> str | None:
         """
-        Get the currently active campaign name
+        Get the currently active campaign name: this session's own if it
+        switched to one (_session_file), else the shared one.
         Returns None if no active campaign is set
         """
-        if not self.active_file.exists():
-            return None
+        own = self._session_file()
+        for path in ([own] if own and own.exists() else []) + [self.active_file]:
+            if path.exists():
+                return self._existing(path)
+        return None
 
+    def _existing(self, path: Path) -> str | None:
+        """The campaign named in `path`, if it exists."""
         try:
-            campaign_name = self.active_file.read_text().strip()
+            campaign_name = path.read_text().strip()
             # Verify the campaign actually exists
             campaign_path = self.campaigns_dir / campaign_name
             if campaign_path.is_dir():
                 return campaign_name
             return None
-        except IOError:
+        except OSError:
             return None
 
     def set_active(self, name: str) -> bool:
@@ -187,13 +206,28 @@ class CampaignManager:
 
         try:
             self.active_file.write_text(name)
+            own = self._session_file()
+            if own:
+                own.parent.mkdir(exist_ok=True)
+                own.write_text(name)
+                self._forget_old_sessions(own.parent)
             print(f"[SUCCESS] Active campaign set to: {name}")
             return True
-        except IOError as e:
+        except OSError as e:
             print(f"[ERROR] Failed to set active campaign: {e}")
             return False
 
-    def create(self, name: str, campaign_name: str = None) -> Optional[Path]:
+    @staticmethod
+    def _forget_old_sessions(folder: Path, days: int = 30) -> None:
+        """Sessions' records untouched for `days` are long over: delete them."""
+        import time
+        cutoff = time.time() - days * 86400
+        for record in folder.iterdir():
+            with contextlib.suppress(OSError):
+                if record.is_file() and record.stat().st_mtime < cutoff:
+                    record.unlink()
+
+    def create(self, name: str, campaign_name: str = None) -> Path | None:
         """
         Create a new campaign with empty state files
         name: folder name (typically character name, lowercase with hyphens)
@@ -211,15 +245,14 @@ class CampaignManager:
         try:
             # Create campaign directory structure
             campaign_path.mkdir(parents=True)
-            (campaign_path / "saves").mkdir()
             (campaign_path / "extracted").mkdir()
 
             # Initialize empty state files
-            self._init_empty_files(campaign_path, campaign_name or f"{name}'s Adventure")
+            self._init_empty_files(campaign_path, campaign_name or name)
 
             print(f"[SUCCESS] Created campaign: {safe_name}")
             return campaign_path
-        except IOError as e:
+        except OSError as e:
             print(f"[ERROR] Failed to create campaign: {e}")
             # Clean up on failure
             if campaign_path.exists():
@@ -253,11 +286,11 @@ class CampaignManager:
             shutil.rmtree(campaign_path)
             print(f"[SUCCESS] Deleted campaign: {name}")
             return True
-        except IOError as e:
+        except OSError as e:
             print(f"[ERROR] Failed to delete campaign: {e}")
             return False
 
-    def get_campaign_path(self, name: str = None) -> Optional[Path]:
+    def get_campaign_path(self, name: str = None) -> Path | None:
         """
         Get the path to a campaign folder
         If name is None, returns path to active campaign
@@ -275,7 +308,7 @@ class CampaignManager:
             return campaign_path
         return None
 
-    def get_active_campaign_dir(self) -> Optional[Path]:
+    def get_active_campaign_dir(self) -> Path | None:
         """
         Get the directory for the active campaign.
         Returns None if no active campaign is set.
@@ -285,7 +318,7 @@ class CampaignManager:
             return self.campaigns_dir / active
         return None
 
-    def get_info(self, name: str = None) -> Optional[Dict[str, Any]]:
+    def get_info(self, name: str = None) -> dict[str, Any] | None:
         """
         Get detailed info about a campaign
         If name is None, uses active campaign
@@ -313,18 +346,18 @@ class CampaignManager:
         overview_file = campaign_path / "campaign-overview.json"
         if overview_file.exists():
             try:
-                with open(overview_file, 'r', encoding='utf-8') as f:
+                with open(overview_file, encoding='utf-8') as f:
                     info["overview"] = json.load(f)
-            except (json.JSONDecodeError, IOError) as e:
+            except (OSError, json.JSONDecodeError) as e:
                 print(f"[WARNING] Could not read campaign overview for {name}: {e}", file=sys.stderr)
 
         # Read character
         char_file = campaign_path / "character.json"
         if char_file.exists():
             try:
-                with open(char_file, 'r', encoding='utf-8') as f:
+                with open(char_file, encoding='utf-8') as f:
                     info["character"] = json.load(f)
-            except (json.JSONDecodeError, IOError) as e:
+            except (OSError, json.JSONDecodeError) as e:
                 print(f"[WARNING] Could not read character for {name}: {e}", file=sys.stderr)
 
         # Count NPCs, locations, etc.
@@ -332,19 +365,12 @@ class CampaignManager:
             filepath = campaign_path / filename
             if filepath.exists():
                 try:
-                    with open(filepath, 'r', encoding='utf-8') as f:
+                    with open(filepath, encoding='utf-8') as f:
                         data = json.load(f)
-                    if isinstance(data, dict):
+                    if isinstance(data, (dict, list)):
                         info[filename.replace('.json', '_count')] = len(data)
-                    elif isinstance(data, list):
-                        info[filename.replace('.json', '_count')] = len(data)
-                except (json.JSONDecodeError, IOError) as e:
+                except (OSError, json.JSONDecodeError) as e:
                     print(f"[WARNING] Could not read {filename} for {name}: {e}", file=sys.stderr)
-
-        # Count saves
-        saves_dir = campaign_path / "saves"
-        if saves_dir.exists():
-            info["saves_count"] = len(list(saves_dir.glob("*.json")))
 
         return info
 
@@ -386,8 +412,7 @@ class CampaignManager:
                     "current_location": None,
                     "previous_location": None
                 },
-                "current_character": None,
-                "session_count": 0
+                "current_character": None
             }
             with open(overview_path, 'w', encoding='utf-8') as f:
                 json.dump(overview, f, indent=2)
@@ -408,21 +433,13 @@ class CampaignManager:
         facts_path = campaign_path / "facts.json"
         if not preserve_existing or not facts_path.exists():
             with open(facts_path, 'w', encoding='utf-8') as f:
-                json.dump({}, f, indent=2)
+                json.dump([], f, indent=2)                # one list of facts (facts.py)
 
         # consequences.json
         consequences_path = campaign_path / "consequences.json"
         if not preserve_existing or not consequences_path.exists():
             with open(consequences_path, 'w', encoding='utf-8') as f:
                 json.dump({"active": [], "resolved": []}, f, indent=2)
-
-        # session-log.md - ALWAYS preserve if exists (append only)
-        session_log_path = campaign_path / "session-log.md"
-        if not session_log_path.exists():
-            with open(session_log_path, 'w', encoding='utf-8') as f:
-                f.write(f"# Session Log - {campaign_name}\n\n")
-                f.write("*A new adventure begins...*\n\n")
-                f.write("---\n\n")
 
 
 def main():
@@ -505,7 +522,7 @@ def main():
             print("Create one with: gm-campaign.sh create <name>")
         else:
             active = manager.get_active()
-            print(f"{'':2}{'NAME':20}{'SESSIONS':10}CHARACTER")
+            print(f"{'':2}{'NAME':24}CHARACTER")
             print("-" * 60)
             for c in campaigns:
                 marker = "*" if c["name"] == active else " "
@@ -514,8 +531,8 @@ def main():
                     char = c["character"]
                     who = " ".join(x for x in (char['race'], char['role']) if x)
                     char_info = f"{char['name']}" + (f" ({who})" if who else "") + f" L{char['level']}"
-                sessions = c.get("session_count", 0)
-                print(f"{marker} {c['name']:20}{sessions:<10}{char_info}")
+                where = f", at {c['current_location']}" if c.get("current_location") else ""
+                print(f"{marker} {c['name']:24}{char_info}{where}")
             print()
             if active:
                 print(f"* = active campaign ({active})")
@@ -533,7 +550,7 @@ def main():
             sys.exit(1)
 
     elif args.action == 'create':
-        campaign_name = args.campaign_name or f"{args.name}'s Adventure"
+        campaign_name = args.campaign_name or args.name
         path = manager.create(args.name, campaign_name)
         if not path:
             sys.exit(1)

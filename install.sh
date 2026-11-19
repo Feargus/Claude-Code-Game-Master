@@ -239,14 +239,14 @@ main() {
     EXTRAS_FLAG=""
 
     if [ "$AUTO_MODE" = true ]; then
-        info "Auto mode: installing full dependencies (core + rag + voice)"
+        info "Auto mode: installing full dependencies (core + recall + voice)"
         EXTRAS_FLAG="--all-extras"
     else
         echo
         echo "  Select what to install:"
         echo "    1) Core only         — basic GM tools, dice, session management"
-        echo "    2) Core + RAG        — adds PDF import & semantic search (recommended)"
-        echo "    3) Full              — core + RAG + voice (ElevenLabs TTS)"
+        echo "    2) Core + recall     — adds semantic recall and the book search (recommended)"
+        echo "    3) Full              — core + recall + voice (ElevenLabs TTS)"
         echo "    4) Full + Dev tools  — everything + linting & formatting"
         echo
         echo -n "  Choice [1-4] (default: 2): "
@@ -256,7 +256,7 @@ main() {
             1) EXTRAS_FLAG="";;
             3) EXTRAS_FLAG="--all-extras";;
             4) EXTRAS_FLAG="--all-extras";;
-            *) EXTRAS_FLAG="--extra rag";;  # default to 2
+            *) EXTRAS_FLAG="--extra recall";;  # default to 2
         esac
 
         # Dev extras on top if choice 4
@@ -338,12 +338,14 @@ ENVEOF
         PASS=$((PASS + 1))
     fi
 
-    # RAG (if installed)
-    if uv run python -c "import chromadb; import sentence_transformers" 2>/dev/null; then
-        ok "RAG dependencies available (chromadb + sentence-transformers)"
+    # Semantic recall and the book search (if installed)
+    if uv run python lib/embedder.py status 2>/dev/null | grep -q "Semantic recall: ready"; then
+        ok "Semantic recall ready (EmbeddingGemma on ONNX Runtime; also the book search)"
         PASS=$((PASS + 1))
+    elif uv run python -c "import onnxruntime, tokenizers, numpy" 2>/dev/null; then
+        info "Semantic recall: the packages are there; the model isn't yet (bash tools/gm-recall.sh setup)"
     else
-        info "RAG dependencies not installed (optional — install with: uv sync --extra rag)"
+        info "Semantic recall not installed (optional: uv sync --extra recall, then bash tools/gm-recall.sh setup)"
     fi
 
     # jq

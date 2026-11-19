@@ -9,18 +9,14 @@ about the player, remembers or hides is not on the sheet: it is facts they hold
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 import sheet as sheet_mod
 from entity_manager import EntityManager, is_dead, is_party_member, usual_places
-
-# Category of the fact `kill` records. Provisional: categories are due for rework
-# (design-notes.md, "World state").
-DEATH_FACT_CATEGORY = "session_events"
-# Category of how an NPC regards the player (the attitude given at creation).
-FEELING_CATEGORY = "relations"
+from game_time import stored_time
+from note_manager import check_attitude
 
 
 class NPCManager(EntityManager):
@@ -32,10 +28,10 @@ class NPCManager(EntityManager):
 
     # ---------- helpers ----------
 
-    def _npcs(self) -> Dict[str, Any]:
+    def _npcs(self) -> dict[str, Any]:
         return self._load_entities(self.npcs_file)
 
-    def _save(self, npcs: Dict[str, Any]) -> bool:
+    def _save(self, npcs: dict[str, Any]) -> bool:
         return self._save_entities(self.npcs_file, npcs)
 
     def _npc_key(self, name: str) -> str:
@@ -63,42 +59,50 @@ class NPCManager(EntityManager):
                 keys.append(cid[9:])
         return keys, errors
 
-    def get_sheet(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_sheet(self, name: str) -> dict[str, Any] | None:
         key = self._npc_key(name)
         return self._npcs().get(key) if key else None
 
     # ---------- creating ----------
 
-    def create_npc(self, name: str, role: str = "", attitude: Optional[str] = None,
+    def create_npc(self, name: str, role: str = "", attitude: str | None = None,
                    locations=None, nowhere: bool = False, aliases=None,
-                   fields: Optional[Dict[str, str]] = None) -> bool:
+                   fields: dict[str, str] | None = None, another: bool = False) -> bool:
         """Create an NPC sheet. Returns True on success, False on failure (printed).
 
-        `role`: who they are in a few words. `attitude`: how they regard the player
-        at first ("wary", "owes her a favour"); it becomes a fact they hold about
-        the player, not a field, so later feelings are facts too. `locations`:
-        where they are usually found (known places), required unless `nowhere`.
-        `aliases`: shorter names the story will use, each checked. `fields`: any
-        further text fields by flag name (sheet.TEXT_FIELDS), e.g. look, Big Five.
+        A sheet can start as a sketch: a name and any few fields (a role, a
+        goal, a fear), filled in when play needs the person. At least one field
+        is needed, so the record says who they are.
+
+        `role`: who they are in a few words. `attitude`: their attitude towards
+        the player at first, as one or more adjectives ("wary", "fond,
+        exasperated"), or nothing for someone who has none; it becomes a fact
+        they hold about the player, not a field (check_attitude). `locations`:
+        where they are usually found (known places), if anywhere; `nowhere` says
+        so explicitly. `aliases`: shorter names the story will use, each checked.
+        `fields`: any further text fields by flag name (sheet.TEXT_FIELDS), e.g.
+        a goal, a fear, a look, the Big Five. A name close to an existing NPC's
+        (world_ids.close_names) is refused unless `another` says it is someone else.
         """
-        from world_ids import WorldIds, alias_hint
+        from world_ids import WorldIds, close_name_refusal
         places, errors = self._usual_places(locations)
         aliases = [a.strip() for a in aliases or [] if a.strip()]
         ids = WorldIds(self.json_ops)
         errors += [e for a in aliases if (e := ids.check_alias(a, f"npc:{name}"))]
         if nowhere and places:
             errors.append("Give --location or --nowhere, not both.")
-        if not nowhere and not places and not errors:
-            here = ((self.json_ops.load_json("campaign-overview.json") or {})
-                    .get("player_position") or {}).get("current_location", "")
-            hint = f' (here: --location "{here}")' if here else ""
-            errors.append(f"Where is {name} usually found? Give --location <place>, "
-                          f"repeatable{hint}, or --nowhere for someone with no usual place.")
         valid, error = self.validators.validate_name(name)
         if not valid:
             errors.append(error)
         if self._entity_exists(self.npcs_file, name):
             errors.append(f"NPC {name} already exists")
+        attitude, error = check_attitude(attitude)
+        if error:
+            errors.append(error)
+        if not another and not self._entity_exists(self.npcs_file, name):
+            refusal = close_name_refusal(ids.close_names(name, "npc"), "npc", name)
+            if refusal:
+                errors.append(refusal)
         sheet = sheet_mod.blank("npc", name)
         try:
             sheet_mod.set_fields(sheet, dict(fields or {}, **({"role": role} if role else {})))
@@ -106,8 +110,18 @@ class NPCManager(EntityManager):
                 sheet["identity"]["aliases"] = list(dict.fromkeys(aliases))
             sheet["places"] = {"usual": places}
             sheet_mod.check(sheet, "npc")
+            if not any(sheet.get(sec) for sec in ("look", "personality")) and \
+                    set(sheet["identity"]) <= {"name", "aliases"} and not sheet.get("status"):
+                errors.append(f"Say who {name} is in at least one field: a role (\"a fixer\"), "
+                              f"or e.g. --goal, --fears, --background, --physique.")
         except sheet_mod.SheetError as problem:
             errors.append(str(problem))
+        if not errors and not another:            # someone like this exists (recall.py)
+            from embedding_store import npc_text
+            from recall import close_in_meaning, meaning_refusal
+            hit = close_in_meaning(self.json_ops, "npc", npc_text(name, sheet))
+            if hit:
+                errors.append(meaning_refusal("npc", name, hit))
         if errors:
             for error in errors:
                 print(f"[ERROR] {error}")
@@ -115,26 +129,26 @@ class NPCManager(EntityManager):
         if not self._add_entity(self.npcs_file, name, sheet):
             return False
 
+        # One line. What is still missing is said where it is first needed: the
+        # NPC card when they enter, the roll that needs stats, the fact that names
+        # them while they're not in the scene.
         where = ', '.join(places) if places else 'no usual place'
+        called = f"; also called {', '.join(sheet['identity']['aliases'])}" if aliases else ""
+        sketch = "" if sheet.get("look") or sheet.get("personality") else " (sketch)"
         print(f"[SUCCESS] Created NPC: {name}" + (f" - {role}" if role else "")
-              + f"; usually found: {where}")
-        if aliases:
-            print(f"  Also called: {', '.join(sheet['identity']['aliases'])}")
-        elif alias_hint("npc", name):
-            print(alias_hint("npc", name))
-        if attitude and str(attitude).strip():
-            self._first_feeling(name, str(attitude).strip())
-        print(f"  Not in the scene yet: bash tools/gm-scene.sh enter \"{name}\" if they're here.")
+              + f"; usually found: {where}{called}{sketch}")
+        if attitude:
+            self._first_feeling(name, attitude)
         self._witness_hint(name)
         return True
 
     def _first_feeling(self, name: str, attitude: str) -> None:
-        """How the NPC regards the player at first, as a fact only they hold."""
-        from note_manager import NoteManager
+        """How the NPC regards the player at first: an attitude (a flagged fact)."""
+        from note_manager import NoteManager, fact_text
+        notes = NoteManager(self.base_dir)
+        fid = notes.set_attitude(name, attitude, "player")
         player = sheet_mod.name(self.json_ops.load_json("character.json") or {}) or "the player"
-        NoteManager(self.base_dir).add_fact(
-            FEELING_CATEGORY, f"{name} is {attitude} toward {player}.", list_waiting=False,
-            about=[f"npc:{name}", "player"], holders=[f"npc:{name}"], nowhere=True)
+        print(f"  Attitude {fid}: {fact_text(notes.show([fid])[0], player)}")
 
     def _witness_hint(self, name: str) -> None:
         """A new NPC may have seen what happened here before they had a name (Lord
@@ -154,7 +168,7 @@ class NPCManager(EntityManager):
 
     # ---------- changing ----------
 
-    def set_fields(self, name: str, values: Dict[str, str]) -> bool:
+    def set_fields(self, name: str, values: dict[str, str]) -> bool:
         key = self._npc_key(name)
         if not key:
             return False
@@ -174,7 +188,7 @@ class NPCManager(EntityManager):
         return True
 
     def set_stats(self, name: str, attrs=None, skills=None, remove_skills=None,
-                  wounds: Optional[int] = None) -> Dict[str, Any]:
+                  wounds: int | None = None) -> dict[str, Any]:
         """Set or update an NPC's stats (attributes, skills, wounds), checked
         (stat_block.py). Merges into what is there. Returns {"name", "entry",
         "warnings"}; raises stat_block.StatError, or ValueError for an unknown NPC."""
@@ -234,8 +248,8 @@ class NPCManager(EntityManager):
         print(f"[SUCCESS] {key} usually found: {', '.join(left) or 'nowhere (no usual place left)'}")
         return True
 
-    def item(self, name: str, action: str, place: Optional[str] = None,
-             item_name: Optional[str] = None, concealed: bool = False, note: str = "") -> bool:
+    def item(self, name: str, action: str, place: str | None = None,
+             item_name: str | None = None, concealed: bool = False, note: str = "") -> bool:
         key = self._npc_key(name)
         if not key:
             return False
@@ -258,7 +272,7 @@ class NPCManager(EntityManager):
         print(message)
         return True
 
-    def kill_npc(self, name: str, cause: Optional[str] = None) -> Dict[str, Any]:
+    def kill_npc(self, name: str, cause: str | None = None) -> dict[str, Any]:
         """Mark an NPC dead, record the death as a fact, and fire the on_death
         consequences waiting for it. Refuses an NPC who is already dead, so
         on_death fires only once. A dead NPC is no longer present anywhere."""
@@ -272,7 +286,7 @@ class NPCManager(EntityManager):
             return {'success': False, 'error': f"{key} is already dead"}
         status = sheet_mod.section(npcs[key], "status")
         status.update({'state': 'dead', 'died_at': self.get_timestamp()})
-        game_time = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
+        game_time = stored_time(self.json_ops)
         if game_time:
             status['died_game_time'] = game_time
         if cause:
@@ -285,7 +299,7 @@ class NPCManager(EntityManager):
 
         from note_manager import NoteManager
         fact_id = NoteManager(self.base_dir).add_fact(
-            DEATH_FACT_CATEGORY, f"{key} died" + (f": {cause}" if cause else "."))
+            f"{key} died" + (f": {cause}" if cause else "."))
         from consequence_manager import ConsequenceManager
         fired = ConsequenceManager(self.base_dir).fire_event(
             'on_death', f"npc:{key}", f"{key} died" + (f" ({cause})" if cause else ""))
@@ -316,12 +330,12 @@ class NPCManager(EntityManager):
                                      if member else "left the party"))
         return True
 
-    def get_party_members(self) -> Dict[str, Dict]:
+    def get_party_members(self) -> dict[str, dict]:
         return {k: v for k, v in self._npcs().items() if is_party_member(v)}
 
     # ---------- showing ----------
 
-    def show(self, name: str) -> Optional[str]:
+    def show(self, name: str) -> str | None:
         """The whole sheet, readable, plus what they know and feel about the player."""
         key = self._npc_key(name)
         if not key:
@@ -330,20 +344,30 @@ class NPCManager(EntityManager):
         lines = [f"=== {key} ==="]
         if sheet_mod.aliases(npc):
             lines.append(f"also called: {', '.join(sheet_mod.aliases(npc))}")
-        lines += sheet_mod.describe(npc)
+        from factions import known
+        lines += sheet_mod.describe(npc, {fid: f.get("name", fid) for fid, f in known(self.json_ops).items()})
+        if not npc.get("look") and not npc.get("personality"):
+            lines.append("only a sketch: no look or personality yet; give them before playing "
+                         "this person (gm-npc.sh set ...)")
         if is_party_member(npc):
             lines.append("party member")
         try:
             from note_manager import NoteManager, fact_line
-            known = NoteManager(self.base_dir).find(held_by=[f"npc:{key}"], about=["player"])
+            notes = NoteManager(self.base_dir)
+            known = [f for f in notes.find(held_by=[f"npc:{key}"], about=["player"])
+                     if not f.get("attitude")]
+            feelings = notes.attitudes(key)
         except (RuntimeError, ValueError):
-            known = []
+            known, feelings = [], {}
+        for whom, f in feelings.items():
+            towards = "the player" if whom == "player" else whom.partition(":")[2]
+            lines.append(f"attitude towards {towards}: {f['fact']} ({f['id']})")
         if known:
             lines.append("what they know and feel about the player (newest first):")
             lines += [f"  {fact_line(f)}" for f in known[:8]]
         return "\n".join(lines)
 
-    def list_npcs(self, filter_location: Optional[str] = None) -> Dict[str, Dict]:
+    def list_npcs(self, filter_location: str | None = None) -> dict[str, dict]:
         npcs = self._npcs()
         if not filter_location:
             return npcs
@@ -351,22 +375,58 @@ class NPCManager(EntityManager):
         return {k: v for k, v in npcs.items() if wanted in [p.lower() for p in usual_places(v)]}
 
 
+def _faction_ids(manager, open_ones, secret_ones) -> list[tuple[str, bool]]:
+    """(faction id, secret) for gm-npc.sh create's --faction flags, or exit 1."""
+    from factions import FactionError, FactionManager
+    m = FactionManager(manager.json_ops)
+    try:
+        return [(m.key(f), False) for f in open_ones] + [(m.key(f), True) for f in secret_ones]
+    except FactionError as error:
+        print(f"[ERROR] {error}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _join(manager, name: str, joins) -> None:
+    from factions import FactionError, FactionManager, _print_join
+    m = FactionManager(manager.json_ops)
+    for fid, secret in joins:
+        try:
+            _print_join(m.join(fid, f"npc:{name}", secret or None), secret)
+        except FactionError as error:
+            print(f"[ERROR] {error}", file=sys.stderr)
+            sys.exit(1)
+    for note in m.notes:
+        print(f"[NOTE] {note}")
+
+
 def main():
     import argparse
-    from cli_output import wants_json, strip_json_flag, emit, emit_error
+
+    from cli_output import emit, emit_error, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description='NPC sheets')
     sub = parser.add_subparsers(dest='action')
 
     p = sub.add_parser('create', help='Create an NPC')
     p.add_argument('name')
-    p.add_argument('role', help='who they are, in a few words')
-    p.add_argument('attitude', nargs='?', help='how they regard the player at first (becomes a fact)')
+    p.add_argument('role', nargs='?', default='', help='who they are, in a few words; optional if another field says who they are')
+    p.add_argument('attitude', nargs='?', help='attitude towards the player: one or more adjectives, comma separated (becomes a fact); optional')
     p.add_argument('--location', action='append', dest='locations',
                    help='where they are usually found (repeatable)')
     p.add_argument('--nowhere', action='store_true', help='no usual place')
     p.add_argument('--alias', action='append', dest='aliases', help='a shorter name (repeatable)')
+    p.add_argument('--another', action='store_true',
+                   help='someone else, though the name is close to an existing NPC')
+    p.add_argument('--faction', action='append', default=[],
+                   help='a faction they belong to (repeatable)')
+    p.add_argument('--secret-faction', action='append', default=[], dest='secret_factions',
+                   help='a faction they belong to in secret: only its members know (repeatable)')
     sheet_mod.add_field_flags(p)
+
+    p = sub.add_parser('attitude', help='How an NPC regards the player (or another NPC) now')
+    p.add_argument('name')
+    p.add_argument('adjectives', nargs='?', help='one or more adjectives, comma separated; without: show')
+    p.add_argument('--towards', default='player', help='player (the default) or another NPC')
 
     p = sub.add_parser('set', help='Text fields: identity, look, personality, goal')
     p.add_argument('name')
@@ -426,9 +486,29 @@ def main():
             sys.exit(1)
         print(text)
     elif args.action == 'create':
+        joins = _faction_ids(manager, args.faction, args.secret_factions)   # checked first
         if not manager.create_npc(args.name, args.role, args.attitude, locations=args.locations,
                                   nowhere=args.nowhere, aliases=args.aliases,
-                                  fields=sheet_mod.fields_from_args(args)):
+                                  fields=sheet_mod.fields_from_args(args),
+                                  another=args.another):
+            sys.exit(1)
+        _join(manager, args.name, joins)
+    elif args.action == 'attitude':
+        from note_manager import NoteManager, fact_text
+        notes = NoteManager()
+        player = sheet_mod.name(notes.json_ops.load_json("character.json") or {}) or "the player"
+        try:
+            if args.adjectives is None:
+                feelings = notes.attitudes(args.name)
+                for f in feelings.values():
+                    print(f"{f['id']} {fact_text(f, player)}")
+                if not feelings:
+                    print("No attitude recorded.")
+            else:
+                fid = notes.set_attitude(args.name, args.adjectives, args.towards)
+                print(f"[SUCCESS] Attitude {fid}: {fact_text(notes.show([fid])[0], player)}")
+        except ValueError as error:
+            print(f"[ERROR] {error}", file=sys.stderr)
             sys.exit(1)
     elif args.action == 'set':
         if not manager.set_fields(args.name, sheet_mod.fields_from_args(args)):
@@ -484,6 +564,9 @@ def main():
         result = manager.kill_npc(args.name, args.cause)
         if not result.get('success'):
             sys.exit(1)
+        from factions import succession
+        for note in succession(manager.json_ops, f"npc:{result['name']}"):
+            print(f"[NOTE] {note}")
         print(f"DEATH {result['name']} has died." + (f" Cause: {args.cause}" if args.cause else ""))
         from consequence_manager import print_fired
         print_fired(result.get('fired'))

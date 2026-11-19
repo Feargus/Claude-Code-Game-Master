@@ -44,6 +44,35 @@ git checkout Towards-Cyberpunk
 
 The work happens on the `Towards-Cyberpunk` branch.
 
+### Semantic recall (optional)
+
+Facts can be found and ranked by what they mean, not only by their words ("the clown" finds
+"Pagliacci took off his makeup and wept"). It runs locally, without PyTorch: Google's
+EmbeddingGemma-300m in its 4-bit form on ONNX Runtime. Without it, everything works, and
+facts are ranked by recency.
+
+```bash
+uv sync --extra dev --extra recall     # numpy, onnxruntime, tokenizers (about 150 MB)
+bash tools/gm-recall.sh setup          # the model files: 217 MB, downloaded once and checked
+bash tools/gm-recall.sh status         # ready? and how much of the campaign is embedded
+```
+
+- **Where things go:** the model into `models/` beside `lib/` (or the folder `GM_MODELS_DIR`
+  names); each campaign's vectors into its own `embeddings.npz` (derived data: keep it out
+  of git, it is rebuilt when missing).
+- **When it works:** after a command records a fact, describes a place or rewrites a plot,
+  a background job embeds the new texts (about 6 s to load the model, under a second per
+  text). One job runs at a time.
+- **Fast after the first use:** a helper process keeps the model loaded, so a question by
+  meaning takes about 1.3 s instead of 7. It starts by itself when a command first needs the
+  model and stops after 30 minutes unused; `bash tools/gm-recall.sh stop` ends it at once.
+  It listens on a Unix socket in a RAM folder (`/run/user/<uid>`), no network port.
+- **What it needs:** about 0.5 GB of RAM while the helper or a job runs. Measured on a Raspberry Pi 4
+  (4 GB); `uv` and the model download write their caches to your home folder unless told
+  otherwise (`UV_CACHE_DIR`, `GM_MODELS_DIR`), worth pointing at a hard disk on a machine
+  that runs from an SD card.
+- A plain `uv sync` without `--extra recall` removes the packages again.
+
 ## Usage
 
 Start Claude Code in the repo folder and run `/gm`:
@@ -60,8 +89,8 @@ claude
 
 | Command | What it does |
 |---|---|
-| `/gm end` | End the session, recording where you paused. Invents nothing. |
-| `/gm cliffhanger` | End the session on a cliffhanger. |
+| `/gm end` | Stop for now: the plots that moved get their one sentence. Invents nothing. |
+| `/gm cliffhanger` | Stop on a cliffhanger. |
 | `/gm world` | Let the world move off-screen, e.g. during a long rest. |
 | `/gm character` | Show your character sheet. |
 | `/gm status` | A short overview of the campaign. |
@@ -83,7 +112,7 @@ Campaign data lives in `world-state/campaigns/`, which git ignores: **back it up
 ## Development
 
 ```bash
-uv sync --extra rag --extra dev   # install test and book-search dependencies
+uv sync --extra recall --extra dev   # tests, semantic recall and the book search
 uv run pytest                     # run the tests
 ```
 

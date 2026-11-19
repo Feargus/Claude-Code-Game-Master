@@ -40,16 +40,15 @@ def _add_npc(world, name, location, aliases=None):
         put_in_scene(Path(world) / "campaigns" / "dungeon-crawler-carl", name)
 
 
-def _add_facts(world, category, texts, **fields):
+def _add_facts(world, texts, **fields):
     """Old-style facts (no holders) unless fields like holders=[...] are given."""
     facts = _load(world, "facts.json")
-    facts.setdefault(category, [])
     for t in texts:
-        facts[category].append({"fact": t, "timestamp": "2026-08-15T00:00:00Z", **fields})
+        facts.append({"fact": t, "timestamp": "2026-08-15T00:00:00Z", **fields})
     _save(world, "facts.json", facts)
 
 
-OLD = "about them (old fact: who knows it isn't recorded): "
+OLD = "about them, they don't know (old fact: who knows it isn't recorded): "
 
 
 def _npc_block(ctx, npc_name):
@@ -73,7 +72,7 @@ def test_fact_naming_present_npc_surfaces_under_that_npc(dcc_world):
     loc = _current_location(dcc_world)
     fact = "Griselda's eyes flicked to the back door — she knows more than she lets on."
     _add_npc(dcc_world, "Griselda", loc)
-    _add_facts(dcc_world, "npc_relations", [fact])
+    _add_facts(dcc_world, [fact])
 
     ctx = SessionManager(dcc_world).get_full_context()
     block = _npc_block(ctx, "Griselda")
@@ -84,7 +83,7 @@ def test_fact_naming_no_present_npc_is_not_attached(dcc_world):
     loc = _current_location(dcc_world)
     unrelated = "Zoltar the Unseen brooded in a tower far from any living soul."
     _add_npc(dcc_world, "Griselda", loc)
-    _add_facts(dcc_world, "npc_relations", [unrelated])
+    _add_facts(dcc_world, [unrelated])
 
     ctx = SessionManager(dcc_world).get_full_context()
     block = _npc_block(ctx, "Griselda")
@@ -95,7 +94,7 @@ def test_word_boundary_substring_is_not_a_false_positive(dcc_world):
     loc = _current_location(dcc_world)
     banana = "The crawlers found a crate of Banana rations near the vending machine."
     _add_npc(dcc_world, "Ana", loc)
-    _add_facts(dcc_world, "npc_relations", [banana])
+    _add_facts(dcc_world, [banana])
 
     ctx = SessionManager(dcc_world).get_full_context()
     # "Ana" must not match inside "Banana".
@@ -110,7 +109,7 @@ def test_common_leading_token_is_not_a_false_positive(dcc_world):
     door = "The red door creaked open on rusted hinges."
     _add_npc(dcc_world, "Old Man Withers", loc)
     _add_npc(dcc_world, "Red Sonja", loc)
-    _add_facts(dcc_world, "world_events", [rope, door])
+    _add_facts(dcc_world, [rope, door])
 
     ctx = SessionManager(dcc_world).get_full_context()
     # Neither fact names a real NPC, so it attaches under no one.
@@ -125,7 +124,7 @@ def test_full_multiword_key_still_attaches(dcc_world):
     loc = _current_location(dcc_world)
     fact = "Old Man Withers cursed the merchant who shorted him."
     _add_npc(dcc_world, "Old Man Withers", loc)
-    _add_facts(dcc_world, "npc_relations", [fact])
+    _add_facts(dcc_world, [fact])
 
     ctx = SessionManager(dcc_world).get_full_context()
     assert OLD + fact in _npc_block(ctx, "Old Man Withers")
@@ -136,7 +135,7 @@ def test_alias_path_attaches(dcc_world):
     loc = _current_location(dcc_world)
     fact = "Aratus the Kothian bargained hard for the caravan's silk."
     _add_npc(dcc_world, "Aratus", loc, aliases=["Aratus the Kothian"])
-    _add_facts(dcc_world, "npc_relations", [fact])
+    _add_facts(dcc_world, [fact])
 
     ctx = SessionManager(dcc_world).get_full_context()
     assert OLD + fact in _npc_block(ctx, "Aratus")
@@ -146,35 +145,48 @@ def test_alias_path_attaches(dcc_world):
 
 def test_they_know_what_they_hold(dcc_world):
     _add_npc(dcc_world, "Griselda", _current_location(dcc_world))
-    _add_facts(dcc_world, "session_events", ["The vault code is 0451."],
+    _add_facts(dcc_world, ["The vault code is 0451."],
                holders=["player", "npc:Griselda"])
+    _add_facts(dcc_world, ["Griselda hid the key under the altar."],
+               holders=["npc:Griselda"])
     block = _npc_block(SessionManager(dcc_world).get_full_context(), "Griselda")
-    assert "they know: The vault code is 0451." in block
+    # what she knows and the player doesn't is listed; what they share is counted
+    assert "knows, and Tandy doesn't: Griselda hid the key under the altar." in block
+    assert "0451" not in block and "+ 1 fact they share with Tandy" in block
 
 
 def test_about_them_but_not_known_to_them(dcc_world):
     _add_npc(dcc_world, "Griselda", _current_location(dcc_world))
-    _add_facts(dcc_world, "session_events", ["Griselda's brother sold her out."],
+    _add_facts(dcc_world, ["Griselda's brother sold her out."],
                about=["npc:Griselda"], holders=["player"])
     block = _npc_block(SessionManager(dcc_world).get_full_context(), "Griselda")
     assert "about them, they don't know: Griselda's brother sold her out." in block
-    assert "they know: Griselda's brother" not in block
+    assert "knows, and Tandy doesn't: Griselda's brother" not in block
+
+
+def test_a_public_fact_about_them_is_one_they_know(dcc_world):
+    """Public is known to everyone, them too: shared, not "they don't know" (todo.md)."""
+    _add_npc(dcc_world, "Griselda", _current_location(dcc_world))
+    _add_facts(dcc_world, ["Griselda was fined by the Syndicate."],
+               about=["npc:Griselda"], holders=["public"])
+    block = _npc_block(SessionManager(dcc_world).get_full_context(), "Griselda")
+    assert "they don't know: Griselda was fined" not in block
+    assert "fact they share with Tandy" in block or "facts they share with Tandy" in block
 
 
 def test_named_in_a_new_fact_is_not_knowing_it(dcc_world):
     """A new fact (with holders) that names them but has no `about` for them
     isn't attached by the name check: the about list at write time decides."""
     _add_npc(dcc_world, "Griselda", _current_location(dcc_world))
-    _add_facts(dcc_world, "lore", ["Griselda is a common name in the north."], holders=[])
+    _add_facts(dcc_world, ["Griselda is a common name in the north."], holders=[])
     block = _npc_block(SessionManager(dcc_world).get_full_context(), "Griselda")
     assert "common name" not in block
 
 
 def test_a_long_list_is_capped_and_disclosed(dcc_world):
     _add_npc(dcc_world, "Griselda", _current_location(dcc_world))
-    _add_facts(dcc_world, "lore", [f"Secret number {i}." for i in range(5)],
+    _add_facts(dcc_world, [f"Secret number {i}." for i in range(5)],
                holders=["npc:Griselda"])
     sm = SessionManager(dcc_world)
     block = _npc_block(sm.get_full_context(), "Griselda")
-    assert block.count("they know:") == 3 and "+2 more facts they know" in block
-    assert _npc_block(sm.get_full_context(full=True), "Griselda").count("they know:") == 5
+    assert block.count("knows, and Tandy doesn't:") == 3 and "+2 more (gm-note.sh find" in block

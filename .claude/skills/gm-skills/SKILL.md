@@ -19,7 +19,7 @@ This file defines when to roll, what is rolled, and how to read the result.
 
 **Don't roll for:** trivial tasks, impossible tasks, routine professional work, or anything with no meaningful consequence for failure.
 
-**Not a skill contest:** a process nobody steers (water seeping into a cracked seal while the character lies still, a fire spreading, a worn part giving out) or pure chance (a coin toss, a die rolled in the story). No skill applies, so don't pick one. Decide it from the facts when the outcome follows from them; if it is truly uncertain, set the odds and roll plain dice (`uv run python lib/dice.py "1d6"`); if it unfolds over time, it is a clock. Once a character steers it, it is an action again and takes a skill.
+**Not a skill contest:** a process nobody steers (water seeping into a cracked seal while the character lies still, a fire spreading, a worn part giving out) or pure chance (a coin toss, a die rolled in the story). No skill applies, so don't pick one. Decide it from the facts when the outcome follows from them; if it is truly uncertain, set the odds and roll plain dice (`bash tools/gm-dice.sh "1d6"`); if it unfolds over time, it is a clock. Once a character steers it, it is an action again and takes a skill.
 
 ## Attributes
 
@@ -94,7 +94,19 @@ Two rolls that each reach a useful part of the goal, without any bonus passed be
 
 ## Improvised skills and statuses
 
-Rare actions don't need a permanent skill. When nothing in the index fits, check `improvised-skills.md` in the active campaign's folder, then invent a skill on the spot: name, category, anchor, a one-line description, and the applications used. Add it to that file with status `improvised`, creating the file if needed. New applications for existing skills go there the same way.
+Rare actions don't need a permanent skill. When nothing in the index fits, check `improvised-skills.md` in the active campaign's folder, then invent a skill on the spot: name, anchor, a one-line description, and the applications used. Add it to that file before rolling it, creating the file if needed, in the form the skill files here use:
+
+```
+## Ratcatching
+
+*Anchor: AGI · Status: improvised*
+
+Catching small fast things alive.
+
+- A grab in the dark: **AGI**, DFT, ITU
+```
+
+The roll script reads the name, the anchor and the status from there. New applications of an existing skill go under that skill's name, without the Anchor line.
 
 Never edit the skill files in this folder during play. They hold the canon skills, and only the player changes them.
 
@@ -128,7 +140,8 @@ bash tools/gm-skill-contest.sh --active Fearghas Larceny DFT DFT LOG --reactive-
 bash tools/gm-skill-contest.sh --active-dc 20 "nerve toxin" --reactive Fearghas Endurance VIG VIG ITU
 ```
 
-- **Names:** the player, an NPC from `npcs.json`, or a mob from `mobs.json`. Mobs have no personality, and their instances are interchangeable. Mobs you invent belong to the campaign.
+- **Names:** the player (by name, or just `player`), an NPC, or a mob (`gm-mob.sh list`). The player and NPCs are found by their aliases too, like everywhere else. Mobs have no personality, and their instances are interchangeable. Mobs you invent belong to the campaign.
+- **Skill and anchor:** the script refuses a skill that is neither in the index nor in the campaign's `improvised-skills.md` (it names the skills you may have meant), a banned one, and a roll whose three attributes don't include the skill's anchor. Fix the roll and run it again; a refused roll rolled nothing.
 - **Unknown name or no stats:** the script refuses. Give them stats, then roll again; never edit the JSON by hand. `gm-mob.sh list` shows the repo's example mobs: they are the scale.
   ```
   bash tools/gm-npc.sh stats "Rook" --attr STR=12 --attr AGI=11 --attr default=10 \
@@ -181,7 +194,7 @@ A failed roll NEVER means "nothing happens". It means "something DIFFERENT happe
 
 Framework: (1) What did they try? (2) What was the intent? (3) What goes sideways into a NEW situation? (4) What choice does that create?
 
-**Fail forward isn't immortality.** "Something different happens" can include death when the stakes were lethal and telegraphed: an over-matched threat, an ignored warning, a tightening string of failures. Don't soften a self-inflicted lethal outcome into a free pass. On PC death, run the Death Protocol (`CLAUDE.md`).
+**Fail forward isn't immortality.** "Something different happens" can include death when the stakes were lethal and telegraphed: an over-matched threat, an ignored warning, a tightening string of failures. Don't soften a self-inflicted lethal outcome into a free pass. On PC death: `gm-player.sh kill --cause "<how>"` first, then the Death Protocol (`gm-death`).
 
 **A failed information roll misreads the world; it never changes it.** Investigation, Awareness, Insight, Tactics and every other roll that reads a situation work on what is already true. Failure means missing it, getting part of it, or believing something wrong about it, never a new fact that makes the world harder than it was. If something the roll could reveal isn't decided yet, decide it before rolling (with the stakes), and record it then: the truth as a fact (`--secret` if nobody knows it yet), the misreading as a version of it the character holds (`--holders player --truth wrong --version-of <id>`). Example of what not to do: a failed Tactics roll against a war-machine, after which the machine gains a hidden coolant reserve so that the plan fails.
 

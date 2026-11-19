@@ -46,7 +46,7 @@ class AlwaysFlesh:
 
     def choice(self, boxes):
         assert None in boxes, "no empty flesh box left"
-        return None
+        return
 
 
 FLESH = AlwaysFlesh()

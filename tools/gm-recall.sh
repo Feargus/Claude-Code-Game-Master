@@ -1,16 +1,52 @@
 #!/bin/bash
-# gm-recall.sh - Long-term campaign memory
+# gm-recall.sh - Semantic recall: the model and the campaign's embeddings
 #
-#   gm-recall.sh recall "have we met Remex before?"   # semantic when RAG deps present, keyword fallback
-#   gm-recall.sh recall "dragon" --top-k 8            # default top-k is 5
-#   gm-recall.sh recall "dragon" --provenance our-story
-#   gm-recall.sh arc '{"summary": "...", "who_matters": [...], "open_debts": [...]}'
-#                                                      # REQUIRED at session end — long-term memory
-#   gm-recall.sh memoir                                # arc entries + recent verbatim
-#   gm-recall.sh refresh                               # rebuild the memory index (auto on save)
+#   gm-recall.sh setup      download and check the model (217 MB, once)
+#   gm-recall.sh status     is semantic recall ready; how much of the campaign is embedded
+#   gm-recall.sh embed      embed the campaign's new texts now (a background job does
+#                           this by itself after each command that records them)
+#   gm-recall.sh stop       stop the helper that keeps the model loaded (it starts by
+#                           itself when needed and stops after 30 minutes unused)
+#
+# Recall itself: gm-note.sh find --like "<question>"
 
+# Nothing here changes the campaign's records, and setup and embed run for
+# minutes: it neither waits for other commands nor makes them wait (common.sh,
+# the command lock).
+GM_COMMAND_LOCK=no
 source "$(dirname "$0")/common.sh"
+
+case "$1" in
+    setup)
+        $PYTHON_CMD "$LIB_DIR/embedder.py" setup
+        exit $?
+        ;;
+    status)
+        $PYTHON_CMD "$LIB_DIR/embedder.py" status || exit 1
+        $PYTHON_CMD "$LIB_DIR/embed_helper.py" status
+        if [ -n "$(get_active_campaign)" ]; then
+            $PYTHON_CMD "$LIB_DIR/embedding_store.py" status
+            line=$($PYTHON_CMD "$LIB_DIR/rag/vector_store.py" status "$(get_campaign_dir)")
+            [ "$line" != "This campaign has no book indexed." ] && echo "$line"
+        fi
+        exit 0
+        ;;
+    stop)
+        $PYTHON_CMD "$LIB_DIR/embed_helper.py" stop
+        exit $?
+        ;;
+esac
 
 require_active_campaign
 
-$PYTHON_CMD "$LIB_DIR/campaign_memory.py" "$@"
+if [ "$1" = "embed" ]; then
+    $PYTHON_CMD "$LIB_DIR/embedding_store.py" embed
+    exit $?
+fi
+
+if [ "$1" = "recall" ]; then
+    echo "[ERROR] gm-recall.sh recall is gone: gm-note.sh find --like \"<question>\" ranks the facts by meaning." >&2
+    exit 1
+fi
+echo "Usage: gm-recall.sh setup | status | embed   (recall: gm-note.sh find --like \"<question>\")" >&2
+exit 1

@@ -17,14 +17,15 @@ Used by new_character.py; the GM never calls it directly.
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import facts as fact_file
 import sheet as sheet_mod
 
 
-def _swap(ids: List[str], old: str, new: str) -> List[str]:
+def _swap(ids: list[str], old: str, new: str) -> list[str]:
     """`ids` with `old` replaced by `new`, without duplicates, order kept."""
     out = []
     for cid in ids:
@@ -51,25 +52,41 @@ def _learn_match(match: str, old: str, new: str) -> str:
     return f"{who}{sep}{what}"
 
 
-def move_id(json_ops, old: str, new: str) -> List[str]:
-    """Rewrite `old` to `new` in the facts (holders, about) and the active
-    consequences (triggers, tell effects). Returns notes for the GM about
-    anything that no longer makes sense."""
-    notes = []
-    facts = json_ops.load_json("facts.json") or {}
-    changed = 0
-    for items in facts.values():
-        if not isinstance(items, list):
-            continue
-        for fact in items:
-            if not isinstance(fact, dict):
+def _move_in_factions(json_ops, old: str, new: str) -> list[str]:
+    """A faction's leader or successor. The player leads no faction (yet): the
+    field is emptied, with a note."""
+    import factions
+    if not factions.has_file(json_ops):
+        return []
+    table, notes = factions.load(json_ops), []
+    for fid, row in table.items():
+        for field in factions.PEOPLE_FIELDS:
+            if row.get(field) != old:
                 continue
-            for field in ("holders", "about"):
-                if old in (fact.get(field) or []):
-                    fact[field] = _swap(fact[field], old, new)
-                    changed += 1
+            if new == "player":
+                del row[field]
+                notes.append(f"{old} was the {field} of faction:{fid}; the character leads no "
+                             f"faction yet: set another with gm-faction.sh set {fid} {field} <npc>.")
+            else:
+                row[field] = new
+    json_ops.save_json(factions.FILE, table)
+    return notes
+
+
+def move_id(json_ops, old: str, new: str) -> list[str]:
+    """Rewrite `old` to `new` in the facts (holders, about), the active
+    consequences (triggers, tell effects), the plots (owner, involves), the factions'
+    leaders and successors, and the world's rules' values. Returns notes for the GM about anything that no longer makes sense."""
+    notes = []
+    facts = fact_file.load(json_ops)
+    changed = 0
+    for fact in facts:
+        for field in ("holders", "about"):
+            if old in (fact.get(field) or []):
+                fact[field] = _swap(fact[field], old, new)
+                changed += 1
     if changed:
-        json_ops.save_json("facts.json", facts)
+        fact_file.save(json_ops, facts)
 
     store = json_ops.load_json("consequences.json") or {}
     changed = 0
@@ -96,10 +113,32 @@ def move_id(json_ops, old: str, new: str) -> List[str]:
                 changed += 1
     if changed:
         json_ops.save_json("consequences.json", store)
+    _move_in_plots(json_ops, old, new)
+    notes += _move_in_factions(json_ops, old, new)
+    import world_rules
+    notes += world_rules.move_holder(json_ops, old, new)
     return notes
 
 
-def _former_record(old: Dict[str, Any], npcs: Dict[str, Any]) -> str:
+def _move_in_plots(json_ops, old: str, new: str) -> None:
+    """A plot's owner moves with the person; in `involves` (people and places, never
+    the character, who is part of every plot) someone who becomes the player is
+    dropped."""
+    plots = json_ops.load_json("plots.json") or {}
+    changed = False
+    for plot in plots.values() if isinstance(plots, dict) else []:
+        if plot.get("owner") == old:
+            plot["owner"] = new
+            changed = True
+        if old in (plot.get("involves") or []):
+            plot["involves"] = ([i for i in plot["involves"] if i != old] if new == "player"
+                                else _swap(plot["involves"], old, new))
+            changed = True
+    if changed:
+        json_ops.save_json("plots.json", plots)
+
+
+def _former_record(old: dict[str, Any], npcs: dict[str, Any]) -> str:
     """Put the outgoing character into npcs.json as an NPC sheet. Returns its key."""
     name = sheet_mod.name(old) or "former character"
     key = name if name not in npcs else f"{name} (former character)"
@@ -109,8 +148,8 @@ def _former_record(old: Dict[str, Any], npcs: Dict[str, Any]) -> str:
     return key
 
 
-def hand_over(json_ops, outgoing: Optional[Dict[str, Any]], canon: Optional[str],
-              timestamp: str = "") -> List[str]:
+def hand_over(json_ops, outgoing: dict[str, Any] | None, canon: str | None,
+              timestamp: str = "") -> list[str]:
     """Move the ids when the story passes from `outgoing` (the old sheet, or None)
     to the canon NPC `canon` (a key in npcs.json, or None). Returns notes."""
     notes = []

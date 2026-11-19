@@ -35,7 +35,7 @@ Never mention to the player that a level is due. Wait for a quiet moment: a rest
 1. One sentence in the fiction about where the growth came from, then the question. For example: *"You learned a lot in the pit. The question is what you'll make of it."* No out-of-character comment: not "you levelled up".
 2. Present the options, without further comment, drawn from what happened recently in the story (what the character did, what hurt them, what they leaned on):
    - **two attributes**, of which the player picks one: it goes one die size up;
-   - **four skills**, of which the player picks two: +1 each (a new one starts at 1);
+   - **four skills**, of which the player picks two: +1 each (an untrained one becomes 0, trained);
    - **two perks**, of which the player picks one. A perk is flavourful and two-sided: +2 to one thing and −2 to another, or better in one situation and worse in another. It has a name and says what it does.
 3. The player chooses, or proposes their own instead. Accept anything reasonable.
 4. Persist it:

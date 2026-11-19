@@ -13,7 +13,7 @@ LIB = str(Path(__file__).resolve().parent.parent / "lib")
 if LIB not in sys.path:
     sys.path.insert(0, LIB)
 
-from session_manager import SessionManager
+from session_manager import SessionManager  # noqa: E402 (after lib/ is put on the path)
 
 
 def _campaign(tmp_path, voice=None):
@@ -26,8 +26,7 @@ def _campaign(tmp_path, voice=None):
     if voice is not None:
         (camp / "world-bible.json").write_text(json.dumps({
             "name": "C", "voice": voice, "tone": "t", "themes": [],
-            "factions": {"nodes": [], "edges": []}, "geography": {"nodes": [], "edges": []},
-            "signature_systems": []}))
+            "factions": {"nodes": [], "edges": []}, "geography": {"nodes": [], "edges": []}}))
     return str(ws)
 
 

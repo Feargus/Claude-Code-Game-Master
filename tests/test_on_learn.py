@@ -33,7 +33,7 @@ def _on_learn(world, match, text="x"):
 
 
 def test_match_is_checked_and_made_canonical(dcc_world):
-    fid = NoteManager(dcc_world).add_fact("lore", "The code is 0451", secret=True)
+    fid = NoteManager(dcc_world).add_fact("The code is 0451", secret=True)
     cid = _on_learn(dcc_world, "mordecai LEARNS " + fid)               # bare names resolve
     assert _stored(dcc_world, cid)["triggers"][0]["match"] == f"npc:Mordecai learns {fid}"
     cid = _on_learn(dcc_world, "street learns about Tandy")
@@ -48,7 +48,7 @@ def test_match_is_checked_and_made_canonical(dcc_world):
 
 def test_tell_fires_for_the_fact_and_for_anyone(dcc_world):
     nm = NoteManager(dcc_world)
-    fid = nm.add_fact("lore", "The code is 0451", secret=True)
+    fid = nm.add_fact("The code is 0451", secret=True)
     direct = _on_learn(dcc_world, f"npc:Mordecai learns {fid}", "Mordecai sells the code")
     leak = _on_learn(dcc_world, f"anyone learns {fid}", "The secret is out")
     other = _on_learn(dcc_world, f"street learns {fid}", "Rumours spread")
@@ -58,13 +58,13 @@ def test_tell_fires_for_the_fact_and_for_anyone(dcc_world):
     nm.tell(fid, ["Mordecai"])                       # knew it already: nothing fires
     assert nm.last_fired == []
     nm.tell(fid, ["street"])
-    assert {c["id"] for c in nm.last_fired} == {other, leak}
+    assert {c["id"] for c in nm.last_fired} == {other}      # the leak fired once: it is out
 
 
 def test_about_fires_for_any_fact_about_them(dcc_world):
     nm = NoteManager(dcc_world)
     cid = _on_learn(dcc_world, "npc:Mordecai learns about player", "Mordecai sells you out")
-    fid = nm.add_fact("lore", "Tandy hides a key under the mat", secret=True)
+    fid = nm.add_fact("Tandy hides a key under the mat", secret=True)
     nm.tell(fid, ["Mordecai"])
     assert [c["id"] for c in nm.last_fired] == [cid]
 
@@ -72,16 +72,16 @@ def test_about_fires_for_any_fact_about_them(dcc_world):
 def test_recording_a_fact_fires_for_its_first_holders(dcc_world, capsys):
     cid = _on_learn(dcc_world, "npc:Carl learns about npc:Mordecai", "Carl confronts Mordecai")
     nm = NoteManager(dcc_world)
-    nm.add_fact("session_events", "Mordecai cheated at cards")    # Carl is in the party
+    nm.add_fact("Mordecai cheated at cards")    # Carl is in the party
     assert [c["id"] for c in nm.last_fired] == [cid]
     assert "Carl confronts Mordecai" in capsys.readouterr().out
-    nm.add_fact("session_events", "Mordecai cheated again", secret=True)
+    nm.add_fact("Mordecai cheated again", secret=True)
     assert nm.last_fired == []                                     # nobody learned anything
 
 
 def test_one_learning_fires_a_consequence_once(dcc_world):
     nm = NoteManager(dcc_world)
-    fid = nm.add_fact("lore", "Tandy owes Mordecai", secret=True)
+    fid = nm.add_fact("Tandy owes Mordecai", secret=True)
     cm = ConsequenceManager(dcc_world)
     cid = cm.add_consequence("Debt collectors", "y", triggers=[
         {"type": "on_learn", "match": f"npc:Mordecai learns {fid}"},
@@ -109,10 +109,27 @@ def test_on_learn_never_fires_on_the_scene_check(dcc_world):
 
 def test_cli_tell_prints_what_fired(dcc_world):
     nm = NoteManager(dcc_world)
-    fid = nm.add_fact("lore", "The code is 0451", secret=True)
+    fid = nm.add_fact("The code is 0451", secret=True)
     _on_learn(dcc_world, f"anyone learns {fid}", "The secret is out")
     root = Path(__file__).resolve().parent.parent
     r = subprocess.run([sys.executable, str(root / "lib" / "note_manager.py"), "tell", fid, "street"],
                        capture_output=True, text=True, cwd=str(Path(dcc_world).parent))
     assert r.returncode == 0, r.stderr
     assert "street now know(s) it" in r.stdout and "The secret is out" in r.stdout
+
+
+def test_a_fact_that_becomes_public_is_learned_by_everyone(dcc_world):
+    """Public counts as known to everyone, so it fires what waits for anyone in
+    particular to learn it (todo.md, 2026-11-18); not for who knew it already."""
+    nm = NoteManager(dcc_world)
+    fid = nm.add_fact("Tandy cheated the Syndicate.", about=["player"], secret=True)
+    mordecai = _on_learn(dcc_world, "Mordecai learns about Tandy")
+    street = _on_learn(dcc_world, f"street learns {fid}")
+    nm.tell(fid, ["npc:Mordecai"])                        # he knows it first, privately
+    assert _stored(dcc_world, mordecai)["fired"]
+    again = _on_learn(dcc_world, f"Mordecai learns {fid}")
+    imani = _on_learn(dcc_world, "Imani learns about Tandy")    # she never heard it privately
+    nm.tell(fid, ["public"])
+    fired = {c["id"] for c in nm.last_fired}
+    assert {street, imani} <= fired and again not in fired  # knowing already isn't learning
+    assert "it became public (everyone)" in _stored(dcc_world, street)["fired"]["reason"]

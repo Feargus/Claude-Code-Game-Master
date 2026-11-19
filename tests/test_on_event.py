@@ -40,7 +40,7 @@ def test_recording_a_fact_lists_what_waits(dcc_world, capsys):
         "The Fork bargains", "free text",
         trigger_type="on_event", match="someone is alone with the chip")
     capsys.readouterr()
-    fid = NoteManager(dcc_world).add_fact("session_events", "Old Iron kept the chip alone overnight")
+    fid = NoteManager(dcc_world).add_fact("Old Iron kept the chip alone overnight")
     out = capsys.readouterr().out
     assert f"does {fid} fulfil one?" in out
     assert f"[{cid}] awaits \"someone is alone with the chip\"" in out
@@ -49,7 +49,7 @@ def test_recording_a_fact_lists_what_waits(dcc_world, capsys):
 
 def test_nothing_waiting_prints_nothing_extra(dcc_world, capsys):
     _clear_consequences(dcc_world)
-    NoteManager(dcc_world).add_fact("lore", "The rain is acid")
+    NoteManager(dcc_world).add_fact("The rain is acid")
     assert "Waiting on an event" not in capsys.readouterr().out
 
 
@@ -65,7 +65,7 @@ def test_fire_by_fact_links_the_fact(dcc_world):
     cm = ConsequenceManager(dcc_world)
     cid = cm.add_consequence("The Fork bargains", "free text",
                              trigger_type="on_event", match="someone is alone with the chip")
-    fid = NoteManager(dcc_world).add_fact("session_events", "Old Iron kept the chip alone overnight")
+    fid = NoteManager(dcc_world).add_fact("Old Iron kept the chip alone overnight")
     hit = cm.fire(cid, by_fact=fid)
     assert hit["match_reason"] == f"fact {fid}: Old Iron kept the chip alone overnight"
     prov = _load(dcc_world, "consequences.json")["provenance"][-1]

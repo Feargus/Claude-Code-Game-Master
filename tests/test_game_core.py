@@ -19,6 +19,7 @@ def test_conditions_add_remove_idempotent():
 
 def test_no_5e_symbols_in_core():
     src = (gc.__file__)
-    text = open(src, encoding="utf-8").read().lower()
+    with open(src, encoding="utf-8") as f:
+        text = f.read().lower()
     for banned in ("spell slot", "strength", "dexterity", "level 20", "proficiency"):
         assert banned not in text, f"core must stay 5e-agnostic; found {banned!r}"

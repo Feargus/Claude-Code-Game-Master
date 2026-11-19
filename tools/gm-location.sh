@@ -7,21 +7,29 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: gm-location.sh <action> [args]"
     echo ""
     echo "Actions:"
-    echo "  add <name> <position> [--alias <short name>]..."
-    echo "                                     - Add new location (aliases: shorter names"
-    echo "                                       the story will use, e.g. \"the Yard\")"
+    echo "  add <name> <position> [<description>] [--alias <short name>]... [--another]"
+    echo "                                     - Add a new location: where it is, and what it"
+    echo "                                       is like in a sentence or two. Without one it is"
+    echo "                                       a sketch: a move there waits until it is"
+    echo "                                       described (on disk before it is narrated). Aliases: shorter"
+    echo "                                       names the story will use, e.g. \"the Yard\""
     echo "  alias <name> <alias>... [--remove <alias>]"
     echo "                                     - Add or remove a location's shorter names"
+    echo "  presence <name> [<faction>=N]... [--remove <faction>]"
+    echo "                                     - Factions' presence here, 0 (not there: an"
+    echo "                                       enemy's headquarters) to 5 (they run it);"
+    echo "                                       without values: show it"
     echo "  connect <from> <to> <path>         - Connect two locations"
-    echo "  describe <name> <description>      - Set location description"
+    echo "  describe <name> <description>      - Replace the description with a fuller one"
+    echo "                                       (prints the old one)"
     echo "  get <name>                         - Get location info"
     echo "  list                               - List all locations"
     echo "  connections <name>                 - Show location connections"
     echo ""
     echo "Examples:"
-    echo "  gm-location.sh add \"Volcano Temple\" \"north of village\""
+    echo "  gm-location.sh add \"Volcano Temple\" \"north of village\" \"Black obsidian steps up into fog\""
     echo "  gm-location.sh connect \"Village\" \"Volcano Temple\" \"rocky path\""
-    echo "  gm-location.sh describe \"Volcano Temple\" \"Ancient obsidian structure\""
+    echo "  gm-location.sh describe \"Volcano Temple\" \"Black obsidian steps up into fog; a cold draught from the doors\""
     exit 1
 fi
 
@@ -33,7 +41,7 @@ shift
 case "$ACTION" in
     add)
         if [ "$#" -lt 2 ]; then
-            echo "Usage: gm-location.sh add <name> <position> [--alias <short name>]..."
+            echo "Usage: gm-location.sh add <name> <position> [<description>] [--alias <short name>]... [--another]"
             exit 1
         fi
         $PYTHON_CMD "$LIB_DIR/location_manager.py" add "$@"
@@ -45,6 +53,14 @@ case "$ACTION" in
             exit 1
         fi
         $PYTHON_CMD "$LIB_DIR/location_manager.py" alias "$@"
+        ;;
+
+    presence)
+        if [ "$#" -lt 1 ]; then
+            echo "Usage: gm-location.sh presence <name> [<faction>=N]... [--remove <faction>]"
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/location_manager.py" presence "$@"
         ;;
 
     connect)
@@ -87,7 +103,7 @@ case "$ACTION" in
 
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: add, alias, connect, describe, get, list, connections"
+        echo "Valid actions: add, alias, presence, connect, describe, get, list, connections"
         exit 1
         ;;
 esac

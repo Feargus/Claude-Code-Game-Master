@@ -13,7 +13,7 @@ from lib.note_manager import NoteManager
 from lib.npc_manager import NPCManager
 from lib.player_manager import PlayerManager
 from lib.session_manager import SessionManager
-from tests.sheets import npc, player
+from tests.sheets import player
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -51,9 +51,14 @@ def test_create_needs_little_and_the_attitude_becomes_a_fact(world, capsys):
                      "personality": {"big_five": "O1 C2 E-1 A1 N0", "voice": "dry"},
                      "places": {"usual": ["The Pens"]}}
     feeling = NoteManager(ws).find(held_by=["npc:Tod Brask"], about=["player"])
-    assert [f["fact"] for f in feeling] == ["Tod Brask is wary toward Lullaby."]
+    assert [(f["fact"], f["attitude"]) for f in feeling] == [("wary", True)]
     assert feeling[0]["holders"] == ["npc:Tod Brask"] and "at" not in feeling[0]
     assert NPCManager(ws).create_npc("Benno", "a handler", locations=["The Pens"])  # no attitude
+    assert not NPCManager(ws).create_npc(
+        "Seo", "a cook", "fond of him; feeds him for free and tells him so", locations=["The Pens"])
+    assert "one or more adjectives" in capsys.readouterr().out
+    assert NPCManager(ws).create_npc("Seo", "a cook", "Fond,  exasperated.", locations=["The Pens"])
+    assert "Seo regards Lullaby: Fond, exasperated" in capsys.readouterr().out
     assert NoteManager(ws).find(held_by=["npc:Benno"]) == []
     assert not NPCManager(ws).create_npc("Bad", "x", nowhere=True, fields={"big-five": "ENTJ"})
     assert "Big Five" in capsys.readouterr().out
@@ -70,7 +75,7 @@ def test_set_items_party_and_show(world, capsys):
     sheet = _npcs(camp)["Tod"]
     assert sheet["status"] == {"goal": "get out", "party_member": True}
     assert sheet["items"] == {"gear": [{"name": "torque wrench"}], "inventory": [{"name": "a chip"}]}
-    NoteManager(ws).add_fact("relations", "Tod trusts Lullaby now.", holders=["npc:Tod"],
+    NoteManager(ws).add_fact("Tod trusts Lullaby now.", holders=["npc:Tod"],
                              about=["npc:Tod", "player"])
     capsys.readouterr()
     shown = manager.show("Tod")
@@ -93,11 +98,11 @@ def test_the_brief_plays_people_from_their_sheets(world):
     (camp / "campaign-overview.json").write_text(json.dumps(overview))
     PlayerManager(ws).item("add", "gear", "pipe")
     brief = SessionManager(ws).get_full_context()
-    people = brief[brief.index("--- PEOPLE HERE"):]
+    people = brief[brief.index("--- THE SCENE"):]
     assert "Tod (a mechanic; Big Five O1 C2 E-1 A1 N0; patient):" in people
     assert "  look: stooped, oil to the elbows" in people and "  wants: a way out" in people
     assert "  gear: wrench" in people and "shiv" not in people          # concealed
-    assert "needs" not in people                                       # only with --full
+    assert "  needs: to forgive himself" in people                     # the card shows all (no --full)
     assert "Gear (what others can see): pipe" in brief
 
 
@@ -120,3 +125,71 @@ def test_player_set_and_item_commands(world):
     assert sheet["items"]["inventory"] == [{"name": "the ribbon", "concealed": True}, {"name": "scrap"}]
     assert sheet["possessions"]["credits"] == 8
     assert run("set", "--hair", "red").returncode != 0
+
+
+def test_a_person_can_start_as_a_sketch(world):
+    """Someone named in the story (a dead examiner, a director nobody has met)
+    is a record from the start: a name and any few fields, no usual place."""
+    from lib.note_manager import NoteManager
+    ws, camp = world
+    manager = NPCManager(ws)
+    assert not manager.create_npc("Ruth Okonedo")              # who is she?
+    assert manager.create_npc("Ruth Okonedo", fields={"goal": "pass the ones others would fail"},
+                              aliases=["Ruth"])
+    sheet = manager.get_sheet("Ruth")
+    assert "personality" not in sheet and "look" not in sheet
+    assert sheet["status"] == {"goal": "pass the ones others would fail"}
+    assert "only a sketch" in manager.show("Ruth Okonedo")
+    fid = NoteManager(ws).add_fact("Ruth died in booth 3.", nowhere=True)
+    assert "npc:Ruth Okonedo" in NoteManager(ws)._entry(
+        NoteManager(ws).json_ops.load_json("facts.json"), fid)["about"]
+    manager.set_fields("Ruth Okonedo", {"voice": "dry, patient"})
+    assert "only a sketch" not in manager.show("Ruth Okonedo")
+
+
+def test_an_attitude_is_a_flagged_fact_and_the_newest_counts(world, capsys):
+    """An attitude was a fact worded "How X regards Y: ...", told apart from other
+    facts only by its wording. It is a fact flagged as an attitude, holding only
+    the adjectives; holder and about say whose attitude towards whom."""
+    from lib.note_manager import NoteManager, fact_text
+    from lib.session_manager import SessionManager
+    ws, camp = world
+    manager = NPCManager(ws)
+    manager.create_npc("Tod Brask", "a pit mechanic", "wary", locations=["The Pens"])
+    manager.create_npc("Benno", "a handler", locations=["The Pens"])
+    notes = NoteManager(ws)
+    capsys.readouterr()
+    newer = notes.set_attitude("Tod Brask", "Fond,  grudging.")
+    notes.set_attitude("Tod Brask", "contemptuous", towards="Benno")
+    now = notes.attitudes("tod brask")
+    assert {k: f["fact"] for k, f in now.items()} == {"player": "Fond, grudging",
+                                                      "npc:Benno": "contemptuous"}
+    assert now["player"]["id"] == newer and now["player"]["holders"] == ["npc:Tod Brask"]
+    assert fact_text(now["player"], "Lullaby") == "[HIDDEN FROM PLAYER] Tod Brask regards Lullaby: Fond, grudging"
+    assert capsys.readouterr().out == ""                 # no on_learn, no waiting list
+    for owner, adjectives, towards, why in (
+            ("Nobody", "wary", "player", "No npc"), ("Tod Brask", "wary", "Tod Brask", "someone else"),
+            ("Tod Brask", "he hates her guts.", "player", "adjectives"),
+            ("Tod Brask", "", "player", "Give the attitude")):
+        with pytest.raises(ValueError, match=why):
+            notes.set_attitude(owner, adjectives, towards)
+    assert "attitude towards the player: Fond, grudging" in manager.show("Tod Brask")
+    (camp / "campaign-overview.json").write_text(json.dumps({
+        "campaign_name": "C", "player_position": {"current_location": "The Pens"},
+        "scene": {"location": "The Pens", "present": ["Tod Brask"]}}))
+    brief = SessionManager(ws).get_full_context()
+    person = brief[brief.index("Tod Brask (a pit mechanic"):]
+    assert person.splitlines()[1] == "  towards Lullaby: Fond, grudging"
+    assert "regards" not in person.split("\n\n")[0]     # not listed again as a fact
+
+
+def test_nothing_on_a_card_or_in_a_fact_list_is_cut(world):
+    """A fact cut short can drop its turn, and the GM can't tell (2026-11-15)."""
+    from lib.cards import Cards
+    from lib.note_manager import NoteManager, fact_line
+    ws, camp = world
+    long = "Tod fixed the pump " + "and then, slowly, " * 20 + "it was a lie."
+    fid = NoteManager(ws).add_fact(long, holders=["player"], at="The Pens")
+    notes = NoteManager(ws)
+    assert long in fact_line(notes._entry(notes.json_ops.load_json("facts.json"), fid))
+    assert long in "\n".join(Cards(notes.json_ops).location_card("The Pens"))

@@ -19,12 +19,11 @@ Cleared:
   • Facts, plots, consequences
   • Combat state, campaign memory, threat clocks
   • Session history, world-tick log, loremaster cache
-  • Snapshot saves
 
 Kept:
   • Source: current-document.txt, metadata.json, chunks/, vectors/, images/
   • World: world-bible.json, world-seed.json
-  • Kit: ruleset.json, rules.md, chronicler.json
+  • Kit: ruleset.json (the world's own rules), chronicler.json
 
 Options:
 1. ARCHIVE - Copy current world to world-state/archive/, then reset (safe)
@@ -48,7 +47,7 @@ STEP 1 already got the player's confirmation in chat.
 
 This will:
 - Copy the campaign directory to `world-state/archive/[campaign]-[timestamp]/`, minus
-  `vectors/` (the ChromaDB index is rebuilt from the source document on the next prepare)
+  `vectors/` (the book's pieces and vectors, rebuilt from the source document on the next prepare)
 - Clear the story files listed above, keeping the source, the world and the kit
 - Abort without resetting if the copy fails (the archive is the safety net)
 

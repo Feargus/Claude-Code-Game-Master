@@ -39,8 +39,7 @@ def world(tmp_path):
 
 
 def _facts(camp):
-    return {f["id"]: f for items in json.loads((camp / "facts.json").read_text()).values()
-            for f in items}
+    return {f["id"]: f for f in json.loads((camp / "facts.json").read_text())}
 
 
 def _set_time(camp, when, place=None):
@@ -56,15 +55,15 @@ def _set_time(camp, when, place=None):
 def test_facts_record_where_they_happened(world):
     ws, camp = world
     notes = NoteManager(ws)
-    a = notes.add_fact("session_events", "Lullaby hums.")
-    b = notes.add_fact("plot_local", "The Mastiff hunts by sound.", secret=True, nowhere=True)
-    c = notes.add_fact("plot_local", "The bell rang.", at="The Sanguine Ring")
+    a = notes.add_fact("Lullaby hums.")
+    b = notes.add_fact("The Mastiff hunts by sound.", secret=True, nowhere=True)
+    c = notes.add_fact("The bell rang.", at="The Sanguine Ring")
     facts = _facts(camp)
     assert facts[a]["at"] == "location:The Holding Pens"
     assert "at" not in facts[b]
     assert facts[c]["at"] == "location:The Sanguine Ring"
     assert [f["id"] for f in notes.find(at="The Sanguine Ring")] == [c]
-    assert notes.add_fact("x", "y", at="Nowhere Known") == ""
+    assert notes.add_fact("y", at="Nowhere Known") == ""
 
 
 def test_a_beat_splits_a_deception_into_atomic_facts(world):
@@ -83,7 +82,7 @@ def test_a_beat_splits_a_deception_into_atomic_facts(world):
     assert belief["holders"] == ["npc:Benno Rusk"]
     assert (belief["truth"], belief["version_of"]) == ("wrong", ids[1])
     stored = json.loads((camp / "facts.json").read_text())
-    assert [f["id"] for f in stored["session_events"]] == ids
+    assert [f["id"] for f in stored] == ids                    # one list, in id order
 
 
 def test_a_refused_beat_writes_nothing(world):
@@ -106,14 +105,14 @@ def test_witness_learns_what_happened_in_the_open(world):
     ws, camp = world
     notes = NoteManager(ws)
     _set_time(camp, "2189-11-09T23:44", "The Sanguine Ring")
-    fight = notes.add_fact("session_events", "Lullaby killed the Mastiff.")
-    before = notes.add_fact("session_events", "Ysolde dropped her glass.")
-    secret = notes.add_fact("plot_local", "Ysolde paid for the bout.", secret=True)
-    belief = notes.add_fact("plot_local", "Ysolde is only curious.", truth="wrong",
+    fight = notes.add_fact("Lullaby killed the Mastiff.")
+    before = notes.add_fact("Ysolde dropped her glass.")
+    secret = notes.add_fact("Ysolde paid for the bout.", secret=True)
+    belief = notes.add_fact("Ysolde is only curious.", truth="wrong",
                             version_of=secret)
-    elsewhere = notes.add_fact("session_events", "Pike taped his knuckles.", at="The Holding Pens")
+    elsewhere = notes.add_fact("Pike taped his knuckles.", at="The Holding Pens")
     _set_time(camp, "2189-11-09T23:58")
-    late = notes.add_fact("session_events", "The gallery emptied.")
+    late = notes.add_fact("The gallery emptied.")
     NPCManager(ws).create_npc("Casimir Thane", "an old lord", "neutral", nowhere=True)
 
     preview = notes.witness("Casimir Thane", since="2189-11-09 23:40", until="2189-11-09 23:50",
@@ -137,7 +136,7 @@ def test_witness_learns_what_happened_in_the_open(world):
 
 def test_creating_an_npc_points_at_witness(world, capsys):
     ws, _ = world
-    NoteManager(ws).add_fact("session_events", "Lullaby hummed in the pens.")
+    NoteManager(ws).add_fact("Lullaby hummed in the pens.")
     capsys.readouterr()
     NPCManager(ws).create_npc("Grey Coat", "a house guard", "hostile",
                               locations=["The Holding Pens"])
@@ -161,5 +160,27 @@ def test_cli(world):
     assert "[SUCCESS] Recorded f1, f2" in r.stdout
     r = run("witness", "Tod", "--dry-run")
     assert "npc:Tod would learn 0 fact(s)" in r.stdout and "f2" in r.stdout  # Tod knew f1
-    r = run("add", "session_events", "x", "--at", "The Sanguine Ring", "--nowhere")
+    r = run("add", "It rained there", "--at", "The Sanguine Ring", "--nowhere")
     assert r.returncode == 1 and "not both" in r.stderr
+
+
+def test_a_version_belongs_to_its_truths_plot(world, capsys):
+    """The fooled one's wrong version was offered the plot its truth already had
+    (todo.md): now it inherits it, in a beat, with --version-of and with `truth`."""
+    ws, camp = world
+    (camp / "plots.json").write_text(json.dumps({"The Ring": {"status": "open", "involves": []}}))
+    notes = NoteManager(ws)
+    truth_id, lie_id = notes.beat([
+        {"fact": "Tod palmed the token.", "holders": ["player"], "plot": "The Ring"},
+        {"fact": "Benno thinks the token fell.", "holders": ["npc:Benno Rusk"],
+         "truth": "wrong", "version_of": "#1"}])
+    facts = {f["id"]: f for f in json.loads((camp / "facts.json").read_text())}
+    assert facts[lie_id]["plots"] == ["The Ring"]
+    assert f"plot: The Ring (as its truth, {truth_id})" in capsys.readouterr().out
+    own = notes.add_fact("Benno half-saw it.", holders=["npc:Benno Rusk"], truth="partial",
+                         version_of=truth_id, plots=[])
+    assert json.loads((camp / "facts.json").read_text())[-1]["plots"] == ["The Ring"]
+    later = notes.add_fact("Tod says it rolled under the cage.", holders=["npc:Benno Rusk"])
+    notes.set_truth(later, "wrong", truth_id)
+    facts = {f["id"]: f for f in json.loads((camp / "facts.json").read_text())}
+    assert facts[later]["plots"] == ["The Ring"] and facts[own]["plots"] == ["The Ring"]

@@ -2,57 +2,68 @@
 """Note/fact management module for GM tools."""
 
 import json
+import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
+import facts as fact_file
 from campaign_manager import CampaignManager
+from game_time import STORED_FORMAT, stored_time
 from json_ops import JsonOperations
-
-
-def assign_missing_ids(facts: dict) -> dict:
-    """Give every fact an id ("f1", "f2", ...), so other records can point to it.
-
-    Facts without one (written before ids existed, or by the import scripts,
-    which write facts.json directly) are numbered in the order they were
-    recorded, after the highest existing id. A bare string becomes
-    {"fact": <string>}. Changes `facts` in place and returns it.
-    """
-    entries = []
-    highest = 0
-    for category, items in facts.items():
-        if not isinstance(items, list):
-            continue
-        for i, item in enumerate(items):
-            if not isinstance(item, dict):
-                item = {'fact': str(item)}
-                items[i] = item
-            fid = str(item.get('id', ''))
-            if fid.startswith('f') and fid[1:].isdigit():
-                highest = max(highest, int(fid[1:]))
-            elif 'id' not in item:
-                entries.append(item)
-    entries.sort(key=lambda item: str(item.get('timestamp', '')))
-    for item in entries:
-        highest += 1
-        item['id'] = f"f{highest}"
-    return facts
-
 
 TRUTH_VALUES = ("partial", "wrong")  # a missing `truth` means true
 
 
-def fact_text(entry) -> str:
+def check_attitude(raw) -> tuple:
+    """(attitude, '') or ('', why it was refused). An attitude is one or more
+    adjectives, comma separated ("wary", "fond, exasperated"), never a sentence:
+    in the Tidewater playtest the GM wrote whole relationships into it ("a regular
+    at Seo's, polite; does not know Dogen beyond sight"), which hid plain facts
+    from the player. Empty is fine: not everyone has an attitude."""
+    words = [w.strip() for w in str(raw or "").strip().rstrip(".").split(",")]
+    words = [w for w in words if w]
+    if any(re.search(r"[.;:!?]", w) or len(w.split()) > 2 for w in words):
+        return "", (f"The attitude is one or more adjectives, comma separated (\"wary\", "
+                    f"\"fond, exasperated\"), not a sentence: '{raw}'. Leave it out for someone "
+                    f"with no attitude; what they know, remember or do is its own fact "
+                    f"(gm-note.sh).")
+    return ", ".join(words), ""
+
+
+def _person(cid: str, player: str) -> str:
+    """An id as a name in a sentence: npc:Mama Seo -> Mama Seo, player -> the player's name."""
+    return player if cid == "player" else cid.partition(":")[2] or cid
+
+
+def current_attitudes(facts: list) -> dict:
+    """{(holder id, about id): fact} for the newest attitude of each pair: the one
+    that counts. Older ones stay as the record of how it changed."""
+    newest = {}
+    for f in facts:
+        if f.get('attitude') and f.get('holders') and f.get('about'):
+            key = (f['holders'][0], f['about'][0])
+            if key not in newest or fact_file.number(f) > fact_file.number(newest[key]):
+                newest[key] = f
+    return newest
+
+
+def fact_text(entry, player: str = "the character") -> str:
     """A fact's text as the GM should read it, wherever it is shown or searched:
     a secret (holders recorded and empty: nobody knows it) is marked [SECRET], one
     that others know but the player character doesn't is marked [HIDDEN FROM PLAYER],
-    a wrong or partial version is marked with the id of the truth."""
+    a wrong or partial version is marked with the id of the truth. An attitude,
+    stored as its adjectives only, is written out: "Mama Seo regards Dogen: fond"
+    (`player` is the player character's name; "the character" if not given)."""
     if not isinstance(entry, dict):
         return str(entry)
     text = str(entry.get('fact', entry.get('text', entry.get('event', ''))))
+    if entry.get('attitude') and entry.get('holders') and entry.get('about'):
+        text = (f"{_person(entry['holders'][0], player)} regards "
+                f"{_person(entry['about'][0], player)}: {text}")
     holders = entry.get('holders')
     if holders == []:
         text = f"[SECRET] {text}"
@@ -64,18 +75,6 @@ def fact_text(entry) -> str:
     if truth == 'partial':
         return f"[PARTIAL; fuller: {of}] {text}" if of else f"[PARTIAL] {text}"
     return text
-
-
-def next_fact_id(facts: dict) -> str:
-    """The id the next fact gets. Expects every fact to have one already."""
-    highest = 0
-    for items in facts.values():
-        if isinstance(items, list):
-            for item in items:
-                fid = str(item.get('id', '')) if isinstance(item, dict) else ''
-                if fid.startswith('f') and fid[1:].isdigit():
-                    highest = max(highest, int(fid[1:]))
-    return f"f{highest + 1}"
 
 
 class NoteManager:
@@ -93,9 +92,8 @@ class NoteManager:
         self.json_ops = JsonOperations(str(self.campaign_dir))
 
         # Ensure facts file exists
-        facts_path = self.campaign_dir / "facts.json"
-        if not facts_path.exists():
-            self.json_ops.save_json("facts.json", {})
+        if not (self.campaign_dir / fact_file.FILE).exists():
+            fact_file.save(self.json_ops, [])
 
     def _about(self, fact: str, about=None, not_about=None):
         """(about ids, ids found in the text, errors) for a new fact.
@@ -130,6 +128,22 @@ class NoteManager:
         cid, _ = ids.resolve_as(here, ("location",)) if here else ("", "")
         return (cid or None), []
 
+    def _when(self, when) -> tuple[str, list[str]]:
+        """(the stored game time, errors) for a fact's `when`: not later than now."""
+        if not when:
+            return "", []
+        from time_manager import TimeError, parse_time
+        try:
+            moment = parse_time(when)
+        except TimeError as error:
+            return "", [f"when: {error}"]
+        now = stored_time(self.json_ops)
+        stored = moment.strftime(STORED_FORMAT)
+        if now and stored > now:
+            return "", [f"when: {when} is later than now ({now.replace('T', ' ')}); a fact is "
+                        f"something that has happened."]
+        return stored, []
+
     def _holders(self, holders=None, secret: bool = False, also=None):
         """(holder ids, errors) for a new fact. None = the default: the player and
         the NPCs present; `also` adds to the default. `secret` = nobody (a GM-only
@@ -147,11 +161,13 @@ class NoteManager:
         default = ids.present()
         return default + [h for h in extra if h not in default], errors
 
-    def add_fact(self, category: str, fact: str, list_waiting: bool = True,
+    def add_fact(self, fact: str, *, list_waiting: bool = True,
                  about=None, not_about=None, holders=None, secret: bool = False,
                  also=None, truth=None, version_of=None, at=None, nowhere: bool = False,
-                 auto_at: bool = True) -> str:
-        """Add a fact to the specified category. Returns its id, or "" on failure.
+                 auto_at: bool = True, plots=None, offer_plot: bool = True,
+                 when=None) -> str:
+        """Record a fact. Returns its id, or "" on failure. Everything but the
+        text is given by name (a fact has no category any more: facts.py).
 
         Each fact carries an id, the in-game time it was recorded (`game_time`,
         copied from campaign-overview.json; left out if the campaign has none)
@@ -163,28 +179,35 @@ class NoteManager:
         (or an empty list) means nobody, a GM-only secret. Afterwards it lists
         the consequences waiting on an event, unless `list_waiting` is False.
         `at` is where it happened: the place given, else the current location
-        (with `auto_at`), or none with `nowhere`.
+        (with `auto_at`), or none with `nowhere`. `plots`: the plots it belongs to;
+        with none, and `offer_plot`, the one open plot that involves who or where
+        the fact is about is offered (only when exactly one fits). `when`: the game
+        time it happened ("YYYY-MM-DD HH:MM"), if earlier than now (a faction turn
+        owed since it was drawn, something recorded after the fact).
         """
         about_ids, found, errors = self._about(fact, about, not_about)
         where, more = self._where(at, nowhere, auto_at)
         errors += more
         holder_ids, more = self._holders(holders, secret, also)
         errors += more
-        truth, version_of, version_notes, more = self._check_version(
-            self.json_ops.load_json("facts.json") or {}, truth, version_of)
+        facts = fact_file.load(self.json_ops)
+        truth, version_of, version_notes, more = self._check_version(facts, truth, version_of)
+        errors += more
+        from plot_manager import resolve_plots
+        plot_keys, more = resolve_plots(self.json_ops, plots)
+        errors += more
+        happened, more = self._when(when)
         errors += more
         if errors:
             for error in errors:
                 print(f"[ERROR] {error}", file=sys.stderr)
             print("[ERROR] Fact not recorded.", file=sys.stderr)
             return ""
-        facts = self.json_ops.load_json("facts.json")
-        assign_missing_ids(facts)
-
-        if category not in facts:
-            facts[category] = []
-
-        fact_id = next_fact_id(facts)
+        inherited = False
+        if version_of and not plot_keys:          # a version belongs where its truth does
+            plot_keys = list(self._entry(facts, version_of).get('plots') or [])
+            inherited = bool(plot_keys)
+        fact_id = fact_file.next_id(facts)
         entry = {'id': fact_id, 'fact': fact}
         if about_ids:
             entry['about'] = about_ids
@@ -195,17 +218,16 @@ class NoteManager:
             entry['version_of'] = version_of
         if where:
             entry['at'] = where
-        game_time = (self.json_ops.load_json("campaign-overview.json") or {}).get("game_time")
+        if plot_keys:
+            entry['plots'] = plot_keys
+        game_time = happened or stored_time(self.json_ops)
         if game_time:
             entry['game_time'] = game_time
-        entry['timestamp'] = datetime.now(timezone.utc).isoformat()
-        facts[category].append(entry)
+        entry['timestamp'] = datetime.now(UTC).isoformat()
+        facts.append(entry)
+        fact_file.save(self.json_ops, facts)
 
-        if not self.json_ops.save_json("facts.json", facts):
-            print(f"[ERROR] Failed to save fact")
-            return ""
-
-        print(f"[SUCCESS] Recorded fact {fact_id} in {category}: {fact}")
+        print(f"[SUCCESS] Recorded fact {fact_id}: {fact}")
         if about_ids:
             which = "all" if found == about_ids else ", ".join(found)
             note = (f" ({which} found in the text; drop a wrong one with "
@@ -214,6 +236,12 @@ class NoteManager:
         print(f"  known to: {', '.join(holder_ids) if holder_ids else 'nobody (a secret)'}")
         if where:
             print(f"  at: {where}")
+            self._eyes(fact_id, where, holder_ids if not secret else None)
+        if plot_keys:
+            print(f"  plot: {', '.join(plot_keys)}"
+                  + (f" (as its truth, {version_of})" if inherited else ""))
+        elif offer_plot:
+            self._offer_plot(fact_id, about_ids + ([where] if where else []))
         for note in version_notes:
             print(f"  {note}")
         if truth:
@@ -226,6 +254,86 @@ class NoteManager:
             self._list_waiting(fact_id)
         return fact_id
 
+    def _eyes(self, fact_id: str, where: str, holders) -> None:
+        """A faction with eyes where it happened (presence 4 or 5) may have seen it:
+        a hint, never automatic (a faction learns only through someone, design-notes.md)."""
+        if holders is None:                       # a secret: a GM-only truth nobody saw
+            return
+        from factions import eyes, known
+        names = known(self.json_ops)
+        for fid, n in eyes(self.json_ops, where):
+            if f"faction:{fid}" not in holders:
+                print(f"  {names.get(fid, {}).get('name', fid)} has eyes here (presence {n}): if "
+                      f"they'd see it, bash tools/gm-note.sh tell {fact_id} faction:{fid}")
+
+    def set_attitude(self, owner: str, adjectives: str, towards: str = "player") -> str:
+        """Record how `owner` (an NPC) regards `towards` (the player or another
+        NPC) now: a fact flagged as an attitude, holding only the adjectives,
+        known only to the owner. The newest one per pair counts. It is a state,
+        not news: no on_learn fires, and it happened nowhere. Returns its id;
+        raises ValueError."""
+        from world_ids import WorldIds
+        ids = WorldIds(self.json_ops)
+        who, error = ids.resolve_as(owner, ("npc",))
+        if error:
+            raise ValueError(error)
+        whom, error = ids.resolve_as(towards, ("player", "npc"))
+        if error:
+            raise ValueError(error)
+        if who == whom:
+            raise ValueError("An attitude is towards someone else.")
+        adjectives, error = check_attitude(adjectives)
+        if error or not adjectives:
+            raise ValueError(error or "Give the attitude: one or more adjectives (\"wary\").")
+        facts = fact_file.load(self.json_ops)
+        fact_id = fact_file.next_id(facts)
+        entry = {'id': fact_id, 'fact': adjectives, 'attitude': True,
+                 'about': [whom], 'holders': [who]}
+        game_time = stored_time(self.json_ops)
+        if game_time:
+            entry['game_time'] = game_time
+        entry['timestamp'] = datetime.now(UTC).isoformat()
+        facts.append(entry)
+        fact_file.save(self.json_ops, facts)
+        return fact_id
+
+    def attitudes(self, owner: str) -> dict:
+        """{towards id: the current attitude fact} for an NPC; raises ValueError."""
+        from world_ids import WorldIds
+        who, error = WorldIds(self.json_ops).resolve_as(owner, ("npc",))
+        if error:
+            raise ValueError(error)
+        return {whom: f for (holder, whom), f in
+                current_attitudes(fact_file.load(self.json_ops)).items()
+                if holder == who}
+
+    def _offer_plot(self, fact_id: str, ids) -> None:
+        """The one open plot that involves someone or somewhere the fact is about,
+        offered, never given. Nothing when none or several fit."""
+        plots = self.json_ops.load_json("plots.json") or {}
+        fits = [k for k, p in plots.items() if isinstance(p, dict)
+                and (p.get("status") or "open") == "open" and set(ids) & set(p.get("involves") or [])]
+        if len(fits) == 1:
+            print(f"  Part of {fits[0]}? bash tools/gm-note.sh plot {fact_id} --add \"{fits[0]}\"")
+
+    def set_plots(self, fact_id: str, add=None, remove=None) -> list:
+        """Add plots to a recorded fact, or remove them. Returns the new list."""
+        from plot_manager import resolve_plots
+        adding, errors = resolve_plots(self.json_ops, add)
+        removing, more = resolve_plots(self.json_ops, remove)
+        if errors + more:
+            raise ValueError(" ".join(errors + more))
+        facts = fact_file.load(self.json_ops)
+        entry = self._entry(facts, fact_id)
+        keys = [k for k in entry.get('plots', []) if k not in removing]
+        keys += [k for k in adding if k not in keys]
+        if keys:
+            entry['plots'] = keys
+        else:
+            entry.pop('plots', None)
+        fact_file.save(self.json_ops, facts)
+        return keys
+
     def set_about(self, fact_id: str, add=None, remove=None) -> list:
         """Add ids to, or remove them from, a recorded fact's `about`.
         Returns the new list; raises ValueError for an unknown fact or id."""
@@ -235,7 +343,7 @@ class NoteManager:
         removing, more = ids.resolve_all(remove)
         if errors + more:
             raise ValueError("; ".join(errors + more))
-        facts = self.json_ops.load_json("facts.json")
+        facts = fact_file.load(self.json_ops)
         entry = self._entry(facts, fact_id)
         about = [i for i in entry.get('about', []) if i not in removing]
         about += [i for i in adding if i not in about]
@@ -243,7 +351,7 @@ class NoteManager:
             entry['about'] = about
         else:
             entry.pop('about', None)
-        self.json_ops.save_json("facts.json", facts)
+        fact_file.save(self.json_ops, facts)
         return about
 
     def _named_but_absent(self, fact_id: str, about_ids, holder_ids) -> None:
@@ -260,26 +368,44 @@ class NoteManager:
                   f"gm-note.sh tell {fact_id} {' '.join('npc:' + n for n in absent)}")
 
     def _learned(self, fact_id: str, entry: dict, new_holders) -> list:
-        """Fire the on_learn consequences for holders who just learned a fact.
-        Returns the fired consequences (also kept in `last_fired`)."""
+        """Fire the on_learn consequences for holders who just learned a fact. A fact
+        that becomes public is learned by everyone who didn't know it: the player,
+        the street, every living NPC and every faction (todo.md, 2026-11-18). What a
+        faction learns, its living members learn (factions.py). Returns the fired
+        consequences (also kept in `last_fired`)."""
         from consequence_manager import ConsequenceManager
+        from factions import knows, members
         self.last_fired = []
         if not new_holders:
             return []
         about = entry.get('about') or []
+        learners = list(new_holders)
+        before = [h for h in entry.get('holders') or [] if h not in new_holders]
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        if 'public' in learners:                  # public is everyone: all of them learn it
+            from entity_manager import is_dead
+            from factions import load as factions
+            everyone = ['player', 'street'] + [f"npc:{k}" for k, v in npcs.items()
+                                               if isinstance(v, dict) and not is_dead(v)]
+            everyone += [f"faction:{k}" for k in factions(self.json_ops)]
+            learners += [w for w in everyone if not knows(w, before, npcs) and w not in learners]
+        for faction in [w for w in learners if w.startswith('faction:')]:
+            learners += [f"npc:{k}" for k, _ in members(npcs, faction.partition(':')[2])
+                         if not knows(f"npc:{k}", before, npcs) and f"npc:{k}" not in learners]
         values = []
-        for who in list(new_holders) + ['anyone']:
+        for who in learners + ['anyone']:
             values.append(f"{who} learns {fact_id}")
             values += [f"{who} learns about:{a}" for a in about]
         try:
             cm = ConsequenceManager(self.world_state_dir)
         except RuntimeError:
             return []
-        self.last_fired = cm.fire_event(
-            'on_learn', values, f"{', '.join(new_holders)} learned {fact_id}: {entry['fact']}")
+        who = ("it became public (everyone)" if 'public' in new_holders
+               else f"{', '.join(new_holders)} learned")
+        self.last_fired = cm.fire_event('on_learn', values, f"{who} {fact_id}: {entry['fact']}")
         return self.last_fired
 
-    def _check_version(self, facts: dict, truth=None, version_of=None, fact_id=None):
+    def _check_version(self, facts: list, truth=None, version_of=None, fact_id=None):
         """(truth, version_of, notes, errors) for a fact, checked.
 
         `truth`: None (true), partial or wrong. `version_of`: the fullest true
@@ -313,13 +439,12 @@ class NoteManager:
     def set_truth(self, fact_id: str, truth=None, version_of=None, keep_version=True) -> dict:
         """Mark a recorded fact true (None), partial or wrong, and/or link it to
         the fullest true version. Returns the entry; raises ValueError."""
-        facts = self.json_ops.load_json("facts.json")
+        facts = fact_file.load(self.json_ops)
         entry = self._entry(facts, fact_id)
         if keep_version and version_of is None:
             version_of = entry.get('version_of')
         truth, version_of, notes, errors = self._check_version(facts, truth, version_of, fact_id)
-        if any(f.get('version_of') == fact_id for items in facts.values() if isinstance(items, list)
-               for f in items if isinstance(f, dict)) and (truth == 'wrong' or version_of):
+        if any(f.get('version_of') == fact_id for f in facts) and (truth == 'wrong' or version_of):
             errors.append(f"Other facts are versions of {fact_id}; it is their truth.")
         if errors:
             raise ValueError(" ".join(errors))
@@ -328,50 +453,49 @@ class NoteManager:
                 entry[key] = value
             else:
                 entry.pop(key, None)
-        self.json_ops.save_json("facts.json", facts)
+        if version_of and not entry.get('plots') and self._entry(facts, version_of).get('plots'):
+            entry['plots'] = list(self._entry(facts, version_of)['plots'])    # as its truth
+            notes.append(f"plot: {', '.join(entry['plots'])} (as its truth, {version_of})")
+        fact_file.save(self.json_ops, facts)
         for note in notes:
             print(f"  {note}")
         return entry
 
-    def _entry(self, facts: dict, fact_id: str) -> dict:
-        entry = next((f for items in facts.values() if isinstance(items, list)
-                      for f in items if isinstance(f, dict) and f.get('id') == fact_id), None)
+    def _entry(self, facts: list, fact_id: str) -> dict:
+        entry = fact_file.by_id(facts, fact_id)
         if entry is None:
             raise ValueError(f"No fact '{fact_id}'.")
         return entry
 
     def tell(self, fact_id: str, holders) -> list:
         """Someone learns a recorded fact: add holders. Returns those who are new
-        (already knowing isn't learning). Raises ValueError for an unknown fact or id."""
+        (already knowing isn't learning: a member knows what their faction knows).
+        Raises ValueError for an unknown fact or id."""
+        from factions import knowers
         from world_ids import WorldIds
         adding, errors = WorldIds(self.json_ops).resolve_all(holders, holders=True)
         if errors:
             raise ValueError("; ".join(errors))
-        facts = self.json_ops.load_json("facts.json")
+        facts = fact_file.load(self.json_ops)
         entry = self._entry(facts, fact_id)
         known = entry.setdefault('holders', [])
-        new = [h for h in adding if h not in known]
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        new = [h for h in adding if not knowers(h, npcs) & set(known)]   # they or their faction
         self.last_fired = []
         if new:
             known.extend(new)
-            self.json_ops.save_json("facts.json", facts)
+            fact_file.save(self.json_ops, facts)
             self._learned(fact_id, entry, new)
         return new
 
     def remove_facts(self, fact_ids) -> int:
         """Delete the facts with these ids (undoing a world tick). Returns how many."""
         ids = set(fact_ids)
-        facts = self.json_ops.load_json("facts.json")
-        removed = 0
-        for category, items in facts.items():
-            if not isinstance(items, list):
-                continue
-            kept = [f for f in items if not (isinstance(f, dict) and f.get('id') in ids)]
-            removed += len(items) - len(kept)
-            facts[category] = kept
-        if removed:
-            self.json_ops.save_json("facts.json", facts)
-        return removed
+        facts = fact_file.load(self.json_ops)
+        kept = [f for f in facts if f.get('id') not in ids]
+        if len(kept) != len(facts):
+            fact_file.save(self.json_ops, kept)
+        return len(facts) - len(kept)
 
     def _list_waiting(self, fact_id: str) -> None:
         """Show the consequences waiting on an event, so the GM can judge whether
@@ -386,14 +510,9 @@ class NoteManager:
     # ---------- looking facts up ----------
 
     def _all(self) -> list:
-        """Every fact with its category, newest first (by the number in its id)."""
-        facts = self.json_ops.load_json("facts.json") or {}
-        entries = [dict(f, category=cat) for cat, items in facts.items()
-                   if isinstance(items, list) for f in items if isinstance(f, dict)]
-        def number(f):
-            fid = str(f.get('id', ''))
-            return int(fid[1:]) if fid[1:].isdigit() else 0
-        return sorted(entries, key=number, reverse=True)
+        """Every fact, newest first (by the number in its id); copies, so a
+        lookup can mark them without changing the file's."""
+        return [dict(f) for f in fact_file.newest_first(fact_file.load(self.json_ops))]
 
     def show(self, fact_ids) -> list:
         """The facts with these ids, each with `versions`: the ids of the facts
@@ -410,12 +529,12 @@ class NoteManager:
         return out
 
     def find(self, held_by=None, about=None, secret=False, hidden=False, truth=None,
-             category=None, text=None, at=None, since=None, until=None) -> list:
+             text=None, at=None, since=None, until=None, plot=None) -> list:
         """Facts matching every filter given, newest first.
 
-        held_by: holder ids (or names); each must know it, and a fact held by
-        `public` counts as known to everyone (`street` doesn't: who belongs to
-        the street isn't recorded). about: ids it must be about. secret: nobody
+        held_by: holder ids (or names); each must know it: an NPC knows what their
+        factions know, and a fact held by `public` counts as known to everyone
+        (`street` doesn't: who belongs to the street isn't recorded). about: ids it must be about. secret: nobody
         knows it. hidden: the player doesn't. truth: wrong or partial. text:
         every word must occur. Matching facts get `public: True` when only
         `public` made a held_by match. Raises ValueError for an unknown id.
@@ -429,16 +548,26 @@ class NoteManager:
         if at:
             place, error = ids.resolve_as(at, ("location",))
             errors += [error] if error else []
+        plot_key = ""
+        if plot:
+            from plot_manager import resolve_plots
+            keys, more = resolve_plots(self.json_ops, [plot])
+            errors += more
+            plot_key = keys[0] if keys else ""
         if errors:
             raise ValueError("; ".join(errors))
         words = [w.lower() for w in str(text or '').split()]
+        from factions import knowers
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        mine = {h: knowers(h, npcs) for h in holders}     # an NPC and their factions
         out = []
         for f in self._all():
             known = f.get('holders')
             if holders:
-                if known is None or not all(h in known or 'public' in known for h in holders):
+                if known is None or not all(mine[h] & set(known) or 'public' in known
+                                            for h in holders):
                     continue
-                if any(h not in known for h in holders):
+                if any(not mine[h] & set(known) for h in holders):
                     f = dict(f, public=True)
             if abouts and not all(a in (f.get('about') or []) for a in abouts):
                 continue
@@ -448,11 +577,11 @@ class NoteManager:
                 continue
             if truth and f.get('truth') != truth:
                 continue
-            if category and f.get('category') != category:
-                continue
             if words and not all(w in str(f.get('fact', '')).lower() for w in words):
                 continue
             if place and f.get('at') != place:
+                continue
+            if plot_key and plot_key not in (f.get('plots') or []):
                 continue
             when = str(f.get('game_time') or '')
             if (since or until) and not when:
@@ -475,7 +604,7 @@ class NoteManager:
         "suggested"} as lists of facts; with `dry_run` nothing is changed.
         Raises ValueError.
         """
-        from time_manager import STORED_FORMAT, parse_time
+        from time_manager import parse_time
         from world_ids import WorldIds
         cid, error = WorldIds(self.json_ops).resolve_as(who, ("npc",))
         if error:
@@ -486,8 +615,10 @@ class NoteManager:
                 raise ValueError("Where were they? The current location is unknown; give --at.")
             at = place
         window = [parse_time(t).strftime(STORED_FORMAT) if t else None for t in (since, until)]
+        from factions import knowers
+        theirs = knowers(cid, self.json_ops.load_json("npcs.json") or {})   # and their factions'
         candidates = [f for f in self.find(at=at, since=window[0], until=window[1])
-                      if cid not in (f.get('holders') or [])]
+                      if not theirs & set(f.get('holders') or [])]
         def seen(f):
             known = f.get('holders')
             return (isinstance(known, list) and bool({'player', 'public'} & set(known))
@@ -511,20 +642,22 @@ class NoteManager:
     def beat(self, items) -> list:
         """Several facts of one beat at once, all checked before any is written.
 
-        Each item is a fact as `add` takes it ({"fact", "category", "about",
-        "not_about", "holders", "also", "secret", "truth", "version_of", "at",
-        "nowhere"}); `version_of` may name an earlier item of the same call as
+        Each item is a fact as `add` takes it ({"fact", "about", "not_about",
+        "holders", "also", "secret", "truth", "version_of", "at", "nowhere",
+        "plot"}; "plot" is one plot's name or a list, as `--plot` is on the
+        command line, the opening and the world tick); `version_of` may name an
+        earlier item of the same call as
         "#1", "#2", ... (a deception: the truth first, then the false impression
         the fooled one holds). Returns the new ids; raises ValueError and writes
         nothing if any item is refused.
         """
-        allowed = {"fact", "category", "about", "not_about", "holders", "also", "secret",
-                   "truth", "version_of", "at", "nowhere"}
+        allowed = {"fact", "about", "not_about", "holders", "also", "secret",
+                   "truth", "version_of", "at", "nowhere", "plot", "when"}
         def as_list(value):
             return None if value is None else [value] if isinstance(value, str) else list(value)
         if not isinstance(items, list) or not items:
             raise ValueError("A beat is a JSON list of facts.")
-        facts = self.json_ops.load_json("facts.json") or {}
+        facts = fact_file.load(self.json_ops)
         errors = []
         for n, item in enumerate(items, 1):
             where = f"fact #{n}"
@@ -532,6 +665,13 @@ class NoteManager:
                 errors.append(f"{where} needs a \"fact\".")
                 continue
             extra = set(item) - allowed
+            if "category" in extra:
+                errors.append(f"{where}: facts have no category any more; leave \"category\" out.")
+                extra.discard("category")
+            if "plots" in extra:
+                errors.append(f"{where}: the field is \"plot\" (one name, or a list), "
+                              f"as on the command line (--plot).")
+                extra.discard("plots")
             if extra:
                 errors.append(f"{where}: unknown field(s) {', '.join(sorted(extra))}.")
             _, _, more = self._about(item["fact"], as_list(item.get("about")),
@@ -541,6 +681,8 @@ class NoteManager:
                                     as_list(item.get("also")))
             errors += [f"{where}: {e}" for e in more]
             _, more = self._where(item.get("at"), bool(item.get("nowhere")))
+            errors += [f"{where}: {e}" for e in more]
+            _, more = self._when(item.get("when"))
             errors += [f"{where}: {e}" for e in more]
             ref = str(item.get("version_of") or "")
             if ref.startswith("#"):
@@ -561,13 +703,13 @@ class NoteManager:
             ref = str(item.get("version_of") or "")
             if ref.startswith("#"):
                 ref = written[int(ref[1:]) - 1]
-            fid = self.add_fact(item.get("category") or "session_events", item["fact"],
-                                list_waiting=False, about=as_list(item.get("about")),
+            fid = self.add_fact(item["fact"], list_waiting=False, about=as_list(item.get("about")),
                                 not_about=as_list(item.get("not_about")),
                                 holders=as_list(item.get("holders")),
                                 secret=bool(item.get("secret")), also=as_list(item.get("also")),
                                 truth=item.get("truth"), version_of=ref or None,
-                                at=item.get("at"), nowhere=bool(item.get("nowhere")))
+                                at=item.get("at"), nowhere=bool(item.get("nowhere")),
+                                plots=as_list(item.get("plot")), when=item.get("when"))
             if not fid:
                 self.remove_facts(written)
                 raise ValueError("A fact was refused (see above); none of this beat was kept.")
@@ -575,25 +717,11 @@ class NoteManager:
         self._list_waiting(", ".join(written))
         return written
 
-    def get_facts(self, category: str = None) -> dict:
-        """Get facts, optionally filtered by category."""
-        facts = self.json_ops.load_json("facts.json")
-        if category:
-            return {category: facts.get(category, [])}
-        return facts
 
-    def list_categories(self) -> list:
-        """List all fact categories."""
-        facts = self.get_facts()
-        return list(facts.keys())
-
-
-def fact_line(f: dict, width: int = 160) -> str:
-    """One fact on one line: id, game time, the marked text (cut), who it's about
-    and who knows it."""
+def fact_line(f: dict) -> str:
+    """One fact on one line: id, game time, the marked text in full (a fact cut
+    short can drop its turn), who it's about and who knows it."""
     text = fact_text(f)
-    if len(text) > width:
-        text = text[:width - 1].rstrip() + "…"
     when = str(f.get('game_time', '')).replace('T', ' ')
     known = f.get('holders')
     who = ("who knows it isn't recorded" if known is None else
@@ -607,7 +735,7 @@ def fact_line(f: dict, width: int = 160) -> str:
 
 def fact_details(f: dict) -> str:
     """A fact in full, with its truth and its versions."""
-    lines = [f"{f.get('id')} ({f.get('category')}, {str(f.get('game_time') or 'no game time').replace('T', ' ')})",
+    lines = [f"{f.get('id')} ({str(f.get('game_time') or 'no game time').replace('T', ' ')})",
              f"  {fact_text(f)}"]
     if f.get('at'):
         lines.append(f"  at: {f['at']}")
@@ -624,14 +752,24 @@ def fact_details(f: dict) -> str:
     return "\n".join(lines)
 
 
-def _print_found(found: list, limit: int) -> None:
+NARROW = ('gm-note.sh find --about "npc:<who>" --at "<where>" (or --plot "<plot>", '
+          '--held-by "<who>"; filters combine)')
+
+
+def _print_found(found: list, limit: int, filtered: bool = True) -> None:
+    """The facts, newest first, at most `limit` (0: all). A longer list ends
+    with how to narrow it: lists stay short when lookups are filtered."""
     shown = found if limit <= 0 else found[:limit]
     for f in shown:
         print(fact_line(f))
     if not found:
         print("No facts match.")
     elif len(found) > len(shown):
-        print(f"+{len(found) - len(shown)} more (--limit 0 for all; gm-note.sh show <id> for one in full)")
+        more = len(found) - len(shown)
+        if filtered:
+            print(f"+{more} more: add another filter, or --limit 0 for all")
+        else:
+            print(f"+{more} older: narrow it with {NARROW}")
 
 
 def main():
@@ -640,7 +778,8 @@ def main():
     parser = argparse.ArgumentParser(description="Facts")
     sub = parser.add_subparsers(dest="action")
     p = sub.add_parser("add", help="record a fact")
-    p.add_argument("category"); p.add_argument("fact")
+    p.add_argument("fact")
+    p.add_argument("more", nargs="*", help=argparse.SUPPRESS)   # the old form: <category> <fact>
     p.add_argument("--about", action="append", default=[],
                    help="who or what it concerns (repeatable): player, npc:<name>, location:<name>")
     p.add_argument("--not-about", dest="not_about", action="append", default=[],
@@ -659,19 +798,26 @@ def main():
     p_add.add_argument("--at", help="where it happened (default: the current location)")
     p_add.add_argument("--nowhere", action="store_true",
                        help="it happened nowhere in particular (a truth, a secret, off-screen)")
+    p_add.add_argument("--plot", action="append", dest="plots", default=[],
+                       help="the plot it belongs to (repeatable)")
+    p_add.add_argument("--when", help="when it happened, if earlier than now: \"YYYY-MM-DD HH:MM\"")
+    p = sub.add_parser("plot", help="add a recorded fact to a plot, or take it out")
+    p.add_argument("fact_id")
+    p.add_argument("--add", action="append", default=[])
+    p.add_argument("--remove", action="append", default=[])
     p = sub.add_parser("truth", help="mark a recorded fact true, partial or wrong")
-    p.add_argument("fact_id"); p.add_argument("truth", choices=["true"] + list(TRUTH_VALUES))
+    p.add_argument("fact_id")
+    p.add_argument("truth", choices=["true"] + list(TRUTH_VALUES))
     p.add_argument("--version-of", dest="version_of")
     p.add_argument("--no-version", dest="no_version", action="store_true",
                    help="drop the link to the true version")
     p = sub.add_parser("tell", help="someone learns a recorded fact")
-    p.add_argument("fact_id"); p.add_argument("holders", nargs="+")
+    p.add_argument("fact_id")
+    p.add_argument("holders", nargs="+")
     p = sub.add_parser("about", help="change a recorded fact's about")
     p.add_argument("fact_id")
     p.add_argument("--add", action="append", default=[])
     p.add_argument("--remove", action="append", default=[])
-    p = sub.add_parser("get"); p.add_argument("category", nargs="?")
-    sub.add_parser("categories")
     p = sub.add_parser("show", help="facts in full, by id")
     p.add_argument("fact_ids", nargs="+")
     p = sub.add_parser("find", help="facts by who knows them, who they are about, ...")
@@ -681,13 +827,18 @@ def main():
     p.add_argument("--secret", action="store_true", help="nobody knows it")
     p.add_argument("--hidden", action="store_true", help="the player doesn't know it")
     p.add_argument("--truth", choices=list(TRUTH_VALUES))
-    p.add_argument("--category")
     p.add_argument("--text", help="words that must all occur in it")
     p.add_argument("--at", help="where it happened")
-    p.add_argument("--limit", type=int, default=20, help="how many (0: all); newest first")
+    p.add_argument("--plot", help="the plot it belongs to")
+    p.add_argument("--limit", type=int, default=10, help="how many (0: all); newest first")
+    p.add_argument("--like", metavar="QUESTION",
+                   help="rank by meaning, best first (recall.py): --held-by, --hidden, --secret, "
+                        "--truth, --text still filter; --about, --at, --plot only "
+                        "raise a fact's rank")
     p = sub.add_parser("beat", help="several facts of one beat at once")
-    p.add_argument("facts", help='JSON list: [{"fact": ..., "holders": [...], ...}, ...]; '
-                                 'version_of may be "#1" (an earlier fact of this beat)')
+    p.add_argument("facts", nargs="?", help='JSON list: [{"fact": ..., "holders": [...], ...}, ...]; '
+                                 'version_of may be "#1" (an earlier fact of this beat). '
+                                 "Left out: read from after the command (<<'EOF' ... EOF)")
     p = sub.add_parser("witness", help="someone was there: they learn what happened at a place")
     p.add_argument("who")
     p.add_argument("--at", help="the place (default: the current location)")
@@ -708,12 +859,21 @@ def main():
     try:
         manager = NoteManager()
         if args.action == 'add':
-            if not manager.add_fact(args.category, args.fact,
+            if args.more:
+                raise ValueError(
+                    f"A fact has no category any more: gm-note.sh \"<the fact>\" [--about ...]. "
+                    f"Got {1 + len(args.more)} texts, the first \"{args.fact}\"; nothing was recorded.")
+            if len(args.fact.split()) < 2:
+                raise ValueError(
+                    f"A fact is a sentence, and \"{args.fact}\" is one word; nothing was recorded. "
+                    f"gm-note.sh \"<the fact>\", or one of: tell, about, plot, truth, beat, "
+                    f"witness, show, find, recent.")
+            if not manager.add_fact(args.fact,
                                     about=args.about, not_about=args.not_about,
                                     holders=args.holders, secret=args.secret,
                                     also=args.also, truth=args.truth,
                                     version_of=args.version_of, at=args.at,
-                                    nowhere=args.nowhere):
+                                    nowhere=args.nowhere, plots=args.plots, when=args.when):
                 sys.exit(1)
         elif args.action == 'truth':
             entry = manager.set_truth(args.fact_id, args.truth, args.version_of,
@@ -725,20 +885,15 @@ def main():
                   f"{args.fact_id}: they knew it already")
             from consequence_manager import print_fired
             print_fired(manager.last_fired)
+        elif args.action == 'plot':
+            keys = manager.set_plots(args.fact_id, args.add, args.remove)
+            print(f"{args.fact_id} plots: {', '.join(keys) or '(none)'}")
         elif args.action == 'about':
             about = manager.set_about(args.fact_id, args.add, args.remove)
             print(f"{args.fact_id} about: {', '.join(about) or '(nothing)'}")
-        elif args.action == 'get':
-            print(json.dumps(manager.get_facts(args.category), indent=2))
-        elif args.action == 'categories':
-            for cat in manager.list_categories():
-                print(f"  - {cat}")
         elif args.action == 'beat':
-            try:
-                items = json.loads(args.facts)
-            except ValueError as error:
-                raise ValueError(f"The beat isn't valid JSON: {error}")
-            written = manager.beat(items)
+            from cli_output import json_input
+            written = manager.beat(json_input(args.facts, "the beat"))
             print(f"[SUCCESS] Recorded {', '.join(written)}")
         elif args.action == 'witness':
             result = manager.witness(args.who, args.at, args.since, args.until,
@@ -757,17 +912,33 @@ def main():
         elif args.action in ('show', 'find', 'recent'):
             if args.action == 'show':
                 found = manager.show(args.fact_ids)
+            elif args.action == 'find' and args.like:
+                from recall import find_like, print_found
+                result = find_like(manager, args.like, args.limit, args.held_by, args.about,
+                                   args.secret, args.hidden, args.truth,
+                                   args.text, args.at, plot=args.plot)
+                if json_mode:
+                    print(json.dumps(result, indent=2, ensure_ascii=False))
+                else:
+                    print_found(result, fact_line)
+                return
             elif args.action == 'find':
                 found = manager.find(args.held_by, args.about, args.secret, args.hidden,
-                                     args.truth, args.category, args.text, args.at)
+                                     args.truth, args.text, args.at, plot=args.plot)
             else:
-                found = manager.find()[:max(0, args.count)]
+                found = manager.find()
+                if json_mode:
+                    found = found[:max(0, args.count)]
             if json_mode:
                 print(json.dumps(found, indent=2, ensure_ascii=False))
             elif args.action == 'show':
                 print("\n\n".join(fact_details(f) for f in found))
+            elif args.action == 'recent':
+                _print_found(found, max(1, args.count), filtered=False)
             else:
-                _print_found(found, args.limit if args.action == 'find' else 0)
+                given = (args.held_by, args.about, args.secret, args.hidden, args.truth,
+                         args.text, args.at, args.plot)
+                _print_found(found, args.limit, filtered=any(given))
     except (RuntimeError, ValueError) as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)

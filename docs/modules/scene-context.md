@@ -22,95 +22,50 @@ most common way a beat comes out flat.
 
 | Command | Code | Returns |
 |---|---|---|
-| `gm-session.sh context` | `SessionManager.get_full_context` (`lib/session_manager.py:592`) | The **session brief** — everything below, as formatted prose for the model |
+| `gm-session.sh context` | `Brief` (`lib/brief.py`) | The **start brief** — everything below, as formatted prose for the model |
 | `gm-context.sh ["loc"]` | `SceneContext.build` (`lib/scene_context.py:37`) | The **place brief** — this location, NPCs present, named entities, plus grounded source passages |
 
 Neither contains the other. The session brief has no source passages; the place brief has
 no history, threads, clocks, voice, or rules. Narrating a scene generally wants both.
 
-## What the session brief carries, and why each block exists
+## What the start brief carries, and why (rebuilt 2026-11-15)
 
-`get_full_context` (`lib/session_manager.py:592`) assembles, in order: header (campaign, session #, location, time) ·
-**KIT** · play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure (one informing sentence)** · scene-image gate + chronicler · **narrative voice** · **world index** ·
-**previously on** + where-we-paused + open threads · **the world remembers** · story threads · **ready threads** (dormant seeded plots whose linked NPC/place is now present, or whose clock matured) · key facts · threat
-clocks · character · party members · **NPC voices** · pending consequences · **your
-world's rules** · **signature systems** (executable kit primitives — `WorldKit.systems()`,
-rendered "ROLL these", distinct from the prose rules block).
+The brief is read once, at the start of a sitting; during play the cards come with the
+commands that change the scene (`lib/cards.py`). It is ordered by plot, because the plots
+are the spine: what matters is what belongs to a plot. `Brief.SECTIONS`, in order:
 
-Eight of those blocks carry design decisions that are not obvious from reading them:
+- **header**: the world's name, the place and the game time.
+- **kit**, then the **play style** and **images** lines, only where they differ from
+  what `CLAUDE.md` says by default.
+- **PLOTS**, every open plot, most pressing first (`plot_manager.plot_order`): where it
+  stands (its one sentence), whose goal it is, its sketches (named, not built), its clocks,
+  the consequences waiting in it, and **what the character doesn't know of it**: secrets
+  and facts only others hold, up to five, newest first, each with who knows it, then the
+  `gm-note.sh find --plot … --hidden` for the rest. What the character knows is not listed
+  per plot: the plot's sentence says it, and LATEST shows what just happened. The secrets
+  are what the GM must not forget, and can't search for without knowing they exist.
+- **IN NO PLOT**: the same three lists for what belongs to no open plot.
+- **CHARACTER** and **PARTY MEMBERS**; **WHAT <NAME> GETS WRONG** (the character's wrong
+  or partial beliefs, each with its truth).
+- **YOUR WORLD'S RULES** and **SIGNATURE SYSTEMS**, never cut.
+- **NARRATIVE VOICE**: the style, the world's own words (the glossary's terms) and three
+  sample passages, a prose target, not lore.
+- **THE SCENE**: the place's card and a card for each person present. Each list on a card
+  shows the facts that fit the scene best (`recall.SceneRanker`): by meaning when semantic
+  recall is installed, the query being the average of the place's, its last facts' and its
+  plots' vectors (no model is loaded); the place and the people present add bonuses. The
+  place card lists what the character knows that fits, then what they don't.
+- **LATEST**: the five newest facts not printed above, for picking up where play stopped;
+  newer ones printed above (often on the place's card) are named by id first.
 
-- **KIT is ambient so skills do not re-derive it.** It sits right under the campaign
-  header and names kit identity, progression, vitals, and skills, loaded
-  via `WorldKit(world_state_dir)`. A missing `kit` field reads as `custom` — DCC's
-  fixture is that case. If `WorldKit` cannot load (no active campaign, a throw), the
-  block is skipped rather than crashing the brief.
-
-- **Play-style flags stay; failure is one informing sentence.** Pacing, dice, action
-  menu and inspiration still read `preferences` and surface when set. Failure is
-  appended unconditionally — a single reminder that failure should cost something
-  and the stake is decided before the roll — not a NEVER-list or persist-command
-  sermon. Numeric caps and adjudication judgment live in skills / `gm-craft`, not
-  in the always-on brief. The opt-in `tight` beat-length preference is the exception
-  that still injects its own cap, because the player asked for it.
-
-- **Narrative voice is a prose target, not lore.** The block is labelled that way in the
-  output for a reason — the sample passages are style exemplars to imitate, and a model
-  that treats them as world facts will narrate someone else's scene.
-- **WORLD INDEX is the roster the GM scans before inventing a name.** Built from the
-  bible's `index` (`npcs`/`locations`/`items`/`monsters`), it lists `name — note` lines
-  grouped by non-empty bucket. It is emitted only when at least one bucket has an entry;
-  an absent or all-empty `index` prints no header at all.
-- **What an NPC hides is a fact they hold.** It shows under them ("they know:") and is
-  marked `[HIDDEN FROM PLAYER]`, so the GM plays it without narrating it as known.
-- **Presence does not require a voice, and present NPCs carry their memory.** Who is here
-  is `npcs_present` (party always, plus the scene list — see below). `_present_npcs`
-  only slices voice lines onto that set, and still returns an NPC with no extracted
-  dialogue — it used to `continue` past them, which made every stubbed and original-world
-  NPC invisible while standing in the room. Each present NPC's recent `events` render
-  under their entry (`_recent_events`, shared with the party block so history looks the
-  same wherever a character appears; party members render theirs once, in the party block).
-  This is the wire that lets an NPC act like they remember what the player did to them —
-  the write side is `gm-npc.sh update "<name>" "<event>"`. On top of that, `_npc_fact_lists`
-  reads the facts log each build and gives every present, non-party NPC two lists (since
-  2026-11-07): **`they know:`** facts with them among the `holders`, and **`about them, they
-  don't know:`** facts whose `about` names them but whose holders don't. A fact from before
-  holders existed can't say who knows it: it shows as `about them (old fact: who knows it isn't
-  recorded):` when its `about`, or failing that the same name check `gm-note.sh` uses (whole
-  names and `aliases`, first letter a capital), finds them. Up to 3 each, newest last, with a
-  remainder line; `--full` shows all. Hits already in PREVIOUSLY ON, THE WORLD REMEMBERS, or
-  the NPC's own `events` are dropped. Until then these were `remembers:` lines: any fact whose
-  text named the NPC, so being named counted as knowing, and the GM was invited to let an NPC
-  react to things they had never heard.
-- **THE WORLD REMEMBERS is the harness asking recall on the GM's behalf.** `CampaignMemory`
-  was a complete long-term memory with no automated reader — recall only ever fired if the
-  GM thought to ask, which needs the GM to already suspect there is something to remember.
-  `_world_remembers` builds the query from the scene itself (current location + present NPC
-  names), and adds `open_debts` from the latest arc entry. It returns empty on *any* failure
-  (no memory file, no embedding deps, a half-written index), so a broken memory costs the
-  brief nothing mid-session. It also drops hits that repeat PREVIOUSLY ON, because
-  `recall()` falls back to re-gathering the same session log.
-- **Truncated lists disclose their remainder.** Tight bounds exist so the brief stays a
-  brief — story threads 6, facts 3/category, previously-on 3, pending 10, party 8, NPC
-  voice lines 4, vocab 12, sample passages 3, world-remembers 3. `--full` lifts them.
-  Each truncation prints `+N more <noun> — <how to see the rest>` rather than dropping
-  the tail silently. YOUR WORLD'S RULES is never truncated and never gets a remainder
-  pointer.
-- **World rules prefer kit `signature_systems`, then `campaign_rules`, and are never
-  truncated.** Every other block is bounded — by item count, not by chopping an entry
-  mid-sentence — but YOUR WORLD'S RULES is printed whole (`lib/session_manager.py:997`).
-  A kit that declares `signature_systems` (list or the Conan dict form) is the live
-  surface; a legacy campaign with none still gets `campaign_rules`. Those rules *are*
-  the magic that makes each book distinct, and the GM is told to follow them exactly, so
-  it must see all of them. See [game core and World Kit](game-core-and-world-kit.md).
-
-`--full` lifts every bound. `DM_DEBUG_CONTEXT=1` prints an approximate token count to
-stderr without changing the output; the ~2k-token target it reports against is guidance,
-never a cut.
+A fact is printed once; later it is named by id ("also f12"). There is no `--full`, no
+KEY FACTS by category, and no session summary (the session log is gone). `DM_DEBUG_CONTEXT=1`
+prints an approximate token count to stderr without changing the output.
 
 ## RAG is optional everywhere, and fails to empty
 
 `SceneContext.build` wraps the entire enhancer call in a bare `except Exception: pass`
-(`lib/scene_context.py:56-64`). A campaign with no vector store, a missing `chromadb`, or
+(`lib/scene_context.py:56-64`). A campaign with no indexed book, semantic recall not installed, or
 a runtime error inside the enhancer all produce the same thing: `passages: []` and
 `rag_available: false`. Play continues on world state alone.
 
@@ -144,6 +99,6 @@ presence. The field those tags live in used to have two spellings — see
 
 ## Related
 
-- [Campaign memory](campaign-memory.md) — where "previously on" is built from
+- [Recall by meaning](campaign-memory.md) — `gm-note.sh find --like`, and the vectors behind it
 - [Living world](living-world.md) — clocks and consequences that appear in the brief
 - [A play turn](../flows/play-turn.md) — where in the loop each door is called

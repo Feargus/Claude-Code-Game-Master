@@ -10,12 +10,14 @@ Usage: gm-consequence.sh <action> [args]
 Actions:
   add "<what happens>" "<trigger in words>" [triggers] [effects]
                                  - Add a consequence
-  tick                           - Fire consequences matching the current scene (auto on move/time)
+  tick                           - Fire the waiting consequences that match the current scene
+                                   (auto on move/time). A consequence fires once.
   check                          - List pending consequences
   fire <id> [--by <fact id>] [--reason "..."]
                                  - Fire a consequence by hand (its condition happened)
-  resolve <id>                   - Resolve a consequence (once it has played out)
-  log / rollback                 - Why things fired / undo the last firing
+  resolve <id>                   - Resolve a fired consequence (once it has played out)
+  rearm <id>                     - A fired consequence waits again (the moment was wrong)
+  log                            - Why things fired
   list-resolved                  - List resolved consequences
   (an id may be shortened to a unique prefix, e.g. the 4 characters the brief shows)
 
@@ -33,15 +35,19 @@ add:
                                                           evening 17-19, dusk 19-21, night 21-23,
                                                           midnight 23-01; not a date)
     --trigger-type on_death    --match "<NPC>" | player
-  Places and NPCs are stored as ids (location:<name>, npc:<name>); add new ones first.
-    --trigger-type on_clock    --match "<clock>" | "<clock>:<segment>"
+  Places, NPCs and clocks are stored as ids (location:<name>, npc:<name>,
+  clock:<short name>:<segment>); add new ones first.
+    --trigger-type on_clock    --match "<clock's short name>" | "<short name>:<segment>"
     --trigger-type on_learn    --match "<who> learns <fact id>" | "<who> learns about <id>"
     --trigger-type on_event    --match "<the event, in words>"
   A time limit ("in 2 days") is a clock (gm-clock.sh add), not a trigger.
   Effects, carried out when it fires:
-    --starts-clock "<name>" [--clock-segments N] [--clock-on time|event]
+    --starts-clock "<short name>" [--clock-text "<what it is about>"] [--clock-segments N] [--clock-on time|event]
                    [--clock-due-in 3d | --clock-due "YYYY-MM-DD HH:MM"] [--clock-consequence "..."]
     --tells <fact id> --to <holder> [--to <holder>...]
+    --rule-effect '<json>'   a world rule's effect, as a rule's result has it, with "of":
+                   '{"change": "Standing", "of": "faction:police", "by": -4}'
+                   '{"rate_of": "Standing", "of": "faction:kin", "shift": 1}'  (repeatable)
 
 Examples:
   gm-consequence.sh add "Dekker's crew leans on Auntie Ro" "next time he's at the stall" \
@@ -95,8 +101,12 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/consequence_manager.py" log
         ;;
 
-    rollback)
-        $PYTHON_CMD "$LIB_DIR/consequence_manager.py" rollback
+    rearm)
+        if [ "$#" -lt 1 ]; then
+            echo "Usage: gm-consequence.sh rearm <id>"
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/consequence_manager.py" rearm "$@"
         ;;
 
     fire)
@@ -121,7 +131,7 @@ case "$ACTION" in
 
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: add, check, tick, log, rollback, fire, resolve, list-resolved"
+        echo "Valid actions: add, check, tick, log, rearm, fire, resolve, list-resolved"
         exit 1
         ;;
 esac

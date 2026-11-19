@@ -36,21 +36,25 @@ ARCHIVE_BASE="$WORLD_STATE_BASE/archive"
 #   SOURCE (kept): source/current-document.txt, metadata.json, chunks/, vectors/,
 #                  extracted*/, canon/, authored/, images/
 #   WORLD  (kept): world-bible.json, world-seed.json — world identity, authored
-#                  once and never regenerated during play (the bible feeds
-#                  ruleset.json via bible_to_campaign_rules)
-#   KIT    (kept): ruleset.json, rules.md, chronicler.json
+#                  once and never regenerated during play
+#   KIT    (kept): ruleset.json (with the world's own rules), chronicler.json
 #   STORY (cleared): everything below — blanked when a manager expects the file
 #                    to exist, deleted when it is created lazily.
 STORY_FILES=(
     plots.json
     items.json
     campaign-memory.json
+    embeddings.npz
+    embeddings.log
+    embeddings.lock
     combat_state.json
     threat-clocks.json
     world-tick-log.json
     loremaster-cache.json
+    rule-state.json
+    rules.log
 )
-STORY_DIRS=(saves fallen characters)
+STORY_DIRS=(fallen characters)
 
 show_usage() {
     echo "Usage: gm-reset.sh <action> [--yes]"
@@ -71,8 +75,8 @@ show_usage() {
     echo ""
     echo "Reset keeps the SOURCE (source/current-document.txt, metadata.json, chunks/, vectors/,"
     echo "images/), the WORLD (world-bible.json, world-seed.json) and the KIT (ruleset.json,"
-    echo "rules.md, chronicler.json); it clears the STORY (characters, NPCs, locations,"
-    echo "facts, plots, items, consequences, combat, memory, clocks, session log, saves/,"
+    echo "chronicler.json); it clears the STORY (characters, NPCs, locations,"
+    echo "facts, plots, items, consequences, combat, memory, clocks, the rules' values, session log,"
     echo "fallen/)."
     echo ""
     echo "Note: This resets the ACTIVE CAMPAIGN only."
@@ -92,8 +96,8 @@ should_prompt() {
     return 0
 }
 
-# Copy the campaign into $1, skipping vectors/ — the ChromaDB index is tens of
-# megabytes and is rebuilt from the source document on the next prepare.
+# Copy the campaign into $1, skipping vectors/ — the book's vectors are tens of
+# megabytes and are rebuilt from the source document on the next prepare.
 # Fails (rather than reporting an empty success) if there was nothing to copy.
 copy_campaign_to_archive() {
     local dest="$1" entry copied=0
@@ -137,7 +141,7 @@ preview_world() {
     echo "📚 Kept (reset keeps the SOURCE, the WORLD and the KIT, clears the STORY):"
     echo "  • Source: source/current-document.txt, metadata.json, chunks/, vectors/, images/"
     echo "  • World:  world-bible.json, world-seed.json"
-    echo "  • Kit:    ruleset.json, rules.md, chronicler.json"
+    echo "  • Kit:    ruleset.json, chronicler.json"
 }
 
 reset_world() {
@@ -154,7 +158,7 @@ reset_world() {
     echo "  ✓ Locations cleared"
 
     # Reset Facts
-    echo '{}' > "$FACTS_FILE"
+    echo '[]' > "$FACTS_FILE"
     echo "  ✓ Facts cleared"
 
     # Reset Consequences
@@ -177,22 +181,13 @@ reset_world() {
     "current_location": null,
     "previous_location": null
   },
-  "current_character": null,
-  "session_count": 0
+  "current_character": null
 }
 EOF
     echo "  ✓ Campaign overview reset"
 
-    # Reset Session Log
-    cat > "$SESSION_LOG" << 'EOF'
-# Campaign Session Log
-
-*A new adventure begins...*
-
----
-
-EOF
-    echo "  ✓ Session log cleared"
+    # An old campaign's session log goes with the story (none is written any more)
+    rm -f "$WORLD_STATE_DIR/session-log.md"
 
     # Remove character file
     if [ -f "$CHARACTER_FILE" ]; then
@@ -218,7 +213,7 @@ EOF
     echo ""
     echo "✅ Story reset to blank slate — source (chunks/, vectors/, source/current-document.txt,"
     echo "   images/), world (world-bible.json, world-seed.json) and kit (ruleset.json,"
-    echo "   rules.md, chronicler.json) kept."
+    echo "   chronicler.json) kept."
 }
 
 case "$ACTION" in

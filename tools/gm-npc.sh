@@ -6,10 +6,16 @@ source "$(dirname "$0")/common.sh"
 usage() {
     echo "Usage: gm-npc.sh <action> [name] [args]"
     echo ""
-    echo "  create <name> \"<role>\" [\"<attitude>\"] --location <place>... | --nowhere [--alias <short name>]..."
-    echo "         [field flags]           Create an NPC. The attitude (how they regard the player) becomes"
-    echo "                                 a fact they hold. Only name, role and place are needed; add the rest"
-    echo "                                 when play needs it."
+    echo "  create <name> [\"<role>\" [\"<attitude>\"]] [--location <place>]... [--alias <short name>]... [--another]"
+    echo "         [--faction <faction>]... [--secret-faction <faction>]...   members (gm-faction.sh join)"
+    echo "         [field flags]           Create an NPC. The attitude is their attitude towards the player,"
+    echo "                                 as one or more adjectives, comma separated (\"wary\", \"fond,"
+    echo "                                 exasperated\"), never a sentence; leave it out if they have none."
+    echo "                                 It becomes a fact they hold. A name and one field are enough"
+    echo "                                 (a role, or e.g. --goal, --fears): a sketch, filled in when play needs it."
+    echo "  attitude <name> [\"<adjectives>\"] [--towards <npc>]"
+    echo "                                 How they regard the player (or another NPC) now; without"
+    echo "                                 adjectives: show it. The newest counts; what caused it is its own fact."
     echo "  set <name> [field flags]       Fill in or change fields (\"\" clears one)"
     echo "       field flags: --race --role --background --affiliation"
     echo "                    --physique --style --presence                  (look)"
@@ -49,7 +55,7 @@ case "$ACTION" in
             $PYTHON_CMD "$LIB_DIR/entity_enhancer.py" search "$NAME personality dialogue background" -n 4 --excerpt-chars 250
         fi
         ;;
-    create|set|stats|alias|tag-location|untag-location|item|kill|promote|demote|party|list)
+    create|set|attitude|stats|alias|tag-location|untag-location|item|kill|promote|demote|party|list)
         $PYTHON_CMD "$LIB_DIR/npc_manager.py" "$ACTION" "$@"
         ;;
     *)

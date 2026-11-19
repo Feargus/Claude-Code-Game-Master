@@ -4,9 +4,14 @@
     player                  the player character
     npc:<key>               an NPC, by its key in npcs.json
     location:<key>          a location, by its key in locations.json
+    faction:<id>            a faction, by its id in factions.json; its name and
+                            aliases find it too (lib/factions.py)
     street, public          rungs of the knowledge ladder
+    clock:<key>             a threat clock, by its short name in threat-clocks.json;
+                            only where a clock is asked for (on_clock triggers,
+                            gm-clock.sh): a fact is never about or held by one
 
-Faction and item ids come with those systems. The stored id uses the exact
+Item ids come with items that have ids. The stored id uses the exact
 existing key ("npc:Auntie Ro"), so there is no separate table to keep in sync.
 Input is forgiving: "npc:auntie-ro", "Auntie Ro" or an alias resolve to the same
 id, and the player's name resolves to `player`. Anything unknown is refused
@@ -16,37 +21,62 @@ with close matches, so a typo never becomes a new, empty id.
 import difflib
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_aliases import aliases_of, normalize_entity_name, resolve_entity_name
-from sheet import aliases as sheet_aliases, name as sheet_name
+from sheet import aliases as sheet_aliases
+from sheet import name as sheet_name
 
 RUNGS = ("street", "public")
-KINDS = ("npc", "location")
-LATER = {"faction": "factions", "item": "items with ids"}
-TABLE_FILES = {"npc": "npcs.json", "location": "locations.json"}
+KINDS = ("npc", "location", "faction")
+LATER = {"item": "items with ids"}
+TABLE_FILES = {"npc": "npcs.json", "location": "locations.json", "faction": "factions.json",
+               "player": "character.json"}
 RESERVED = ("player", "anyone") + RUNGS  # words ids and triggers use
+CLOCKS_FILE = "threat-clocks.json"
+
+
+def find_clock(clocks: dict[str, Any], raw) -> str:
+    """The key of the clock `raw` names, or '': its short name (case ignored,
+    with or without a leading "clock:"), or failing that its whole text."""
+    wanted = " ".join(str(raw or "").split())
+    if wanted.lower().startswith("clock:"):
+        wanted = wanted[6:].strip()
+    low = wanted.lower()
+    if not low:
+        return ""
+    for key in clocks:
+        if key.lower() == low:
+            return key
+    for key, clock in clocks.items():
+        if isinstance(clock, dict) and str(clock.get("text") or "").strip().lower() == low:
+            return key
+    return ""
 
 
 class WorldIds:
     """Resolve ids against one campaign's files (a JsonOperations on its folder)."""
 
-    def __init__(self, json_ops):
+    def __init__(self, json_ops, player: dict[str, Any] = None):
+        """`player`: a sheet to take as the player's instead of character.json
+        (a character that is being created and isn't saved yet)."""
         self.json_ops = json_ops
         self._tables = None
-        self._pc = None
+        self._pc = player
 
-    def _load(self) -> Dict[str, dict]:
+    def _load(self) -> dict[str, dict]:
         if self._tables is None:
+            from factions import resolver_table
             self._tables = {
                 "npc": self.json_ops.load_json("npcs.json") or {},
                 "location": self.json_ops.load_json("locations.json") or {},
+                "faction": resolver_table(self.json_ops),   # by id, name and aliases
             }
         return self._tables
 
-    def _player(self) -> Dict[str, Any]:
+    def _player(self) -> dict[str, Any]:
         if self._pc is None:
             self._pc = self.json_ops.load_json("character.json") or {}
         return self._pc
@@ -54,14 +84,39 @@ class WorldIds:
     def player_name(self) -> str:
         return sheet_name(self._player())
 
-    def _player_aliases(self) -> List[str]:
+    def _player_aliases(self) -> list[str]:
         return sheet_aliases(self._player())
 
-    def all_ids(self) -> List[str]:
+    def all_ids(self) -> list[str]:
         """Every id that exists now, in a fixed order."""
         tables = self._load()
         return (["player"] + [f"{kind}:{key}" for kind in KINDS for key in tables[kind]]
-                + list(RUNGS))
+                + list(RUNGS) + [f"clock:{key}" for key in self._clocks()])
+
+    def _clocks(self) -> dict[str, Any]:
+        """The clocks as they are now (not kept: commands add and remove them)."""
+        clocks = self.json_ops.load_json(CLOCKS_FILE) or {}
+        return clocks if isinstance(clocks, dict) else {}
+
+    def resolve_clock(self, raw: str) -> tuple[str, str]:
+        """("clock:<key>", '') or ('', why not, with close matches)."""
+        clocks = self._clocks()
+        key = find_clock(clocks, raw)
+        if key:
+            return f"clock:{key}", ""
+        text = " ".join(str(raw or "").split())
+        if text.lower().startswith("clock:"):
+            text = text[6:].strip()
+        if not text:
+            return "", "An empty clock name."
+        if not clocks:
+            return "", f"No clock '{text}': there are no clocks yet (gm-clock.sh add)."
+        by_low = {key.lower(): key for key in clocks}
+        close = difflib.get_close_matches(text.lower(), list(by_low), n=3, cutoff=0.6)
+        close += [k for k in by_low if text.lower() in k.split() and k not in close]
+        if close:
+            return "", f"No clock '{text}'; did you mean: {', '.join(by_low[k] for k in close[:3])}?"
+        return "", f"No clock '{text}'. Clocks: {', '.join(clocks)}."
 
     def _is_player(self, text: str) -> bool:
         name = self.player_name()
@@ -86,7 +141,32 @@ class WorldIds:
         close += [n for n in choices if query and query in n.split() and n not in close]
         return f"; did you mean: {', '.join(choices[n] for n in close[:3])}?" if close else ""
 
-    def resolve(self, raw: str) -> Tuple[str, str]:
+    def close_names(self, name: str, kind: str) -> list[str]:
+        """Existing records of `kind` ("npc" or "location") whose name or alias is
+        close to `name`: nearly the same spelling ("Ilse Vargas"), or one name
+        inside the other word by word ("Ilse Varga" and "Director Ilse Varga",
+        "Seo" and "Mama Seo"). For a warning when a new record is made: the same
+        person or place under a second name splits what is known about them.
+        Returns ids, best match first; [] if none."""
+        query = normalize_entity_name(name) or str(name).strip().lower()
+        words = set(query.split())
+        if not words:
+            return []
+        scored = []
+        for key, data in self._load()[kind].items():
+            best = 0.0
+            for known in [key, *aliases_of(data)]:
+                other = normalize_entity_name(known) or known.lower()
+                ratio = difflib.SequenceMatcher(None, query, other).ratio()
+                theirs = set(other.split())
+                inside = words <= theirs or theirs <= words
+                if inside or ratio >= 0.8:
+                    best = max(best, 1.0 if other == query else max(ratio, 0.9 if inside else 0))
+            if best:
+                scored.append((-best, key))
+        return [f"{kind}:{key}" for _, key in sorted(scored)]
+
+    def resolve(self, raw: str) -> tuple[str, str]:
         """(canonical id, '') or ('', why it was refused)."""
         text = str(raw or "").strip()
         if not text:
@@ -98,6 +178,9 @@ class WorldIds:
         rest = rest.strip()
         if kind in LATER:
             return "", f"'{text}': {kind} ids come once there are {LATER[kind]}."
+        if kind == "clock":
+            return "", (f"'{text}' is a clock: a fact is about or known to people and "
+                        f"places. A clock is named in on_clock triggers and gm-clock.sh.")
         if kind not in KINDS:
             return "", (f"'{text}': unknown kind '{kind}'. Use player, "
                         f"{', '.join(k + ':<name>' for k in KINDS)}, street or public.")
@@ -105,10 +188,19 @@ class WorldIds:
         if key is None and kind == "npc" and self._is_player(rest):
             return "player", ""  # a canon character: the NPC is the player now
         if key is None:
-            return "", f"No {kind} '{rest}'{self._suggest(rest, kinds=(kind,))}"
+            return "", f"No {kind} '{rest}'{self._suggest(rest, kinds=(kind,))}{self._in_bible(kind)}"
         return f"{kind}:{key}", ""
 
-    def _resolve_bare(self, text: str) -> Tuple[str, str]:
+    def _in_bible(self, kind: str) -> str:
+        """For an older campaign whose factions are still only in the world bible."""
+        import factions
+        if kind != "faction" or factions.has_file(self.json_ops) or not factions.from_bible(self.json_ops):
+            return ""
+        return (". This campaign's factions are still in the world bible (gm-faction.sh list): "
+                "bash tools/gm-faction.sh from-bible copies them into factions.json, and faction "
+                "ids work everywhere")
+
+    def _resolve_bare(self, text: str) -> tuple[str, str]:
         low = text.lower()
         if low in RUNGS:
             return low, ""
@@ -131,11 +223,12 @@ class WorldIds:
         out += [("player", a) for a in self._player_aliases()]
         for kind in KINDS:
             for key, data in self._load()[kind].items():
-                out.append((f"{kind}:{key}", key))
+                if kind != "faction":            # a faction's id is no name ("psm")
+                    out.append((f"{kind}:{key}", key))
                 out += [(f"{kind}:{key}", a) for a in aliases_of(data)]
         return out
 
-    def mentioned(self, text: str) -> List[str]:
+    def mentioned(self, text: str) -> list[str]:
         """Ids whose name appears in `text`, in the order found.
 
         A name counts only as a whole: case and punctuation may differ, but the
@@ -164,13 +257,15 @@ class WorldIds:
                 ids.append(cid)
         return ids
 
-    def resolve_as(self, raw: str, kinds) -> Tuple[str, str]:
+    def resolve_as(self, raw: str, kinds) -> tuple[str, str]:
         """Like resolve, limited to some kinds ("player", "npc", "location"), as
         a trigger type needs: a bare name is looked up only among those kinds,
         and an id of another kind is refused."""
         text = str(raw or "").strip()
-        wanted = " or ".join({"player": "the player", "npc": "an NPC",
-                              "location": "a place"}.get(k, k) for k in kinds)
+        wanted = " or ".join({"player": "the player", "npc": "an NPC", "location": "a place",
+                              "faction": "a faction", "clock": "a clock"}.get(k, k) for k in kinds)
+        if "clock" in kinds and (text.lower().startswith("clock:") or tuple(kinds) == ("clock",)):
+            return self.resolve_clock(text)
         if ":" in text:
             cid, error = self.resolve(text)
         elif "player" in kinds and self._is_player(text):
@@ -195,8 +290,8 @@ class WorldIds:
         return cid, ""
 
     def check_alias(self, alias: str, owner: str) -> str:
-        """Why `alias` can't be a short name of `owner` (npc:<key> or
-        location:<key>; it needn't exist yet), or '' if it can.
+        """Why `alias` can't be a short name of `owner` (`player`, npc:<key> or
+        location:<key>; an NPC or place needn't exist yet), or '' if it can.
 
         The name check finds aliases in a fact's text as it finds names, so an
         alias must point at one thing only: not the name or alias of another NPC
@@ -207,7 +302,10 @@ class WorldIds:
             return f"'{text}' is not a name."
         if text.lower() in RESERVED or norm in RESERVED:
             return f"'{text}' is a word ids use ({', '.join(RESERVED)})."
-        own = owner.partition(":")[2]
+        own = self.player_name() if owner == "player" else owner.partition(":")[2]
+        if owner.startswith("faction:"):
+            names = aliases_of(self._load()["faction"].get(own))
+            own = names[0] if names else ""            # its name, not its id
         if norm == normalize_entity_name(own):
             if text.lower() == own.lower():
                 return f"'{text}' is {owner}'s own name; an alias is another name for it."
@@ -219,7 +317,7 @@ class WorldIds:
                 return f"'{text}' already names {cid}."
         return ""
 
-    def resolve_holder(self, raw: str) -> Tuple[str, str]:
+    def resolve_holder(self, raw: str) -> tuple[str, str]:
         """Like resolve, for who can know a fact: a place can't."""
         cid, error = self.resolve(raw)
         if cid.startswith("location:"):
@@ -227,7 +325,7 @@ class WorldIds:
                         f"public, or the NPCs there.")
         return cid, error
 
-    def present(self) -> List[str]:
+    def present(self) -> list[str]:
         """Default holders in a scene: the player plus the NPCs present (party
         members and the scene list; never the dead)."""
         from entity_manager import npcs_present
@@ -237,7 +335,7 @@ class WorldIds:
         present = npcs_present(self._load()["npc"], here, overview.get("scene"))
         return ["player"] + [f"npc:{name}" for name in present]
 
-    def resolve_all(self, raws, holders: bool = False) -> Tuple[List[str], List[str]]:
+    def resolve_all(self, raws, holders: bool = False) -> tuple[list[str], list[str]]:
         """(ids, errors) for several; duplicates collapse, order is kept.
         `holders` refuses places (see resolve_holder)."""
         ids, errors = [], []
@@ -250,28 +348,65 @@ class WorldIds:
         return ids, errors
 
 
-def alias_hint(kind: str, name: str) -> str:
-    """The nudge after creating an NPC or a place without aliases, or '' when
-    the name is a single word (nothing shorter to call it)."""
-    if len(normalize_entity_name(name).split()) < 2:
+def close_name_refusal(close: list[str], kind: str, name: str) -> str:
+    """Why a new record with a name close to existing ones is refused, or ''."""
+    if not close:
         return ""
-    tool = {"npc": "gm-npc.sh", "location": "gm-location.sh"}[kind]
-    return (f"  Facts find {name} only by the full name. If the story will use a shorter "
-            f"one: bash tools/{tool} alias \"{name}\" \"<short name>\"")
+    tool = {"npc": "gm-npc.sh show", "location": "gm-location.sh get",
+            "faction": "gm-faction.sh show"}[kind]
+    first = close[0].partition(":")[2]
+    what = {"npc": "person", "location": "place", "faction": "faction"}[kind]
+    return (f"'{name}' is close to {', '.join(close[:3])}. The same {what} under two names "
+            f"splits what is known about them, so this is refused: look at bash tools/{tool} "
+            f"\"{first}\". A second name for them is an alias. If it really is another "
+            f"{what}, add --another.")
 
 
-def change_aliases(json_ops, kind: str, name: str, add=(), remove=()) -> Tuple[str, List[str]]:
-    """Add aliases to an NPC or a place (kind "npc" or "location"), or remove
-    them, and save. Returns (key, aliases); raises ValueError for an unknown
-    name, an alias it doesn't have, or a refused alias (see check_alias)."""
+def check_player_aliases(json_ops, character: dict[str, Any], given: bool,
+                         canon: str = None) -> list[str]:
+    """The aliases of a player character that is being created, tidied, or
+    ValueError. A name of several words needs them: the story will say "Dogen",
+    not "Dogen Mabuchi", and facts, triggers and rolls find the character only by
+    a name they know. `given` says whether the interview gave any (an empty list
+    is an answer: there is no shorter name). `canon` is the NPC who becomes this
+    character: their own names don't count as taken."""
+    name = sheet_name(character)
+    aliases = list(dict.fromkeys(str(a).strip() for a in sheet_aliases(character) if str(a).strip()))
+    if not given and len(normalize_entity_name(name).split()) > 1:
+        first = name.split()[0]
+        raise ValueError(
+            f"'{name}' needs \"aliases\" under identity: the shorter names the story will use "
+            f"(e.g. [\"{first}\"]), since facts, triggers and rolls find the character only by "
+            f"a name they know. Never a family name others share. If there is none: [].")
+    ids = WorldIds(json_ops, player=dict(character, identity=dict(character.get("identity") or {},
+                                                                  aliases=[])))
+    if canon:
+        ids._load()["npc"].pop(canon, None)   # this NPC is the character from now on
+    errors = [e for a in aliases if (e := ids.check_alias(a, "player"))]
+    if errors:
+        raise ValueError(" ".join(errors))
+    return aliases
+
+
+def change_aliases(json_ops, kind: str, name: str, add=(), remove=()) -> tuple[str, list[str]]:
+    """Add aliases to an NPC, a place or the player (kind "npc", "location" or
+    "player"; the player needs no `name`), or remove them, and save. Returns
+    (key, aliases); raises ValueError for an unknown name, an alias it doesn't
+    have, or a refused alias (see check_alias)."""
     ids = WorldIds(json_ops)
-    cid, error = ids.resolve_as(name, (kind,))
-    if error:
-        raise ValueError(error)
-    key = cid.partition(":")[2]
-    table = json_ops.load_json(TABLE_FILES[kind]) or {}
-    entry = table[key]
-    holder = entry.setdefault("identity", {}) if kind == "npc" else entry
+    if kind == "player":
+        table = json_ops.load_json(TABLE_FILES[kind]) or {}
+        if not table:
+            raise ValueError("No character yet.")
+        cid, key, entry = "player", ids.player_name(), table
+    else:
+        cid, error = ids.resolve_as(name, (kind,))
+        if error:
+            raise ValueError(error)
+        key = cid.partition(":")[2]
+        table = json_ops.load_json(TABLE_FILES[kind]) or {}
+        entry = table[key]
+    holder = entry if kind in ("location", "faction") else entry.setdefault("identity", {})
     have = {a.lower() for a in holder.get("aliases") or []}
     gone = {r.strip().lower() for r in remove}
     errors = [f"{key} has no alias '{r}'." for r in remove if r.strip().lower() not in have]

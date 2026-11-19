@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from lib.consequence_manager import ConsequenceManager
+from lib.location_manager import LocationManager
 from lib.scene_manager import SceneManager
 from lib.session_manager import SessionManager
 
@@ -61,6 +62,7 @@ def test_refusals_change_nothing(dcc_world):
 
 def test_a_move_resets_the_scene_to_the_party(dcc_world):
     SceneManager(dcc_world).enter(["Mordecai"])
+    LocationManager(dcc_world).set_description("Bone Garden", "Ribcages grown over with moss.")
     SessionManager(dcc_world).move_party("Bone Garden")
     scene = _overview(dcc_world)["scene"]
     assert scene == {"location": "Bone Garden", "present": []}
@@ -70,6 +72,7 @@ def test_a_move_resets_the_scene_to_the_party(dcc_world):
 def test_moving_to_the_same_place_keeps_the_scene(dcc_world):
     sm = SceneManager(dcc_world)
     sm.enter(["Mordecai"])
+    LocationManager(dcc_world).set_description(sm.location(), "A street of shuttered warehouses.")
     SessionManager(dcc_world).move_party(sm.location())
     assert "Mordecai" in sm.present()
 
@@ -115,29 +118,32 @@ def test_cli_refusal_and_show(dcc_world):
         cwd=str(ROOT), capture_output=True, text=True, env=env, timeout=60)
     r = run("enter", "Mordekai")
     assert r.returncode == 1 and "did you mean: npc:Mordecai" in r.stderr
-    r = run()
-    assert r.returncode == 0 and "Present: Carl" in r.stdout
+    r = run()                       # the whole scene, as cards
+    assert r.returncode == 0 and r.stdout.startswith("SCENE: ") and "\nCarl (" in r.stdout
 
 
-# ---------- a new NPC needs a usual place ----------
+# ---------- a usual place is optional ----------
 
-def test_create_needs_a_usual_place(dcc_world, capsys):
+def test_create_without_a_usual_place(dcc_world, capsys):
+    """A usual place was required (2026-11-07); since 2026-11-14 a person can be
+    a sketch named in the story, with no place yet. A place given must exist."""
     from lib.npc_manager import NPCManager
     nm = NPCManager(dcc_world)
-    assert not nm.create_npc("Vex", "a fixer", "neutral")
-    out = capsys.readouterr().out
-    assert "Where is Vex usually found?" in out and '--location "Warehouse Street Level"' in out
     assert not nm.create_npc("Vex", "a fixer", "neutral", locations=["Bone Gardn"])
     assert "did you mean: location:Bone Garden" in capsys.readouterr().out
     assert not nm.create_npc("Vex", "a fixer", "neutral", locations=["Bone Garden"], nowhere=True)
     assert "Vex" not in json.loads((_cdir(dcc_world) / "npcs.json").read_text(encoding="utf-8"))
+    assert nm.create_npc("Vex", "a fixer", "neutral")
+    assert "usually found: no usual place" in capsys.readouterr().out
+    assert json.loads((_cdir(dcc_world) / "npcs.json").read_text(encoding="utf-8"))["Vex"][
+        "places"] == {"usual": []}
 
 
 def test_create_with_places_or_nowhere(dcc_world, capsys):
     from lib.npc_manager import NPCManager
     nm = NPCManager(dcc_world)
     assert nm.create_npc("Vex", "a fixer", "neutral", locations=["bone garden", "Floor 1 Stairs"])
-    assert "gm-scene.sh enter \"Vex\"" in capsys.readouterr().out
+    assert "Created NPC: Vex" in capsys.readouterr().out
     assert nm.create_npc("The Voice", "lives on a chip", "neutral", nowhere=True)
     npcs = json.loads((_cdir(dcc_world) / "npcs.json").read_text(encoding="utf-8"))
     assert npcs["Vex"]["places"]["usual"] == ["Bone Garden", "Floor 1 Stairs"]

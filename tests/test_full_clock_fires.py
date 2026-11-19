@@ -81,10 +81,12 @@ def test_reset_below_full_lets_it_fire_again(dcc_world):
 def test_cli_add_accepts_a_consequence(dcc_world):
     """add_clock always took one; the parser could not pass it."""
     m = ThreatClockManager(dcc_world)
-    m.add_clock("Seeded", 3, consequence=DOOM, linked_plot="The Descent")
+    from lib.plot_manager import PlotManager
+    PlotManager(dcc_world).add("Deep Descent", "Down.", another=True)
+    m.add_clock("Seeded", 3, consequence=DOOM, plots=["Deep Descent"])
     stored = m.get_clocks()["Seeded"]
     assert stored["consequence"] == DOOM
-    assert stored["linked_plot"] == "The Descent"
+    assert stored["plots"] == ["Deep Descent"]
 
 
 def test_firing_keeps_stdout_parseable(dcc_world, capsys):

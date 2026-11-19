@@ -19,7 +19,6 @@ from pathlib import Path
 import pytest
 
 from lib.combat_manager import CombatManager
-from lib.player_manager import PlayerManager
 
 ROOT = Path(__file__).resolve().parent.parent
 RESET_COMMAND_DOC = ROOT / ".claude" / "commands" / "reset.md"
@@ -33,7 +32,6 @@ FIXTURE_FILES = {
     "campaign-overview.json": '{"campaign_name": "Reset Fixture", "session_count": 3}\n',
     "session-log.md": "# Campaign Session Log\n\nSession 1 happened.\n",
     "character.json": '{"name": "Testarossa", "hp": {"current": 9, "max": 12}}\n',
-    "saves/snapshot.json": '{"saved": true}\n',
     "fallen/Dead Guy.json": '{"name": "Dead Guy"}\n',
     "plots.json": '{"The Heist": {"status": "active"}}\n',
     "items.json": '{"Rope": {"name": "Rope"}}\n',
@@ -65,7 +63,7 @@ CLEARED_FILES = [
     "combat_state.json", "threat-clocks.json", "world-tick-log.json",
     "loremaster-cache.json",
 ]
-CLEARED_DIRS = ["saves", "fallen", "characters"]
+CLEARED_DIRS = ["fallen", "characters"]
 KEPT = [
     "world-bible.json", "world-seed.json",
     "ruleset.json", "rules.md", "chronicler.json", "metadata.json",
@@ -189,7 +187,7 @@ def test_hard_reset_with_yes_clears_without_archiving(fixture_campaign, archive)
     result = run_reset("hard", "--yes")
     assert result.returncode == 0, result.stderr
 
-    assert (fixture_campaign / "facts.json").read_text(encoding="utf-8").strip() == "{}"
+    assert (fixture_campaign / "facts.json").read_text(encoding="utf-8").strip() == "[]"
     assert not (fixture_campaign / "character.json").exists()
     assert not list(archive.glob(f"{FIXTURE_NAME}-*")), "hard reset must not archive"
 
@@ -274,7 +272,7 @@ def test_reset_command_doc_matches_the_real_mechanism():
     assert "gm-reset.sh hard --yes" in doc
     assert "world-state/archive/" in doc
     # The promised scope must match what reset_world actually does.
-    for name in ("plots", "items", "combat state", "threat clocks", "saves"):
+    for name in ("plots", "items", "combat state", "threat clocks"):
         assert name in doc.lower(), f"reset.md never says {name} is cleared"
     for name in ("ruleset.json", "chunks/", "vectors/", "world-bible.json", "world-seed.json"):
         assert name in doc, f"reset.md never says {name} is kept"

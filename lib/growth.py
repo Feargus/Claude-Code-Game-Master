@@ -5,8 +5,12 @@ The rules (gm-growth has the GM's side):
 - Learning by use: after every skill contest the player's skill earns learnings
   from the final quality: within ±2 three, ±5 two, ±10 one, beyond nothing.
   You learn at the edge of your ability; a walkover or a hopeless attempt teaches
-  nothing. Reaching skill N costs 3 × N learnings (untrained counts as 0, so the
-  first point costs 3) and grants 10 × N XP.
+  nothing. Reaching skill N costs 3 × N learnings and grants 10 × N XP. An
+  untrained skill (not on the sheet, rolled at −3) is learned first: reaching 0
+  costs 3 learnings and grants 10 XP, the same as reaching 1 (decided 2026-11-18:
+  simple, if too easy for brain surgery). So an untrained skill never holds 3
+  learnings, and a level-up that makes it 0 (`gm-player.sh grow`) leaves fewer
+  than 1 needs.
 - XP: from skill gains, defeated enemies (wounds² × 10) and achievements
   (20 / 50 / 100 % of the current level's span). Level N needs 100 × N² XP in
   total, unbounded.
@@ -20,7 +24,7 @@ Functions here change the character dict they are given; callers load and save.
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -45,20 +49,20 @@ def level_for_xp(xp: int) -> int:
     return level
 
 
-def level(character: Dict[str, Any]) -> int:
+def level(character: dict[str, Any]) -> int:
     return int((character.get("progress") or {}).get("level", 0) or 0)
 
 
-def xp_total(character: Dict[str, Any]) -> int:
+def xp_total(character: dict[str, Any]) -> int:
     return int((character.get("progress") or {}).get("xp", 0) or 0)
 
 
-def next_level_xp(character: Dict[str, Any]) -> int:
+def next_level_xp(character: dict[str, Any]) -> int:
     """The total XP the next level needs."""
     return xp_for_level(level(character) + 1)
 
 
-def growth_due(character: Dict[str, Any]) -> int:
+def growth_due(character: dict[str, Any]) -> int:
     """How many levels the character's XP has reached beyond the level applied."""
     return max(0, level_for_xp(xp_total(character)) - level(character))
 
@@ -71,28 +75,26 @@ def learnings(quality: int) -> int:
     return 0
 
 
-def _set_xp(character: Dict[str, Any], total: int) -> None:
+def _set_xp(character: dict[str, Any], total: int) -> None:
     character.setdefault("progress", {}).setdefault("level", 0)
     character["progress"]["xp"] = total
 
 
-def _log(campaign_dir: Path, lines: List[str]) -> None:
+def _log(campaign_dir: Path, lines: list[str]) -> None:
     with (Path(campaign_dir) / LOG_FILE).open("a", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n\n")
 
 
 def _game_time(campaign_dir: Path) -> str:
-    import json
-    path = Path(campaign_dir) / "campaign-overview.json"
-    try:
-        stored = json.loads(path.read_text(encoding="utf-8")).get("game_time") or ""
-    except (OSError, ValueError):
-        stored = ""
+    """The game time for a log line: "2187-10-26 04:30", or "no game time"."""
+    from game_time import stored_time
+    from json_ops import JsonOperations
+    stored = stored_time(JsonOperations(str(campaign_dir)))
     return stored.replace("T", " ") if stored else "no game time"
 
 
-def add_xp(campaign_dir: Path, character: Dict[str, Any], amount: int, source: str,
-           reason: str = "") -> Dict[str, Any]:
+def add_xp(campaign_dir: Path, character: dict[str, Any], amount: int, source: str,
+           reason: str = "") -> dict[str, Any]:
     """Book `amount` XP, log it, and report whether growth is now due.
     Returns {"xp", "total", "due", "newly_due"}."""
     before_due = growth_due(character)
@@ -108,15 +110,15 @@ def add_xp(campaign_dir: Path, character: Dict[str, Any], amount: int, source: s
     return {"xp": int(amount), "total": total, "due": due, "newly_due": due > before_due}
 
 
-def log_growth(campaign_dir: Path, character: Dict[str, Any], what: str) -> None:
+def log_growth(campaign_dir: Path, character: dict[str, Any], what: str) -> None:
     """Record an applied level-up in the same log."""
     when = datetime.now().strftime("%Y-%m-%d %H:%M")
     _log(campaign_dir, [f"{when} · game {_game_time(campaign_dir)}",
                         f"growth applied: level {level(character)}: {what}"])
 
 
-def learn(campaign_dir: Path, character: Dict[str, Any], skill: str,
-          quality: int) -> List[Dict[str, Any]]:
+def learn(campaign_dir: Path, character: dict[str, Any], skill: str,
+          quality: int) -> list[dict[str, Any]]:
     """Practice from one contest: add learnings to `skill`, raise it while they
     reach 3 × N, book 10 × N XP per point gained. Returns the gains as
     [{"skill", "value", "xp"}]; [] when nothing was gained."""
@@ -134,17 +136,21 @@ def learn(campaign_dir: Path, character: Dict[str, Any], skill: str,
     practice = character.setdefault("progress", {}).setdefault("practice", {})
     pkey = next((k for k in practice if k.lower() == key.lower()), key)
     points = int(practice.pop(pkey, 0)) + gained
-    value = int(skills.get(key, 0)) if key in skills else 0
+    value = int(skills[key]) if key in skills else None      # None: untrained
     gains = []
-    while points >= LEARNINGS_PER_RANK * (max(value, 0) + 1):
-        value = max(value, 0) + 1
-        points -= LEARNINGS_PER_RANK * value
-        skills[key] = value
-        gains.append({"skill": key, "value": value, "xp": XP_PER_RANK * value})
+    while True:
+        new = 0 if value is None else max(value, 0) + 1
+        cost = LEARNINGS_PER_RANK * max(new, 1)               # 0 costs as much as 1
+        if points < cost:
+            break
+        points -= cost
+        value = skills[key] = new
+        gains.append({"skill": key, "value": new, "xp": XP_PER_RANK * max(new, 1)})
     practice[key] = points
     for gain in gains:
         add_xp(campaign_dir, character, gain["xp"], "skill",
-               f"{gain['skill']} rose to {gain['value']} through use")
+               f"{gain['skill']} rose to {gain['value']} through use"
+               + (" (learned: no longer untrained)" if gain["value"] == 0 else ""))
     return gains
 
 
@@ -153,7 +159,7 @@ def fight_xp(wounds: int) -> int:
     return XP_PER_WOUND_SQUARED * max(0, int(wounds)) ** 2
 
 
-def achievement_xp(character: Dict[str, Any], size: str) -> int:
+def achievement_xp(character: dict[str, Any], size: str) -> int:
     """XP for an achievement: a share of the current level's span (the XP from
     this level to the next). Raises ValueError for an unknown size."""
     if size not in ACHIEVEMENT_SHARE:

@@ -55,10 +55,10 @@ def test_draft_bible_writes_an_unconfirmed_grounded_draft(campaign):
     assert bible["name"] == "The Iron Tangle"
     # Verbatim filter: the real excerpt survives, the invented one does not.
     assert bible["voice"]["sample_passages"] == [VERBATIM]
-    # Chapters are no longer persisted to the bible (2026-08-15: replaced by the
-    # world index). segment_into_chapters still feeds the RAG coarse index only.
-    assert "chapters" not in bible
-    assert bible["index"] == {"npcs": [], "locations": [], "items": [], "monsters": []}
+    # Chapters are not persisted to the bible; segment_into_chapters feeds the RAG
+    # coarse index only. The WORLD INDEX is gone too (2026-11-14): the book's names
+    # become sketch records.
+    assert "chapters" not in bible and "index" not in bible
     # Skeleton keys are present, so the bible validates before the model fills them.
     assert validate_bible(bible) == (True, [])
 
@@ -102,8 +102,8 @@ def test_ruleset_is_drafted_from_the_bible(campaign):
     assert "kit" not in ruleset
     assert ruleset["name"] == "The Iron Tangle"
     assert ruleset["active_agents"] == ["npc-builder"]
-    assert ruleset["stat_schema"] == {"vitals": []}
     assert "progression" not in ruleset   # growth is the same for every campaign
+    assert set(ruleset) == {"name", "active_agents"}   # its own rules: gm-rule.sh define
 
 
 def test_ruleset_will_not_clobber_a_sibling_kit(campaign):
@@ -113,24 +113,6 @@ def test_ruleset_will_not_clobber_a_sibling_kit(campaign):
     with pytest.raises(FileExistsError):
         book_bible.write_ruleset(campaign)
     assert book_bible.write_ruleset(campaign, force=True)["name"]
-
-
-def test_campaign_rules_land_in_the_overview(campaign):
-    book_bible.draft_bible(campaign, name="The Iron Tangle", fields={
-        "tone": "comedy-horror",
-        "signature_systems": ["loot boxes", "viewer counts"],
-    })
-    (campaign / "campaign-overview.json").write_text(
-        json.dumps({"player_position": "Platform 9"}), encoding="utf-8")
-
-    book_bible.write_campaign_rules(campaign)
-
-    overview = json.loads((campaign / "campaign-overview.json").read_text(encoding="utf-8"))
-    assert overview["player_position"] == "Platform 9"  # existing state preserved
-    rules = overview["campaign_rules"]
-    assert rules["signature_systems"] == ["loot boxes", "viewer counts"]
-    assert rules["tone"] == "comedy-horror"
-    assert "follow them exactly" in rules["description"]
 
 
 def test_chain_without_a_bible_names_the_step_that_writes_it(campaign):
@@ -159,14 +141,13 @@ def test_cli_drives_the_whole_chain(campaign):
 
     assert run("draft-bible", str(campaign), "--name", "The Iron Tangle",
                "--voice-json", json.dumps({"style": "clipped", "sample_passages": [VERBATIM]}),
-               "--fields-json", json.dumps({"signature_systems": ["loot boxes"]})).returncode == 0
+               "--fields-json", json.dumps({"tone": "clipped dread"})).returncode == 0
     assert run("draft-ruleset", str(campaign)).returncode == 0
-    assert run("campaign-rules", str(campaign)).returncode == 0
+    for gone in ("campaign-rules", "write-systems"):          # removed 2026-11-17
+        assert run(gone, str(campaign)).returncode == 2
 
     ruleset = json.loads((campaign / "ruleset.json").read_text(encoding="utf-8"))
-    overview = json.loads((campaign / "campaign-overview.json").read_text(encoding="utf-8"))
-    assert ruleset["stat_schema"] == {"vitals": []}
-    assert overview["campaign_rules"]["signature_systems"] == ["loot boxes"]
+    assert ruleset["name"] == "The Iron Tangle" and "stat_schema" not in ruleset
 
     # Second draft-ruleset is refused rather than silently overwriting.
     assert run("draft-ruleset", str(campaign)).returncode == 1

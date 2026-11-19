@@ -1,76 +1,46 @@
 """
-RAG-based Document Extraction Module
+Book search: a campaign's source book, searchable by meaning.
 
-This module provides semantic/embedding-based extraction using local vectorization.
-It's designed to be siloed and modular - can be excluded without affecting core functionality.
-
-Install dependencies: pip install -e ".[rag]" or uv pip install -e ".[rag]"
+It uses the same model as the facts' semantic recall (lib/embedder.py:
+EmbeddingGemma on ONNX Runtime) and stores its pieces and vectors in the
+campaign's vectors/ folder (vector_store.py). Install: `uv sync --extra recall`,
+then `bash tools/gm-recall.sh setup` for the model. Without them the rest of the
+game works; only the book search is off.
 """
 
-# Check for RAG dependencies availability
-RAG_AVAILABLE = False
-_MISSING_DEPS = []
+import sys
+from pathlib import Path
 
-try:
-    import sentence_transformers
-except ImportError:
-    _MISSING_DEPS.append("sentence-transformers")
-
-try:
-    import chromadb
-except ImportError:
-    _MISSING_DEPS.append("chromadb")
-
-# Only mark available if all deps present
-RAG_AVAILABLE = len(_MISSING_DEPS) == 0
-
-
-def check_rag_available() -> bool:
-    """Check if RAG dependencies are installed."""
-    return RAG_AVAILABLE
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 def get_missing_deps() -> list:
-    """Get list of missing dependencies."""
-    return _MISSING_DEPS.copy()
+    """What semantic recall still needs: packages, or the model files."""
+    from embedder import files_missing, packages_missing
+    missing = packages_missing()
+    if not missing and files_missing():
+        missing = ["the model files (bash tools/gm-recall.sh setup)"]
+    return missing
+
+
+def check_rag_available() -> bool:
+    """The book search can embed (packages and model installed)."""
+    return not get_missing_deps()
+
+
+RAG_AVAILABLE = check_rag_available()
 
 
 def require_rag():
-    """Raise an error if RAG deps are not available."""
-    if not RAG_AVAILABLE:
-        missing = ", ".join(_MISSING_DEPS)
-        raise ImportError(
-            f"RAG dependencies not installed: {missing}\n"
-            f"Install with: pip install -e '.[rag]' or uv pip install -e '.[rag]'"
-        )
+    """Raise an error if the book search can't run."""
+    missing = get_missing_deps()
+    if missing:
+        raise ImportError(f"The book search needs {', '.join(missing)}: uv sync --extra recall, "
+                          f"then bash tools/gm-recall.sh setup")
 
 
-# Conditional exports - only import classes if deps available
-if RAG_AVAILABLE:
-    from lib.rag.embedder import LocalEmbedder
-    from lib.rag.vector_store import CampaignVectorStore
-    from lib.rag.semantic_chunker import SemanticChunker
-    from lib.rag.rag_extractor import RAGExtractor
-    from lib.rag.extraction_queries import EXTRACTION_QUERIES, get_queries_for_type
-    from lib.rag.quote_extractor import QuoteExtractor
+from lib.rag.rag_extractor import RAGExtractor  # noqa: E402
+from lib.rag.vector_store import CampaignVectorStore  # noqa: E402
 
-    __all__ = [
-        'RAG_AVAILABLE',
-        'check_rag_available',
-        'get_missing_deps',
-        'require_rag',
-        'LocalEmbedder',
-        'CampaignVectorStore',
-        'SemanticChunker',
-        'RAGExtractor',
-        'EXTRACTION_QUERIES',
-        'get_queries_for_type',
-        'QuoteExtractor',
-    ]
-else:
-    __all__ = [
-        'RAG_AVAILABLE',
-        'check_rag_available',
-        'get_missing_deps',
-        'require_rag',
-    ]
+__all__ = ["RAG_AVAILABLE", "check_rag_available", "get_missing_deps", "require_rag",
+           "RAGExtractor", "CampaignVectorStore"]

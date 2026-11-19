@@ -1,7 +1,7 @@
 [project]
 name = "gm-claude"
 version = "0.2.0"
-description = "AI-powered D&D Game Master assistant for running campaigns with Claude Code"
+description = "AI Game Master for running tabletop-style campaigns with Claude Code"
 authors = [
     { name = "Sean Stobo" }
 ]
@@ -27,7 +27,7 @@ classifiers = [
 dependencies = [
     "anthropic>=0.76.0",
     "pdfplumber>=0.11.9",
-    "pypdf2>=3.0.1",
+    "pypdf>=5.0",
     "python-docx>=1.2.0",
     "python-dotenv>=1.0.0",
 ]
@@ -38,16 +38,19 @@ voice = [
     "elevenlabs>=2.8.1",
 ]
 
-# RAG-based document extraction
-rag = [
-    "sentence-transformers>=2.2.0",
-    "chromadb>=0.4.0",
+# Semantic recall: facts ranked by meaning, and the book search (EmbeddingGemma on ONNX
+# Runtime, no PyTorch).
+# The model itself is downloaded by `bash tools/gm-recall.sh setup`.
+recall = [
+    "numpy>=1.26",
+    "onnxruntime>=1.20",
+    "tokenizers>=0.20",
 ]
 
-# Full installation (all features)
+# Full installation (all features; the book search comes with `recall`)
 full = [
     "gm-claude[voice]",
-    "gm-claude[rag]",
+    "gm-claude[recall]",
 ]
 
 # Development dependencies
@@ -83,9 +86,14 @@ target-version = ["py311", "py312"]
 
 [tool.ruff]
 line-length = 100
+target-version = "py311"
+# The scripts in lib/ import each other by bare name (sys.path), so lib/ counts as
+# first-party for the import order.
+src = ["lib", "."]
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "C90", "I", "N", "UP", "B", "A", "C4", "SIM", "RET"]
 ignore = ["E501"]  # Line too long - handled by black
-target-version = "py311"
 
 [tool.mypy]
 python_version = "3.11"

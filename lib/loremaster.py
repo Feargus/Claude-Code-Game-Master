@@ -3,8 +3,10 @@
 Loremaster — grounded scene briefs from long-context reading, cached + gated.
 
 Instead of stapling nearest-neighbor chunks, the Loremaster uses the coarse index
-to FIND the relevant chapter, then reads a large span and returns a grounded
-brief. Briefs are cached PER LOCATION and a deep read is gated to new/important
+to FIND the relevant chapter (by meaning, from the book's indexed pieces, when the
+book is indexed and semantic recall installed; else by keywords), then reads a
+large span and returns a grounded brief. A half-indexed book is refused, as the
+book search refuses it (gm-extract.sh wait). Briefs are cached PER LOCATION and a deep read is gated to new/important
 scenes — routine revisits reuse the cache, so the expensive read never fires every
 turn. (The voice-grounded synthesis of the brief is the model's job in /gm; this
 module owns the find/cache/gate/observe machinery + the source excerpt.)
@@ -12,23 +14,41 @@ module owns the find/cache/gate/observe machinery + the source excerpt.)
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from entity_manager import EntityManager
 from book_bible import log_token_estimate
+from entity_manager import EntityManager
 from rag.coarse_index import CoarseIndex
 
 
+class LoremasterError(RuntimeError):
+    """The brief can't be made yet. The message says what to do."""
+
+
 class Loremaster(EntityManager):
-    def __init__(self, world_state_dir: str = None, book_text: Optional[str] = None):
+    def __init__(self, world_state_dir: str = None, book_text: str | None = None):
         super().__init__(world_state_dir)
         self.cache_file = "loremaster-cache.json"
-        self.index = CoarseIndex()
+        self.index = CoarseIndex(**self._by_meaning())
         text = book_text if book_text is not None else self._load_book_text()
         if text:
             self.index.build(text)
+
+    def _by_meaning(self) -> dict[str, Any]:
+        """CoarseIndex's settings: by meaning when the book is indexed and semantic
+        recall installed; keywords when the book has no index or recall is off.
+        Raises LoremasterError for a book whose indexing isn't finished."""
+        if self.campaign_dir is None:
+            return {}
+        from rag.vector_store import CampaignVectorStore
+        store = CampaignVectorStore(str(self.campaign_dir))
+        if not store.chunks() or not CampaignVectorStore.is_available():
+            return {}
+        if not store.complete():
+            raise LoremasterError(store.not_ready())
+        return {"embedder": "meaning", "store": store}
 
     def _load_book_text(self) -> str:
         for candidate in ("source/current-document.txt", "current-document.txt", "book-text.txt"):
@@ -36,11 +56,11 @@ class Loremaster(EntityManager):
             if p.exists():
                 try:
                     return p.read_text(encoding="utf-8")
-                except (IOError, ValueError):
+                except (OSError, ValueError):
                     return ""
         return ""
 
-    def _cache(self) -> Dict[str, Any]:
+    def _cache(self) -> dict[str, Any]:
         return self.json_ops.load_json(self.cache_file) or {}
 
     # Excerpt kept in the cache / default output. The FULL chapter span is
@@ -49,7 +69,7 @@ class Loremaster(EntityManager):
     EXCERPT_CHARS = 1500
 
     def brief_for(self, location: str, important: bool = False,
-                  full: bool = False) -> Dict[str, Any]:
+                  full: bool = False) -> dict[str, Any]:
         """Grounded brief for a scene. Deep-reads only on a new or important scene.
 
         full=True attaches the entire chapter span as `chapter_text` — the
@@ -79,6 +99,7 @@ class Loremaster(EntityManager):
 
         brief = {
             "location": location,
+            "found_by": self.index.method,
             "chapters": pointers,
             "grounded_excerpt": excerpt,
             "deep_read": True,
@@ -104,7 +125,8 @@ class Loremaster(EntityManager):
 def main():
     import argparse
     import json
-    from cli_output import wants_json, strip_json_flag, emit
+
+    from cli_output import emit, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description="Loremaster scene brief")
     parser.add_argument("location", nargs="+")
@@ -114,8 +136,12 @@ def main():
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
 
-    brief = Loremaster().brief_for(" ".join(args.location),
-                                   important=args.important, full=args.full)
+    try:
+        brief = Loremaster().brief_for(" ".join(args.location),
+                                       important=args.important, full=args.full)
+    except LoremasterError as error:
+        print(f"[ERROR] {error}", file=sys.stderr)
+        sys.exit(1)
     if json_mode:
         emit(brief, json_mode=True)
     elif args.full and brief.get("chapter_text"):

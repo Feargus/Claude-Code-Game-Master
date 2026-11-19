@@ -16,18 +16,19 @@ Run this command to install GM Claude dependencies. This runs automatically on f
    [ -d ".venv" ] || python3 -m venv .venv
    ```
 
-3. **Install dependencies (including RAG for document import)**
+3. **Install dependencies (including semantic recall and the book search)**
 
-   Try uv first (faster), fall back to pip. Install with RAG extras for full functionality:
+   Try uv first (faster), fall back to pip:
    ```bash
    if command -v uv &> /dev/null; then
-       uv sync --extra rag
+       uv sync --extra recall
    else
-       source .venv/bin/activate && pip install --upgrade pip && pip install -e '.[rag]'
+       source .venv/bin/activate && pip install --upgrade pip && pip install -e '.[recall]'
    fi
+   bash tools/gm-recall.sh setup
    ```
 
-   Note: This installs sentence-transformers and chromadb for document import. First run may download ~500MB of model files.
+   Note: this installs numpy, onnxruntime and tokenizers (about 150 MB) and downloads the model (217 MB, checked) into `models/`. No PyTorch.
 
 4. **Create .env if missing**
    ```bash
@@ -47,7 +48,7 @@ Run this command to install GM Claude dependencies. This runs automatically on f
 
 6. **Verify installation**
    ```bash
-   uv run python lib/dice.py "1d20"
+   bash tools/gm-dice.sh "1d20"
    ```
 
    If the dice roll works, installation is complete.

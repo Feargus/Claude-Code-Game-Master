@@ -1,0 +1,239 @@
+"""Recall by meaning: gm-note.sh find --like (step 12c, 2026-11-15). The fake
+embedder stands in for the model: texts that share words count as close."""
+
+import subprocess
+from pathlib import Path
+
+import pytest
+
+pytest.importorskip("numpy")
+
+from lib.note_manager import NoteManager  # noqa: E402
+from lib.recall import find_like  # noqa: E402
+
+TOOLS = Path(__file__).resolve().parent.parent / "tools"
+
+
+@pytest.fixture
+def notes(dcc_world, monkeypatch):
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    n = NoteManager(dcc_world)
+    ids = {
+        "clown": n.add_fact("The sad clown juggled knives at the circus gate.",
+                            holders=["player"]),
+        "door": n.add_fact("The stairwell door is braced open with a crate.",
+                           holders=["player"]),
+        "secret": n.add_fact("The circus clown works for Mordecai.",
+                             holders=["npc:Mordecai"]),
+    }
+    return n, ids
+
+
+def test_the_closest_fact_comes_first(notes):
+    n, ids = notes
+    result = find_like(n, "a clown at the circus", limit=3)
+    assert result["method"] == "meaning"
+    assert result["facts"][0]["id"] in (ids["clown"], ids["secret"])
+    assert ids["door"] not in [f["id"] for f in result["facts"][:2]]
+
+
+def test_who_knows_it_filters_and_near_misses_are_named(notes):
+    n, ids = notes
+    result = find_like(n, "the circus clown", limit=1, held_by=["player"])
+    assert [f["id"] for f in result["facts"]] == [ids["clown"]]
+    assert (ids["secret"], "not held by player") in result["near_misses"]
+
+
+def test_about_raises_the_rank_but_excludes_nothing(notes):
+    n, ids = notes
+    result = find_like(n, "a door", limit=0, about=["npc:Mordecai"])
+    found = [f["id"] for f in result["facts"]]
+    assert ids["door"] in found and ids["clown"] in found          # not about Mordecai, still there
+    plain = {f["id"]: f["score"] for f in find_like(n, "a door", limit=0)["facts"]}
+    boosted = {f["id"]: f["score"] for f in result["facts"]}
+    assert boosted[ids["secret"]] == pytest.approx(plain[ids["secret"]] + 0.10)
+
+
+def test_a_fact_not_embedded_yet_is_embedded_by_the_query(notes, monkeypatch):
+    """Recorded after the background job ran: the query embeds it itself."""
+    n, ids = notes
+    monkeypatch.setenv("GM_EMBEDDER", "off")                     # no update this time
+    late = n.add_fact("A juggler in greasepaint waits by the tent.",
+                      holders=["player"])
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    result = find_like(n, "juggler greasepaint tent", limit=1)
+    assert result["not_embedded"] == 0 and result["facts"][0]["id"] == late
+
+
+def test_without_the_model_keywords_rank(notes, monkeypatch):
+    n, ids = notes
+    monkeypatch.setenv("GM_EMBEDDER", "off")
+    result = find_like(n, "stairwell door", limit=1)
+    assert result["method"] == "keywords" and result["facts"][0]["id"] == ids["door"]
+
+
+def test_the_command(isolated_world_state):
+    def run(*args):
+        return subprocess.run(["bash", str(TOOLS / args[0]), *args[1:]], capture_output=True, text=True)
+    run("gm-campaign.sh", "create", "t")
+    run("gm-campaign.sh", "switch", "t")
+    run("gm-note.sh", "add", "The ferry is called Charon.", "--holders", "player")
+    out = run("gm-note.sh", "find", "--like", "the ferry")
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.startswith("Facts ranked by keywords") and "Charon" in out.stdout
+    gone = run("gm-recall.sh", "recall", "the ferry")
+    assert gone.returncode == 1 and "find --like" in gone.stderr
+
+
+# ---------- step d: the cards and the brief rank by the scene ----------
+
+def _here(dcc_world):
+    import json
+    overview = json.loads((Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
+                           / "campaign-overview.json").read_text())
+    return overview["player_position"]["current_location"]
+
+
+def test_the_place_card_shows_what_fits_the_scene_not_only_the_place(dcc_world, monkeypatch):
+    """A fact that matches the scene wins over newer ones that don't, though it
+    wasn't recorded at the place; what the character doesn't know has its own list."""
+    from lib.cards import Cards
+    from lib.location_manager import LocationManager
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    place = _here(dcc_world)
+    LocationManager(dcc_world).set_description(place, "Rusted cranes and stacked crates line the street.")
+    n = NoteManager(dcc_world)
+    old = n.add_fact("Behind the rusted cranes and stacked crates runs a smuggler's tunnel.",
+                     holders=["player"], nowhere=True)
+    for food in ("a sandwich", "an apple", "some soup"):
+        n.add_fact(f"Donut ate {food}.", holders=["player"], nowhere=True)
+    hidden = n.add_fact("The crates on the street hide stolen cranes parts.",
+                        holders=["npc:Mordecai"], nowhere=True)
+    card = Cards(n.json_ops).location_card(place)
+    known = [line for line in card if line.startswith("  fits here:")]
+    assert known and known[0].startswith(f"  fits here: {old} ")
+    unknown = [line for line in card if "doesn't know:" in line]
+    assert unknown and unknown[0].split(": ", 1)[1].startswith(hidden)
+
+
+def test_without_vectors_the_place_and_its_people_come_first(dcc_world):
+    """GM_EMBEDDER=off (the default in tests): the bonuses and recency decide."""
+    from lib.recall import SceneRanker
+    n = NoteManager(dcc_world)
+    place = _here(dcc_world)
+    mine = n.add_fact("The street floods every spring.", holders=["player"],
+                      about=[f"location:{place}"], nowhere=True)
+    newer = n.add_fact("Something happened far away.", holders=["player"], nowhere=True)
+    ranker = SceneRanker(n.json_ops, place)
+    assert not ranker.by_meaning
+    order = [f["id"] for f in ranker.rank([n._entry(n.json_ops.load_json("facts.json"), x)
+                                           for x in (newer, mine)])]
+    assert order == [mine, newer]
+
+
+# ---------- step e: a new plot is offered the facts that look part of it ----------
+
+def test_a_new_plot_is_offered_the_facts_closest_to_it(notes, dcc_world):
+    from lib.plot_manager import PlotManager
+    from lib.recall import suggest_for_plot
+    n, ids = notes
+    key = PlotManager(dcc_world).add("Circus Debts", "The circus clown and the knives he owes for.")
+    found = [f["id"] for f in suggest_for_plot(n, key)["facts"]]
+    assert found[:2] and set(found[:2]) <= {ids["clown"], ids["secret"]}
+    assert ids["door"] not in found[:2]
+
+
+# ---------- step e: someone like this exists already ----------
+
+def _open(dcc_world, opened=True):
+    import json
+    path = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "campaign-overview.json"
+    data = json.loads(path.read_text())
+    data["opened"] = "2187-10-26T05:00" if opened else None
+    path.write_text(json.dumps(data))
+
+
+def test_a_person_like_an_existing_one_is_refused_in_play(dcc_world, monkeypatch, capsys):
+    from lib.npc_manager import NPCManager
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    npcs = NPCManager(dcc_world)
+    assert npcs.create_npc("Vex Marrow", "a one-eyed fence who buys stolen crawler loot", nowhere=True)
+    _open(dcc_world)
+    assert not npcs.create_npc("The Fence", "a one-eyed fence who buys stolen crawler loot",
+                               nowhere=True)
+    assert "reads like Vex Marrow" in capsys.readouterr().out
+    assert npcs.create_npc("The Fence", "a one-eyed fence who buys stolen crawler loot",
+                           nowhere=True, another=True)
+    assert npcs.create_npc("Pell", "a baker of glowing bread", nowhere=True)     # nothing like it
+
+
+def test_before_the_opening_nothing_is_checked(dcc_world, monkeypatch):
+    """Building a world makes many records at once; each check would load the model."""
+    from lib.npc_manager import NPCManager
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    _open(dcc_world, opened=False)
+    npcs = NPCManager(dcc_world)
+    assert npcs.create_npc("Vex Marrow", "a one-eyed fence who buys stolen crawler loot", nowhere=True)
+    assert npcs.create_npc("The Fence", "a one-eyed fence who buys stolen crawler loot", nowhere=True)
+
+
+# ---------- step f: the background job's notes, printed by the next command ----------
+
+def test_notes_for_a_new_fact_are_printed_once(dcc_world, monkeypatch):
+    """The fixture's old facts share ids, so its first job looks like a bulk
+    embedding (no notes, by design); the notes are made directly here."""
+    from lib import recall_notes
+    from lib.embedder import FakeEmbedder
+    from lib.embedding_store import EmbeddingStore
+    from lib.npc_manager import NPCManager
+    from lib.plot_manager import PlotManager
+    camp = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    NPCManager(dcc_world).create_npc("Vex Marrow", "one-eyed fence buying stolen crawler loot",
+                                     nowhere=True)
+    PlotManager(dcc_world).add("Stolen Loot", "Who buys the stolen crawler loot, and for whom.")
+    fid = NoteManager(dcc_world).add_fact("The one-eyed fence was buying stolen crawler loot again.",
+        holders=["player"], nowhere=True)
+    store = EmbeddingStore(camp)
+    notes = recall_notes.make_notes(camp, [fid], FakeEmbedder(), store.vectors("fake"))
+    recall_notes.add_notes(camp, notes)
+    printed = "\n".join(recall_notes.lines(camp))
+    assert f"{fid} looks part of Stolen Loot" in printed
+    assert f"{fid} reads like it is about npc:Vex Marrow" in printed
+    assert recall_notes.lines(camp) == []             # printed once
+
+
+def test_a_note_acted_on_is_dropped(dcc_world, monkeypatch):
+    from lib import recall_notes
+    camp = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
+    n = NoteManager(dcc_world)
+    fid = n.add_fact("Something happened.", holders=["player"], nowhere=True)
+    recall_notes.add_notes(camp, [{"fact": fid, "kind": "about", "target": "npc:Mordecai",
+                                   "score": 0.7}])
+    n.set_about(fid, ["npc:Mordecai"], [])
+    assert recall_notes.lines(camp) == []
+
+
+def test_the_next_command_prints_the_note_but_not_into_json(isolated_world_state):
+    import os
+    import sys
+    root = TOOLS.parent
+
+    def run(*args, embedder="fake"):
+        env = {**os.environ, "GM_EMBEDDER": embedder}
+        return subprocess.run(["bash", str(TOOLS / args[0]), *args[1:]], capture_output=True,
+                              text=True, env=env)
+    run("gm-campaign.sh", "create", "t")
+    run("gm-campaign.sh", "switch", "t")
+    run("gm-npc.sh", "create", "Vex Marrow", "--role", "one-eyed fence buying stolen crawler loot",
+        "--nowhere")
+    run("gm-note.sh", "add", "The one-eyed fence was buying stolen crawler loot again.", "--holders", "player",
+        embedder="off")
+    camp = isolated_world_state / "campaigns" / "t"
+    subprocess.run([sys.executable, str(root / "lib" / "embedding_store.py"), "job", str(camp)],
+                   env={**os.environ, "GM_EMBEDDER": "fake"}, check=True)
+    as_json = run("gm-note.sh", "recent", "--json")
+    assert "[NOTE]" not in as_json.stdout                 # JSON stays JSON ...
+    shown = run("gm-time.sh")
+    assert shown.stdout.startswith("[NOTE]") and "npc:Vex Marrow" in shown.stdout   # ... and it waits
+    assert "[NOTE]" not in run("gm-time.sh").stdout       # once

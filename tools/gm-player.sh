@@ -10,8 +10,10 @@ shift
 
 case "$ACTION" in
     "create")
-        if [ -z "$1" ]; then
-            echo "Usage: gm-player.sh create '<character json>' [--canon \"<NPC>\"] [--replace]"
+        if [ -z "$1" ] && [ -t 0 ]; then
+            echo "Usage: gm-player.sh create [--canon \"<NPC>\"] [--replace] <<'EOF'"
+            echo "<the character as JSON>"
+            echo "EOF"
             echo ""
             echo "Saves the character from a finished interview (/create-character); anything left out gets a default."
             echo "  --canon NPC   the character is this NPC from the campaign"
@@ -21,7 +23,7 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/new_character.py" "$@"
         ;;
 
-    "show"|"get"|"set"|"xp"|"award"|"grow"|"level-check"|"raise"|"perk"|"vital"|"kill"|"credits"|"item"|"loot"|"condition")
+    "show"|"get"|"set"|"alias"|"xp"|"award"|"grow"|"level-check"|"raise"|"perk"|"kill"|"credits"|"item"|"loot"|"condition")
         $PYTHON_CMD "$LIB_DIR/player_manager.py" "$ACTION" "$@"
         ;;
 
@@ -29,22 +31,22 @@ case "$ACTION" in
         echo "Player Character Manager"
         echo "Usage: gm-player.sh <action> [args]"
         echo ""
-        echo "  create '<json>' [--canon N] [--replace] - save a new character from the interview"
+        echo "  create [--canon N] [--replace] <<'EOF' <json> EOF - save a new character from the interview"
         echo "  show [--json]                - the whole sheet (JSON with --json; get is the same)"
         echo "  set --style \"...\" ...        - text fields: identity, look, personality"
         echo "                                 (--race --role --background --affiliation --physique --style"
         echo "                                  --presence --big-five --demeanor --voice --tells --want --need"
         echo "                                  --values --fears --goal; \"\" clears one)"
+        echo "  alias \"<short name>\"... [--remove <alias>] - shorter names the story uses (given at creation)"
         echo "  item add gear|inventory \"<item>\" [--concealed] [--note \"...\"]"
         echo "  item remove|move \"<item>\" [--to gear|inventory]   item list"
         echo "  loot --credits X --items \"A\" \"B\"  - into the inventory, plus credits"
         echo "  credits [+N|-N]              - show or change credits"
         echo "  condition add|remove|list [<condition>]  (or gm-condition.sh)"
-        echo "  vital <counter> [+/-N | set N] - the campaign's own counters (Drift, ...)"
         echo "  award --size small|medium|large --reason \"...\" - XP for an achievement"
         echo "  grow --attribute A --skill S --skill T --perk \"Name\" \"Effect\" - growth that is due (gm-growth)"
         echo "  level-check                  - XP, level, growth due"
-        echo "  kill [--cause ...]           - the PC dies (then the Death Protocol)"
+        echo "  kill [--cause ...]           - the PC dies (then the Death Protocol: gm-death)"
         echo "  xp +N [--reason ...]         - correction: XP by hand (logged)"
         echo "  raise attribute|skill <x>    - correction: +1"
         echo "  perk \"<name>\" \"<effect>\"     - correction: add or rewrite a perk"

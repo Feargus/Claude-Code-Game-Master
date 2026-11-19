@@ -13,6 +13,20 @@ import pytest
 FIXTURE_WORLD_STATE = Path(__file__).parent / "fixtures" / "world-state"
 
 
+@pytest.fixture(autouse=True)
+def no_embedding_jobs(monkeypatch):
+    """No background embedding jobs from tests (embedding_store.request); a test
+    that wants vectors sets GM_EMBEDDER=fake."""
+    monkeypatch.setenv("GM_EMBEDDER", "off")
+
+
+@pytest.fixture(autouse=True)
+def no_claude_session(monkeypatch):
+    """Tests run the same inside a Claude Code session as outside: the session
+    id (campaign_manager._session_file) only where a test sets it."""
+    monkeypatch.delenv("CLAUDE_CODE_SESSION_ID", raising=False)
+
+
 @pytest.fixture
 def isolated_world_state(tmp_path, monkeypatch):
     """An empty world-state tree under tmp_path, made the default for the test.

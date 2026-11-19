@@ -126,10 +126,15 @@ def test_player_death_fires_on_death_player(dcc_world):
     result = pm.kill_character(cause="fell")
     assert result["success"]
     assert [c["id"] for c in result["fired"]] == [cid]
+    again = pm.kill_character(cause="fell again")              # a death is recorded once
+    assert again["success"] is False and "dead already (fell)" in again["error"]
+    deaths = [f for f in _load(dcc_world, "facts.json")
+              if isinstance(f, dict) and "(the player character) died" in f.get("fact", "")]
+    assert len(deaths) == 1
 
 
 def _fact(world, fid):
-    return next(f for items in _load(world, "facts.json").values() for f in items
+    return next(f for f in _load(world, "facts.json")
                 if isinstance(f, dict) and f.get("id") == fid)
 
 
@@ -138,7 +143,7 @@ def test_npc_kill_records_the_death_as_a_fact(dcc_world):
     result = NPCManager(dcc_world).kill_npc(npc, cause="shot in the alley")
     fact = _fact(dcc_world, result["fact"])
     assert fact["fact"] == f"{npc} died: shot in the alley"
-    assert fact in _load(dcc_world, "facts.json")["session_events"]
+    assert fact in _load(dcc_world, "facts.json")
 
 
 def test_player_kill_records_the_death_as_a_fact(dcc_world):

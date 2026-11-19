@@ -40,7 +40,13 @@ def test_confirm_makes_it_playable(dcc_world):
 def test_review_summary_presents_the_draft(dcc_world):
     s = WorldBible(dcc_world).review_summary()
     assert s["name"] == "Dungeon Crawler Carl"
-    assert s["voice_style"] and s["signature_systems"] and s["factions"]
+    assert s["voice_style"] and s["factions"] and s["rules"] == []
+    from lib import world_rules
+    from lib.json_ops import JsonOperations
+    ops = JsonOperations(str(Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"))
+    world_rules.define(ops, [{"name": "Viewers", "block": "counter", "held_by": "player",
+                              "range": [0, 10], "summary": "The audience.", "when": "Spectacle."}])
+    assert WorldBible(dcc_world).review_summary()["rules"] == ["Viewers"]
 
 
 def test_no_bible_is_playable(tmp_path):

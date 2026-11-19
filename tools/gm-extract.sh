@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # gm-extract.sh - Preparing a book for play (/import): prepare, the bible and kit,
-# the World Index, list, clean. See show_usage.
+# list, clean. See show_usage.
 
 set -e
 source "$(dirname "$0")/common.sh"
@@ -73,19 +73,20 @@ Preparing a book for play (/import)
 
 Commands:
   prepare <file> [name]     Make the book searchable: the campaign folder, the text
-                            in source/, the RAG index, chunk files for the World
-                            Index's extractor agents. Name defaults to the filename.
+                            in source/, its pieces, and the index of them, made in
+                            the background (a book indexed before is copied in
+                            seconds). Name defaults to the filename.
+  wait [campaign]           Wait until the book is indexed (up to 9 minutes a call;
+                            run it again while it says so). Nothing that searches
+                            the book runs before.
   draft-bible [campaign] [--name N] [--voice-json J] [--fields-json J]
                             Draft/refresh the campaign's world-bible.json from
                             current-document.txt (chapter map + verbatim-filtered
                             voice + skeleton keys). Idempotent; refuses a
                             confirmed bible. Run BEFORE draft-ruleset.
   draft-ruleset [campaign] [--force]
-                            Draft the World Kit (ruleset.json) from the bible
-  campaign-rules [campaign] Write the bible's signature systems into
-                            campaign-overview.json as campaign_rules
-  write-index [campaign] --index-json J    The World Index: {name, note} per entry
-  write-systems [campaign] --systems-json J
+                            Draft the World Kit (ruleset.json) from the bible;
+                            the world's own rules: gm-rule.sh define
   list                      List the campaigns made from a document
   clean [campaign]          Remove a campaign folder (a failed import)
 
@@ -135,12 +136,12 @@ prepare_document() {
         exit 1
     fi
 
-    # Check for RAG dependencies (sentence-transformers, chromadb)
-    if ! $PYTHON_CMD -c "import sentence_transformers; import chromadb" 2>/dev/null; then
-        echo "Error: RAG dependencies not installed."
+    # The book search embeds with semantic recall's model (lib/embedder.py)
+    if ! $PYTHON_CMD "$LIB_DIR/embedder.py" status 2>/dev/null | grep -q "Semantic recall: ready"; then
+        echo "Error: the book search needs semantic recall."
         echo ""
-        echo "Install with: uv pip install 'gm-claude[rag]'"
-        echo "  or: uv pip install sentence-transformers chromadb"
+        echo "Install with: uv sync --extra recall"
+        echo "  then:       bash tools/gm-recall.sh setup   (the model, 217 MB)"
         exit 1
     fi
 
@@ -155,8 +156,9 @@ prepare_document() {
     fi
 
     echo
-    echo "Document prepared: the book is searchable (gm-search.sh \"...\" --rag-only)."
-    echo "Next: /import goes on with the door question and the World Index (Step 5.5)."
+    echo "Document prepared. Before anything searches the book, wait until it is indexed:"
+    echo "  bash tools/gm-extract.sh wait \"<campaign>\"   (run it again while it says so)"
+    echo "Next: /import goes on with the door question and the roster of sketches (Step 5.5)."
 }
 
 
@@ -251,10 +253,21 @@ case "$1" in
         prepare_document "$2" "$3"
         ;;
 
+    wait)
+        # The book's index is made in the background; nothing that searches the
+        # book runs before it is complete (lib/rag/vector_store.py). Waits up to
+        # 9 minutes (a command may run for 10), then says whether to call it again.
+        campaign_name=$(require_campaign "$2" "wait") || exit 1
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
+        release_campaign_lock     # it only waits: other commands needn't wait for it
+        $PYTHON_CMD "$LIB_DIR/rag/vector_store.py" wait "$CAMPAIGN_DIR"
+        exit $?
+        ;;
 
 
-    draft-bible|draft-ruleset|campaign-rules|write-index|write-systems)
-        # The bible -> kit -> campaign_rules chain (lib/book_bible.py). The
+
+    draft-bible|draft-ruleset)
+        # The bible -> kit chain (lib/book_bible.py). The
         # campaign argument is optional here because every flag these verbs take
         # is a --long option: anything starting with -- is passed through, so
         # `draft-bible --name "X"` still means the ACTIVE campaign.

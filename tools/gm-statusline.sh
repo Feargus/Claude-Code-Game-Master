@@ -9,7 +9,8 @@
 # Wired via the project's .claude/settings.json `statusLine` setting, so it
 # only overrides the global status line inside this repo.
 
-input=$(cat)  # Claude Code JSON payload on stdin (unused; we read state files)
+input=$(cat)  # Claude Code JSON payload on stdin: only the session id is used
+SESSION_ID=$(printf '%s' "$input" | grep -o '"session_id" *: *"[A-Za-z0-9_-]*"' | head -1 | sed 's/.*"\([A-Za-z0-9_-]*\)"$/\1/')
 
 # Anchor to repo root via this script's location, not cwd.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -48,6 +49,8 @@ divider() {
 }
 
 ACTIVE_FILE="$ROOT/world-state/active-campaign.txt"
+# This session's own campaign, if it switched to one (campaign_manager.py _session_file)
+[ -n "$SESSION_ID" ] && [ -s "$ROOT/world-state/sessions/$SESSION_ID" ] && ACTIVE_FILE="$ROOT/world-state/sessions/$SESSION_ID"
 if [ ! -f "$ACTIVE_FILE" ] || [ ! -s "$ACTIVE_FILE" ]; then
     divider
     printf '%s⚔ %sGM%s  %sno campaign yet%s  %s  %s%s/gm%s %sto begin — build a world, from one sentence, or from a book%s\n' \
@@ -70,7 +73,8 @@ if [ ! -f "$CHAR" ]; then
 fi
 
 # --- Character fields -------------------------------------------------------
-# The sheet's format: lib/sheet.py. Level N needs 100 × N² XP (lib/growth.py).
+# The sheet's format: lib/sheet.py. Level N needs 100 × N² XP: the same formula as
+# lib/growth.py, repeated here to stay in shell (tests/test_growth.py keeps them in step).
 IFS=$'\t' read -r NAME RACE CLASS LEVEL CREDITS XP_CUR XP_NEXT < <(
     jq -r '
       ((.progress.level // 0)) as $level
@@ -87,6 +91,32 @@ LOC="?"
 
 # Conditions array -> status label; fall back to the wound-derived state.
 CONDS=$(jq -r '(.status.conditions // []) | map(ascii_downcase) | join(", ")' "$CHAR" 2>/dev/null)
+
+# --- The world's rules: the character's known values (lib/world_rules.py) ----
+# "Bleed 4/6": each rule the player holds whose value the player may know.
+RULES=""
+if [ -f "$CAMP/ruleset.json" ]; then
+    STATE_FILE="$CAMP/rule-state.json"; [ -f "$STATE_FILE" ] || STATE_FILE=/dev/null
+    RULES=$(jq -r -s '
+      ((.[0].rules // []) | map(select(type == "object"))) as $rules
+      | ((.[1] // {}).player // {}) as $mine
+      | [ $rules[]
+          | select(.block != "roll")                   # rolls keep nothing
+          | select((.held_by | if type == "array" then . else [.] end) | index("player"))
+          | . as $r | ($mine[$r.name] // {}) as $e
+          | select(if ($e | has("known")) then $e.known
+                   elif ($r | has("known")) then $r.known else true end)
+          | if $r.block == "states" then "\($r.name): \($e.state // $r.start)"
+            elif $r.block == "budget" then "\($r.name): " + (if $e.spent then "spent"
+                else "\($r.amount) \($r.unit // "units")" end)
+            elif $r.block == "bag" then "\($r.name): " + ([($e.tokens // $r.tokens)
+                | to_entries[] | "\(.value) \(.key)"] | join(" "))
+            elif $r.block == "plane" then "\($r.name): " + (
+              if (($e.on // []) | length) > 0 then ($e.on | join(", "))
+              else ([($e.axes // $r.start) | to_entries[] | "\(.key) \(.value)"] | join(" ")) end)
+            else "\($r.name) \($e.value // $r.start // $r.range[0])/\($r.range[1])" end ]
+      | join("  ")' "$CAMP/ruleset.json" "$STATE_FILE" 2>/dev/null)
+fi
 
 # --- Overview fields (location/time/date) -----------------------------------
 DATE="" ; TOD="" ; OLOC=""
@@ -131,6 +161,7 @@ fi
 
 L1="${TEAL}⚔ ${BOLD}${NAME}${RESET}  ${DIM}Lv${LEVEL} ${RACE} ${CLASS}${RESET}  ${SEP}  ${AMBER}${LOC}${RESET}"
 L2="  ${DIM}Wounds${RESET} ${WC}${WOUNDS}${RESET} ${SEPV} ${CRED}${CREDITS}cr${RESET} ${SEPV} ${DIM}XP${RESET} ${XP_CUR}/${XP_NEXT} ${SEPV} ${STATEC}${STATE}${RESET}"
+[ -n "$RULES" ] && L2="${L2} ${SEPV} ${TEAL}${RULES}${RESET}"
 
 # Top rule — frames the HUD off from the conversation above.
 divider "$RULEC" "$ORNC"

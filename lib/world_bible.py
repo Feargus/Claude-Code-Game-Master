@@ -3,54 +3,31 @@
 The Book Bible — the structured fidelity spine of a world.
 
 world-bible.json is what makes "playing Dune" feel unmistakably like Dune rather
-than d20-fantasy-in-a-desert. It captures VOICE, TONE, THEMES, FACTIONS (as a
-graph), GEOGRAPHY (as a place graph), TIMELINE, and the book's SIGNATURE SYSTEMS,
-and is the canonical spine loaded at session start. The import pipeline
+than d20-fantasy-in-a-desert. It captures VOICE, TONE, THEMES, (the FACTIONS
+and their ties are in factions.json), GEOGRAPHY (as a place graph), and TIMELINE, and is the canonical spine loaded at session start. The import pipeline
 (import-longcontext-read) auto-drafts it; here we define + validate the shape and
 ship a hand-authored DCC bible to prove it.
 """
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from json_ops import JsonOperations
+import world_rules
 from campaign_manager import CampaignManager
+from json_ops import JsonOperations
 
-_REQUIRED = ('name', 'voice', 'tone', 'themes', 'factions', 'geography', 'signature_systems')
+_REQUIRED = ('name', 'voice', 'tone', 'themes', 'geography')   # factions: factions.json
 
 
 def _is_graph(g: Any) -> bool:
     return isinstance(g, dict) and isinstance(g.get('nodes'), list) and isinstance(g.get('edges'), list)
 
 
-_INDEX_BUCKETS = ('npcs', 'locations', 'items', 'monsters')
-
-
-def _index_errors(index: Any) -> List[str]:
-    """Validate the optional `index` roster: a dict of four buckets, each a list
-    of {"name","note"} objects. Absent is valid (legacy bibles); malformed fails.
-    """
-    if not isinstance(index, dict):
-        return ['index must be an object {npcs:[], locations:[], items:[], monsters:[]}']
-    errors: List[str] = []
-    for bucket in _INDEX_BUCKETS:
-        entries = index.get(bucket, [])
-        if not isinstance(entries, list):
-            errors.append(f'index.{bucket} must be a list')
-            continue
-        for entry in entries:
-            if not (isinstance(entry, dict) and isinstance(entry.get('name'), str)
-                    and isinstance(entry.get('note'), str)):
-                errors.append(f'index.{bucket} entries must be {{"name","note"}} objects')
-                break
-    return errors
-
-
-def validate_bible(bible: Dict[str, Any]) -> Tuple[bool, List[str]]:
-    errors: List[str] = []
+def validate_bible(bible: dict[str, Any]) -> tuple[bool, list[str]]:
+    errors: list[str] = []
     if not isinstance(bible, dict):
         return False, ['world-bible must be an object']
     for key in _REQUIRED:
@@ -58,17 +35,14 @@ def validate_bible(bible: Dict[str, Any]) -> Tuple[bool, List[str]]:
             errors.append(f'missing required key: {key}')
     if not isinstance(bible.get('themes', []), list):
         errors.append('themes must be a list')
-    if not isinstance(bible.get('signature_systems', []), list):
-        errors.append('signature_systems must be a list')
-    if 'factions' in bible and not _is_graph(bible['factions']):
-        errors.append('factions must be a graph {nodes:[], edges:[]}')
     if 'geography' in bible and not _is_graph(bible['geography']):
         errors.append('geography must be a graph {nodes:[], edges:[]}')
     voice = bible.get('voice')
     if voice is not None and not isinstance(voice, dict):
-        errors.append('voice must be an object (style/vocab/sample_passages)')
-    if 'index' in bible:
-        errors.extend(_index_errors(bible['index']))
+        errors.append('voice must be an object (style/sample_passages)')
+    if 'glossary' in bible:
+        from glossary import check_entries
+        errors.extend(check_entries(bible['glossary']))
     return (len(errors) == 0), errors
 
 
@@ -85,20 +59,18 @@ class WorldBible:
     def exists(self) -> bool:
         return bool(self.bible)
 
-    def validate(self) -> Tuple[bool, List[str]]:
+    def validate(self) -> tuple[bool, list[str]]:
         return validate_bible(self.bible)
 
-    def voice(self) -> Dict[str, Any]:
+    def voice(self) -> dict[str, Any]:
         return self.bible.get('voice', {})
 
-    def factions(self) -> Dict[str, Any]:
-        return self.bible.get('factions', {'nodes': [], 'edges': []})
+    def factions(self) -> dict[str, Any]:
+        """The links between factions (an older bible's faction nodes too)."""
+        return self.bible.get('factions', {'edges': []})
 
-    def geography(self) -> Dict[str, Any]:
+    def geography(self) -> dict[str, Any]:
         return self.bible.get('geography', {'nodes': [], 'edges': []})
-
-    def signature_systems(self) -> List[Any]:
-        return self.bible.get('signature_systems', [])
 
     # --- draft-then-confirm gate ---
     def is_confirmed(self) -> bool:
@@ -120,19 +92,25 @@ class WorldBible:
         self.bible['confirmed'] = True
         return self.json_ops.save_json("world-bible.json", self.bible)
 
-    def review_summary(self) -> Dict[str, Any]:
-        """The human-facing draft to review before play (voice/factions/systems)."""
+    def _faction_names(self) -> list[str]:
+        """factions.json's, or an older bible's nodes (conan's live bible lists them as
+        bare strings, not {name: ...}: a review screen shows what is there)."""
+        import factions
+        if factions.has_file(self.json_ops):
+            return [f.get('name', fid) for fid, f in factions.load(self.json_ops).items()]
+        return [n.get('name') if isinstance(n, dict) else n
+                for n in self.factions().get('nodes', [])]
+
+    def review_summary(self) -> dict[str, Any]:
+        """The human-facing draft to review before play (voice, factions, the world's
+        own rules: those are the ruleset's, world_rules.py)."""
         return {
             'name': self.bible.get('name'),
             'tone': self.bible.get('tone'),
             'voice_style': self.voice().get('style'),
             'themes': self.bible.get('themes', []),
-            # Faction nodes are authored by the model (or by hand): conan's live
-            # bible lists them as bare strings, not {name: ...} objects. This is a
-            # review screen — show what is there rather than crash on the shape.
-            'factions': [n.get('name') if isinstance(n, dict) else n
-                         for n in self.factions().get('nodes', [])],
-            'signature_systems': self.signature_systems(),
+            'factions': self._faction_names(),
+            'rules': [r['name'] for r in world_rules.rules(self.json_ops)],
             'confirmed': self.is_confirmed(),
         }
 
@@ -140,7 +118,8 @@ class WorldBible:
 def main():
     import argparse
     import json
-    from cli_output import wants_json, strip_json_flag, emit, emit_error
+
+    from cli_output import emit, emit_error, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description="World Bible")
     parser.add_argument('action', nargs='?', default='validate',

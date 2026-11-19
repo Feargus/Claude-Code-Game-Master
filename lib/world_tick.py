@@ -11,30 +11,28 @@ the last one can be rolled back.
 
 A development (JSON object):
   {"fact": "Dekker has hired a tracker who hunts the grey sleeve.",   required
-   "category": "plot_local",                                          optional
    "about": ["npc:Dekker"],     optional; names in the fact are added anyway
    "holders": ["npc:Dekker"],   optional; default nobody (it happened off-screen)
    "truth": "wrong", "version_of": "f12",   optional: a cover story, a planted lie
    "consequence": {"text": "The tracker finds Fearghas",              optional
                    "triggers": [{"type": "on_location", "match": "Old Iron's Yard"}]},
-   "clock": {"name": "The tracker closes in", "segments": 3,          optional
+   "plot": "Vey Inheritance",   optional: the plot it belongs to (or a list), given to all its parts
+   "clock": {"name": "Tracker", "text": "The tracker closes in",      optional; the name
+             "segments": 3,                                           is a short key
              "due_in": "3d", "consequence": "The tracker finds Fearghas",
-             "linked_plot": "The Vey Inheritance"}}                  optional
+             }}
 
 The opening (opening.py) records its developments through `record` too.
 """
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import facts as fact_file
 from consequence_manager import ConsequenceManager
-
-# Default fact category: one the session brief shows under KEY FACTS.
-# Provisional, like all categories (design-notes.md, "World state").
-DEFAULT_CATEGORY = "plot_local"
 
 
 class WorldTickError(ValueError):
@@ -47,7 +45,7 @@ class WorldTick:
         self.cm = ConsequenceManager(world_state_dir)
         self.json_ops = self.cm.json_ops
         self.log_file = "world-tick-log.json"
-        self.last_overflow: List[Dict[str, Any]] = []
+        self.last_overflow: list[dict[str, Any]] = []
 
     # ---------- validation ----------
 
@@ -59,6 +57,12 @@ class WorldTick:
             raise WorldTickError(f"{where} must be a JSON object")
         if not str(d.get("fact") or d.get("text") or "").strip():
             raise WorldTickError(f"{where} needs a \"fact\": what happened off-screen")
+        if "category" in d:
+            raise WorldTickError(f"{where}: facts have no category any more; leave "
+                                 f"\"category\" out.")
+        if "plots" in d:
+            raise WorldTickError(f"{where}: the field is \"plot\" (one name, or a list), "
+                                 f"as on the command line (--plot).")
         con = d.get("consequence")
         if con is not None:
             if not isinstance(con, dict) or not str(con.get("text", "")).strip():
@@ -72,15 +76,21 @@ class WorldTick:
         if clock is not None:
             if not isinstance(clock, dict) or not str(clock.get("name", "")).strip():
                 raise WorldTickError(f"{where}: \"clock\" needs a \"name\"")
+            from threat_clocks import check_name
+            try:
+                check_name(clock["name"])
+            except ValueError as error:
+                raise WorldTickError(f"{where}: clock: {error} In a development: "
+                                     f"{{\"name\": \"<short name>\", \"text\": \"...\"}}.") from error
             try:
                 if int(clock.get("segments", 0)) < 1:
                     raise ValueError
             except (TypeError, ValueError):
-                raise WorldTickError(f"{where}: \"clock\" needs \"segments\" of 1 or more")
+                raise WorldTickError(f"{where}: \"clock\" needs \"segments\" of 1 or more") from None
 
     # ---------- apply / undo ----------
 
-    def _undo(self, facts: List[str], consequences: List[str], clocks: List[str]) -> bool:
+    def _undo(self, facts: list[str], consequences: list[str], clocks: list[str]) -> bool:
         """Remove what a tick wrote. Returns False if a write failed."""
         from note_manager import NoteManager
         from threat_clocks import ThreatClockManager
@@ -98,8 +108,8 @@ class WorldTick:
                 tcm.remove_clock(name)
         return True
 
-    def apply(self, developments: List[Dict[str, Any]], cap: int = 3,
-              enabled: bool = True) -> List[Dict[str, Any]]:
+    def apply(self, developments: list[dict[str, Any]], cap: int = 3,
+              enabled: bool = True) -> list[dict[str, Any]]:
         """Record every development. enabled=False = no-op (tone).
 
         Returns one entry per development: {"text", "fact", and "consequence" /
@@ -132,7 +142,7 @@ class WorldTick:
             return []
         return applied
 
-    def record(self, developments: List[Dict[str, Any]]):
+    def record(self, developments: list[dict[str, Any]]):
         """Validate and write developments, without the tick's cap and log.
 
         Returns (applied, written): one entry per development as `apply`
@@ -140,8 +150,6 @@ class WorldTick:
         WorldTickError and keeps nothing if any part is malformed or refused.
         """
         from note_manager import NoteManager
-        from threat_clocks import ThreatClockManager
-        from time_manager import TimeError, parse_duration, parse_time
 
         for i, d in enumerate(developments):
             self._check(d, i)
@@ -161,16 +169,24 @@ class WorldTick:
             if errors:
                 raise WorldTickError(f"development {i + 1}: {'; '.join(errors)}")
             _, _, _, errors = notes._check_version(
-                notes.json_ops.load_json("facts.json") or {}, d.get("truth"), d.get("version_of"))
+                fact_file.load(notes.json_ops), d.get("truth"), d.get("version_of"))
             if errors:
                 raise WorldTickError(f"development {i + 1}: {' '.join(errors)}")
         written = {"facts": [], "consequences": [], "clocks": []}
         applied = []
+        clock_names = {}
         try:
+            # Two passes: every clock first, so a consequence can wait on a clock
+            # that comes later in the list (the GM writes them in any order).
+            for i, d in enumerate(developments):
+                if d.get("clock"):
+                    clock_names[i] = self._add_clock(i, d["clock"], as_list(d.get("plot")))
+                    written["clocks"].append(clock_names[i])
             for i, d in enumerate(developments):
                 text = str(d.get("fact") or d.get("text")).strip()
-                fid = notes.add_fact(d.get("category") or DEFAULT_CATEGORY, text,
-                                     list_waiting=False, about=as_list(d.get("about")),
+                plots = as_list(d.get("plot"))
+                fid = notes.add_fact(text, list_waiting=False, about=as_list(d.get("about")),
+                                     plots=plots, offer_plot=False,
                                      holders=as_list(d.get("holders")),
                                      truth=d.get("truth"), version_of=d.get("version_of"),
                                      at=d.get("at"), auto_at=False)
@@ -183,40 +199,40 @@ class WorldTick:
                 if con:
                     when = con.get("trigger") or " or ".join(
                         str(t.get("match", "")) for t in con["triggers"] if isinstance(t, dict))
-                    cid = self.cm.add_consequence(con["text"], when, triggers=con["triggers"])
+                    cid = self.cm.add_consequence(con["text"], when, triggers=con["triggers"],
+                                                  plots=plots)
                     if not cid:
                         raise WorldTickError(f"development {i + 1}: the consequence was "
                                              f"refused (see the error above)")
                     written["consequences"].append(cid)
                     entry["consequence"] = cid
 
-                clock = d.get("clock")
-                if clock:
-                    tcm = ThreatClockManager(self.world_state_dir)
-                    name = clock["name"].strip()
-                    if name in tcm.get_clocks():
-                        raise WorldTickError(f"development {i + 1}: a clock named "
-                                             f"'{name}' already exists")
-                    try:
-                        tcm.add_clock(
-                            name, int(clock["segments"]),
-                            advance_on=clock.get("on", "time"),
-                            consequence=clock.get("consequence"),
-                            linked_plot=clock.get("linked_plot"),
-                            due_at=parse_time(clock["due"]) if clock.get("due") else None,
-                            due_in_minutes=(parse_duration(clock["due_in"])
-                                            if clock.get("due_in") else None))
-                    except (TimeError, ValueError) as error:
-                        raise WorldTickError(f"development {i + 1}: clock: {error}")
-                    written["clocks"].append(name)
-                    entry["clock"] = name
+                if d.get("clock"):
+                    entry["clock"] = clock_names[i]
                 applied.append(entry)
         except WorldTickError:
             self._undo(written["facts"], written["consequences"], written["clocks"])
             raise
         return applied, written
 
-    def waiting(self, applied: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _add_clock(self, i: int, clock: dict[str, Any], plots: list[str]) -> str:
+        """Make development i's clock. Returns its name; raises WorldTickError."""
+        from threat_clocks import ThreatClockManager
+        from time_manager import TimeError, parse_duration, parse_time
+        name = " ".join(clock["name"].split())
+        try:
+            ThreatClockManager(self.world_state_dir).add_clock(
+                name, int(clock["segments"]),
+                advance_on=clock.get("on", "time"),
+                consequence=clock.get("consequence"),
+                plots=plots, text=clock.get("text"),
+                due_at=parse_time(clock["due"]) if clock.get("due") else None,
+                due_in_minutes=(parse_duration(clock["due_in"]) if clock.get("due_in") else None))
+        except (TimeError, ValueError) as error:
+            raise WorldTickError(f"development {i + 1}: clock: {error}") from error
+        return name
+
+    def waiting(self, applied: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Consequences waiting on an event that the tick's facts might fulfil
         (leaving out the ones this tick just created)."""
         own = {a.get("consequence") for a in applied}
@@ -236,7 +252,7 @@ class WorldTick:
         self.json_ops.save_json(self.log_file, log)
         return True
 
-    def history(self) -> List[Dict[str, Any]]:
+    def history(self) -> list[dict[str, Any]]:
         return (self.json_ops.load_json(self.log_file) or {}).get("ticks", [])
 
 
@@ -249,11 +265,14 @@ def main():
     """
     import argparse
     import json
-    from cli_output import wants_json, strip_json_flag, emit, emit_error
+
+    from cli_output import emit, emit_error, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description="Between-session world tick")
     sub = parser.add_subparsers(dest="action")
-    p = sub.add_parser("apply"); p.add_argument("developments", help="JSON list of developments")
+    p = sub.add_parser("apply")
+    p.add_argument("developments", nargs="?",
+                   help="JSON list of developments; left out: read from after the command")
     p.add_argument("--cap", type=int, default=3)
     sub.add_parser("rollback")
     sub.add_parser("history")
@@ -261,14 +280,16 @@ def main():
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
     if not args.action:
-        parser.print_help(); sys.exit(1)
+        parser.print_help()
+        sys.exit(1)
 
     wt = WorldTick()
     if args.action == "apply":
+        from cli_output import json_input
         try:
-            devs = json.loads(args.developments)
-        except ValueError:
-            sys.exit(emit_error("developments must be a JSON list", json_mode=json_mode))
+            devs = json_input(args.developments, "the developments")
+        except ValueError as error:
+            sys.exit(emit_error(str(error), json_mode=json_mode))
         if not isinstance(devs, list):
             sys.exit(emit_error("developments must be a JSON list", json_mode=json_mode))
         import contextlib

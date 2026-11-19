@@ -20,49 +20,42 @@ def test_context_includes_active_character(dcc_world):
     assert "Tandy" in _context(dcc_world)
 
 
-def test_context_has_pending_consequences_section(dcc_world):
-    assert "PENDING CONSEQUENCES" in _context(dcc_world)
+def test_a_consequence_in_no_plot_is_listed_there(dcc_world):
+    from lib.consequence_manager import ConsequenceManager
+    ConsequenceManager(dcc_world).add_consequence("The bouncer remembers", "later")
+    ctx = _context(dcc_world)
+    assert "--- IN NO PLOT ---" in ctx and "The bouncer remembers (when: later)" in ctx
 
 
-def test_action_menu_defaults_on_and_surfaces_in_context(dcc_world):
+def test_the_brief_states_only_play_styles_that_differ_from_the_default(dcc_world):
+    """Pacing, failure, book inspiration, the action menu and images were five
+    lines in every brief, almost always saying the default that CLAUDE.md states
+    already (and the menu rule a second time). Only a preference that differs
+    from the default is printed."""
     sm = SessionManager(dcc_world)
     assert sm.get_preferences().get("action_menu") is True
-    assert "action menu ON" in sm.get_full_context()
-
-
-def test_action_menu_off_changes_play_style_line(dcc_world):
-    sm = SessionManager(dcc_world)
+    ctx = sm.get_full_context()
+    for line in ("action menu", "Pacing:", "Failure:", "Inspiration", "Scene images"):
+        assert line not in ctx, line
     sm.set_preference("action_menu", False)
-    # Persisted and re-read by a fresh manager (proves it lives in the overview).
     assert SessionManager(dcc_world).get_preferences().get("action_menu") is False
-    ctx = SessionManager(dcc_world).get_full_context()
-    assert "action menu OFF" in ctx
-    assert "action menu ON" not in ctx
+    assert "action menu OFF" in SessionManager(dcc_world).get_full_context()
 
 
-def test_action_menu_on_is_exactly_three_numbered(dcc_world):
-    ctx = _context(dcc_world)
-    assert "action menu ON" in ctx
-    assert "exactly THREE" in ctx
-
-
-def test_menu_options_are_bound_to_what_the_character_knows(dcc_world):
+def test_the_menu_rule_lives_in_claude_md(dcc_world):
     """In play the options handed the player a GM-only secret to say, promised
-    what enemies would do, and invented a decoy. The rule rides with the menu,
-    and CLAUDE.md carries the same words."""
-    rule = SessionManager.MENU_RULE
-    assert "[SECRET]" in rule and "adds nothing new" in rule
-    assert rule in _context(dcc_world)
-    sm = SessionManager(dcc_world)
-    sm.set_preference("action_menu", False)
-    assert rule not in SessionManager(dcc_world).get_full_context()
+    what enemies would do, and invented a decoy. CLAUDE.md carries the rule."""
     claude_md = (Path(__file__).resolve().parent.parent / "CLAUDE.md").read_text(encoding="utf-8")
-    assert rule in claude_md
+    assert "exactly THREE numbered options" in claude_md
+    assert "never a `[SECRET]` or `[HIDDEN FROM PLAYER]` fact" in claude_md
+    assert "adds nothing new" in claude_md
+    assert not hasattr(SessionManager, "MENU_RULE")
 
 
 def test_choices_on_confirmation_says_exactly_three(dcc_world, capsys, monkeypatch):
     """The choices CLI confirmation must match the exactly-three rule."""
     import sys
+
     import lib.session_manager as sm_mod
 
     monkeypatch.setattr(sys, "argv", ["session_manager.py", "choices", "on"])
@@ -70,20 +63,6 @@ def test_choices_on_confirmation_says_exactly_three(dcc_world, capsys, monkeypat
     sm_mod.main()
     out = capsys.readouterr().out
     assert "exactly three numbered" in out
-
-
-def test_adaptive_pacing_sets_no_numeric_cap(dcc_world):
-    ctx = _context(dcc_world)
-    assert "at most one new world development" not in ctx.lower()
-    assert "NEVER convert a failure" not in ctx
-
-
-def test_failure_line_is_one_informing_sentence(dcc_world):
-    failure_lines = [ln for ln in _context(dcc_world).splitlines() if ln.startswith("Failure:")]
-    assert len(failure_lines) == 1
-    assert failure_lines[0].count(".") == 1
-    assert "failure should cost something" in failure_lines[0].lower()
-    assert "NEVER" not in failure_lines[0]
 
 
 def test_tight_pacing_keeps_opt_in_cap(dcc_world):
@@ -109,15 +88,6 @@ def test_pending_consequences_render_real_text_not_unknown(dcc_world):
     assert "Unknown -> triggers" not in ctx
 
 
-def test_context_includes_campaign_rules_block(dcc_world):
-    """DCC's bespoke rules should be present (untruncate-campaign-rules will
-    later assert they are present IN FULL; here we just pin that they appear)."""
-    ctx = _context(dcc_world)
-    assert any(
-        rule in ctx for rule in ("loot_box_system", "audience_system", "interview_system")
-    ), "expected DCC campaign_rules to appear in the context"
-
-
 def test_pending_consequences_show_their_typed_triggers(dcc_world):
     from lib.consequence_manager import ConsequenceManager
     ConsequenceManager(dcc_world).add_consequence(
@@ -125,5 +95,5 @@ def test_pending_consequences_show_their_typed_triggers(dcc_world):
         triggers=[{"type": "on_location", "match": "Floor 2 Junction"},
                   {"type": "on_npc", "match": "Mordecai"}])
     ctx = _context(dcc_world)
-    assert ("-> triggers: when Carl is back at the club "
-            "[on_location location:Floor 2 Junction · on_npc npc:Mordecai]") in ctx
+    assert ("(when: when Carl is back at the club; "
+            "on_location location:Floor 2 Junction · on_npc npc:Mordecai)") in ctx
