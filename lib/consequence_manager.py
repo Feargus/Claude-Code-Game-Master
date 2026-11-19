@@ -237,7 +237,7 @@ class ConsequenceManager(EntityManager):
         if kind not in self.RULE_EFFECTS:
             return (f"A rule effect is one of {', '.join(self.RULE_EFFECTS)} (a world rule's "
                     f"effect, gm-rules skill); got {sorted(inner)}. A clock: --starts-clock.")
-        problems = rule_effects._check_one(inner)
+        problems = [f"rule effect: {p}" for p in rule_effects._check_one(inner)]
         try:
             target = world_rules.find_rule(self.json_ops, inner[kind])
             if not problems and rule_effects.LINKS[kind](inner, {"name": "", "held_by": []},
@@ -247,7 +247,7 @@ class ConsequenceManager(EntityManager):
         except RulesError as error:
             problems.append(str(error))
         if problems:
-            return "rule effect: " + "; ".join(problems)
+            return "; ".join(problems)
         effect.update(inner)
         return ''
 

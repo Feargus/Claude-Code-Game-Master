@@ -238,7 +238,7 @@ def _link_change(effect, rule, target, where, problems) -> bool:
 
 
 def _link_rate_of(effect, rule, target, where, problems) -> bool:
-    if target is None or not target.get("rate") or ("by" in effect and not target["rate"].get("by")):
+    if target is None or not target.get("rate") or ("by" in effect and "by" not in target["rate"]):
         problems.append(f"{where}: no counter '{effect['rate_of']}' with a rate"
                         + (" in steps ('by')" if "by" in effect else "") + " to change")
         return False

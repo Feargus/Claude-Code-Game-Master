@@ -368,6 +368,8 @@ class Cards:
         owned = [k for k in plot_order(self.json_ops, plots) if plots[k].get("owner") == f"faction:{fid}"]
         if owned:
             lines.append(f"  wants (its plots, above): {', '.join(owned)}")
+        import faction_rules
+        lines += [f"  {line}" for line in faction_rules.card_lines(self.json_ops, fid)]
         lines += [f"  rule: {line}" for line in world_rules.holder_lines(self.json_ops, f"faction:{fid}")]
         return lines
 

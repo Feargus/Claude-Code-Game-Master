@@ -616,6 +616,23 @@ bash tools/gm-consequence.sh add "The precinct learns who shot Officer Hale" "th
   --rule-effect '{"rate_of": "Standing", "of": "faction:police", "shift": -1}'
 ```
 
+### The repo's faction rules: power and Relation
+
+Every campaign with factions also has five rules of the repo's (`lib/faction_rules.py`),
+the same everywhere; they can't be defined or removed, and show on the faction cards,
+not in YOUR WORLD'S RULES:
+- **Military, Economic, Political, Covert**: a faction's power, 0–10, held by factions
+  (start 3). A faction acts with one of them, and a contest compares the same power.
+- **Relation**: how two factions stand, −5 (war) to +5 (allies), held by a pair of
+  factions, the same both ways: `gm-rule.sh change "Relation" "pair:kin+hardtop" -1`
+  (or `"kin+hardtop"`; the order doesn't matter).
+
+Their rate holds by default; give a faction or a pair its own drift and resting point:
+`gm-rule.sh rate "Military" "faction:police" --by 1 --toward 8`, `gm-rule.sh rate
+"Relation" "kin+hardtop" --by 1 --toward -2`. Resting points move as byproducts of
+plots and deals: a consequence's `--rule-effect '{"rate_of": "Relation", "of":
+"kin+hardtop", "shift": 1}'`.
+
 ### Standing: every campaign has it
 
 `Standing` is how each faction regards the character, and the scripts read it by this

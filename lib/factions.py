@@ -491,9 +491,11 @@ class FactionManager:
         return [f"  Members: {'; '.join(listed)}" if listed else "  Members: none named"]
 
     def _world_lines(self, cid: str) -> list[str]:
+        import faction_rules
         import facts as fact_file
         import world_rules
-        lines = []
+        lines = [f"  {line[0].upper()}{line[1:]}" for line in faction_rules.card_lines(
+            self.json_ops, cid.partition(":")[2])] if has_file(self.json_ops) else []
         if rules := world_rules.holder_lines(self.json_ops, cid):
             lines += ["  World rules:", *(f"    {r}" for r in rules)]
         facts = fact_file.load(self.json_ops)

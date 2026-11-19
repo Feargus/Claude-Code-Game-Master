@@ -65,7 +65,7 @@ STATE = "rule-state.json"
 LOG = "rules.log"
 BIBLE = "world-bible.json"
 
-HOLDER_KINDS = ("player", "npc", "faction", "location", "world")
+HOLDER_KINDS = ("player", "npc", "faction", "location", "world", "pair")   # pair: two factions
 STANDING = "Standing"    # how each faction regards the character: every campaign has it,
                          # and scripts read it by this name (design-notes.md, "Factions")
 BLOCKS = {"counter": "rule_counter", "roll": "rule_roll", "states": "rule_states",
@@ -95,9 +95,12 @@ def block(which):
 # ---------- the rules ----------
 
 def rules(json_ops) -> list[dict[str, Any]]:
-    """The campaign's rules, in the order they were defined."""
+    """The campaign's rules, in the order they were defined, then the repo's faction
+    rules when it has factions (faction_rules.py: power, Relation)."""
+    import faction_rules
     value = (json_ops.load_json(RULESET) or {}).get("rules") or []
-    return [r for r in value if isinstance(r, dict)] if isinstance(value, list) else []
+    own = [r for r in value if isinstance(r, dict)] if isinstance(value, list) else []
+    return own + faction_rules.built_ins(json_ops)
 
 
 def plain_rules(json_ops) -> list[str]:
@@ -212,6 +215,10 @@ def define(json_ops, given: Any) -> list[tuple[str, str]]:
             checked.append(check_rule(raw))
         except RulesError as error:
             problems.append(str(error))
+    import faction_rules
+    problems += [f"{r['name']} is one of the repo's faction rules (faction_rules.py): it "
+                 f"can't be defined here; set values with gm-rule.sh set." for r in checked
+                 if faction_rules.is_built_in(r["name"])]
     names = [r["name"].lower() for r in checked]
     twice = sorted({n for n in names if names.count(n) > 1})
     if twice:
@@ -222,7 +229,8 @@ def define(json_ops, given: Any) -> list[tuple[str, str]]:
     have = [r for r in ruleset.get("rules") or [] if isinstance(r, dict)]
     import rule_effects  # what the effects name must exist, then or now
     new = {r["name"].lower() for r in checked}
-    rule_effects.check_links(checked + [r for r in have if r["name"].lower() not in new], problems)
+    rule_effects.check_links(checked + [r for r in have if r["name"].lower() not in new]
+                             + faction_rules.built_ins(json_ops), problems)
     if problems:
         raise RulesError(" ".join(problems) + " Nothing was saved.")
     state = load_state(json_ops)
@@ -266,6 +274,8 @@ def _replace(old: dict[str, Any], rule: dict[str, Any], state: dict) -> dict[str
 def remove(json_ops, raw) -> int:
     """Remove a rule and all its values. Returns how many holders had one."""
     rule = find_rule(json_ops, raw)
+    if rule.get("repo"):
+        raise RulesError(f"{rule['name']} is one of the repo's faction rules: it can't be removed.")
     import rule_effects
     using = rule_effects.referring(rules(json_ops), rule["name"])
     if using:
@@ -317,7 +327,7 @@ def _faction(json_ops, text: str) -> str:
 
 def _kinds(rule) -> str:
     words = {"player": "the player", "npc": "NPCs", "faction": "factions",
-             "location": "places", "world": "the world"}
+             "location": "places", "world": "the world", "pair": "pairs of factions"}
     return ", ".join(words[k] for k in rule["held_by"])
 
 
@@ -335,6 +345,8 @@ def resolve_holder(json_ops, rule: dict[str, Any], raw=None) -> str:
     kind, sep, rest = text.partition(":")
     if low == "world":
         found = "world"
+    elif "pair" in held and (kind.strip().lower() == "pair" or "+" in text):
+        found = _pair(json_ops, rest if kind.strip().lower() == "pair" else text)
     elif sep and kind.strip().lower() == "faction":
         found = _faction(json_ops, rest.strip())
         if not found:
@@ -355,6 +367,26 @@ def resolve_holder(json_ops, rule: dict[str, Any], raw=None) -> str:
     return found
 
 
+def _pair(json_ops, text: str) -> str:
+    """`pair:<a>+<b>` for "kin+hardtop", "The Kin + Hardtop Holdings", "faction:kin+…"."""
+    import faction_rules
+    sides = [s.strip() for s in text.split("+")]
+    if len(sides) != 2 or not all(sides):
+        raise RulesError(f"A pair of factions is written \"pair:<one>+<other>\" (\"pair:kin+"
+                         f"hardtop\"); got '{text}'.")
+    found = []
+    for side in sides:
+        bare = side.partition(":")[2] if side.lower().startswith("faction:") else side
+        fid = _faction(json_ops, bare)
+        if not fid:
+            known = ", ".join(f"{i} ({n})" for i, n in factions(json_ops).items()) or "none yet"
+            raise RulesError(f"No faction '{bare}'. The factions: {known}.")
+        found.append(fid.partition(":")[2])
+    if found[0] == found[1]:
+        raise RulesError(f"A pair is two factions, not {found[0]} twice.")
+    return faction_rules.pair_id(*found)
+
+
 def holder_name(json_ops, holder: str) -> str:
     """How a holder is named in the output: the character's name, a faction's name."""
     if holder == "player":
@@ -365,6 +397,11 @@ def holder_name(json_ops, holder: str) -> str:
     kind, _, key = holder.partition(":")
     if kind == "faction":
         return factions(json_ops).get(key, key)
+    if kind == "pair":
+        import faction_rules
+        a, b = faction_rules.pair_sides(holder)
+        names = factions(json_ops)
+        return f"{names.get(a, a)} and {names.get(b, b)}"
     return key
 
 
@@ -531,6 +568,8 @@ def brief_lines(json_ops) -> list[str]:
     lines = [f"- {line}" for line in plain_rules(json_ops)]
     state = load_state(json_ops)
     for rule in rules(json_ops):
+        if rule.get("repo"):                  # power and Relation: on the faction cards
+            continue
         if not block(rule).HOLDS:
             lines += rule_lines(json_ops, rule)
             continue
@@ -549,7 +588,8 @@ def holder_lines(json_ops, holder: str) -> list[str]:
     a person's or a place's card."""
     state = load_state(json_ops)
     return [block(rule).holder_line(rule, stored) for rule in rules(json_ops)
-            if (stored := (state.get(holder) or {}).get(rule["name"])) and block(rule).HOLDS]
+            if (stored := (state.get(holder) or {}).get(rule["name"])) and block(rule).HOLDS
+            and not rule.get("repo")]         # power and Relation: faction_rules.card_lines
 
 
 def summary(json_ops, holder: str = "player") -> str:

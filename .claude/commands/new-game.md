@@ -141,8 +141,12 @@ Write only what tonight needs:
    faction regards the character (the `gm-rules` skill, "Standing"): define it in the
    world's words, then for each faction its value and the point it rests at (`gm-rule.sh
    set "Standing" "faction:<id>" N`, `gm-rule.sh rate "Standing" "faction:<id>" --toward
-   N`). Check with `gm-rule.sh list`: that is what the brief will show. The player's
-   starting values come with the character.
+   N`). Each faction's **power** (`gm-rule.sh set "Military" "faction:<id>" N`, and
+   Economic, Political, Covert, 0–10; its strengths and weaknesses) and, where two
+   factions have history, their **Relation** (`gm-rule.sh set "Relation" "<id>+<id>" N`,
+   −5 war to +5 allies); a resting point where a faction or pair should drift back
+   (`gm-rule.sh rate … --by 1 --toward N`). Check with `gm-rule.sh list`: that is what
+   the brief will show. The player's starting values come with the character.
 2c. **Name the world's people, places, creatures and things** — the faces the player
    might actually meet, recognizable, not a gazetteer (about 6–10 people, 4–8 places,
    a few kinds of enemy, a few of the world's own words). There is no book, so **you
