@@ -200,3 +200,12 @@ def test_an_enact_against_nobody_rolls_against_d6_plus_2(ops):
     results = ft.resolve(ops, [{"faction": "meridian-group", "action": "enact",
                                 "power": "Political", "plot": "x", "clock": "y"}], Dice(1, 2))
     assert results[0]["against"] == 2 and results[0]["margin"] == 0 and results[0]["effect"] == 1
+
+
+def test_a_change_where_the_character_is_says_so(ops):
+    lines = ft.apply(ops, ft.resolve(ops, ft.check(ops, [
+        {"faction": "system", "action": "reinforce", "power": "Military", "at": _here(ops)},
+        {"faction": "Meridian", "action": "build", "power": "Covert"}]), Dice(1, 1)))
+    text = "\n".join(lines)
+    assert f"HERE: Tandy is at {_here(ops)} and sees it happen" in text
+    assert text.count("HERE:") == 1                                 # not for the build

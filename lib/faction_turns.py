@@ -334,11 +334,24 @@ def _lines(json_ops, r, powers, places) -> list[str]:
     lines = [head]
     more = _what(r, name, powers, places, json_ops)
     lines += [f"  → {line}" for line in more]
+    if r.get("at") and r["at"] == _here(json_ops):
+        lines.append(f"  HERE: {_character(json_ops)} is at {r['at']} and sees it happen: narrate "
+                     f"what shows (patrols arriving, a shop shut, smoke, a fight in the street).")
     for (f, p), (before, after, fired) in powers.items():
         if f == fid and p == r.get("power") and kind in COMPLEX + ("build",):
             lines.append(f"  {name(f)}'s {p}: {before} → {after}")
             lines += [f"  [{c['id']}] {c['consequence']} ({AFTER_FIRING})" for c in fired]
     return lines
+
+
+def _here(json_ops) -> str:
+    pos = (json_ops.load_json("campaign-overview.json") or {}).get("player_position") or {}
+    return pos.get("current_location", "") if isinstance(pos, dict) else ""
+
+
+def _character(json_ops) -> str:
+    from sheet import name
+    return name(json_ops.load_json("character.json") or {}) or "the character"
 
 
 def _what(r, name, powers, places, json_ops) -> list[str]:
