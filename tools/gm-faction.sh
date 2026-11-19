@@ -19,7 +19,9 @@
 #   gm-faction.sh show <faction>       the faction, its world-rule values, the facts it knows
 #   gm-faction.sh list                 every faction, one line each
 #   gm-faction.sh from-bible           an older campaign: copy the world bible's factions in
-#   gm-faction.sh turn <<'EOF'         a faction turn (/gm world): one action per faction,
+#   gm-faction.sh turn [--only <faction>] <<'EOF'
+#                                      a faction turn (/gm world): one action per faction
+#                                      (--only: that faction alone takes its turn),
 #     [{"faction": "<id>", "action": "<action>", "power": "Military|Economic|Political|Covert",
 #       "rival": "<id>", "at": "<place>", "asset": "<name>", "who": "<npc>", "plot": "<plot>",
 #       "note": "<what they do, a few words>"}, ...]
@@ -33,7 +35,7 @@
 source "$(dirname "$0")/common.sh"
 
 if [ "$#" -lt 1 ] || [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-    sed -n '3,31p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,33p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
 fi
 

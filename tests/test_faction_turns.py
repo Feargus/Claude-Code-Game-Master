@@ -181,3 +181,18 @@ def test_the_command(ops, dcc_world):
                          input='[{"faction": "Meridian", "action": "dance"}]',
                          capture_output=True, text=True, env=env)
     assert bad.returncode == 1 and bad.stderr.startswith("[ERROR]")
+
+
+def test_one_faction_alone(ops):
+    lines = ft.run(ops, [{"faction": "Meridian", "action": "build", "power": "Covert"}], Dice(1),
+                   only="meridian")
+    assert not any("Not acting" in line for line in lines)
+    with pytest.raises(ft.TurnError, match="--only meridian-group: give its one action"):
+        ft.run(ops, [{"faction": "system", "action": "build", "power": "Covert"}], Dice(1),
+               only="Meridian")
+
+
+def test_an_enact_against_nobody_rolls_against_d6_plus_2(ops):
+    results = ft.resolve(ops, [{"faction": "meridian-group", "action": "enact",
+                                "power": "Political", "plot": "x", "clock": "y"}], Dice(1, 2))
+    assert results[0]["against"] == 2 and results[0]["margin"] == 0 and results[0]["effect"] == 1

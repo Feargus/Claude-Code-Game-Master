@@ -554,7 +554,8 @@ def _cmd_turn(m, args):
     import faction_turns
     from cli_output import json_input
     try:
-        print("\n".join(faction_turns.run(m.json_ops, json_input(args.actions, "the actions"))))
+        print("\n".join(faction_turns.run(m.json_ops, json_input(args.actions, "the actions"),
+                                          only=args.only)))
     except faction_turns.TurnError as error:
         raise FactionError(str(error)) from error
 
@@ -657,8 +658,9 @@ def main() -> int:
     sub.add_parser("show", help="a faction in full").add_argument("faction")
     sub.add_parser("list", help="every faction, one line each")
     sub.add_parser("from-bible", help="an older campaign: copy the bible's factions in")
-    sub.add_parser("turn", help="a faction turn: the JSON list of actions after the command") \
-        .add_argument("actions", nargs="?", default="-")
+    p = sub.add_parser("turn", help="a faction turn: the JSON list of actions after the command")
+    p.add_argument("actions", nargs="?", default="-")
+    p.add_argument("--only", help="this one faction takes its turn, nobody else")
     args = parser.parse_args()
 
     campaign = CampaignManager().get_active_campaign_dir()

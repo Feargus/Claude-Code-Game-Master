@@ -29,7 +29,10 @@ cost 2 of the power used, 3 if they fail; a margin below 0 fails):
     expose     push a fact about the rival up the ladder
     deal       a pact, truce or bribe with another faction
     enact      the plot's goal, when its plan clock is full (against a rival, or the
-               world: d6 + WORLD)
+               world: d6 + 2)
+
+`--only <faction>`: that one faction takes its turn and nobody else (a turn drawn for
+one faction, later from a bag of tokens).
 
 The contest: d6 + the actor's power against d6 + the rival's same power; the
 difference is the margin.
@@ -51,7 +54,7 @@ FIELDS = ("faction", "action", "power", "rival", "at", "asset", "who", "plot", "
 NEEDS_RIVAL = ("push", "strike", "seize", "take", "spy", "expose", "deal")
 NEEDS_PLACE = ("reinforce", "push", "strike")
 COST, COST_FAILED = 2, 3
-WORLD = 5               # what an enact against nobody in particular rolls against
+WORLD = 2               # what an enact against nobody in particular rolls against (d6 + 2)
 BUILD = {1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3}
 PUSH = [(-99, 0), (-2, 1), (3, 2)]
 STRIKE = [(-99, None), (0, 1), (2, 2), (4, 3)]
@@ -426,11 +429,18 @@ def idle(json_ops, actions: list[dict[str, Any]]) -> list[str]:
     return [fid for fid in load(json_ops) if fid not in acted]
 
 
-def run(json_ops, actions, rng=None) -> list[str]:
-    """Check, roll and apply a whole turn; the lines for the GM."""
+def run(json_ops, actions, rng=None, only: str | None = None) -> list[str]:
+    """Check, roll and apply a whole turn; the lines for the GM. `only`: one faction
+    takes its turn alone, and the actions must be its one action."""
     checked = check(json_ops, actions)
+    if only is not None:
+        from factions import FactionManager
+        fid = FactionManager(json_ops).key(only)
+        if [a["faction"] for a in checked] != [fid]:
+            raise TurnError(f"--only {fid}: give its one action, and no other faction's. "
+                            f"Nothing was changed.")
     lines = apply(json_ops, resolve(json_ops, checked, rng))
-    rest = idle(json_ops, checked)
+    rest = idle(json_ops, checked) if only is None else []
     if rest:
         lines.append(f"Not acting this turn: {', '.join(rest)}")
     return lines
