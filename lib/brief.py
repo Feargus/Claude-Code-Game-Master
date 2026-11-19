@@ -30,7 +30,7 @@ class Brief:
     # what belongs to no plot; the character; the world; the scene; then the
     # newest facts not shown above, so the cards don't repeat them.
     SECTIONS = ("header", "kit", "play_style", "images", "plots", "unplotted",
-                "character", "party", "wrong_beliefs", "world_rules", "voice",
+                "character", "party", "wrong_beliefs", "world_rules", "faction_turns", "voice",
                 "scene", "latest")
     SECRETS_PER_PLOT = 5     # what the character doesn't know, newest first
     LATEST = 5               # the newest facts not shown above
@@ -438,6 +438,12 @@ class Brief:
         if not rules:
             return []
         return ["", "--- YOUR WORLD'S RULES (follow exactly) ---"] + rules
+
+    def _section_faction_turns(self) -> list[str]:
+        """The faction turns the bag has drawn and nobody has played yet."""
+        import faction_rules
+        owed = faction_rules.owed_lines(self.json_ops)
+        return ["", *owed] if owed else []
 
     # ==================== Private Helpers ====================
 

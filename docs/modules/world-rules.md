@@ -104,6 +104,14 @@ add --rule-effect`): `change`, `rate_of`, `state` or `tokens`, checked when the 
 is added as a rule's are, `of` resolved to its holder, run through `rule_effects.run` when it
 fires.
 
+**The faction bag** (`faction_rules.bag_rule`, "Faction turns"): a repo bag whose tokens
+and `draw_every` are built from the current factions each time the rules are read. Two
+bag options it uses, open to any bag: `top_up` (below N tokens, add some, and a kind
+that ran out) and `"owed": true` on a result (the drawn token waits in the holder's
+`owed` queue; `rule_bag.owed`, `settle`). `gm-faction.sh turn --only` settles the oldest
+owed turn of that faction, a full turn a joker; `time_manager.print_moments` and the
+brief list what is owed.
+
 **`Standing`** (`world_rules.STANDING`): how each faction regards the character. Every
 campaign defines it, and scripts read it by this name, so a rule of that name must be a
 counter held by factions. A faction's own point is a holder's rate `toward`

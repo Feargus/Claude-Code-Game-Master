@@ -286,6 +286,10 @@ def print_moments(manager: "TimeManager", on_the_way: bool = False, going_to: st
                or any(time_stops.fired(r) for r in m["rules"]) for m in manager.moments) \
             and not on_the_way:
         print("[REACTIVITY] (nothing triggered)")
+    import faction_rules
+    owed = faction_rules.owed_lines(manager.json_ops)
+    if owed:
+        print("\n" + "\n".join(owed))
     if manager.stopped:
         left = format_duration(whole - passed)
         flags = manager.through.args()

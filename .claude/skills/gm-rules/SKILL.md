@@ -470,6 +470,12 @@ runs out.
   trouble 1`, `take ...`, `refill`. The effect `{"tokens": "The Job", "add":
   {"trouble": 1}}` puts tokens in (or `"remove"`).
 - **`draw_every`**: the bag is drawn by itself as game time passes, once per period.
+- **`top_up`**: `{"below": N, "add": {"<kind>": n}, "if_none": ["<kind>"]}`: after a
+  draw, a bag holding fewer than N tokens gets `add`, and one of each `if_none` kind
+  it has none of left. It counts what is in the bag, so tokens put in by hand don't
+  break it.
+- **`"owed": true`** on a result: a drawn token of that kind is owed to you, kept in a
+  queue and played at the next pause (the faction bag below); it never stops time.
 - **`known`**: whether the player may know what is in the bag. A known bag is tension
   the player can see; a hidden one is fate.
 
@@ -616,9 +622,9 @@ bash tools/gm-consequence.sh add "The precinct learns who shot Officer Hale" "th
   --rule-effect '{"rate_of": "Standing", "of": "faction:police", "shift": -1}'
 ```
 
-### The repo's faction rules: power and Relation
+### The repo's faction rules: power, Relation and the faction bag
 
-Every campaign with factions also has five rules of the repo's (`lib/faction_rules.py`),
+Every campaign with factions also has six rules of the repo's (`lib/faction_rules.py`),
 the same everywhere; they can't be defined or removed, and show on the faction cards,
 not in YOUR WORLD'S RULES:
 - **Military, Economic, Political, Covert**: a faction's power, 0–10, held by factions
@@ -626,6 +632,14 @@ not in YOUR WORLD'S RULES:
 - **Relation**: how two factions stand, −5 (war) to +5 (allies), held by a pair of
   factions, the same both ways: `gm-rule.sh change "Relation" "pair:kin+hardtop" -1`
   (or `"kin+hardtop"`; the order doesn't matter).
+- **Faction turns**: a bag held by the world that drives the factions as game time
+  passes: 4 tokens per faction, 2 blanks per faction and a joker, one drawn every 6 h +
+  25 h ÷ the number of factions, topped up with one per faction and half as many blanks
+  (and a joker if none is left) when fewer than 4 per faction remain. A drawn faction
+  owes a turn, a joker a full turn: they are listed as FACTION TURNS OWED at the end of
+  a time step or journey and in the brief. To make one faction busier for a while:
+  `gm-rule.sh put "Faction turns" hardtop 2`, or a consequence's `--rule-effect
+  '{"tokens": "Faction turns", "add": {"hardtop": 2}}'`.
 
 Their rate holds by default; give a faction or a pair its own drift and resting point:
 `gm-rule.sh rate "Military" "faction:police" --by 1 --toward 8`, `gm-rule.sh rate

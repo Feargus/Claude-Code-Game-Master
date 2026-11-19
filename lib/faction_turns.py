@@ -459,4 +459,9 @@ def run(json_ops, actions, rng=None, only: str | None = None) -> list[str]:
             raise TurnError(f"In a full turn every faction acts: no action for "
                             f"{', '.join(missing)} (one that lies low builds up). For one "
                             f"faction alone: --only <faction>. Nothing was changed.")
-    return apply(json_ops, resolve(json_ops, checked, rng))
+    lines = apply(json_ops, resolve(json_ops, checked, rng))
+    import faction_rules
+    paid = faction_rules.settle(json_ops, checked[0]["faction"] if only is not None else faction_rules.JOKER)
+    if paid:
+        lines.append(f"(This was the turn owed since {paid['at'].replace('T', ' ') or '?'}.)")
+    return lines

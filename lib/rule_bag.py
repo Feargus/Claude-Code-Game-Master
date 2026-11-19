@@ -16,11 +16,19 @@ years of the melt.
   change) or "put back".
 - `draw_every`: the bag is drawn by itself as game time passes, once per period.
 - `results`: one per kind; a drawn token's effects run, its gm line is printed, and
-  on_rule waits on a kind ("The Melt:collapse").
+  on_rule waits on a kind ("The Melt:collapse"). `"owed": true` on a result: a drawn
+  token of that kind is owed to the GM, kept in a queue to be played at a pause
+  (`owed`, `settle`; the faction bag, faction_rules.py).
+- `top_up`: {"below": N, "add": {"<kind>": n}, "if_none": ["<kind>"]}: after a draw, a
+  bag holding fewer than N tokens gets `add`, and one of each `if_none` kind it has
+  none of left. Counted on what is in the bag, so tokens put in or taken out by hand
+  can't break it.
 - Commands: `gm-rule.sh draw "<bag>" [holder] [N]`, `put`/`take "<bag>" [holder]
   <kind> N`, `refill` (back to `tokens`). The effect `tokens` adds or removes.
 
-Stored per holder: {"tokens": {"clean": 5, "trouble": 3}, "drawn": ["clean", ...]}.
+Stored per holder: {"tokens": {"clean": 5, "trouble": 3}, "drawn": ["clean", ...],
+"owed": [{"kind": ..., "at": "<game time>"}]}. A kind the rule no longer has (a faction
+that is gone) draws as nothing.
 """
 
 import random
@@ -30,9 +38,9 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-FIELDS = ("tokens", "draw", "draw_every", "results", "when_empty")
+FIELDS = ("tokens", "draw", "draw_every", "results", "when_empty", "top_up")
 HOLDS = True
-RESULT_FIELDS = ("text", "effects", "gm")
+RESULT_FIELDS = ("text", "effects", "gm", "owed")
 DRAWS = ("keep out", "put back")
 
 
@@ -42,7 +50,6 @@ def _is_int(value) -> bool:
 
 def check(rule: dict[str, Any], problems: list[str]) -> None:
     """A bag's own fields, checked and tidied."""
-    import rule_effects
     from time_manager import TimeError, parse_duration
     tokens = rule.get("tokens")
     if not isinstance(tokens, dict) or not tokens or not all(
@@ -58,6 +65,13 @@ def check(rule: dict[str, Any], problems: list[str]) -> None:
             problems.append(f"'draw_every': {error}")
     if "when_empty" in rule and (not isinstance(rule["when_empty"], str) or not rule["when_empty"].strip()):
         problems.append("'when_empty' says what happens when the bag is empty")
+    if "top_up" in rule:
+        _check_top_up(rule, tokens, problems)
+    _check_results(rule, tokens, problems)
+
+
+def _check_results(rule, tokens, problems) -> None:
+    import rule_effects
     results = rule.get("results")
     if not isinstance(results, dict) or set(results) != set(tokens):
         problems.append(f"'results' has one result for each kind of token: {', '.join(tokens)}")
@@ -67,11 +81,64 @@ def check(rule: dict[str, Any], problems: list[str]) -> None:
             problems.append(f"the result of '{kind}' is {{\"text\": \"...\"}}")
             continue
         problems += [f"the result of '{kind}' has no '{k}'" for k in result if k not in RESULT_FIELDS]
+        if not isinstance(result.get("owed", False), bool):
+            problems.append(f"the result of '{kind}': 'owed' is true or false")
         if not isinstance(result.get("text"), str) or not result["text"].strip():
             problems.append(f"the result of '{kind}' needs a 'text': what happens in the fiction")
         else:
             result["text"] = " ".join(result["text"].split())
         rule_effects.check_shape(result, kind, problems)
+
+
+def _check_top_up(rule, tokens, problems) -> None:
+    top = rule["top_up"]
+    usage = '\'top_up\' is {"below": N, "add": {"<kind>": n}, "if_none": ["<kind>"]}'
+    if not isinstance(top, dict) or not _is_int(top.get("below")) or top["below"] < 1 \
+            or not isinstance(top.get("add", {}), dict) or not isinstance(top.get("if_none", []), list):
+        problems.append(usage)
+        return
+    unknown = [k for k in list(top.get("add", {})) + list(top.get("if_none", [])) if k not in tokens]
+    if unknown or not all(_is_int(n) and n >= 0 for n in top.get("add", {}).values()):
+        problems.append(f"{usage}, with kinds of this bag ({', '.join(tokens)}) and counts of 0 or more")
+
+
+def top_up(rule: dict[str, Any], tokens: dict[str, int]) -> dict[str, int]:
+    """What a `top_up` adds to `tokens` now (changed in place), or {}."""
+    top = rule.get("top_up")
+    if not top or sum(tokens.values()) >= top["below"]:
+        return {}
+    added = {k: n for k, n in (top.get("add") or {}).items() if n}
+    for kind in top.get("if_none") or []:
+        if not tokens.get(kind):
+            added[kind] = added.get(kind, 0) + 1
+    for kind, n in added.items():
+        tokens[kind] = tokens.get(kind, 0) + n
+    return added
+
+
+def owed(json_ops, raw_rule, raw_holder=None) -> list[dict[str, str]]:
+    """The tokens drawn and owed to the GM, oldest first."""
+    import world_rules
+    rule = _rule(json_ops, raw_rule)
+    return list(world_rules.entry(json_ops, rule, world_rules.resolve_holder(
+        json_ops, rule, raw_holder)).get("owed") or [])
+
+
+def settle(json_ops, raw_rule, raw_holder, kind: str) -> dict[str, str] | None:
+    """The oldest owed token of `kind` is played: out of the queue. Returns it, or None."""
+    import world_rules
+    rule = _rule(json_ops, raw_rule)
+    holder = world_rules.resolve_holder(json_ops, rule, raw_holder)
+    stored = dict(world_rules.entry(json_ops, rule, holder))
+    queue = list(stored.get("owed") or [])
+    found = next((o for o in queue if o["kind"] == kind), None)
+    if found is None:
+        return None
+    queue.remove(found)
+    stored["owed"] = queue
+    _save(json_ops, rule, holder, stored)
+    world_rules._log(json_ops, holder, rule["name"], f"played the owed {kind} drawn {found['at']}", "command")
+    return found
 
 
 def _rule(json_ops, raw):
@@ -130,15 +197,22 @@ def draw(json_ops, raw_rule, raw_holder=None, count: int = 1, rng=None,
         kind = pool[rng.randint(0, len(pool) - 1)]
         if rule["draw"] == "keep out":
             tokens[kind] -= 1
+        result = rule["results"].get(kind) or {"text": f"{kind}: no such kind any more; nothing happens."}
+        if result.get("owed"):
+            stored["owed"] = list(stored.get("owed") or []) + [
+                {"kind": kind, "at": world_rules._now_game(json_ops) or ""}]
+        added = top_up(rule, tokens)
         stored["tokens"] = tokens
         stored["drawn"] = list(stored.get("drawn") or []) + [kind]
         _save(json_ops, rule, holder, stored)
         world_rules._log(json_ops, holder, rule["name"], f"drew {kind} (left: {contents(tokens)})", cause)
-        result = rule["results"][kind]
+        if added:
+            world_rules._log(json_ops, holder, rule["name"], f"topped up: {contents(added)}", cause)
         done = [rule_effects.run(json_ops, effect, holder, chain, f"effect of {rule['name']} {kind}")
                 for effect in result.get("effects") or []]
         report["draws"].append({"kind": kind, "text": result["text"], "did": done,
-                                "gm": result.get("gm", ""),
+                                "gm": result.get("gm", ""), "owed": bool(result.get("owed")),
+                                "topped_up": added,
                                 "fired": rule_effects.fire_state(
                                     json_ops, rule["name"], holder, kind,
                                     world_rules.holder_name(json_ops, holder))})
@@ -159,7 +233,10 @@ def draw_lines(json_ops, report: dict[str, Any], indent: str = "") -> list[str]:
     drew = ", ".join(d["kind"] for d in report["draws"]) or "nothing"
     lines = [f"{indent}{report['rule']} ({who}): drew {drew} (left: {contents(report['left'])}){mark}"]
     for one in report["draws"]:
-        lines.append(f"{indent}  {one['kind']}: {one['text']}")
+        lines.append(f"{indent}  {one['kind']}: {one['text']}"
+                     + (" (owed: played at the next pause)" if one.get("owed") else ""))
+        if one.get("topped_up"):
+            lines.append(f"{indent}  topped up: +{contents(one['topped_up'])}")
         lines += world_rules.done_lines(json_ops, one["did"], indent)
         if one["gm"]:
             lines.append(f"{indent}    Do now: {one['gm']}")

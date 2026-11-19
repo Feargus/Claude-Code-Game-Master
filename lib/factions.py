@@ -232,6 +232,10 @@ class FactionManager:
         if not description:
             raise FactionError(f"{name} needs a description: what it is, in a sentence or two.")
         fid = (fid or make_id(name)).strip().lower()
+        import faction_rules
+        if fid in (faction_rules.BLANK, faction_rules.JOKER):
+            raise FactionError(f"'{fid}' is a kind of token in the faction bag; give the faction "
+                               f"another id with --id.")
         if not ID_RE.match(fid):
             raise FactionError(f"A faction's id is short, lowercase letters, digits and "
                                f"dashes (\"lull\", \"red-hand\"); got '{fid}'. Give one with --id.")

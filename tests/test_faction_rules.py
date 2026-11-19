@@ -24,7 +24,7 @@ def ops(dcc_world):
 
 def test_they_come_with_factions(dcc_world, ops):
     names = [r["name"] for r in wr.rules(ops)]
-    assert names[-5:] == ["Military", "Economic", "Political", "Covert", "Relation"]
+    assert names[-6:] == ["Military", "Economic", "Political", "Covert", "Relation", "Faction turns"]
     for rule in fr.built_ins(ops):                # each a valid rule
         wr.check_rule({k: v for k, v in rule.items() if k != "repo"})
     other = JsonOperations(str(Path(dcc_world) / "campaigns" / CAMPAIGN / "nowhere"))
