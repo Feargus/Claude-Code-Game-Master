@@ -457,3 +457,26 @@ def test_the_presence_command(borant, ops, dcc_world):
     assert run(_here(ops)).stdout.strip() == f"{_here(ops)}: The Crawlers 5, Meridian Group 2"
     bad = run(_here(ops), "Meridian=9")
     assert bad.returncode == 1 and bad.stderr.startswith("[ERROR]")
+
+
+# ---------- found in the review (2026-11-19) ----------
+
+def test_a_dead_leader_is_marked_and_the_successor_named(borant, ops, dcc_world):
+    from lib.factions import succession
+    from lib.npc_manager import NPCManager
+    borant.set_field("Meridian", "leader", ["Mordecai"])
+    borant.set_field("Meridian", "successor", ["Carl"])
+    NPCManager(dcc_world).kill_npc("Mordecai", "test")
+    assert "Leader: Mordecai (dead)" in borant.show("Meridian")
+    notes = succession(ops, "npc:Mordecai")
+    assert notes and "Carl takes over" in notes[0] and "set meridian-group leader" in notes[0]
+    assert "name another successor" in succession(ops, "npc:Carl")[0]
+
+
+def test_a_bible_only_campaign_is_told_to_copy_its_factions(ops):
+    from lib import faction_turns as ft
+    from lib import world_rules as wr
+    with pytest.raises(ft.TurnError, match="from-bible"):
+        ft.check(ops, [{"faction": "crawlers", "action": "build", "power": "Military"}])
+    with pytest.raises(wr.RulesError, match="comes with the factions.*from-bible"):
+        wr.find_rule(ops, "Military")

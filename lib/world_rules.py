@@ -116,6 +116,12 @@ def find_rule(json_ops, raw) -> dict[str, Any]:
         if rule["name"].lower() == wanted:
             return rule
     names = [r["name"] for r in found]
+    import faction_rules
+    if faction_rules.is_built_in(wanted):
+        import factions
+        how = ("its factions are still in the world bible: bash tools/gm-faction.sh from-bible"
+               if factions.from_bible(json_ops) else "it has no factions yet (gm-faction.sh create)")
+        raise RulesError(f"No rule '{raw}' here: it comes with the factions, and {how}.")
     if not names:
         raise RulesError(f"No rule '{raw}': this campaign has no rules of its own yet "
                          f"(gm-rule.sh define).")

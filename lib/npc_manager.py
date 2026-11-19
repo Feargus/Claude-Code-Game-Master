@@ -563,6 +563,9 @@ def main():
         result = manager.kill_npc(args.name, args.cause)
         if not result.get('success'):
             sys.exit(1)
+        from factions import succession
+        for note in succession(manager.json_ops, f"npc:{result['name']}"):
+            print(f"[NOTE] {note}")
         print(f"DEATH {result['name']} has died." + (f" Cause: {args.cause}" if args.cause else ""))
         from consequence_manager import print_fired
         print_fired(result.get('fired'))

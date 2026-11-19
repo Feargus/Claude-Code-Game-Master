@@ -81,7 +81,12 @@ def check(json_ops, actions: Any) -> list[dict[str, Any]]:
     if not isinstance(actions, list) or not actions:
         raise TurnError('A turn is a list of actions: [{"faction": "<id>", "action": "build", '
                         '"power": "Military"}, ...], one per faction.')
-    from factions import FactionManager
+    from factions import FactionManager, from_bible, has_file
+    if not has_file(json_ops):
+        raise TurnError("This campaign's factions are still in its world bible: bash tools/"
+                        "gm-faction.sh from-bible copies them into factions.json, which brings "
+                        "their power and the faction bag." if from_bible(json_ops) else
+                        "This campaign has no factions yet (gm-faction.sh create).")
     m = FactionManager(json_ops)
     problems, out, seen = [], [], set()
     for i, raw in enumerate(actions, 1):
@@ -339,9 +344,14 @@ def _lines(json_ops, r, powers, places) -> list[str]:
                      f"what shows (patrols arriving, a shop shut, smoke, a fight in the street).")
     for (f, p), (before, after, fired) in powers.items():
         if f == fid and p == r.get("power") and kind in COMPLEX + ("build",):
-            lines.append(f"  {name(f)}'s {p}: {before} → {after}")
+            lines.append(f"  {possessive(name(f))} {p}: {before} → {after}")
             lines += [f"  [{c['id']}] {c['consequence']} ({AFTER_FIRING})" for c in fired]
     return lines
+
+
+def possessive(name: str) -> str:
+    """"Hardtop's", "The Afters'"."""
+    return f"{name}'" if name.endswith("s") else f"{name}'s"
 
 
 def _here(json_ops) -> str:
@@ -363,10 +373,10 @@ def _what(r, name, powers, places, json_ops) -> list[str]:
     if kind in ("reinforce", "push", "strike", "seize") and "at" in r and r["effect"]:
         who = r["faction"] if kind == "reinforce" else r["rival"]
         before, after = places[(r["at"], who)]
-        out = [f"{name(who)}'s presence at {r['at']}: {before} → {after}"]
+        out = [f"{possessive(name(who))} presence at {r['at']}: {before} → {after}"]
         if kind == "seize":
             b, a = places[(r["at"], r["faction"])]
-            out.append(f"{name(r['faction'])}'s presence at {r['at']}: {b} → {a}")
+            out.append(f"{possessive(name(r['faction']))} presence at {r['at']}: {b} → {a}")
         return out + (_record(r, name) if kind in COMPLEX else [])
     if kind == "push":
         return ["nothing changes this time"]

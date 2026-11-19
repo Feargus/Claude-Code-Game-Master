@@ -474,7 +474,7 @@ class FactionManager:
         """The faction in full, its world-rule values, and the facts it knows (by id)."""
         fid = self.key(raw)
         row = known(self.json_ops)[fid]
-        return "\n".join([f"{row['name']} (faction:{fid})", *_record_lines(row),
+        return "\n".join([f"{row['name']} (faction:{fid})", *_record_lines(row, self.json_ops),
                           *self._member_lines(fid), *self._presence_lines(fid),
                           *self._plot_lines(f"faction:{fid}"),
                           *self._world_lines(f"faction:{fid}")])
@@ -608,15 +608,38 @@ def _check_id(fid: str) -> str:
     return fid
 
 
-def _record_lines(row: dict[str, Any]) -> list[str]:
+def _dead_mark(json_ops, cid: str) -> str:
+    from entity_manager import is_dead
+    npc = (json_ops.load_json("npcs.json") or {}).get(cid.partition(":")[2]) if json_ops else None
+    return " (dead)" if isinstance(npc, dict) and is_dead(npc) else ""
+
+
+def succession(json_ops, cid: str) -> list[str]:
+    """After `cid` died: the factions it led or was to lead, and what to do."""
+    out = []
+    for fid, row in load(json_ops).items():
+        if row.get("leader") == cid:
+            heir = row.get("successor", "")
+            out.append(f"{cid.partition(':')[2]} led {row.get('name', fid)}: " + (
+                f"{heir.partition(':')[2]} takes over (bash tools/gm-faction.sh set {fid} leader "
+                f"\"{heir}\", then set a new successor); its impulses may shift with the new leader."
+                if heir else f"it has no successor: who takes over is a plot of its own "
+                f"(gm-faction.sh set {fid} leader <npc>)."))
+        elif row.get("successor") == cid:
+            out.append(f"{cid.partition(':')[2]} was to lead {row.get('name', fid)}: name another "
+                       f"successor (gm-faction.sh set {fid} successor <npc>).")
+    return out
+
+
+def _record_lines(row: dict[str, Any], json_ops=None) -> list[str]:
     lines = [f"  Also called: {', '.join(row['aliases'])}"] if row.get("aliases") else []
     lines += [f"  {field.capitalize()}: {row[field]}" for field in ("kind", "description")
               if row.get(field)]
     for field in ("impulses", "values"):
         if row.get(field):
             lines += [f"  {field.capitalize()}:", *(f"    - {item}" for item in row[field])]
-    lines += [f"  {field.capitalize()}: {row[field].partition(':')[2]}" for field in PEOPLE_FIELDS
-              if row.get(field)]
+    lines += [f"  {field.capitalize()}: {row[field].partition(':')[2]}{_dead_mark(json_ops, row[field])}"
+              for field in PEOPLE_FIELDS if row.get(field)]
     lines += [f"  Asset: {a['name']}: {a['note']}" for a in row.get("assets") or []]
     if row.get("tags"):
         lines.append(f"  Tags: {', '.join(row['tags'])}")

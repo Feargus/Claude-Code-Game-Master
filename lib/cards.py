@@ -352,7 +352,7 @@ class Cards:
         its plots (in full above) and its rule values. What it knows is on its
         members' cards."""
         import world_rules
-        from factions import load
+        from factions import _dead_mark, load
         from plot_manager import plot_order
         row = load(self.json_ops)[fid]
         kind = f"; {row['kind']}" if row.get("kind") else ""
@@ -363,7 +363,7 @@ class Cards:
                 lines.append(f"  {field}: " + " / ".join(row[field]))
         for field in ("leader", "successor"):
             if row.get(field):
-                lines.append(f"  {field}: {row[field].partition(':')[2]}")
+                lines.append(f"  {field}: {row[field].partition(':')[2]}{_dead_mark(self.json_ops, row[field])}")
         plots = self.json_ops.load_json("plots.json") or {}
         owned = [k for k in plot_order(self.json_ops, plots) if plots[k].get("owner") == f"faction:{fid}"]
         if owned:

@@ -209,3 +209,8 @@ def test_a_change_where_the_character_is_says_so(ops):
     text = "\n".join(lines)
     assert f"HERE: Tandy is at {_here(ops)} and sees it happen" in text
     assert text.count("HERE:") == 1                                 # not for the build
+
+
+def test_the_possessive():
+    assert ft.possessive("Hardtop Holdings") == "Hardtop Holdings'"
+    assert ft.possessive("The Kin") == "The Kin's"
