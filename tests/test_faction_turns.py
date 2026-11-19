@@ -214,3 +214,9 @@ def test_a_change_where_the_character_is_says_so(ops):
 def test_the_possessive():
     assert ft.possessive("Hardtop Holdings") == "Hardtop Holdings'"
     assert ft.possessive("The Kin") == "The Kin's"
+
+
+def test_take_needs_no_rival(ops, dcc_world):
+    results = ft.resolve(ops, ft.check(ops, [
+        {"faction": "Meridian", "action": "take", "power": "Covert", "who": "Mordecai"}]), Dice(3, 4))
+    assert results[0]["against"] == 2 and results[0]["margin"] == 0 and results[0]["effect"] == 1

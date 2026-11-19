@@ -24,7 +24,8 @@ Complex actions (the GM records their facts and narrates what leaves a trace; th
 cost 2 of the power used, 3 if they fail; a margin below 0 fails):
     strike     a rival's presence there: 0..+1 -1, +2..+3 -2, +4 or better -3
     seize      a named asset of the rival, or a place: 0..+2 own +1 and rival -1, +3 ±2
-    take       kidnap, arrest, blackmail someone ("who")
+    take       kidnap, arrest, blackmail someone ("who"); against the faction that
+               protects them, or nobody (the world: d6 + 2)
     spy        learn a fact the rival holds
     expose     push a fact about the rival up the ladder
     deal       a pact, truce or bribe with another faction
@@ -52,7 +53,7 @@ NAMES = {"build": "Build up", "reinforce": "Reinforce", "push": "Push back", "pr
          "strike": "Strike", "seize": "Seize", "take": "Take someone", "spy": "Spy",
          "expose": "Expose", "deal": "Deal", "enact": "Enact"}
 FIELDS = ("faction", "action", "power", "rival", "at", "asset", "who", "plot", "note")
-NEEDS_RIVAL = ("push", "strike", "seize", "take", "spy", "expose", "deal")
+NEEDS_RIVAL = ("push", "strike", "seize", "spy", "expose", "deal")   # take, enact: optional
 NEEDS_PLACE = ("reinforce", "push", "strike")
 COST, COST_FAILED = 2, 3
 WORLD = 2               # what an enact against nobody in particular rolls against (d6 + 2)
