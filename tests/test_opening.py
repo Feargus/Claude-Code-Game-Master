@@ -215,3 +215,21 @@ def test_a_consequence_may_wait_on_a_clock_given_later(world):
                    "on": "event"}}])
     assert written["clocks"] == ["Repossession"] and len(written["consequences"]) == 1
     assert applied[1]["clock"] == "Repossession"
+
+
+def test_a_place_named_after_another_and_a_needless_alias(world):
+    """The playtests' first openings failed on these (2026-11-09 to 11-19): "the
+    Underpass" as an alias of The Underpass threw everything away, and a refused
+    close name ("Orchid Room service alley" beside The Orchid Room) gave the command
+    line's --another, not the entry's key. The alias is left out with a note now, and
+    the refusal names "another": true."""
+    ws, camp = world
+    spec = json.loads(json.dumps(SPEC))
+    spec["place"]["aliases"] = ["lanternside"]
+    spec["exits"][1]["name"] = "Lanternside stairwells"
+    with pytest.raises(OpeningError, match='add "another": true to its entry'):
+        Opening(ws).apply(json.loads(json.dumps(spec)))
+    spec["exits"][1]["another"] = True
+    result = Opening(ws).apply(spec)
+    assert any("'lanternside' is not kept as an alias" in n for n in result["notes"])
+    assert "aliases" not in _load(camp, "locations.json")["Lanternside"]

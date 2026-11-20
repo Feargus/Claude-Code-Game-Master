@@ -22,12 +22,14 @@ class LocationManager(EntityManager):
         self.locations_file = "locations.json"
 
     @staticmethod
-    def _report_added(name: str, position: str, aliases, description: str) -> None:
+    def _report_added(name: str, position: str, aliases, description: str, notes=()) -> None:
         """What add_location prints once the place is saved: one line, "(sketch)"
         while it has no description (a move there says what to do)."""
         called = f"; also called {', '.join(aliases)}" if aliases else ""
         print(f"[SUCCESS] Added location: {name} ({position}){called}"
               + ("" if description else " (sketch)"))
+        for note in notes:
+            print(f"  [NOTE] {note}")
 
     def add_location(self, name: str, position: str, description: str = "", aliases=None,
                      another: bool = False) -> bool:
@@ -43,7 +45,7 @@ class LocationManager(EntityManager):
         """
         from world_ids import WorldIds
         description = str(description or "").strip()
-        aliases = [a.strip() for a in aliases or []]
+        aliases, dropped = WorldIds.drop_own_names([a.strip() for a in aliases or []], name)
         ids = WorldIds(self.json_ops)
         errors = [e for a in aliases if (e := ids.check_alias(a, f"location:{name}"))]
         if errors:
@@ -87,7 +89,7 @@ class LocationManager(EntityManager):
 
         # Save to file
         if self._add_entity(self.locations_file, name, location_data):
-            self._report_added(name, position, location_data.get('aliases'), description)
+            self._report_added(name, position, location_data.get('aliases'), description, dropped)
             return True
         return False
 

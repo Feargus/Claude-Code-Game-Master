@@ -98,10 +98,10 @@ def test_a_close_name_is_another_faction_with_another(borant, ops):
 
 
 def test_an_alias_is_checked(borant):
-    with pytest.raises(FactionError, match="own name"):
-        borant.create("Grey Hands", "x", aliases=["the grey hands"])
+    borant.create("Grey Hands", "x", aliases=["the grey hands"])       # left out, with a note
+    assert any("'the grey hands' is not kept" in n for n in borant.notes)
     with pytest.raises(FactionError, match="already names faction:meridian-group"):
-        borant.create("Grey Hands", "x", aliases=["Meridian"])
+        borant.create("Grey Fists", "x", aliases=["Meridian"])
 
 
 def test_leader_and_successor_are_npcs(borant, ops):

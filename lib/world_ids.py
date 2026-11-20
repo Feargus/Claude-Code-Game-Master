@@ -289,6 +289,24 @@ class WorldIds:
             return "", f"'{text}' is {cid}, not {wanted}."
         return cid, ""
 
+    @staticmethod
+    def drop_own_names(aliases, name: str) -> tuple[list[str], list[str]]:
+        """(the aliases worth keeping, a note for each one left out): an alias the
+        name check already finds as `name` (case, punctuation, a leading 'the' or
+        'Saint') adds nothing. A record is made without it rather than refused: in
+        the playtests one such alias ("the Underpass", "Ayo's") threw away a whole
+        opening."""
+        own = normalize_entity_name(name)
+        kept, notes = [], []
+        for a in aliases:
+            if own and normalize_entity_name(a) == own:
+                notes.append(f"'{a}' is not kept as an alias: the name check already "
+                             f"finds '{name}' by it (case, punctuation and a leading title "
+                             f"such as 'the' or 'Saint' are ignored).")
+            else:
+                kept.append(a)
+        return kept, notes
+
     def check_alias(self, alias: str, owner: str) -> str:
         """Why `alias` can't be a short name of `owner` (`player`, npc:<key> or
         location:<key>; an NPC or place needn't exist yet), or '' if it can.

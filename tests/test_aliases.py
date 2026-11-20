@@ -58,8 +58,7 @@ def test_a_clashing_alias_refuses_the_npc(world, capsys):
     for alias, why in [("Old Iron", "already names npc:Old Iron"),
                        ("Fearghas", "already names player"),
                        ("Lanternside", "already names location:Lanternside"),
-                       ("street", "a word ids use"),
-                       ("Ishbel Rue", "own name")]:
+                       ("street", "a word ids use")]:
         assert not manager.create_npc("Ishbel Rue", "x", "neutral", nowhere=True, aliases=[alias])
         assert why in capsys.readouterr().out
     assert "Ishbel Rue" not in json.loads((camp / "npcs.json").read_text())
@@ -121,13 +120,20 @@ def test_cli_alias_commands(world):
     assert r.returncode == 1 and "already names location:Old Iron's Yard" in r.stdout
 
 
-def test_an_alias_the_name_check_already_finds_is_explained(world, capsys):
-    """In play the GM gave 'Saint Ayo's' the alias "Ayo's" and was told it was the
-    place's 'own name', which made no sense; titles are ignored, so it is found."""
+def test_an_alias_the_name_check_already_finds_is_left_out(world, capsys):
+    """In play the GM gave 'Saint Ayo's' the alias "Ayo's" (titles are ignored, so
+    the name check finds it already), and "the Underpass" to The Underpass; each
+    refusal threw away a whole opening. Since 2026-11-20 the record is made without
+    it, with a note."""
     ws, camp = world
-    assert not LocationManager(ws).add_location("Saint Ayo's", "a clinic", "A clinic.", aliases=["Ayo's"])
+    assert LocationManager(ws).add_location("Saint Ayo's", "a clinic", "A clinic.",
+                                            aliases=["Ayo's", "the clinic"])
     out = capsys.readouterr().out
-    assert "needs no alias: the name check already finds it as 'Saint Ayo's'" in out
+    assert "[NOTE] 'Ayo's' is not kept as an alias: the name check already finds 'Saint Ayo's'" in out
+    assert json.loads((camp / "locations.json").read_text())["Saint Ayo's"]["aliases"] == ["the clinic"]
+    assert NPCManager(ws).create_npc("Ishbel Rue", "x", nowhere=True, aliases=["ishbel rue"])
+    assert "not kept as an alias" in capsys.readouterr().out
+    assert "aliases" not in json.loads((camp / "npcs.json").read_text())["Ishbel Rue"]["identity"]
 
 
 def test_a_new_name_close_to_an_existing_one_is_refused_unless_another(world, capsys):

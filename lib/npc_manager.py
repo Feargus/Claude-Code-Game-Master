@@ -86,7 +86,8 @@ class NPCManager(EntityManager):
         """
         from world_ids import WorldIds, close_name_refusal
         places, errors = self._usual_places(locations)
-        aliases = [a.strip() for a in aliases or [] if a.strip()]
+        aliases, dropped = WorldIds.drop_own_names([a.strip() for a in aliases or [] if a.strip()],
+                                                   name)
         ids = WorldIds(self.json_ops)
         errors += [e for a in aliases if (e := ids.check_alias(a, f"npc:{name}"))]
         if nowhere and places:
@@ -137,6 +138,8 @@ class NPCManager(EntityManager):
         sketch = "" if sheet.get("look") or sheet.get("personality") else " (sketch)"
         print(f"[SUCCESS] Created NPC: {name}" + (f" - {role}" if role else "")
               + f"; usually found: {where}{called}{sketch}")
+        for note in dropped:
+            print(f"  [NOTE] {note}")
         if attitude:
             self._first_feeling(name, attitude)
         self._witness_hint(name)

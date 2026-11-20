@@ -275,12 +275,10 @@ class FactionManager:
         self.notes.append(f"{faction_rules.BAG}: {fid} gets its share of the bag, 4 tokens and 2 blanks.")
 
     def _checked_aliases(self, name: str, fid: str, aliases) -> list[str]:
-        from entity_aliases import normalize_entity_name
         aliases = list(dict.fromkeys(a.strip() for a in aliases if a.strip()))
-        same = [a for a in aliases if normalize_entity_name(a) == normalize_entity_name(name)]
-        if same:
-            raise FactionError(f"'{same[0]}' needs no alias: it is {name}'s own name (case, "
-                               f"punctuation and a leading 'the' are ignored).")
+        from world_ids import WorldIds
+        aliases, dropped = WorldIds.drop_own_names(aliases, name)
+        self.notes += dropped
         problems = [p for a in aliases if (p := self._ids().check_alias(a, f"faction:{fid}"))]
         if problems:
             raise FactionError(" ".join(problems))

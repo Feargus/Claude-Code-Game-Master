@@ -153,11 +153,13 @@ class Opening:
             said = [ln.strip() for ln in out.getvalue().splitlines() if "[ERROR]" in ln]
             detail = f" ({'; '.join(said)})" if said else ""
             if isinstance(error, ValueError):
-                raise OpeningError(f"{str(error).rstrip('.')}{detail}. Nothing of the "
-                                   f"opening was kept.") from error
+                # The refusals give the command line's flag; here it is the entry's key.
+                text = f"{str(error).rstrip('.')}{detail}".replace(
+                    "add --another", 'add "another": true to its entry')
+                raise OpeningError(f"{text}. Nothing of the opening was kept.") from error
             raise
         result["notes"] = [ln.strip() for ln in out.getvalue().splitlines()
-                           if " alias " in ln and "bash tools/" in ln]
+                           if "[NOTE]" in ln or (" alias " in ln and "bash tools/" in ln)]
         return result
 
     # ---------- the parts, in order ----------
