@@ -220,3 +220,26 @@ def test_take_needs_no_rival(ops, dcc_world):
     results = ft.resolve(ops, ft.check(ops, [
         {"faction": "Meridian", "action": "take", "power": "Covert", "who": "Mordecai"}]), Dice(3, 4))
     assert results[0]["against"] == 2 and results[0]["margin"] == 0 and results[0]["effect"] == 1
+
+
+def test_campaigns_behind_a_symlink(dcc_world, tmp_path):
+    """world-state/campaigns may be a link to a folder elsewhere (the campaigns kept
+    in their own repository): the active campaign is still found, so a prepare
+    moves its clock instead of saying "not the active campaign"."""
+    from lib.plot_manager import PlotManager
+    from lib.rule_effects import _base
+    from lib.threat_clocks import ThreatClockManager
+    elsewhere = tmp_path / "elsewhere" / "campaigns"
+    elsewhere.parent.mkdir()
+    (Path(dcc_world) / "campaigns").rename(elsewhere)
+    (Path(dcc_world) / "campaigns").symlink_to(elsewhere)
+    ops = JsonOperations(str(Path(dcc_world) / "campaigns" / CAMPAIGN))
+    assert _base(ops) == str(Path(dcc_world).absolute())
+
+    FactionManager(ops).create("Meridian Group", "A security firm.", aliases=["Meridian"])
+    PlotManager(dcc_world).add("Hostile Takeover", "Meridian buys the floor.", owner="Meridian",
+                               goal="own every guard post")
+    ThreatClockManager(dcc_world).add_clock("Takeover", 3, advance_on="event",
+                                            plots=["Hostile Takeover"], text="the buy-out")
+    lines = ft.run(ops, [{"faction": "Meridian", "action": "prepare"}], Dice(), only="Meridian")
+    assert "plan clock Takeover (Hostile Takeover): 1/3" in "\n".join(lines)

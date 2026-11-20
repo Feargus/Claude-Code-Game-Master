@@ -310,8 +310,11 @@ def _base(json_ops) -> str | None:
     """The world-state folder whose active campaign is `json_ops`'s, or None: clocks
     and consequences are opened through the active campaign."""
     from campaign_manager import CampaignManager
-    campaign = Path(json_ops.world_state_dir).resolve()
-    base = campaign.parent.parent
+    # The base is found before resolving: world-state/campaigns may be a symlink,
+    # and resolving it first would climb out of world-state.
+    campaign_dir = Path(json_ops.world_state_dir).absolute()
+    base = campaign_dir.parent.parent
+    campaign = campaign_dir.resolve()
     active = CampaignManager(str(base)).get_active_campaign_dir()
     return str(base) if active and Path(active).resolve() == campaign else None
 

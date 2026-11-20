@@ -22,7 +22,7 @@ if [ "$#" -lt 1 ]; then
     echo "  connect <from> <to> <path>         - Connect two locations"
     echo "  describe <name> <description>      - Replace the description with a fuller one"
     echo "                                       (prints the old one)"
-    echo "  get <name>                         - Get location info"
+    echo "  get <name> (or show <name>)        - Get location info"
     echo "  list                               - List all locations"
     echo "  connections <name>                 - Show location connections"
     echo ""
@@ -79,7 +79,7 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/location_manager.py" describe "$1" "$2"
         ;;
 
-    get)
+    get|show)
         if [ "$#" -lt 1 ]; then
             echo "Usage: gm-location.sh get <name>"
             exit 1

@@ -133,8 +133,10 @@ require_active_campaign() {
     # Notes the background embedding job left about facts recorded before (a plot
     # they look part of, a person they read like they are about): printed once,
     # before this command's own output (lib/recall_notes.py). Not with --json.
+    # On stderr: they are printed only once, and the GM often cuts stdout short
+    # (| head -1) or drops it (>/dev/null), which lost them in the carnaval playtest.
     if [ -s "$WORLD_STATE_DIR/embeddings.notes.json" ] && [[ "$GM_COMMAND_ARGS" != *" --json "* ]]; then
-        $PYTHON_CMD "$LIB_DIR/recall_notes.py" print "$WORLD_STATE_DIR"
+        $PYTHON_CMD "$LIB_DIR/recall_notes.py" print "$WORLD_STATE_DIR" >&2
     fi
 }
 

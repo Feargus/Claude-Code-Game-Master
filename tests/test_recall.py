@@ -214,7 +214,7 @@ def test_a_note_acted_on_is_dropped(dcc_world, monkeypatch):
     assert recall_notes.lines(camp) == []
 
 
-def test_the_next_command_prints_the_note_but_not_into_json(isolated_world_state):
+def test_the_next_command_prints_the_note_on_stderr_but_not_with_json(isolated_world_state):
     import os
     import sys
     root = TOOLS.parent
@@ -234,6 +234,7 @@ def test_the_next_command_prints_the_note_but_not_into_json(isolated_world_state
                    env={**os.environ, "GM_EMBEDDER": "fake"}, check=True)
     as_json = run("gm-note.sh", "recent", "--json")
     assert "[NOTE]" not in as_json.stdout                 # JSON stays JSON ...
-    shown = run("gm-time.sh")
-    assert shown.stdout.startswith("[NOTE]") and "npc:Vex Marrow" in shown.stdout   # ... and it waits
-    assert "[NOTE]" not in run("gm-time.sh").stdout       # once
+    shown = run("gm-time.sh")                             # ... and it waits, on stderr:
+    assert shown.stderr.startswith("[NOTE]") and "npc:Vex Marrow" in shown.stderr
+    assert "[NOTE]" not in shown.stdout                   # | head -1 keeps the command's line
+    assert "[NOTE]" not in run("gm-time.sh").stderr       # once
