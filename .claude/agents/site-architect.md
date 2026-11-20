@@ -26,12 +26,12 @@ A physical site has **areas**: rooms, halls, shafts, roofs, yards. A computer sy
 
 Each **connection** between two areas is one of:
 - **open:** always passable
-- **locked:** passable with a key, a code, or a roll (give the skill and difficulty, e.g. "Larceny 20")
+- **locked:** passable with a key, a code, or a roll (give the skill and difficulty, e.g. "Larceny 15")
 - **hidden:** exists, but must be found first (e.g. "Awareness 25 to spot")
 - **blocked:** needs clearing or breaking (e.g. "Athletics 25, loud")
 - **guarded:** passable, but watched (name what watches it)
 
-Difficulties use the `gm-skills` scale: 15 easy, 20 normal, 25 hard, 30+ very hard.
+Difficulties use the `gm-skills` scale: 10 easy, 15 normal, 20 hard, 25 very hard, 30+ extreme.
 
 Make it believable, not fair:
 - One or two ways in, chosen by whoever built it. Service routes and maintenance access are realistic; an unguarded back door into a vault is not.

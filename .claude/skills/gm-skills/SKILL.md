@@ -81,7 +81,7 @@ Permanent features are on the sheet already, as die sizes, skills or traits. Don
 
 ## Several things at once
 
-Doing several things at once is always allowed. Every roll involved gets −2 for each other thing done at the same time. Abilities that reduce this, such as ambidexterity, are traits.
+Doing several things at once is always allowed. Every roll involved gets −1 for each other thing done at the same time. Abilities that reduce this, such as ambidexterity, are traits.
 
 ## Cooperating with yourself
 
@@ -136,8 +136,8 @@ bash tools/gm-skill-contest.sh \
   --active-adv DFT "combat stim" --reactive-dis NRV "surprised" \
   --mod +2 "braced on the car roof" --mod -2 "darkness"
 
-bash tools/gm-skill-contest.sh --active Fearghas Larceny DFT DFT LOG --reactive-dc 20 "sturdy lock"
-bash tools/gm-skill-contest.sh --active-dc 20 "nerve toxin" --reactive Fearghas Endurance VIG VIG ITU
+bash tools/gm-skill-contest.sh --active Fearghas Larceny DFT DFT LOG --reactive-dc 15 "sturdy lock"
+bash tools/gm-skill-contest.sh --active-dc 15 "nerve toxin" --reactive Fearghas Endurance VIG VIG ITU
 ```
 
 - **Names:** the player (by name, or just `player`), an NPC, or a mob (`gm-mob.sh list`). The player and NPCs are found by their aliases too, like everywhere else. Mobs have no personality, and their instances are interchangeable. Mobs you invent belong to the campaign.
@@ -154,7 +154,7 @@ bash tools/gm-skill-contest.sh --active-dc 20 "nerve toxin" --reactive Fearghas 
 - **Decide the stats before the roll that needs them,** and don't change them because of how a roll went: they are facts about the world, and the world doesn't get harder after a failure.
 - **Advantage and disadvantage** belong to an attribute and affect all its dice in the roll. Each flag takes the attribute and a reason. Repeat the flag to stack them. See [Advantage or modifier](#advantage-or-modifier) for which to use.
 - **`--mod`** is one net list, relative to the active side: positive helps the active side, negative helps the reactive side. Leave out anything that affects both sides equally. Every modifier has a label.
-- **Difficulties:** easy 15, normal 20, hard 25, very hard 30 or more.
+- **Difficulties:** easy 10, normal 15, hard 20, very hard 25, extreme 30 or more.
 
 The script prints one line, such as `quality: 7`. Quality 0 or more means the **active** side succeeds, so a tie goes to the active side. When the player is the reactive side, read the result from their opponent's point of view: a positive quality is bad for the player.
 

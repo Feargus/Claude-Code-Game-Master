@@ -29,7 +29,7 @@ There is no initiative roll. The GM decides who acts when, from the situation.
 ## Attack and defense
 
 - **Attack:** the attacker's weapon skill, as the active side, against the defender's Guard (close combat) or Evasion (ranged).
-- **Several attackers:** a defender facing several attackers in the same beat defends against each, at −2 per other attacker: [several things at once](../gm-skills/SKILL.md#several-things-at-once). Flanking is this and nothing more.
+- **Several attackers:** a defender facing several attackers in the same beat defends against each, at −1 per other attacker: [several things at once](../gm-skills/SKILL.md#several-things-at-once). Flanking is this and nothing more.
 - **Where it lands:** where the attacker aimed. With no aim stated, pick the zone from the fiction. A low quality may land in a neighboring zone instead: aimed at the head, it hits the shoulder. Zones: head, chest, groin, left arm, right arm, left leg, right leg.
 
 ## Common situations
