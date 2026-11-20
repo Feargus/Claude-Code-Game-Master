@@ -66,7 +66,8 @@ outcome is genuinely certain (trivial, or literally impossible).
   (narration, recaps, the end-of-session summary: "the knee is wrenched", never
   "1 wound") and for facts too: a fact records what happened, never the roll
   behind it (no skill names, qualities, margins or "nat 20"; `skill-contest.log`
-  already keeps every roll). The HUD line and `gm-body.sh show` are the exceptions.
+  already keeps every roll). The HUD line, `gm-body.sh show` and the character
+  sheet (creating the character, `/gm character`) are the exceptions.
 - **Other dice:** a world rule that rolls (a price, a first reaction: YOUR WORLD'S
   RULES) rolls with `gm-rule.sh roll`, which reads its result. A one-off chance in
   the story: `bash tools/gm-dice.sh "1d20+5"` (also `2d6`, `2d6+1d4-1`). It prints

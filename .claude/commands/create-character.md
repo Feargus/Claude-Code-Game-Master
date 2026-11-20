@@ -12,6 +12,8 @@ Then ask **fast or slow**, unless the player already said:
 - **Fast (the default):** you propose one complete character, with the options for traits and gear in it. The player picks and changes whatever they like.
 - **Slow:** you go entry by entry, offering more options at each step, and go back and forth until the player is happy with that entry. The picks are the same as in the fast way.
 
+Either way, show the numbers: the die size of each attribute, each skill's value, luck, and exactly what each trait does ("+4 Composure against manipulation"). The player builds the character from them; the rule to keep numbers hidden is for play, not for the sheet.
+
 ## The default character
 
 This is what a starting character looks like in numbers. Improvise from it to fit the concept: a pacifist gets different skills than a soldier. Within ±20% of these totals is fine; ±50% is too much. Don't count exactly.
