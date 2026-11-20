@@ -8,7 +8,7 @@ action for each faction, mostly from its current plot, and gives them all at onc
     [{"faction": "kin", "action": "build", "power": "Political", "note": "door to door"},
      {"faction": "hardtop", "action": "push", "power": "Economic", "rival": "kin",
       "at": "Culvert Street"},
-     {"faction": "almanac", "action": "prepare"}]
+     {"faction": "almanac", "action": "deal", "power": "Political", "rival": "kin"}]
     EOF
 
 Every action is judged from the state at the start of the turn; the script rolls them
@@ -19,9 +19,12 @@ Simple actions (numbers only, never a cost):
     build      +1 power on d6 1-3, +2 on 4-5, +3 on 6
     reinforce  +1 presence at a place (or 1 at a new one), +2 on 5-6; at most 5
     push       a rival's presence there: margin -3 or worse nothing, -2..+2 -1, +3 -2
-    prepare    the plot's plan clock +1, always
 Complex actions (the GM records their facts and narrates what leaves a trace; they
-cost 2 of the power used, 3 if they fail; a margin below 0 fails):
+cost 2 of the power used, 3 if they fail; a margin below 0 fails). One that succeeds
+for the faction's plot moves its plan clock one segment (decided 2026-11-20, in place
+of Prepare and Enact): it counts for the faction's own open plot, or the one named in
+"plot", and for none with "plot": "none". A full plan clock fires its consequence,
+the plan's success, like any clock's.
     strike     a rival's presence there: 0..+1 -1, +2..+3 -2, +4 or better -3
     seize      a named asset of the rival, or a place: 0..+2 own +1 and rival -1, +3 ±2
     take       kidnap, arrest, blackmail someone ("who"); against the faction that
@@ -29,8 +32,6 @@ cost 2 of the power used, 3 if they fail; a margin below 0 fails):
     spy        learn a fact the rival holds
     expose     push a fact about the rival up the ladder
     deal       a pact, truce or bribe with another faction
-    enact      the plot's goal, when its plan clock is full (against a rival, or the
-               world: d6 + 2)
 
 A full turn needs an action from every faction. `--only <faction>`: that one faction
 takes its turn and nobody else (a turn drawn for
@@ -47,16 +48,17 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-SIMPLE = ("build", "reinforce", "push", "prepare")
-COMPLEX = ("strike", "seize", "take", "spy", "expose", "deal", "enact")
-NAMES = {"build": "Build up", "reinforce": "Reinforce", "push": "Push back", "prepare": "Prepare",
+SIMPLE = ("build", "reinforce", "push")
+COMPLEX = ("strike", "seize", "take", "spy", "expose", "deal")
+NAMES = {"build": "Build up", "reinforce": "Reinforce", "push": "Push back",
          "strike": "Strike", "seize": "Seize", "take": "Take someone", "spy": "Spy",
-         "expose": "Expose", "deal": "Deal", "enact": "Enact"}
+         "expose": "Expose", "deal": "Deal"}
+NO_PLOT = "none"        # "plot": "none": a complex action that isn't for the faction's plot
 FIELDS = ("faction", "action", "power", "rival", "at", "asset", "who", "plot", "note")
-NEEDS_RIVAL = ("push", "strike", "seize", "spy", "expose", "deal")   # take, enact: optional
+NEEDS_RIVAL = ("push", "strike", "seize", "spy", "expose", "deal")   # take: optional
 NEEDS_PLACE = ("reinforce", "push", "strike")
 COST, COST_FAILED = 2, 3
-WORLD = 2               # what an enact against nobody in particular rolls against (d6 + 2)
+WORLD = 2               # what a take against nobody in particular rolls against (d6 + 2)
 BUILD = {1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3}
 PUSH = [(-99, 0), (-2, 1), (3, 2)]
 STRIKE = [(-99, None), (0, 1), (2, 2), (4, 3)]
@@ -119,13 +121,13 @@ def _check_one(json_ops, m, raw, where) -> dict[str, Any]:
         raise TurnError(f"{where}: the action is one of {', '.join(SIMPLE + COMPLEX)}, not '{kind}'.")
     a["action"] = kind
     who = f"{where} ({a['faction']}, {kind})"
-    if kind != "prepare":
-        a["power"] = _power(a.get("power"), who)
+    a["power"] = _power(a.get("power"), who)
     _check_rival(m, a, who)
     _check_target(json_ops, m, a, who)
-    if kind in ("prepare", "enact"):
-        a["plot"], a["clock"] = _plan(json_ops, a, who)
+    if kind in SIMPLE and "plot" in a:
+        raise TurnError(f"{who}: only a complex action moves a plot; leave out \"plot\".")
     if kind in COMPLEX:
+        a["plot"], a["clock"] = _plan(json_ops, a, who)
         import faction_rules
         have = faction_rules.power(json_ops, a["faction"])[a["power"]]
         if have < COST:
@@ -190,32 +192,35 @@ def _asset(json_ops, a, who) -> str:
     return found
 
 
-def _plan(json_ops, a, who) -> tuple[str, str]:
-    """The plot (its own, or the one named) and its plan clock: an event clock of the
-    plot; for prepare one not full yet, for enact a full one."""
+def _plan(json_ops, a, who) -> tuple[str | None, str | None]:
+    """The plot a complex action is for, and its plan clock (an event clock of the
+    plot that isn't full): (None, None) for "plot": "none" or a faction with no open
+    plot of its own; (plot, None) for a plot with no plan clock left to move."""
     from plot_manager import plot_order, resolve_plots
     plots = json_ops.load_json("plots.json") or {}
+    if str(a.get("plot", "")).strip().lower() == NO_PLOT:
+        return None, None
     if a.get("plot"):
         keys, errors = resolve_plots(json_ops, [a["plot"]])
         if errors:
             raise TurnError(f"{who}: {errors[0]}")
         key = keys[0]
     else:
-        owned = [k for k in plot_order(json_ops, plots) if plots[k].get("owner") == f"faction:{a['faction']}"]
-        if len(owned) != 1:
-            raise TurnError(f"{who}: which plot? {a['faction']} has {len(owned)} open plots of "
-                            f"its own{': ' + ', '.join(owned) if owned else ''}; give \"plot\".")
+        owned = [k for k in plot_order(json_ops, plots)
+                 if plots[k].get("owner") == f"faction:{a['faction']}"
+                 and plots[k].get("status", "open") == "open"]
+        if not owned:
+            return None, None
+        if len(owned) > 1:
+            raise TurnError(f"{who}: which plot is it for? {a['faction']} has {len(owned)} open "
+                            f"plots of its own: {', '.join(owned)}; give \"plot\" (or "
+                            f"\"plot\": \"{NO_PLOT}\").")
         key = owned[0]
     clocks = json_ops.load_json("threat-clocks.json") or {}
-    mine = [(n, c) for n, c in clocks.items() if isinstance(c, dict) and key in (c.get("plots") or [])
-            and c.get("advance_on") == "event"]
-    want_full = a["action"] == "enact"
-    fit = [n for n, c in mine if (int(c.get("current", 0)) >= int(c.get("max", 1))) == want_full]
-    if not fit:
-        need = "full plan clock yet (Prepare fills it)" if want_full else "plan clock that isn't full"
-        raise TurnError(f"{who}: plot {key} has no {need}: an event clock with --plot \"{key}\" "
-                        f"(gm-clock.sh add \"<short name>\" 4 --on event --plot \"{key}\").")
-    return key, fit[0]
+    fit = [n for n, c in clocks.items() if isinstance(c, dict) and key in (c.get("plots") or [])
+           and c.get("advance_on") == "event"
+           and int(c.get("current", 0)) < int(c.get("max", 1))]
+    return key, (fit[0] if fit else None)
 
 
 # ---------- resolving ----------
@@ -238,8 +243,6 @@ def resolve(json_ops, actions: list[dict[str, Any]], rng=None) -> list[dict[str,
         elif kind == "reinforce":
             r["dice"] = [d6()]
             r["effect"] = 2 if r["dice"][0] >= 5 else 1
-        elif kind == "prepare":
-            r["effect"] = 1
         else:
             mine, theirs = d6(), d6()
             against = power[a["rival"]][a["power"]] if "rival" in a else WORLD
@@ -260,7 +263,7 @@ def apply(json_ops, results: list[dict[str, Any]]) -> list[str]:
     changed_powers = _apply_powers(json_ops, powers)
     changed_places = _apply_places(json_ops, places)
     for r in results:
-        if r["action"] == "prepare":
+        if r["action"] in COMPLEX and r["effect"] is not None and r.get("clock"):
             r["clock_after"] = _advance(json_ops, r)
         if r["action"] == "seize" and "asset" in r and r["effect"]:
             _move_asset(json_ops, r)
@@ -339,6 +342,8 @@ def _lines(json_ops, r, powers, places) -> list[str]:
         head += f": d6 {r['dice'][0]}"
     lines = [head]
     more = _what(r, name, powers, places, json_ops)
+    if kind in COMPLEX:
+        more = _plan_lines(r) + more
     lines += [f"  → {line}" for line in more]
     if r.get("at") and r["at"] == _here(json_ops):
         lines.append(f"  HERE: {_character(json_ops)} is at {r['at']} and sees it happen: narrate "
@@ -369,8 +374,6 @@ def _what(r, name, powers, places, json_ops) -> list[str]:
     kind = r["action"]
     if kind == "build":
         return [f"{r['power']} +{r['effect']}"]
-    if kind == "prepare":
-        return _prepare(json_ops, r)
     if kind in ("reinforce", "push", "strike", "seize") and "at" in r and r["effect"]:
         who = r["faction"] if kind == "reinforce" else r["rival"]
         before, after = places[(r["at"], who)]
@@ -397,16 +400,10 @@ _SUCCEEDS = {
     "expose": "a fact about {rival} climbs the ladder: gm-note.sh tell <fact id> street (or public)",
     "deal": "a deal with {rival}: its terms as consequences that move the Relation's resting point "
             "or drift for a while (--rule-effect rate_of)",
-    "enact": "the plan succeeds: gm-plot.sh complete \"{plot}\" \"<what came of it>\" --next \"<the "
-             "bigger plot that replaces it>\"",
 }
 
 
 def _record(r, name) -> list[str]:
-    if r["action"] == "enact" and r["effect"] is None:
-        return [f"the plan fails: gm-plot.sh fail \"{r['plot']}\" \"<what came of it>\" --next "
-                f"\"<the smaller plot that replaces it>\"",
-                "Record its facts (gm-note.sh beat): the truth for the faction, versions for the others."]
     return ["Record its facts (gm-note.sh beat): the truth for "
             f"{name(r['faction'])}, versions (partial, wrong) for the others; narrate only what leaves a trace."]
 
@@ -424,14 +421,25 @@ def _advance(json_ops, r) -> dict[str, Any] | None:
         return ThreatClockManager(base).advance(r["clock"])
 
 
-def _prepare(json_ops, r) -> list[str]:
+def _plan_lines(r) -> list[str]:
+    """What a complex action did to its plot's plan clock."""
+    if not r.get("plot"):
+        return []
+    if not r.get("clock"):
+        return [f"for {r['plot']}, which has no plan clock to move: give it one "
+                f"(gm-clock.sh add \"<short name>\" 4 --on event --consequence \"<the plan "
+                f"succeeds>\" --plot \"{r['plot']}\")"]
+    if r["effect"] is None:
+        return [f"plan clock {r['clock']} ({r['plot']}) doesn't move"]
     clock = r.get("clock_after")
     if clock is None:
-        return ["not done: not the active campaign"]
+        return ["plan clock: not moved, not the active campaign"]
     out = [f"plan clock {r['clock']} ({r['plot']}): {clock['current']}/{clock['max']}"]
     out += [f"[{c['id']}] {c['consequence']} (fired)" for c in clock.get("fired") or []]
     if clock["current"] >= clock["max"]:
-        out.append("the plan is ready: next turn it can Enact")
+        out.append(f"the plan succeeds: play out its consequence, then gm-plot.sh complete "
+                   f"\"{r['plot']}\" \"<what came of it>\" --next \"<the bigger plot that "
+                   f"replaces it>\"")
     return out
 
 

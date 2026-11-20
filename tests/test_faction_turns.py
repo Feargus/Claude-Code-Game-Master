@@ -109,33 +109,69 @@ def test_seize_takes_a_place_or_an_asset(ops):
     assert "assets" not in load(ops)["system"]
 
 
-def test_prepare_moves_the_plan_clock_and_its_portents(ops, dcc_world):
-    from lib.consequence_manager import ConsequenceManager
+def _plan(dcc_world, segments=3, consequence=None, plot="Hostile Takeover"):
     from lib.plot_manager import PlotManager
     from lib.threat_clocks import ThreatClockManager
-    PlotManager(dcc_world).add("Hostile Takeover", "Meridian buys the floor.", owner="Meridian",
+    PlotManager(dcc_world).add(plot, "Meridian buys the floor.", owner="Meridian",
                                goal="own every guard post")
-    ThreatClockManager(dcc_world).add_clock("Takeover", 3, advance_on="event",
-                                            plots=["Hostile Takeover"], text="the buy-out")
+    ThreatClockManager(dcc_world).add_clock("Takeover", segments, advance_on="event",
+                                            plots=[plot], text="the buy-out",
+                                            consequence=consequence)
+
+
+TAKE = {"faction": "Meridian", "action": "take", "power": "Covert", "who": "Mordecai"}
+
+
+def _rich(ops):
+    """Covert enough for several complex actions in a row (each costs 2 or 3)."""
+    wr.change(ops, "Covert", "faction:meridian-group", by=3, cause="a test")   # 6
+
+
+def _clock(dcc_world):
+    return json.loads((Path(dcc_world) / "campaigns" / CAMPAIGN / "threat-clocks.json")
+                      .read_text())["Takeover"]["current"]
+
+
+def test_a_complex_action_for_the_plot_moves_its_plan_clock_and_portents(ops, dcc_world):
+    from lib.consequence_manager import ConsequenceManager
+    _plan(dcc_world)
     cid = ConsequenceManager(dcc_world).add_consequence(
         "Rumour: Meridian is hiring.", "y", trigger_type="on_clock", match="Takeover:1",
         offscreen=True)
-    lines = ft.run(ops, [{"faction": "Meridian", "action": "prepare"}], Dice(), only="Meridian")
-    text = "\n".join(lines)
+    text = "\n".join(ft.run(ops, [TAKE], Dice(6, 1), only="Meridian"))   # 6+3 against 1+2
     assert "plan clock Takeover (Hostile Takeover): 1/3" in text and f"[{cid}]" in text
 
 
-def test_enact_needs_a_full_plan_clock(ops, dcc_world):
+def test_a_failed_action_or_one_not_for_the_plot_moves_nothing(ops, dcc_world):
+    _plan(dcc_world)
+    _rich(ops)
+    text = "\n".join(ft.run(ops, [TAKE], Dice(1, 6), only="Meridian"))
+    assert "plan clock Takeover (Hostile Takeover) doesn't move" in text
+    text = "\n".join(ft.run(ops, [dict(TAKE, plot="none")], Dice(6, 1), only="Meridian"))
+    assert "plan clock" not in text
+    assert _clock(dcc_world) == 0
+
+
+def test_a_full_plan_clock_fires_the_plans_success(ops, dcc_world):
+    _plan(dcc_world, segments=1, consequence="Meridian owns every guard post")
+    text = "\n".join(ft.run(ops, [TAKE], Dice(6, 1), only="Meridian"))
+    assert "[Clock — Takeover] Meridian owns every guard post (fired)" in text
+    assert "the plan succeeds: play out its consequence, then gm-plot.sh complete " \
+           "\"Hostile Takeover\"" in text
+
+
+def test_which_plot_an_action_is_for(ops, dcc_world):
+    _rich(ops)
+    text = "\n".join(ft.run(ops, [TAKE], Dice(6, 1), only="Meridian"))
+    assert "plan clock" not in text                                  # no plot of its own
     from lib.plot_manager import PlotManager
-    from lib.threat_clocks import ThreatClockManager
     PlotManager(dcc_world).add("Hostile Takeover", "x", owner="Meridian", goal="y")
-    ThreatClockManager(dcc_world).add_clock("Takeover", 1, advance_on="event", plots=["Hostile Takeover"])
-    with pytest.raises(ft.TurnError, match="has no full plan clock yet"):
-        ft.check(ops, [{"faction": "Meridian", "action": "enact", "power": "Political"}])
-    ft.run(ops, [{"faction": "Meridian", "action": "prepare"}], Dice(), only="Meridian")
-    lines = ft.run(ops, [{"faction": "Meridian", "action": "enact", "power": "Political"}], Dice(6, 1),
-                   only="Meridian")
-    assert "the plan succeeds: gm-plot.sh complete \"Hostile Takeover\"" in "\n".join(lines)
+    text = "\n".join(ft.run(ops, [TAKE], Dice(6, 1), only="Meridian"))
+    assert "for Hostile Takeover, which has no plan clock to move" in text
+    PlotManager(dcc_world).add("Second Front", "x", owner="Meridian", goal="z")
+    with pytest.raises(ft.TurnError, match="which plot is it for"):
+        ft.check(ops, [TAKE])
+    assert ft.check(ops, [dict(TAKE, plot="Second Front")])[0]["plot"] == "Second Front"
 
 
 @pytest.mark.parametrize("action, words", [
@@ -146,7 +182,9 @@ def test_enact_needs_a_full_plan_clock(ops, dcc_world):
       "at": "x"}, "not its own rival"),
     ({"faction": "system", "action": "push", "power": "Military", "rival": "crawlers",
       "at": "@here"}, "crawlers has no presence"),
-    ({"faction": "Meridian", "action": "prepare"}, "which plot"),
+    ({"faction": "Meridian", "action": "build", "power": "Covert", "plot": "x"},
+     "only a complex action moves a plot"),
+    ({"faction": "Meridian", "action": "prepare"}, "the action is one of"),
     ({"faction": "Meridian", "action": "seize", "power": "Covert", "rival": "system",
       "asset": "The Moon"}, "has no asset"),
 ])
@@ -196,12 +234,6 @@ def test_every_faction_acts_or_one_alone(ops):
                only="Meridian")
 
 
-def test_an_enact_against_nobody_rolls_against_d6_plus_2(ops):
-    results = ft.resolve(ops, [{"faction": "meridian-group", "action": "enact",
-                                "power": "Political", "plot": "x", "clock": "y"}], Dice(1, 2))
-    assert results[0]["against"] == 2 and results[0]["margin"] == 0 and results[0]["effect"] == 1
-
-
 def test_a_change_where_the_character_is_says_so(ops):
     lines = ft.apply(ops, ft.resolve(ops, ft.check(ops, [
         {"faction": "system", "action": "reinforce", "power": "Military", "at": _here(ops)},
@@ -224,8 +256,8 @@ def test_take_needs_no_rival(ops, dcc_world):
 
 def test_campaigns_behind_a_symlink(dcc_world, tmp_path):
     """world-state/campaigns may be a link to a folder elsewhere (the campaigns kept
-    in their own repository): the active campaign is still found, so a prepare
-    moves its clock instead of saying "not the active campaign"."""
+    in their own repository): the active campaign is still found, so a complex
+    action moves its plan clock instead of saying "not the active campaign"."""
     from lib.plot_manager import PlotManager
     from lib.rule_effects import _base
     from lib.threat_clocks import ThreatClockManager
@@ -241,5 +273,5 @@ def test_campaigns_behind_a_symlink(dcc_world, tmp_path):
                                goal="own every guard post")
     ThreatClockManager(dcc_world).add_clock("Takeover", 3, advance_on="event",
                                             plots=["Hostile Takeover"], text="the buy-out")
-    lines = ft.run(ops, [{"faction": "Meridian", "action": "prepare"}], Dice(), only="Meridian")
+    lines = ft.run(ops, [TAKE], Dice(6, 1), only="Meridian")
     assert "plan clock Takeover (Hostile Takeover): 1/3" in "\n".join(lines)

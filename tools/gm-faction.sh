@@ -28,9 +28,11 @@
 #     [{"faction": "<id>", "action": "<action>", "power": "Military|Economic|Political|Covert",
 #       "rival": "<id>", "at": "<place>", "asset": "<name>", "who": "<npc>", "plot": "<plot>",
 #       "note": "<what they do, a few words>"}, ...]
-#     EOF                              simple: build, reinforce, push, prepare
+#     EOF                              simple: build, reinforce, push
 #                                      complex (facts, cost 2, 3 failed): strike, seize, take,
-#                                      spy, expose, deal, enact (lib/faction_turns.py)
+#                                      spy, expose, deal; one that succeeds for the faction's
+#                                      plot ("plot": "none" if not) moves its plan clock
+#                                      (lib/faction_turns.py)
 #
 # Its goal is a plot it owns, its secrets are facts it holds (gm-note.sh --holders
 # faction:<id>), its own numbers are world rules held by factions (gm-rule.sh).
