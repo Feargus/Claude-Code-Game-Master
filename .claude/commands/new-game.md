@@ -142,12 +142,24 @@ Write only what tonight needs:
    faction regards the character (the `gm-rules` skill, "Standing"): define it in the
    world's words, then for each faction its value and the point it rests at (`gm-rule.sh
    set "Standing" "faction:<id>" N`, `gm-rule.sh rate "Standing" "faction:<id>" --toward
-   N`). Each faction's **power** (`gm-rule.sh set "Military" "faction:<id>" N`, and
-   Economic, Political, Covert, 0–10; its strengths and weaknesses) and, where two
-   factions have history, their **Relation** (`gm-rule.sh set "Relation" "<id>+<id>" N`,
-   −5 war to +5 allies); a resting point where a faction or pair should drift back
-   (`gm-rule.sh rate … --by 1 --toward N`). Check with `gm-rule.sh list`: that is what
-   the brief will show. The player's starting values come with the character.
+   N`). Check with `gm-rule.sh list`: that is what the brief will show. The player's
+   starting values come with the character.
+2b. **The factions' power and relations**, in every world, a quick one too: these are
+   the repo's faction rules (`gm-rules`, "The repo's faction rules"), not the world's.
+   Unset, every power is 3 and every relation 0, which makes all factions alike.
+   - **Power:** Military, Economic, Political, Covert, 0–10, about 3 on average per
+     faction but shaped by what it is: the police strong in Military, weaker in
+     Economic; a megacorp rich and political, with little muscle of its own; a street
+     church political and poor. `gm-rule.sh set "Military" "faction:<id>" N` for each
+     power that isn't 3.
+   - **Relation:** every pair with a tie gets the number its words say, −5 open war to
+     +5 allies (`gm-rule.sh set "Relation" "<id>+<id>" N`; one value for both sides,
+     so a tie seen differently from each side gets the value between them). A pair
+     with no tie may stay 0 when nothing is between them; give it a value when the
+     descriptions imply one (the police and the gang they raid).
+   - A resting point where a faction or pair should drift back, if any
+     (`gm-rule.sh rate … --by 1 --toward N`).
+   Check with `bash tools/gm-faction.sh show <id>`: Power and Relations.
 2c. **Name the world's people, places, creatures and things** — the faces the player
    might actually meet, recognizable, not a gazetteer (about 6–10 people, 4–8 places,
    a few kinds of enemy, a few of the world's own words). There is no book, so **you
@@ -289,7 +301,8 @@ campaign plays by the repo's rules (`gm-skills`, `gm-combat`,
    chronicler fit it.
 3. **Bible:** write `world-bible.json` as in Phase B, with `"confirmed": true`, and
    validate it. Don't present it for approval.
-4. **World index:** Phase C step 2c. Skip steps 1 and 2 (the kit and its rules).
+4. **Factions and world index:** Phase C steps 2b (the factions' power and relations)
+   and 2c. Skip steps 1 and 2 (the kit and the world's own rules).
 5. **Sketch the opening** (Phase C step 3), and choose the start yourself: don't
    ask where or when.
 6. **Phase D:** lock the chronicler, then tell the player in two lines what world
