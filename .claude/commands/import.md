@@ -138,8 +138,8 @@ places). Nodes with no edges are a cast list, not a world; a couple of real
 relationships (the villain's faction vs the player's, the caravan vs the hunt)
 pay off in every scene. Do not build a full relationship map.
 
-Then give the factions their power and relations as the book has them: the steps
-are `/new-game`'s Phase C step 2b (`.claude/commands/new-game.md`). Unset, every
+Then give the factions their power, relations and `Standing` as the book has them:
+the steps are `/new-game`'s Phase C step 2b (`.claude/commands/new-game.md`). Unset, every
 faction has 3 in each power and 0 with every other, which makes them all alike.
 
 Attributes are always the nine from `gm-skills`, actions are skill contests, and growth is `gm-growth`'s.

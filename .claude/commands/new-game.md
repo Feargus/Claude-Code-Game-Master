@@ -138,15 +138,12 @@ Write only what tonight needs:
 2. **Write the world's own rules** as the player approved them, in the formats of the
    `gm-rules` skill: `bash tools/gm-rule.sh define <<'EOF'`, the list, a line `EOF`; what
    is no mechanic (prices, customs) with `gm-rule.sh plain`; starting values of the
-   world and the factions with `gm-rule.sh set`. **Every world has `Standing`**, how each
-   faction regards the character (the `gm-rules` skill, "Standing"): define it in the
-   world's words, then for each faction its value and the point it rests at (`gm-rule.sh
-   set "Standing" "faction:<id>" N`, `gm-rule.sh rate "Standing" "faction:<id>" --toward
-   N`). Check with `gm-rule.sh list`: that is what the brief will show. The player's
-   starting values come with the character.
-2b. **The factions' power and relations**, in every world, a quick one too: these are
-   the repo's faction rules (`gm-rules`, "The repo's faction rules"), not the world's.
-   Unset, every power is 3 and every relation 0, which makes all factions alike.
+   world and the factions with `gm-rule.sh set`. Check with `gm-rule.sh list`: that is
+   what the brief will show. The player's starting values come with the character.
+2b. **The factions: power, relations and Standing**, in every world, a quick one too.
+   Power and relations are the repo's faction rules (`gm-rules`, "The repo's faction
+   rules"); Standing is the one rule every world defines. Unset, every power is 3 and
+   every relation 0, which makes all factions alike.
    - **Power:** Military, Economic, Political, Covert, 0–10, about 3 on average per
      faction but shaped by what it is: the police strong in Military, weaker in
      Economic; a megacorp rich and political, with little muscle of its own; a street
@@ -159,7 +156,12 @@ Write only what tonight needs:
      descriptions imply one (the police and the gang they raid).
    - A resting point where a faction or pair should drift back, if any
      (`gm-rule.sh rate … --by 1 --toward N`).
-   Check with `bash tools/gm-faction.sh show <id>`: Power and Relations.
+   - **Standing**, how each faction regards the character (`gm-rules`, "Standing"):
+     define it in the world's words (`gm-rule.sh define`), then for each faction its
+     value and the point it rests at (`gm-rule.sh set "Standing" "faction:<id>" N`,
+     `gm-rule.sh rate "Standing" "faction:<id>" --toward N`).
+   Check with `bash tools/gm-faction.sh show <id>` (Power and Relations) and
+   `bash tools/gm-rule.sh list` (Standing).
 2c. **Name the world's people, places, creatures and things** — the faces the player
    might actually meet, recognizable, not a gazetteer (about 6–10 people, 4–8 places,
    a few kinds of enemy, a few of the world's own words). There is no book, so **you
@@ -290,8 +292,8 @@ Then open the scene from what `opening` printed: the place, who is here, the hoo
 
 The player gives one sentence about the world. That is the only question about the
 world: you build everything else from it, with no questionnaire and no approval
-gate. **Setting and lore only:** no rules of its own, no `ruleset.json`; the
-campaign plays by the repo's rules (`gm-skills`, `gm-combat`,
+gate. **Setting and lore only:** no rules of its own but `Standing`, which every world
+has (step 4); the campaign plays by the repo's rules (`gm-skills`, `gm-combat`,
 `gm-growth`). New mechanics only come from the Together way.
 
 1. **Name the world** from the sentence, then create and switch the campaign
@@ -301,8 +303,8 @@ campaign plays by the repo's rules (`gm-skills`, `gm-combat`,
    chronicler fit it.
 3. **Bible:** write `world-bible.json` as in Phase B, with `"confirmed": true`, and
    validate it. Don't present it for approval.
-4. **Factions and world index:** Phase C steps 2b (the factions' power and relations)
-   and 2c. Skip steps 1 and 2 (the kit and the world's own rules).
+4. **Factions and world index:** Phase C steps 2b (the factions' power, relations and
+   Standing) and 2c. Skip steps 1 and 2 (the kit and the world's own rules).
 5. **Sketch the opening** (Phase C step 3), and choose the start yourself: don't
    ask where or when.
 6. **Phase D:** lock the chronicler, then tell the player in two lines what world

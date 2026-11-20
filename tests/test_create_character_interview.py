@@ -125,5 +125,6 @@ def test_a_new_campaign_asks_how_to_make_the_world():
     assert "no one yet" not in (commands / "import.md").read_text(encoding="utf-8")
     new_game = (commands / "new-game.md").read_text(encoding="utf-8")
     quick = new_game[new_game.index("## QUICK WORLD"):]
-    assert "no rules of its own, no `ruleset.json`" in quick
+    assert "no rules of its own but `Standing`" in quick          # 2026-11-20: and the factions
+    assert "2b" in quick                                           # power and relations
     assert "gm-session.sh opening" in quick and "/create-character" in quick

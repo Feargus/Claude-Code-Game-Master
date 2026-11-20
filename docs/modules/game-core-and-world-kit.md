@@ -27,8 +27,9 @@ at import; nothing about rules.
    `DEFAULT_RULESET`: "Standard rules", no rules of its own, and the canon skills of
    `gm-skills`. Growth (XP, levels) is no kit setting: it is the same for every
    campaign (`lib/growth.py`).
-2. **A world with no rules of its own** (a quick world from one sentence) has no YOUR
-   WORLD'S RULES section in the brief, and `gm-rule.sh` says so.
+2. **A world with no rules of its own** has no YOUR WORLD'S RULES section in the
+   brief, and `gm-rule.sh` says so. A quick world from one sentence has one rule of its
+   own, `Standing`, which every world defines.
 
 To check a live campaign: `bash tools/gm-rule.sh list`, or
 `uv run python lib/world_kit.py info --json`.
