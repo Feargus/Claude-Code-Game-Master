@@ -29,7 +29,7 @@ facts, and before that session summaries and arc entries).
   ranked among the shown ones are named as near-misses, so a gap in the data shows.
 - **Suggestions:** `gm-plot.sh add` lists the recorded facts closest to the new plot; once
   play has begun, `gm-npc.sh create` and `gm-location.sh add` refuse a record that reads like
-  an existing one (similarity 0.60 or more; a person re-described scored 0.63 to 0.74,
+  an existing one (similarity 0.70 or more; a person re-described scored 0.63 to 0.74,
   different people at most 0.65) unless `--another` is given.
 - **Notes after a fact** (`lib/recall_notes.py`): the background job compares each new fact
   with the open plots (0.45, clearly the best), the people (0.55, and closer than the

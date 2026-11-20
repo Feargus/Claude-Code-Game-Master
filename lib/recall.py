@@ -232,8 +232,10 @@ def suggest_for_plot(notes, plot_key: str, limit: int = 5) -> dict:
 
 # ---------- a new person or place: someone like this exists already ----------
 
-SAME_MEANING = 0.60     # measured 2026-11-15: a person re-described scored 0.63-0.74
-                        # against the original; different people at most 0.65, typically 0.37
+SAME_MEANING = 0.70     # measured 2026-11-15: a person re-described scored 0.63-0.74
+                        # against the original; different people at most 0.65, typically 0.37.
+                        # Raised from 0.60 after the carnaval playtest (2026-11-20), where both
+                        # refusals were wrong (0.62, 0.67); watch for doubles that now get through.
 
 
 def close_in_meaning(json_ops, kind: str, text: str):

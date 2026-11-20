@@ -156,7 +156,7 @@ When `gm-session.sh start` or `move` runs, it queries source material for the cu
 
 ### Present Scene
 
-Show where they are, who is present, and what is happening, plus the header vitals (level, wounds, XP, credits, status). No fenced boxes; phone-friendly.
+Show where they are, who is present, and what is happening, plus the header vitals (level, wounds, credits, status). No fenced boxes; phone-friendly.
 
 During a fight, convey who is acting, each enemy's state (wounded, disabled parts, out), and the result. When loot lands, convey what was found and its worth (persist first).
 
