@@ -51,7 +51,7 @@ A hit deals **1 + quality ÷ 5 wounds**, rounded down: quality 0–4 is 1 wound,
 bash tools/gm-body.sh hit chest 2
 ```
 
-Narrate what it prints: armor that took the blow, chrome that broke, the wound and its effect. `gm-body.sh show` shows the whole body. Healing: `gm-body.sh heal`; armor and chrome: `gm-body.sh repair`.
+Narrate what it prints: armor that took the blow, chrome that broke, the wound and its effect. `gm-body.sh show` shows the whole body. Healing comes by itself (below, "Healing"); armor and chrome: `gm-body.sh repair`.
 
 **Enemies:** each wound counts toward their total. A wound to a limb also disables that limb: record it as a note.
 
@@ -69,12 +69,22 @@ Each zone of the player's body takes four wounds. Wounds absorbed by armor or ch
 |---|---|
 | 1 | A bruise or scratch. It hurts, nothing more. |
 | 2 | Injured: **disadvantage** on rolls that use that part, on the attribute that depends on it most (arm: STR or DFT; leg: AGI; head: LOG or ITU; chest: VIG; groin: NRV). Pass it with its reason: `--active-dis DFT "injured right arm"`. |
-| 3 | Nearly unusable, but still there. Only very basic use: no weapon or tool use with that arm, no running on that leg (only limping), no clear thinking (head), no cardio or exertion (chest). Rolls that need more aren't possible; basic use still has the disadvantage. |
+| 3 | Critical: nearly unusable, but still there. Only very basic use: no weapon or tool use with that arm, no running on that leg (only limping), no clear thinking (head), no cardio or exertion (chest). Rolls that need more aren't possible; basic use still has the disadvantage. |
 | 4 | Destroyed. An arm or leg is severed or useless for good. Head, chest or groin: **dead**. |
 
 A wound is the character's own state, so it's always a disadvantage, never a modifier.
 
 **A missing or destroyed limb** (four wounds in an arm or leg, or lost before the story) works the same way, for good: **disadvantage** on every roll that would use it, on the attribute that depends on it most (as for wound 2). On top of that, some actions are simply **impossible**, or fail without a roll: one-handed, there is no two-handed lift, no climbing a rope hand over hand, no reloading a pump shotgun while holding on; one-legged, no running. Decide which before the roll, as the stakes. It is never a modifier. Chrome that replaces the limb ends both, for as long as it works.
+
+## Healing
+
+Wounds heal by themselves as game time passes: the time commands work it out, one box at a time, from the worst down, and print what healed in the timeline ("The character's body and luck"). Narrate it when the character would notice: a bruise faded, the arm working again. Never heal by hand, except to correct a mistake (`gm-body.sh heal`).
+
+- **It goes faster with care,** each of these doubling the pace: lying still (asleep, or in a hospital bed: `gm-time.sh advance 8h --rest`); first aid; a doctor's treatment on top. A doctor's treatment while resting heals eight times as fast as a wound left alone.
+- **First aid or treatment is a Medicine contest:** one for all the zones treated, against the difficulty of the worst wound (bruise 10, injured 15, critical 20), at −1 for each further zone (several things at once). Anyone may give first aid, the character to themselves too; a **doctor** is someone whose profession it is, back alley or hospital, and their treatment counts double again. Modifiers come from the fiction, as always (a clinic's equipment, a dark alley, shaking hands). On a success: `gm-body.sh treat <zone>... [--doctor] [--with "<item>"]`; it says how long it takes (5 minutes a bruise, 15 an injury, 30 a critical wound, an hour at most), pass that time. The care lasts until the zone has healed or is wounded again.
+- **A critical wound needs more:** it heals only after a doctor's treatment, or first aid with a medpack or the like from the character's items (`--with "medpack"`, used up). Without, it stays critical.
+- **Destroyed never heals:** it needs a replacement, chrome or vat-grown.
+- **Luck** comes back by itself too, a point at a time, over weeks; rest doesn't speed it.
 
 ## Death
 

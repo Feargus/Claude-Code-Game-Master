@@ -5,7 +5,10 @@ Wounds, armor and cyberware on the player's sheet: its body section (sheet.py).
 Everything that can break is a row of boxes. A wound fills a box; a full row stops
 working. The sheet stores how many boxes are filled.
 
-- body:      one row of 4 per zone. 1 bruise, 2 injured, 3 nearly unusable, 4 destroyed.
+- body:      one row of 4 per zone. 1 bruise, 2 injured, 3 critical (nearly unusable),
+             4 destroyed. A zone heals by itself as time passes (body_time.py), faster
+             with care: first aid and a doctor's treatment (`treat`), which last until
+             it has healed or is wounded again.
 - armor:     items with boxes per zone. Each box absorbs one wound and is used up.
              Layers are listed outermost first, and the outermost absorbs first.
 - cyberware: items in a zone, with boxes of their own. A wound that gets past the
@@ -29,7 +32,10 @@ from json_ops import JsonOperations
 ZONES = ("head", "chest", "groin", "left_arm", "right_arm", "left_leg", "right_leg")
 FATAL = ("head", "chest", "groin")
 FLESH_BOXES = 4
-EFFECTS = {1: "bruise, no effect", 2: "injured", 3: "nearly unusable", 4: "destroyed"}
+EFFECTS = {1: "bruise, no effect", 2: "injured", 3: "critical, nearly unusable", 4: "destroyed"}
+FIRST_AID, DOCTOR, SUPPLIED = "first aid", "doctor", "supplied"   # a zone's care
+TREAT_MINUTES = {1: 5, 2: 15, 3: 30}       # per zone, by its wound; one session at most
+TREAT_MAX = 60
 
 
 class BodyError(Exception):
@@ -109,6 +115,7 @@ def hit(sheet: dict[str, Any], zone: str, wounds: int, rng=random) -> list[str]:
         target = rng.choice(boxes)
         if target is None:
             part["wounds"] += 1
+            part.pop("care", None)                 # wounded again: the care is undone
             events.append(_flesh_event(zone, part["wounds"]))
         else:
             target["damage"] += 1
@@ -123,7 +130,62 @@ def heal(sheet: dict[str, Any], zone: str, wounds: int) -> list[str]:
     if part["wounds"] >= FLESH_BOXES:
         raise BodyError(f"The {zone} is destroyed and never heals. It needs a replacement.")
     part["wounds"] = max(0, part["wounds"] - wounds)
+    if not part["wounds"]:
+        part.pop("care", None)
     return [f"{zone}: {part['wounds']} wound{'s' if part['wounds'] != 1 else ''} left"]
+
+
+def treat(sheet: dict[str, Any], zones: list[str], doctor: bool = False,
+          supply: str = "") -> list[str]:
+    """Care after a successful Medicine contest (the GM rolls it first: one contest for
+    all the zones, against the worst wound's difficulty, −1 for each further zone):
+    first aid, or with `doctor` a doctor's treatment, which includes it. A critical
+    wound heals only after a doctor's treatment or first aid with `supply`, a medpack
+    or the like from the character's items, which is used up. The care lasts until
+    the zone has healed or is wounded again. Returns the lines, the last one the time
+    to pass."""
+    keys = list(dict.fromkeys(zone_key(z) for z in zones))
+    if not keys:
+        raise BodyError("Name the zones treated, e.g. treat left_arm chest.")
+    parts = body(sheet)
+    for zone in keys:
+        wounds = parts[zone]["wounds"]
+        if not wounds:
+            raise BodyError(f"The {zone} has no wound to treat.")
+        if wounds >= FLESH_BOXES:
+            raise BodyError(f"The {zone} is destroyed: no treatment heals it, it needs a "
+                            f"replacement.")
+    critical = [z for z in keys if parts[z]["wounds"] == 3]
+    if critical and not doctor and not supply:
+        raise BodyError(f"A critical wound ({', '.join(critical)}) heals only after a doctor's "
+                        f"treatment (--doctor) or first aid with a medpack or the like "
+                        f"(--with \"<item>\", used up).")
+    events = []
+    if supply:
+        events.append(f"{_use_up(sheet, supply)} used up")
+    care = [FIRST_AID] + ([DOCTOR] if doctor else []) + ([SUPPLIED] if supply else [])
+    for zone in keys:
+        have = parts[zone].get("care") or []
+        parts[zone]["care"] = [c for c in (FIRST_AID, DOCTOR, SUPPLIED) if c in have or c in care]
+        events.append(f"{zone}: {', '.join(parts[zone]['care'])} "
+                      f"({EFFECTS[parts[zone]['wounds']].split(',')[0]})")
+    minutes = min(TREAT_MAX, sum(TREAT_MINUTES[parts[z]["wounds"]] for z in keys))
+    events.append(f"It takes {minutes} minutes: bash tools/gm-time.sh advance {minutes}m")
+    return events
+
+
+def _use_up(sheet: dict[str, Any], name: str) -> str:
+    """Remove one item of that name from the character's gear or inventory."""
+    items = sheet.get("items") or {}
+    for where in ("gear", "inventory"):
+        row = items.get(where) or []
+        for i, item in enumerate(row):
+            label = item.get("name") if isinstance(item, dict) else str(item)
+            if str(label).lower() == name.strip().lower():
+                del row[i]
+                return str(label)
+    raise BodyError(f"The character has no '{name}' (gm-player.sh item add gear \"{name}\" first, "
+                    f"if they have one).")
 
 
 def repair(sheet: dict[str, Any], name: str) -> list[str]:
@@ -231,6 +293,8 @@ def picture(sheet: dict[str, Any]) -> str:
 def details(sheet: dict[str, Any]) -> list[str]:
     """Everything the picture leaves out: notes, and what each item is."""
     lines = [f"{zone}: {part['note']}" for zone, part in body(sheet).items() if part.get("note")]
+    lines += [f"{zone}: {', '.join(part['care'])}" for zone, part in body(sheet).items()
+              if part.get("care")]
     for item in _items(sheet, "armor"):
         rows = ", ".join(f"{zone} {_left(row)}/{row['boxes']}" for zone, row in item["zones"].items())
         dr = f", DR {item['dr']}" if item.get("dr") else ""
@@ -245,7 +309,7 @@ def details(sheet: dict[str, Any]) -> list[str]:
 
 def summary(sheet: dict[str, Any]) -> str:
     """One line for the scene context: wounded zones and broken chrome, or "unhurt"."""
-    short = {1: "bruised", 2: "injured", 3: "nearly unusable", 4: "destroyed"}
+    short = {1: "bruised", 2: "injured", 3: "critical", 4: "destroyed"}
     parts = []
     for zone in ZONES:
         wounds = ((sheet.get("body") or {}).get("zones") or {}).get(zone, {}).get("wounds", 0)
@@ -269,6 +333,11 @@ def build_parser() -> argparse.ArgumentParser:
         p = sub.add_parser(action)
         p.add_argument("zone")
         p.add_argument("wounds", nargs="?", default="1")
+    p = sub.add_parser("treat", help="after a successful Medicine contest: first aid, or a "
+                                     "doctor's treatment")
+    p.add_argument("zones", nargs="+")
+    p.add_argument("--doctor", action="store_true", help="a doctor's treatment (their profession)")
+    p.add_argument("--with", dest="supply", default="", help="a medpack or the like, used up")
     p = sub.add_parser("note")
     p.add_argument("zone")
     p.add_argument("text")
@@ -298,21 +367,18 @@ def run(args: argparse.Namespace, rng=random) -> str:
 
     if args.action == "show":
         return show(sheet)
-    if args.action == "hit":
-        events = hit(sheet, args.zone, _whole_number(args.wounds, 1), rng)
-    elif args.action == "heal":
-        events = heal(sheet, args.zone, _whole_number(args.wounds, 1))
-    elif args.action == "note":
-        events = note(sheet, args.zone, args.text)
-    elif args.action == "armor":
-        events = add_armor(sheet, args.name, args.zones, _whole_number(args.dr, 0))
-    elif args.action == "cyberware":
-        events = add_cyberware(sheet, args.name, args.zone, _whole_number(args.boxes, 1),
-                               args.effect)
-    elif args.action == "repair":
-        events = repair(sheet, args.name)
-    else:
-        events = remove(sheet, args.name)
+    actions = {
+        "hit": lambda: hit(sheet, args.zone, _whole_number(args.wounds, 1), rng),
+        "heal": lambda: heal(sheet, args.zone, _whole_number(args.wounds, 1)),
+        "treat": lambda: treat(sheet, args.zones, args.doctor, args.supply),
+        "note": lambda: note(sheet, args.zone, args.text),
+        "armor": lambda: add_armor(sheet, args.name, args.zones, _whole_number(args.dr, 0)),
+        "cyberware": lambda: add_cyberware(sheet, args.name, args.zone,
+                                           _whole_number(args.boxes, 1), args.effect),
+        "repair": lambda: repair(sheet, args.name),
+        "remove": lambda: remove(sheet, args.name),
+    }
+    events = actions[args.action]()
 
     ops.save_json("character.json", sheet)
     return "\n".join([*events, "", picture(sheet)])

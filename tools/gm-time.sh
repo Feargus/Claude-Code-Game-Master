@@ -7,6 +7,8 @@
 #       --through "<name>"              ...but not for this rule, "<rule>:<outcome>",
 #                                       consequence id or clock (repeatable)
 #       --through                       never stops: a montage, with the timeline
+#       --rest                          the character lies still (asleep, a hospital
+#                                       bed): wounds heal twice as fast
 #   gm-time.sh set "YYYY-MM-DD HH:MM"   Set the time outright (campaign start, or a correction)
 #
 # `advance` walks from one moment at which something changes to the next (clocks,
@@ -21,6 +23,7 @@ usage() {
     echo "           --through \"<name>\"              not for this rule, \"<rule>:<outcome>\","
     echo "                                           consequence id or clock (repeatable)"
     echo "           --through                       never stops (a montage)"
+    echo "           --rest                          asleep or in a hospital bed: wounds heal faster"
     echo "       gm-time.sh set \"YYYY-MM-DD HH:MM\"   Campaign start, or a correction"
 }
 

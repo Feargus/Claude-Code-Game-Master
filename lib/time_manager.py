@@ -181,7 +181,7 @@ class TimeManager:
         return moved
 
     def advance(self, minutes: int, on_the_way: bool = False, through: list[str] | None = None,
-                through_all: bool = False) -> dict[str, dict]:
+                through_all: bool = False, resting: bool = False) -> dict[str, dict]:
         """Let time pass, from one moment at which something changes by itself to the
         next (time_walk.py): at each, the time is set, the time clocks move, the
         world's rules move, and the consequences are checked, so that each sees the
@@ -192,7 +192,9 @@ class TimeManager:
         before the end: `self.stopped` is that moment, `self.end` where the step
         would have ended. `through`: names (a rule, "<rule>:<outcome>", a
         consequence's id, a clock) that don't stop it; `through_all`: nothing does.
-        `on_the_way`: a journey's time (no place, only the party present). Returns
+        `on_the_way`: a journey's time (no place, only the party present). `resting`:
+        the character lies still (asleep, a hospital bed): wounds heal faster
+        (body_time.py). Returns
         the time clocks that moved, as they stand at the end."""
         import time_stops
         before = self.get_game_time()
@@ -204,6 +206,7 @@ class TimeManager:
         place, present = time_stops.here(self.json_ops, on_the_way)
         self.here = (place, present)
         self.start, self.end, self.stopped = before, end, None
+        self.resting = resting and not on_the_way
         self.moments, self.rule_changes, moved = [], [], {}
         moment = before
         for _ in range(MAX_MOMENTS):
@@ -235,7 +238,9 @@ class TimeManager:
         rules = rule_time.apply(self.json_ops, before, after)
         with contextlib.redirect_stdout(sys.stderr):
             fired = ConsequenceManager(self.world_state_dir).tick_from_session(on_the_way)["fired"]
-        return {"at": after, "clocks": clocks, "rules": rules, "fired": fired}
+        import body_time
+        healed = body_time.recover(self.json_ops, before, after, getattr(self, "resting", False))
+        return {"at": after, "clocks": clocks, "rules": rules, "fired": fired, "healed": healed}
 
 
 def print_rule_changes(manager: "TimeManager") -> None:
@@ -276,6 +281,11 @@ def print_moments(manager: "TimeManager", on_the_way: bool = False, going_to: st
     if lines:
         print("\nMeanwhile (routine; narrate later what the character would notice):")
         print("\n".join(lines))
+    healed = [f"  {describe(m['at'])}: {line}" for m in manager.moments for line in m.get("healed") or []]
+    if healed:
+        print("\nThe character's body and luck (narrate it when they'd notice: a bruise faded, "
+              "a stiff arm working again):")
+        print("\n".join(healed))
     for m in full:
         print(f"\nAt {describe(m['at'])}:")
         print_clocks(m["clocks"])
@@ -292,7 +302,7 @@ def print_moments(manager: "TimeManager", on_the_way: bool = False, going_to: st
         print("\n" + "\n".join(owed))
     if manager.stopped:
         left = format_duration(whole - passed)
-        flags = manager.through.args()
+        flags = manager.through.args() + (" --rest" if manager.resting else "")
         if going_to:
             print(f"\n{left} of the journey left; the character has not arrived. To go on: "
                   f"bash tools/gm-session.sh move \"{going_to}\" --takes \"{left}\"{flags}")
@@ -316,7 +326,8 @@ def _advance_args(args: list[str]) -> tuple[str, dict[str, Any]]:
     """advance's words: the duration (one or more words, e.g. 1h 30m), then
     --through ["<name>"] (repeatable; alone: through everything), --on-the-way and
     --to "<place>" (gm-session.sh move --takes)."""
-    duration, flags = [], {"through": [], "through_all": False, "on_the_way": False, "to": ""}
+    duration, flags = [], {"through": [], "through_all": False, "on_the_way": False, "to": "",
+                           "rest": False}
     i = 0
     while i < len(args):
         word = args[i]
@@ -328,11 +339,14 @@ def _advance_args(args: list[str]) -> tuple[str, dict[str, Any]]:
                 flags["through_all"] = True
         elif word == "--on-the-way":
             flags["on_the_way"] = True
+        elif word == "--rest":
+            flags["rest"] = True
         elif word == "--to" and i + 1 < len(args):
             flags["to"] = args[i + 1]
             i += 1
         elif word.startswith("--"):
-            raise TimeError(f"Unknown option {word}: advance takes --through [\"<name>\"].")
+            raise TimeError(f"Unknown option {word}: advance takes --through [\"<name>\"] "
+                            f"and --rest (asleep, or in a hospital bed).")
         else:
             duration.append(word)
         i += 1
@@ -340,8 +354,8 @@ def _advance_args(args: list[str]) -> tuple[str, dict[str, Any]]:
 
 
 def main(argv) -> int:
-    usage = ("Usage: time_manager.py show | advance <duration> [--through [\"<name>\"]]... | "
-             "set \"YYYY-MM-DD HH:MM\"")
+    usage = ("Usage: time_manager.py show | advance <duration> [--through [\"<name>\"]]... "
+             "[--rest] | set \"YYYY-MM-DD HH:MM\"")
     action = argv[0] if argv else "show"
     value = " ".join(argv[1:])
     try:
@@ -350,7 +364,8 @@ def main(argv) -> int:
             duration, flags = _advance_args(argv[1:])
             start = manager.get_game_time()
             manager.advance(parse_duration(duration), on_the_way=flags["on_the_way"],
-                            through=flags["through"], through_all=flags["through_all"])
+                            through=flags["through"], through_all=flags["through_all"],
+                            resting=flags["rest"])
             print(f"Time: {describe(manager.get_game_time())}"
                   + (f" (from {describe(start)})" if start else ""))
             print_moments(manager, flags["on_the_way"], flags["to"])

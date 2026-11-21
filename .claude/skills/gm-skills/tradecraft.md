@@ -42,7 +42,7 @@ Intrusion, data digs, digital forgery, fighting ICE.
 
 *Anchor: LOG · Status: canon*
 
-First aid, surgery, drugs, diagnosis, installing cyberware. Chrome limbs are repaired with Tech, not Medicine.
+First aid, surgery, drugs, diagnosis, installing cyberware. Chrome limbs are repaired with Tech, not Medicine. Treating wounds and what it does: `gm-combat`, "Healing".
 
 - First aid under fire: DFT, **LOG**, NRV
 - Surgery, installing cyberware: DFT, DFT, **LOG**
