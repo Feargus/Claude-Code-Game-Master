@@ -266,6 +266,10 @@ def main():
     # Full session context
     subparsers.add_parser('context', help='The start brief (one-command startup)')
 
+    header_parser = subparsers.add_parser('header', help='The header line, from the records')
+    header_parser.add_argument('--full', action='store_true',
+                               help='with the date and credits (the start of a session)')
+
     choices_parser = subparsers.add_parser('choices', help='Toggle the action-menu play style')
     choices_parser.add_argument('value', nargs='?', default='show',
                                 choices=['on', 'off', 'toggle', 'show'],
@@ -286,6 +290,10 @@ def main():
         return
     if json_mode and args.action == 'context':
         emit({"context": manager.get_full_context()}, json_mode=True)
+        return
+    if args.action == 'header':
+        import header
+        print(header.line(manager.json_ops, full=args.full))
         return
     if args.action == 'move':
         location = ' '.join(args.location)

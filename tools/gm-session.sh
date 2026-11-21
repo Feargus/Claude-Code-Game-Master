@@ -16,6 +16,7 @@ show_usage() {
     echo "                             not for that, as gm-time.sh advance)"
     echo "  context                  - Full session context (character, party, consequences, rules)"
     echo "  choices [on|off|toggle]  - The action menu (three numbered options) on or off (no arg: show state)"
+    echo "  header [--full]          - The header line for a reply, from the records (--full: the start of a session)"
     echo "  opening <<'EOF' <json> EOF - Set up a new campaign's first scene in one go: place, exits,"
     echo "                             NPCs, the plot and its hook, facts, clocks (lib/opening.py)"
     echo "  world-tick <<'EOF' <json> EOF - Record off-screen developments: a fact each, optionally a"
@@ -38,7 +39,7 @@ shift
 
 # Every action the case below handles, in one place: the guard and the
 # unknown-action message both read this, so they cannot drift apart.
-VALID_ACTIONS="start status move context choices opening world-tick world-tick-rollback world-tick-log"
+VALID_ACTIONS="start status move context choices header opening world-tick world-tick-rollback world-tick-log"
 
 is_valid_action() {
     local valid
@@ -224,6 +225,10 @@ case "$ACTION" in
 
     choices)
         $PYTHON_CMD "$LIB_DIR/session_manager.py" choices "$@"
+        ;;
+
+    header)
+        $PYTHON_CMD "$LIB_DIR/session_manager.py" header "$@"
         ;;
 esac
 
