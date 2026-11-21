@@ -117,7 +117,8 @@ def apply(json_ops, before: datetime | None, after: datetime) -> list[dict[str, 
     reports = []
     for rule in world_rules.rules(json_ops):
         reports += world_rules.block(rule).apply_time(json_ops, rule, before, after)
-    return reports
+    import faction_rules
+    return reports + faction_rules.drift(json_ops, before, after)
 
 
 def set_rate(json_ops, raw_rule, raw_holder=None, by: int | None = None,

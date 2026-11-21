@@ -157,8 +157,9 @@ you suggest, each in a sentence or two with its numbers.
      so a tie seen differently from each side gets the value between them). A pair
      with no tie may stay 0 when nothing is between them; give it a value when the
      descriptions imply one (the police and the gang they raid).
-   - A resting point where a faction or pair should drift back, if any
-     (`gm-rule.sh rate … --by 1 --toward N`).
+   - A resting point where a faction should drift back, if any (`gm-rule.sh rate
+     "<power>" "faction:<id>" --by 1 --toward N`), or a pair (`gm-rule.sh rate
+     "Relation" "<id>+<id>" --toward N`: a Relation drifts toward its point by itself).
    Check with `bash tools/gm-faction.sh show <id>`: Power and Relations.
 4. **The frame's places, enemies and words:** the districts and landmarks from the
    geography, each faction's stronghold, with who is around where; the kinds of enemy;

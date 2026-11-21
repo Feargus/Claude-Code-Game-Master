@@ -8,13 +8,17 @@ turns and power"): every campaign with factions has them, the same everywhere.
 - Relation: one counter held by a pair of factions (`pair:hardtop+kin`), −5 to +5,
   the same both ways.
 - Faction turns: a bag held by the world that drives the factions as game time
-  passes (design-notes.md, "The faction bag"). It holds 4 tokens per faction, 2
-  blanks per faction and a joker; one is drawn every 6 h + 25 h ÷ the number of
-  factions, without replacement; with fewer than 4 tokens per faction left it gets
-  one per faction, half as many blanks and a joker if it has none. A drawn faction
-  token is owed: that faction takes a turn at the next pause (`gm-faction.sh turn
-  --only`); a joker owes a full turn. Its tokens and pace follow the factions there
-  are now.
+  passes (design-notes.md, "The faction bag"). Per faction it holds 3 tokens of its
+  own, 1 job token (`job:<id>`) and 2 blanks; the character's people have a
+  faction's share too, 4 `people` tokens and 2 blanks; and there is a joker. One is
+  drawn every 6 h + 25 h ÷ the number of factions, without replacement; with fewer
+  than 4 tokens per faction and the people left it gets one of each faction's, one
+  people, half as many blanks, and a joker and a faction's job token if it has none
+  left. Every drawn token but a blank is owed, played at the next pause: a faction
+  token a turn (`gm-faction.sh turn --only`), a job token a job offered to the
+  character (`gm-faction.sh job offer`), a people token an ask (`gm-faction.sh ask`,
+  faction_jobs.py), a joker a full turn. Its tokens and pace follow the factions
+  there are now.
 
 They are world rules like any other (values in rule-state.json, `gm-rule.sh change`,
 `set`, `rate --toward`, `on_rule`, `--rule-effect`), but defined here, not in the
@@ -60,7 +64,18 @@ _RULES = [
      "repo": True},
 ]
 BAG = "Faction turns"
-BLANK, JOKER = "blank", "joker"            # the bag's other kinds: no faction may take these ids
+BLANK, JOKER, PEOPLE = "blank", "joker", "people"   # the bag's other kinds: no faction may take these ids
+JOB = "job:"                               # a faction's job token: "job:<id>"
+OWN_TOKENS, JOB_TOKENS, BLANKS = 3, 1, 2   # per faction, and per the people (4 people tokens)
+
+
+def job_kind(fid: str) -> str:
+    return f"{JOB}{fid}"
+
+
+def job_faction(kind: str) -> str:
+    """The faction of a job token, or ''."""
+    return kind[len(JOB):] if kind.startswith(JOB) else ""
 NAMES = {r["name"].lower() for r in _RULES} | {BAG.lower()}
 
 
@@ -70,15 +85,22 @@ def bag_rule(table: dict[str, dict[str, Any]]) -> dict[str, Any]:
     minutes = round((6 + 25 / n) * 60)
     results = {fid: {"text": f"{row.get('name', fid)} takes a turn.", "owed": True}
                for fid, row in table.items()}
+    results.update({job_kind(fid): {"text": f"{row.get('name', fid)} has a job for the character.",
+                                    "owed": True} for fid, row in table.items()})
+    results[PEOPLE] = {"text": "Someone the character knows wants something of them.", "owed": True}
     results[BLANK] = {"text": "Nothing stirs."}
     results[JOKER] = {"text": "Every faction takes a turn at once.", "owed": True}
+    jobs = [job_kind(fid) for fid in table]
     return {"name": BAG, "block": "bag", "held_by": ["world"], "known": False,
-            "tokens": {**dict.fromkeys(table, 4), BLANK: 2 * n, JOKER: 1},
+            "tokens": {**dict.fromkeys(table, OWN_TOKENS), **dict.fromkeys(jobs, JOB_TOKENS),
+                       PEOPLE: OWN_TOKENS + JOB_TOKENS, BLANK: BLANKS * (n + 1), JOKER: 1},
             "draw": "keep out", "draw_every": f"{minutes}m", "results": results,
-            "top_up": {"below": 4 * n, "add": {**dict.fromkeys(table, 1), BLANK: n // 2},
-                       "if_none": [JOKER]},
-            "summary": "Who of the factions acts next: a drawn faction owes a turn, a joker a "
-                       "turn for all, a blank nothing.",
+            "top_up": {"below": 4 * (n + 1),
+                       "add": {**dict.fromkeys(table, 1), PEOPLE: 1, BLANK: (n + 1) // 2},
+                       "if_none": [JOKER, *jobs]},
+            "summary": "Who acts next: a drawn faction owes a turn, its job token a job offered "
+                       "to the character, a people token an ask from someone the character "
+                       "knows, a joker a turn for all, a blank nothing.",
             "when": "By itself as game time passes; play what is owed at the next pause.",
             "repo": True}
 
@@ -126,6 +148,15 @@ def owed_lines(json_ops) -> list[str]:
     for o in queue:
         if o["kind"] == JOKER:
             lines.append(f"  joker, drawn {when(o)}: every faction acts: bash tools/gm-faction.sh turn")
+        elif o["kind"] == PEOPLE:
+            lines.append(f"  an ask, drawn {when(o)}: someone the character knows wants "
+                         f"something: bash tools/gm-faction.sh ask")
+        elif job_faction(o["kind"]):
+            fid = job_faction(o["kind"])
+            name = names.get(fid, {}).get("name", fid)
+            lines.append(f"  {name}'s job, drawn {when(o)}: offer the character a complex action "
+                         f"for its plot, with a deadline: bash tools/gm-faction.sh job offer {fid} "
+                         f"(the JSON after it: the action as in a turn, \"due\", \"how\")")
         else:
             name = names.get(o["kind"], {}).get("name", o["kind"])
             lines.append(f"  {name}, drawn {when(o)}: bash tools/gm-faction.sh turn --only {o['kind']}")
@@ -190,3 +221,94 @@ def card_lines(json_ops, fid: str) -> list[str]:
             f"{names.get(o, {}).get('name', o)} {rel.get(o, 0):+d}"
             + (f" ({ties[o]})" if ties.get(o) else "") for o in others))
     return lines
+
+
+# ---------- relations: a decimal value, and the drift (decided 2026-11-21) ----------
+#
+# A Relation is a whole number like every counter (results, the log, gm-rule.sh), but
+# moves in fractions: a faction turn adds 0.8, the drift a little at every time step.
+# The decimal value is kept beside it (`exact`); the whole number follows its
+# rounding through world_rules.change, so the log and on_rule consequences work as
+# for any change. A change by hand (gm-rule.sh) wins: an `exact` that no longer
+# rounds to the value is dropped.
+
+RELAX_DAYS = 30          # the drift's time constant: R → R0 + (R − R0)·e^(−Δt/τ)
+
+
+def _whole(x: float) -> int:
+    """Rounded half away from zero, so +0.5 and −0.5 are alike."""
+    import math
+    return int(math.copysign(math.floor(abs(x) + 0.5), x))
+
+
+def relation_exact(json_ops, holder: str) -> float:
+    """The decimal value of a pair's Relation (`pair:<a>+<b>`)."""
+    import world_rules
+    stored = world_rules.entry(json_ops, world_rules.find_rule(json_ops, RELATION), holder)
+    value = int(stored.get("value", 0))
+    exact = stored.get("exact")
+    return float(exact) if isinstance(exact, (int, float)) and _whole(exact) == value else float(value)
+
+
+def _resting(json_ops, holder: str) -> int:
+    import rule_time
+    import world_rules
+    rule = world_rules.find_rule(json_ops, RELATION)
+    rate = rule_time.rate_of(rule, world_rules.entry(json_ops, rule, holder)) or {}
+    return int(rate.get("toward", 0) or 0)
+
+
+def set_relation(json_ops, holder: str, exact: float, cause: str) -> dict[str, Any] | None:
+    """Give a pair's Relation a new decimal value (kept within −5..5). Returns the
+    whole number's change report when it moved, else None."""
+    import world_rules
+    rule = world_rules.find_rule(json_ops, RELATION)
+    low, high = rule["range"]
+    exact = max(low, min(high, float(exact)))
+    value = int(world_rules.entry(json_ops, rule, holder).get("value", rule["start"]))
+    report = None
+    if _whole(exact) != value:
+        report = world_rules.change(json_ops, RELATION, holder, by=_whole(exact) - value, cause=cause)
+    state = world_rules.load_state(json_ops)
+    stored = dict(world_rules.entry(json_ops, rule, holder, state))
+    stored["exact"] = exact
+    state.setdefault(holder, {})[RELATION] = stored
+    world_rules.save_state(json_ops, state)
+    return report
+
+
+def add_relation(json_ops, a: str, b: str, by: float, cause: str) -> tuple[float, float]:
+    """Move the Relation of factions `a` and `b` by `by` (a fraction is fine).
+    Returns (before, after), decimal."""
+    holder = pair_id(a, b)
+    before = relation_exact(json_ops, holder)
+    set_relation(json_ops, holder, before + by, cause)
+    return before, relation_exact(json_ops, holder)
+
+
+def drift(json_ops, before, after) -> list[dict[str, Any]]:
+    """Every pair's Relation relaxes toward its resting point for the time passed:
+    R0 + (R − R0)·e^(−Δt/τ), τ = RELAX_DAYS. Returns the change reports of the whole
+    numbers that moved."""
+    import math
+
+    import world_rules
+    if before is None or after <= before:
+        return []
+    try:
+        world_rules.find_rule(json_ops, RELATION)
+    except world_rules.RulesError:
+        return []                                  # no factions here
+    factor = math.exp(-(after - before).total_seconds() / 86400 / RELAX_DAYS)
+    reports = []
+    for holder, values in world_rules.load_state(json_ops).items():
+        if not holder.startswith("pair:") or RELATION not in values:
+            continue
+        now, point = relation_exact(json_ops, holder), _resting(json_ops, holder)
+        if now == point:
+            continue
+        report = set_relation(json_ops, holder, point + (now - point) * factor,
+                              f"drift toward {point:+d}")
+        if report:
+            reports.append(report)
+    return reports

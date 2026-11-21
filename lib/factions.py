@@ -263,16 +263,21 @@ class FactionManager:
 
     def _into_bag(self, fid: str) -> None:
         """A new faction gets its full share of the faction bag at once, as if it had
-        been there from the start (decided 2026-11-19): 4 tokens and 2 blanks. A bag
-        never drawn yet holds them already (its start is built from the factions)."""
+        been there from the start (decided 2026-11-19): 3 tokens of its own, 1 job token
+        and 2 blanks. A bag never drawn yet holds them already (its start is built from
+        the factions)."""
         import faction_rules
         import rule_bag
         import world_rules
         if faction_rules.BAG not in (world_rules.load_state(self.json_ops).get("world") or {}):
             return
-        for kind, n in ((fid, 4), (faction_rules.BLANK, 2)):
+        for kind, n in ((fid, faction_rules.OWN_TOKENS),
+                        (faction_rules.job_kind(fid), faction_rules.JOB_TOKENS),
+                        (faction_rules.BLANK, faction_rules.BLANKS)):
             rule_bag.put(self.json_ops, faction_rules.BAG, "world", kind, n, cause="a new faction")
-        self.notes.append(f"{faction_rules.BAG}: {fid} gets its share of the bag, 4 tokens and 2 blanks.")
+        self.notes.append(f"{faction_rules.BAG}: {fid} gets its share of the bag, "
+                          f"{faction_rules.OWN_TOKENS} tokens, a job token and "
+                          f"{faction_rules.BLANKS} blanks.")
 
     def _checked_aliases(self, name: str, fid: str, aliases) -> list[str]:
         aliases = list(dict.fromkeys(a.strip() for a in aliases if a.strip()))
@@ -500,8 +505,12 @@ class FactionManager:
         row = known(self.json_ops)[fid]
         return "\n".join([f"{row['name']} (faction:{fid})", *_record_lines(row, self.json_ops),
                           *self._member_lines(fid), *self._presence_lines(fid),
-                          *self._plot_lines(f"faction:{fid}"),
+                          *self._plot_lines(f"faction:{fid}"), *self._job_lines(fid),
                           *self._world_lines(f"faction:{fid}")])
+
+    def _job_lines(self, fid: str) -> list[str]:
+        from faction_jobs import job_lines
+        return job_lines(self.json_ops, fid)
 
     def _presence_lines(self, fid: str) -> list[str]:
         found = presence_of(self.json_ops, fid)
@@ -601,6 +610,28 @@ def _cmd_turn(m, args):
         raise FactionError(str(error)) from error
 
 
+def _cmd_job(m, args):
+    import faction_jobs
+    from cli_output import json_input
+    try:
+        if args.what == "offer":
+            lines = faction_jobs.offer(m.json_ops, args.faction, json_input(args.spec, "the job"))
+        else:
+            lines = faction_jobs.outcome(m.json_ops, args.faction, args.what)
+    except faction_jobs.JobError as error:
+        raise FactionError(str(error)) from error
+    print("\n".join(lines))
+
+
+def _cmd_ask(m, args):
+    import faction_jobs
+    try:
+        lines = (faction_jobs.ask_again if args.again else faction_jobs.ask)(m.json_ops)
+    except faction_jobs.JobError as error:
+        raise FactionError(str(error)) from error
+    print("\n".join(lines))
+
+
 def _from_bible(m) -> None:
     if has_file(m.json_ops):
         raise FactionError(f"There is a {FILE} already: the factions are copied in.")
@@ -629,7 +660,7 @@ def _print_join(done: dict[str, Any], secret) -> None:
 
 def _check_id(fid: str) -> str:
     import faction_rules
-    if fid in (faction_rules.BLANK, faction_rules.JOKER):
+    if fid in (faction_rules.BLANK, faction_rules.JOKER, faction_rules.PEOPLE):
         raise FactionError(f"'{fid}' is a kind of token in the faction bag; give the faction "
                            f"another id with --id.")
     if not ID_RE.match(fid):
@@ -741,6 +772,13 @@ def main() -> int:
     p.add_argument("actions", nargs="?", default="-")
     p.add_argument("--only", help="this one faction takes its turn, nobody else (without it, "
                                   "every faction needs an action)")
+    p = sub.add_parser("job", help="a faction's job for the character: offer (the JSON after "
+                                   "the command), then done, failed or refused")
+    p.add_argument("what", choices=("offer", "done", "failed", "refused"))
+    p.add_argument("faction")
+    p.add_argument("spec", nargs="?", default="-")
+    p = sub.add_parser("ask", help="an owed ask: one of the character's people, drawn at random")
+    p.add_argument("--again", action="store_true", help="draw another person (the first didn't fit)")
     args = parser.parse_args()
 
     campaign = CampaignManager().get_active_campaign_dir()
@@ -763,6 +801,7 @@ COMMANDS = {
     "create": _cmd_create, "set": _cmd_set, "alias": _cmd_alias, "asset": _cmd_asset,
     "join": lambda m, args: _print_join(m.join(args.faction, args.npc, args.secret), args.secret),
     "leave": _cmd_leave, "tie": _cmd_tie, "from-bible": lambda m, args: _from_bible(m), "turn": _cmd_turn, "show": lambda m, args: print(m.show(args.faction)), "list": _cmd_list,
+    "job": _cmd_job, "ask": _cmd_ask,
 }
 
 

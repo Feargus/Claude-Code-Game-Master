@@ -28,6 +28,7 @@ PLOT_KINDS = {
     'antagonist': 'someone interfering with the character, or out for blood',
     'mystery': 'an open question the story turns on',
     'conspiracy': 'people working together in secret towards something',
+    'side': 'something someone the character knows asked of them: a small story of its own',
     'background': "a faction's or the world's own business, going on beside the character",
 }
 PLOT_KIND_ORDER = {kind: i for i, kind in enumerate(PLOT_KINDS)}

@@ -11,7 +11,7 @@ from lib import faction_rules as fr
 from lib import faction_turns as ft
 from lib import rule_bag
 from lib import world_rules as wr
-from lib.factions import FactionError, FactionManager
+from lib.factions import FactionError, FactionManager, known
 from lib.json_ops import JsonOperations
 
 CAMPAIGN = "dungeon-crawler-carl"
@@ -33,21 +33,24 @@ def _stored(ops):
 
 def test_the_bag_follows_the_factions(ops):
     rule = wr.find_rule(ops, fr.BAG)
-    assert rule["tokens"] == {"crawlers": 4, "system": 4, "showrunners": 4, "npcs": 4,
-                              "meridian-group": 4, "blank": 10, "joker": 1}
+    ids = ["crawlers", "system", "showrunners", "npcs", "meridian-group"]
+    # 3 of each faction's own and 1 job token; the people a faction's share; 2 blanks each
+    assert rule["tokens"] == {**dict.fromkeys(ids, 3), **{f"job:{f}": 1 for f in ids},
+                              "people": 4, "blank": 12, "joker": 1}
     assert rule["draw_every"] == "660m"                   # 6 h + 25 h / 5 = 11 h
-    assert rule["top_up"] == {"below": 20, "add": {"crawlers": 1, "system": 1, "showrunners": 1,
-                                                    "npcs": 1, "meridian-group": 1, "blank": 2},
-                              "if_none": ["joker"]}
+    assert rule["top_up"] == {"below": 24, "add": {**dict.fromkeys(ids, 1), "people": 1, "blank": 3},
+                              "if_none": ["joker", *(f"job:{f}" for f in ids)]}
     wr.check_rule({k: v for k, v in rule.items() if k != "repo"})        # a valid bag
     FactionManager(ops).create("Grey Hands", "Pickpockets.", fid="grey")
     rule = wr.find_rule(ops, fr.BAG)
-    assert rule["tokens"]["grey"] == 4 and rule["draw_every"] == "610m"  # 6 h + 25 h / 6
+    assert rule["tokens"]["grey"] == 3 and rule["tokens"]["job:grey"] == 1
+    assert rule["draw_every"] == "610m"                   # 6 h + 25 h / 6
 
 
 def test_no_faction_may_take_a_token_kinds_id(ops):
-    with pytest.raises(FactionError, match="kind of token in the faction bag"):
-        FactionManager(ops).create("The Joker", "A clown gang.", fid="joker")
+    for fid in ("joker", "people"):
+        with pytest.raises(FactionError, match="kind of token in the faction bag"):
+            FactionManager(ops).create("The Joker", "A clown gang.", fid=fid)
 
 
 def test_top_up_counts_what_is_in_the_bag():
@@ -66,7 +69,7 @@ def test_a_drawn_faction_owes_a_turn_and_playing_it_settles_it(ops):
     kinds = [d["kind"] for d in report["draws"]]
     assert [o["kind"] for o in owed] == [k for k in kinds if k != "blank"]
     assert all(o["at"] == "2187-10-26T04:30" for o in owed)
-    first = next(o["kind"] for o in owed if o["kind"] != "joker")
+    first = next(o["kind"] for o in owed if o["kind"] in known(ops))
     lines = "\n".join(fr.owed_lines(ops))
     assert "FACTION TURNS OWED" in lines and f"turn --only {first}" in lines
     done = ft.run(ops, [{"faction": first, "action": "build", "power": "Covert"}],
@@ -79,7 +82,7 @@ def test_a_drawn_faction_owes_a_turn_and_playing_it_settles_it(ops):
 def test_the_bag_refills_before_it_runs_low(ops):
     rule_bag.draw(ops, fr.BAG, "world", count=40, rng=random.Random(2))
     tokens = _stored(ops)["tokens"]
-    assert sum(tokens.values()) >= 19                      # topped up below 20, never empty
+    assert sum(tokens.values()) >= 23                      # topped up below 24, never empty
     assert tokens["joker"] <= 1
 
 
@@ -107,7 +110,7 @@ def test_a_new_faction_gets_its_full_share_at_once(ops):
     m = FactionManager(ops)
     m.create("Grey Hands", "Pickpockets.", fid="grey")
     after = _stored(ops)["tokens"]
-    assert after["grey"] == 4 and after["blank"] == before["blank"] + 2
+    assert after["grey"] == 3 and after["job:grey"] == 1 and after["blank"] == before["blank"] + 2
     assert "grey gets its share of the bag" in m.notes[-1]
 
 
@@ -117,3 +120,7 @@ def test_the_timeline_names_who_owes_a_turn_and_leaves_out_blanks(ops):
               "draws": [{"kind": "blank"}, {"kind": "meridian-group", "owed": True}]}
     assert brief(ops, report) == "Faction turns: Meridian Group owes a turn"
     assert brief(ops, {**report, "draws": [{"kind": "blank"}]}) == ""
+    jobs = {**report, "draws": [{"kind": "job:meridian-group", "owed": True},
+                                {"kind": "people", "owed": True}]}
+    assert brief(ops, jobs) == ("Faction turns: Meridian Group has a job for the character; "
+                                "someone the character knows wants something (an ask)")

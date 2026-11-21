@@ -205,9 +205,20 @@ def _bag_line(json_ops, report: dict[str, Any]) -> str:
     import faction_rules
     import factions
     names = factions.known(json_ops)
-    owed = [("every faction (a joker)" if d["kind"] == faction_rules.JOKER
-             else names.get(d["kind"], {}).get("name", d["kind"])) for d in report["draws"] if d.get("owed")]
-    return f"{faction_rules.BAG}: {', '.join(owed)} owes a turn" if owed else ""
+    name = lambda fid: names.get(fid, {}).get("name", fid)     # noqa: E731
+    owed = []
+    for d in report["draws"]:
+        if not d.get("owed"):
+            continue
+        if d["kind"] == faction_rules.JOKER:
+            owed.append("every faction owes a turn (a joker)")
+        elif d["kind"] == faction_rules.PEOPLE:
+            owed.append("someone the character knows wants something (an ask)")
+        elif faction_rules.job_faction(d["kind"]):
+            owed.append(f"{name(faction_rules.job_faction(d['kind']))} has a job for the character")
+        else:
+            owed.append(f"{name(d['kind'])} owes a turn")
+    return f"{faction_rules.BAG}: {'; '.join(owed)}" if owed else ""
 
 
 def _texts(json_ops, name: str) -> dict[str, str]:

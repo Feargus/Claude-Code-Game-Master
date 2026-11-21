@@ -33,6 +33,12 @@
 #                                      spy, expose, deal; one that succeeds for the faction's
 #                                      plot ("plot": "none" if not) moves its plan clock
 #                                      (lib/faction_turns.py)
+#   job offer <faction> <<'EOF' … EOF   a drawn job token: offer the character a complex
+#                                      action for its plot (the action as in a turn, plus
+#                                      "due": "2d" and "how"); then
+#   job done|failed|refused <faction>  how it ended (lib/faction_jobs.py)
+#   ask [--again]                      a drawn people token: one of the character's
+#                                      people, drawn at random, wants something
 #
 # Its goal is a plot it owns, its secrets are facts it holds (gm-note.sh --holders
 # faction:<id>), its own numbers are world rules held by factions (gm-rule.sh).

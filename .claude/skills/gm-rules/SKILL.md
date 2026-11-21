@@ -631,22 +631,33 @@ not in YOUR WORLD'S RULES:
   (start 3). A faction acts with one of them, and a contest compares the same power.
 - **Relation**: how two factions stand, −5 (war) to +5 (allies), held by a pair of
   factions, the same both ways: `gm-rule.sh change "Relation" "pair:kin+hardtop" -1`
-  (or `"kin+hardtop"`; the order doesn't matter).
+  (or `"kin+hardtop"`; the order doesn't matter). It moves by itself:
+  - **in a faction turn:** a hostile action that succeeds (push, strike, seize, take,
+    expose; a spy caught) costs the pair 1, a deal gains 1; taking presence from a rival
+    also moves how the others there see the one who did it, ΔR(A, C) = L · (P_C / 5) ·
+    (½ − R(C, B) / 5): B's enemies are pleased, neutrals a little, B's friends sour;
+  - **as time passes:** every pair relaxes toward its resting point, R₀ + (R − R₀) ·
+    e^(−Δt / 30 days), at every time step.
+  It is kept to two decimals beside the whole number the card, the results and the log
+  use; a change by hand sets the whole number and wins.
 - **Faction turns**: a bag held by the world that drives the factions as game time
-  passes: 4 tokens per faction, 2 blanks per faction and a joker, one drawn every 6 h +
-  25 h ÷ the number of factions, topped up with one per faction and half as many blanks
-  (and a joker if none is left) when fewer than 4 per faction remain; a faction created
-  in play gets its 4 tokens and 2 blanks at once. A drawn faction
-  owes a turn, a joker a full turn: they are listed as FACTION TURNS OWED at the end of
-  a time step or journey and in the brief. To make one faction busier for a while:
-  `gm-rule.sh put "Faction turns" hardtop 2`, or a consequence's `--rule-effect
-  '{"tokens": "Faction turns", "add": {"hardtop": 2}}'`.
+  passes. Per faction: 3 tokens of its own, 1 job token and 2 blanks; the character's
+  people have a faction's share, 4 `people` tokens and 2 blanks; and a joker. One is
+  drawn every 6 h + 25 h ÷ the number of factions, topped up (one of each faction's, one
+  people, half as many blanks, a joker or a job token that ran out) when fewer than 4 per
+  faction and the people remain; a faction created in play gets its share at once. A
+  drawn faction owes a turn, its job token a job (`gm-faction.sh job offer`), a people
+  token an ask (`gm-faction.sh ask`), a joker a full turn: they are listed as FACTION
+  TURNS OWED at the end of a time step or journey and in the brief. To make one faction
+  busier for a while: `gm-rule.sh put "Faction turns" hardtop 2`, or a consequence's
+  `--rule-effect '{"tokens": "Faction turns", "add": {"hardtop": 2}}'`.
 
-Their rate holds by default; give a faction or a pair its own drift and resting point:
-`gm-rule.sh rate "Military" "faction:police" --by 1 --toward 8`, `gm-rule.sh rate
-"Relation" "kin+hardtop" --by 1 --toward -2`. Resting points move as byproducts of
-plots and deals: a consequence's `--rule-effect '{"rate_of": "Relation", "of":
-"kin+hardtop", "shift": 1}'`.
+Power holds by default; give a faction its own drift and resting point: `gm-rule.sh
+rate "Military" "faction:police" --by 1 --toward 8`. A pair's Relation drifts by
+itself; give it its own resting point with `gm-rule.sh rate "Relation" "kin+hardtop"
+--toward -2` (no `--by`: the drift is the relaxation above). Resting points move as
+byproducts of plots and deals: a consequence's `--rule-effect '{"rate_of": "Relation",
+"of": "kin+hardtop", "shift": 1}'`.
 
 ### Standing: every campaign has it
 

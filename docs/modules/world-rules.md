@@ -92,8 +92,16 @@ and `draw_every` are built from the current factions each time the rules are rea
 bag options it uses, open to any bag: `top_up` (below N tokens, add some, and a kind
 that ran out) and `"owed": true` on a result (the drawn token waits in the holder's
 `owed` queue; `rule_bag.owed`, `settle`). `gm-faction.sh turn --only` settles the oldest
-owed turn of that faction, a full turn a joker; `time_manager.print_moments` and the
-brief list what is owed.
+owed turn of that faction, a full turn a joker; `gm-faction.sh job offer` a faction's job
+token (`job:<id>`), `gm-faction.sh ask` a `people` token (`lib/faction_jobs.py`);
+`time_manager.print_moments` and the brief list what is owed.
+
+**Relations move by themselves** (`faction_rules.add_relation`, `drift`): a faction turn's
+hostile actions and deals, and taking presence where others are present
+(`faction_turns._relation_deltas`); and as time passes, an exponential relaxation toward
+each pair's resting point (τ = 30 days, `rule_time.apply` calls `drift` at every step). The
+decimal value is kept as `exact` beside the whole number, which follows its rounding
+through `world_rules.change`.
 
 **`Standing`** (`world_rules.STANDING`): how each faction regards the character. Every
 campaign defines it, and scripts read it by this name, so a rule of that name must be a

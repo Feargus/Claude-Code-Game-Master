@@ -260,8 +260,10 @@ def resolve(json_ops, actions: list[dict[str, Any]], rng=None) -> list[dict[str,
 def apply(json_ops, results: list[dict[str, Any]]) -> list[str]:
     """Carry out every result together; the lines for the GM."""
     powers, places = _deltas(results)
+    relations = _relation_deltas(json_ops, results, places)     # from the state at the start
     changed_powers = _apply_powers(json_ops, powers)
     changed_places = _apply_places(json_ops, places)
+    changed_relations = _apply_relations(json_ops, relations)
     for r in results:
         if r["action"] in COMPLEX and r["effect"] is not None and r.get("clock"):
             r["clock_after"] = _advance(json_ops, r)
@@ -270,7 +272,71 @@ def apply(json_ops, results: list[dict[str, Any]]) -> list[str]:
     lines = ["FACTION TURN (contests: d6 + power against d6 + the rival's same power)"]
     for r in results:
         lines += _lines(json_ops, r, changed_powers, changed_places)
+    lines += _relation_lines(json_ops, changed_relations)
     return lines
+
+
+# ---------- relations (decided 2026-11-21) ----------
+#
+# A hostile action that succeeds costs the Relation of the two factions 1 (a push,
+# strike or seizure against the rival, a kidnapping of someone it protects, an
+# exposure; a spy who is caught); a deal that succeeds gains 1. Taking presence from a
+# rival at a place also moves how the others there see the one who did it:
+#     ΔR(A, C) = L · (P_C / 5) · (1/2 − R(C, B) / 5)
+# L the presence B lost, P_C C's presence there, R(C, B) how C stands with B: B's
+# enemies are pleased, neutrals a little (order restored), B's real friends sour.
+
+HOSTILE = ("push", "strike", "seize", "take", "expose")
+DEAL_GAIN, HOSTILE_COST = 1, -1
+
+
+def _relation_deltas(json_ops, results, places) -> dict[tuple[str, str], float]:
+    """{(a, b): change} for every pair this turn moves, judged from the state at the
+    start of the turn (before `places`, the presence changes, are applied)."""
+    import faction_rules
+    import factions
+    out: dict[tuple[str, str], float] = {}
+
+    def add(a, b, by):
+        if a != b and by:
+            key = tuple(sorted((a, b)))
+            out[key] = out.get(key, 0.0) + by
+
+    for r in results:
+        kind, fid, rival = r["action"], r["faction"], r.get("rival")
+        if not rival:
+            continue
+        if kind == "deal" and r["effect"] is not None:
+            add(fid, rival, DEAL_GAIN)
+        elif (kind in HOSTILE and r["effect"]) or (kind == "spy" and r["effect"] is None):
+            add(fid, rival, HOSTILE_COST)
+        if kind in ("push", "strike", "seize") and r["effect"] and "at" in r:
+            here = factions.presence(json_ops, r["at"])
+            lost = min(here.get(rival, 0), int(r["effect"]))
+            for other, p in here.items():
+                if other in (fid, rival) or p <= 0 or lost <= 0:
+                    continue
+                weight = 0.5 - faction_rules.relation_exact(
+                    json_ops, faction_rules.pair_id(other, rival)) / 5
+                add(fid, other, lost * p / 5 * weight)
+    return out
+
+
+def _apply_relations(json_ops, deltas) -> dict[tuple[str, str], tuple[float, float]]:
+    import faction_rules
+    return {(a, b): faction_rules.add_relation(json_ops, a, b, by, "a faction turn")
+            for (a, b), by in deltas.items()}
+
+
+def _relation_lines(json_ops, changed) -> list[str]:
+    if not changed:
+        return []
+    import factions
+    names = factions.known(json_ops)
+    name = lambda f: names.get(f, {}).get("name", f)     # noqa: E731
+    return ["Relations (−5 war … +5 allies, kept to two decimals; hidden from the player):"] + [
+        f"  {name(a)} and {name(b)}: {before:+.2f} → {after:+.2f}"
+        for (a, b), (before, after) in sorted(changed.items())]
 
 
 def _deltas(results) -> tuple[dict, dict]:
@@ -462,7 +528,7 @@ def idle(json_ops, actions: list[dict[str, Any]]) -> list[str]:
     return [fid for fid in load(json_ops) if fid not in acted]
 
 
-def run(json_ops, actions, rng=None, only: str | None = None) -> list[str]:
+def run(json_ops, actions, rng=None, only: str | None = None, settle: bool = True) -> list[str]:
     """Check, roll and apply a whole turn; the lines for the GM. `only`: one faction
     takes its turn alone, and the actions must be its one action."""
     checked = check(json_ops, actions)
@@ -479,6 +545,8 @@ def run(json_ops, actions, rng=None, only: str | None = None) -> list[str]:
                             f"{', '.join(missing)} (one that lies low builds up). For one "
                             f"faction alone: --only <faction>. Nothing was changed.")
     lines = apply(json_ops, resolve(json_ops, checked, rng))
+    if not settle:                  # a job the faction does itself: the job token is settled
+        return lines
     import faction_rules
     paid = faction_rules.settle(json_ops, checked[0]["faction"] if only is not None else faction_rules.JOKER)
     if paid:
