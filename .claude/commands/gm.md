@@ -63,9 +63,9 @@ Two questions make a new campaign; ask them in plain text, numbered, phone-frien
 2. **From one sentence:** the player gives one sentence ("a drowned arcology where the rich live on the roof"), you build the setting and lore from it without further questions. The repo's rules only: no rules of its own but `Standing`, which every world has. → `/new-game`, QUICK WORLD
 3. **From a book:** a PDF, book or module the player provides. → `/import`
 
-**2. How do we make the character?** Fast or slow, and someone of their own or someone from this world: the `/create-character` interview asks this, at the point each path hands over to it.
+**2. How do we make the character?** Their own, or one of six roles from this world (from a book: someone the book has); their trouble, in broad strokes; fast or slow. The `/create-character` interview asks this once the world's frame exists, and before its people do: the cast is built around the character, so none of it is shown before play.
 
-Every path ends the same way: the interview saves the character (`gm-player.sh create`), then `gm-session.sh opening` writes the first scene with its plot, hook, clock and start time.
+Every path ends the same way: the interview saves the character (`gm-player.sh create`), the people, places and plots around them are made, then `gm-session.sh opening` writes the first scene with the main plot (the character's trouble), its hook, clock and start time.
 
 ---
 
@@ -75,12 +75,13 @@ A player arrives with an "I love this book" spike. They came to *talk to someone
 Spending that on ability scores — or on extracting every city in the book — wastes it.
 Entry costs **one question**: *"Who are you in this world — or who did you come to meet?"*
 
-Ask it in the world's tone. Two answers: **someone from this world** (an NPC in the
-campaign; offer names that actually exist, scene context and `gm-npc.sh` know who they are)
-or **someone of their own** (a one-line concept). Then run the `/create-character`
-interview, fast (the default: one complete proposal) or slow (entry by entry), and save
-with `gm-player.sh create` (`--canon "<NPC>"` for someone from this world). Don't
-interrogate a player who wants to start playing.
+Ask it in the world's tone. The answers: **someone of their own** (a one-line concept),
+**a role from this world** (six roles from its factions and trades, never a named person,
+in a world made with `/new-game`), or **someone from the book** (a person the book has, in
+a world from `/import`). Then run the `/create-character` interview: their trouble, fast
+(the default: one complete proposal) or slow (entry by entry), and save with
+`gm-player.sh create` (`--canon "<NPC>"` for someone from the book). Don't interrogate a
+player who wants to start playing.
 
 `create` refuses to overwrite a campaign that already has a PC (it names who is sitting
 there). That refusal is a signal you asked the question at the wrong moment — check before
@@ -91,9 +92,9 @@ archives the outgoing sheet to `fallen/` first.
 fitting default (an iconic opening for this world/character) but make it plain they can name
 their own: a specific location, a particular scene, or a point in the timeline. Build the
 opening around **that** start and write it in one call: `bash tools/gm-session.sh opening <<'EOF'`, the JSON, a line `EOF`
-(the place, its exits, the people there, the plot and its hook, the premise and secrets, the
-antagonist's clock, the start time; the fields and an example: `lib/opening.py` and
-`/new-game` Phase D). Then narrate the first scene from what it prints.
+(the place, its exits, the people there, the main plot (the character's trouble) and its hook,
+the premise and secrets, the antagonist's clock, the start time; the fields and an example: `lib/opening.py` and
+`/new-game` Phase E). Then narrate the first scene from what it prints.
 
 ---
 
@@ -221,7 +222,7 @@ EOF
 - **After the turn:** for each complex action the output says what to record. Record at least two facts with `gm-note.sh beat`: the truth, held by the acting faction, and versions for the others (`"truth": "partial"` or `"wrong"`, `"version_of": "#1"`, held by the victims, the street or the public: "a gas main blew at the depot"). A deal's terms, and the lasting effects of a plot's success or failure, are consequences that move resting points (`--rule-effect '{"rate_of": "Relation", "of": "kin+hardtop", "shift": 1}'`). Simple actions need nothing: a change of presence is background (more patrols, a shop shut), narrated only if the character is there.
 - A turn can't be undone (every power change is in `rules.log`). Faction actions are about the world, not the character: their facts are held by factions, the street or the public, and time doesn't stop for them.
 
-**A faction's plot** (its first, and each that replaces it) is written from its values and impulses and where it stands now: power, assets, leader, presence, relations. With it, in one go:
+**A faction's plot** (its first, and each that replaces it) is written from its values and impulses and where it stands now: power, assets, leader, presence, relations. It touches the character only indirectly: it plays out in a place they know or frequent, or reaches them or their people because it reaches many (a rent rise, a raid on their street). It is never aimed at the character; that is the main plot's job. With it, in one go:
 1. `gm-plot.sh add "<short name>" --owner faction:<id> --goal "<what they are after>" --description "…"`;
 2. its plan clock, an event clock, with what happens when the plan succeeds: `gm-clock.sh add "<short name>" <2–6> --on event --text "<the plan>" --consequence "<the plan succeeds: what changes>" --plot "<plot>"`; each segment is one successful action for it;
 3. the true plan as a fact the faction holds (`gm-note.sh "<the plan>" --holders faction:<id> --nowhere --plot "<plot>"`);

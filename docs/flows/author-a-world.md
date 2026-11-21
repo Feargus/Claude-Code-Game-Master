@@ -20,12 +20,13 @@ distinct; those three do.
 |---|---|---|
 | **A — Seed** | genre-aware questionnaire → `world-seed.json` (premise, tone, genre bend, voice, art style, chronicler) | — |
 | **B — Skeleton** | slim bible (voice + signature systems + this street), **shown for approval** | play gates on approval |
-| **C — Kit and opening sketch** | draft the kit; sketch the opening (place, exits, people, the plot and its hook, premise, the antagonist's clock), stored nowhere yet | — |
-| **D — Handoff** | lock the chronicler + art style, the one identity question → the `/create-character` interview (`gm-player.sh create`), where and when to start, then `gm-session.sh opening` and appearances for the stage | — |
+| **C — The kit and the frame** | draft the kit and the world's own rules; the factions' power and relations; the districts and landmarks, kinds of enemy, the world's words; lock the chronicler + art style. No people yet | — |
+| **D — The character** | the `/create-character` interview: their own concept or one of six roles (never a named person), their trouble in broad strokes, fast or slow (`gm-player.sh create`) | — |
+| **E — The character's world** | Standing; their people and places; each faction's first plot (touching the character only indirectly); where and when to start; `gm-session.sh opening` with the main plot, the character's trouble | — |
 
 ## The stage, not the planet
 
-Phase C writes only what tonight needs: one location you can stand in, 2–4 people
+Phase E writes only what tonight needs: one location you can stand in, 2–4 people
 in the room, the exits you can see, and the hook that will not wait — never a
 continent. When play walks toward a name that isn't in the journal yet,
 `gm-npc.sh create` or `gm-location.sh add` makes it then. Do not census ahead.
@@ -35,8 +36,8 @@ continent. When play walks toward a name that isn't in the journal yet,
 The opening is written after the character exists and the player has said where
 and when to start, so it fits them: `gm-session.sh opening` (`lib/opening.py`) makes
 the stage through the normal tools, all or nothing, and refuses once a session has
-ended. Every campaign starts with at least one plot; its hook is the plot's first
-beat, and the people and places it names without a record are its horizon, shown in
+ended. Every campaign starts with its main plot, the character's trouble from the
+interview made concrete; its hook is the plot's first beat, and the people and places it names without a record are its horizon, shown in
 STORY THREADS.
 
 ## Growing the world at the table

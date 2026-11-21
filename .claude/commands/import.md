@@ -88,6 +88,10 @@ Two doors (same as `/gm` identity-first):
 - someone from the book (name a few you can actually find via RAG — Conan, Bêlit, Valeria…)
 - someone of their own
 
+The `/create-character` interview (Step 5) also asks their trouble, in broad strokes
+("owes money", "is in hiding"): it becomes the main plot. Someone from the book brings
+theirs from the book.
+
 They came for the fantasy of talking to a favorite character. Spend the spike on
 that, not on ability scores and not on a loading screen.
 
@@ -139,7 +143,7 @@ relationships (the villain's faction vs the player's, the caravan vs the hunt)
 pay off in every scene. Do not build a full relationship map.
 
 Then give the factions their power, relations and `Standing` as the book has them:
-the steps are `/new-game`'s Phase C step 2b (`.claude/commands/new-game.md`). Unset, every
+the steps are `/new-game`'s Phase C step 3 and Phase E step 1 (`.claude/commands/new-game.md`). Unset, every
 faction has 3 in each power and 0 with every other, which makes them all alike.
 
 Attributes are always the nine from `gm-skills`, actions are skill contests, and growth is `gm-growth`'s.
@@ -227,7 +231,8 @@ and stays out of the opening's people.
 
 Then write the opening, before narrating, in one call (the fields: `lib/opening.py`).
 It makes the place, exits and people through the normal tools, and keeps nothing if any
-part is refused. **Every campaign starts with at least one plot:** its `hook` is the
+part is refused. **Every campaign starts with its main plot:** the character's trouble,
+made concrete; it involves the character specifically. Its `hook` is the
 problem that will not wait and becomes its first beat; its `npcs` and `locations` may
 name people and places on the horizon that get no record yet.
 
@@ -310,6 +315,11 @@ A name close to one already made is refused: give the existing record an alias
    since nothing brings them into the scene.
 
 Also put the book's own words (the voice's terms) into the glossary, one line each.
+
+**Around the character:** for a character of their own, add their people (a friend,
+someone they owe, a rival: from their background and trouble) and their places, as
+`/new-game` Phase E step 2 says; someone from the book has theirs in the book. Then each
+faction's first plot, as Phase E step 3 says: it touches the character only indirectly.
 
 ---
 

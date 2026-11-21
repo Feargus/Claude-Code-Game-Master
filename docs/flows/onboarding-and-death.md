@@ -9,9 +9,11 @@ chair; do not make them wait through a census to talk to someone they came for.
 
 ## Entry: one question, then the interview
 
-"Who are you in this world?" has two answers: someone from this world (an NPC in the
-campaign) or someone of the player's own (a one-line concept). Then the GM runs the
-`/create-character` interview, the fast way by default: it proposes a complete character
+"Who are you in this world?" has three answers: someone of the player's own (a one-line
+concept), a role from this world (six offered, never a named person: in a world made with
+`/new-game` the cast is built after the character), or someone from the book (an NPC of an
+imported book). The interview asks the character's trouble too, which becomes the main
+plot. Then the GM runs the `/create-character` interview, the fast way by default: it proposes a complete character
 and the player changes what they like. It is not a rules engine: the GM suggests values
 (d12 attributes, luck 3, a few skills), the player may choose anything.
 
