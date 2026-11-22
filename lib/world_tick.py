@@ -186,7 +186,7 @@ class WorldTick:
                 text = str(d.get("fact") or d.get("text")).strip()
                 plots = as_list(d.get("plot"))
                 fid = notes.add_fact(text, check=False, about=as_list(d.get("about")),
-                                     plots=plots, offer_plot=False,
+                                     plots=plots,
                                      holders=as_list(d.get("holders")),
                                      truth=d.get("truth"), version_of=d.get("version_of"),
                                      at=d.get("at"), auto_at=False)

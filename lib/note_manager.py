@@ -164,7 +164,7 @@ class NoteManager:
     def add_fact(self, fact: str, *, check: bool = True,
                  about=None, not_about=None, holders=None, secret: bool = False,
                  also=None, truth=None, version_of=None, at=None, nowhere: bool = False,
-                 auto_at: bool = True, plots=None, offer_plot: bool = True,
+                 auto_at: bool = True, plots=None,
                  when=None) -> str:
         """Record a fact. Returns its id, or "" on failure. Everything but the
         text is given by name (a fact has no category any more: facts.py).
@@ -181,9 +181,8 @@ class NoteManager:
         (recall_notes.py), unless `check` is False (a caller that records several
         and checks them together). It needs the model: without it nothing is recorded.
         `at` is where it happened: the place given, else the current location
-        (with `auto_at`), or none with `nowhere`. `plots`: the plots it belongs to;
-        with none, and `offer_plot`, the one open plot that involves who or where
-        the fact is about is offered (only when exactly one fits). `when`: the game
+        (with `auto_at`), or none with `nowhere`. `plots`: the plots it belongs to
+        (with none, semantic recall suggests or links one: recall_notes.py). `when`: the game
         time it happened ("YYYY-MM-DD HH:MM"), if earlier than now (a faction turn
         owed since it was drawn, something recorded after the fact).
         """
@@ -248,8 +247,6 @@ class NoteManager:
         if plot_keys:
             print(f"  plot: {', '.join(plot_keys)}"
                   + (f" (as its truth, {version_of})" if inherited else ""))
-        elif offer_plot:
-            self._offer_plot(fact_id, about_ids + ([where] if where else []))
         for note in version_notes:
             print(f"  {note}")
         if truth:
@@ -314,15 +311,6 @@ class NoteManager:
         return {whom: f for (holder, whom), f in
                 current_attitudes(fact_file.load(self.json_ops)).items()
                 if holder == who}
-
-    def _offer_plot(self, fact_id: str, ids) -> None:
-        """The one open plot that involves someone or somewhere the fact is about,
-        offered, never given. Nothing when none or several fit."""
-        plots = self.json_ops.load_json("plots.json") or {}
-        fits = [k for k, p in plots.items() if isinstance(p, dict)
-                and (p.get("status") or "open") == "open" and set(ids) & set(p.get("involves") or [])]
-        if len(fits) == 1:
-            print(f"  Part of {fits[0]}? bash tools/gm-note.sh plot {fact_id} --add \"{fits[0]}\"")
 
     def set_plots(self, fact_id: str, add=None, remove=None) -> list:
         """Add plots to a recorded fact, or remove them. Returns the new list."""

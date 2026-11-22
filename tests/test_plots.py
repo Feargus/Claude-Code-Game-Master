@@ -67,9 +67,9 @@ def test_where_it_stands_who_it_involves_and_how_it_ends(world):
     assert plot_order(pm.json_ops) == ["The Descent"]
 
 
-def test_links_are_stored_on_the_side_where_they_are_made(world, capsys):
+def test_links_are_stored_on_the_side_where_they_are_made(world):
     """Facts, consequences, clocks and glossary entries point at their plots;
-    some inherit them. A fact with no plot is offered the one that fits."""
+    some inherit them."""
     from lib import glossary
     pm = PlotManager(world)
     pm.add("The Descent", "Down the stairs.", involves=["Princess Donut"])
@@ -78,10 +78,7 @@ def test_links_are_stored_on_the_side_where_they_are_made(world, capsys):
                          nowhere=True)
     assert notes._entry(_load(world, "facts.json"), fid)["plots"] == ["The Descent"]
     assert [f["id"] for f in notes.find(plot="The Descent")] == [fid]
-    capsys.readouterr()
     other = notes.add_fact("Donut hissed at the stairs.", nowhere=True)
-    assert f'Part of The Descent? bash tools/gm-note.sh plot {other} --add "The Descent"' \
-        in capsys.readouterr().out
     assert notes.set_plots(other, add=["The Descent"]) == ["The Descent"]
     assert not notes.add_fact("x", plots=["No Such Plot"], nowhere=True)
 
@@ -90,7 +87,7 @@ def test_links_are_stored_on_the_side_where_they_are_made(world, capsys):
                              match="someone kicks the rig", plots=["The Descent"],
                              effects=[{"type": "start_clock", "name": "Collapse", "segments": 2,
                                        "on": "event", "consequence": "The floor goes"}])
-    trigger = notes.add_fact("Carl kicked the rig.", nowhere=True, offer_plot=False)
+    trigger = notes.add_fact("Carl kicked the rig.", nowhere=True)
     cm.fire(cid, by_fact=trigger)
     clocks = ThreatClockManager(world)
     assert clocks.get_clocks()["Collapse"]["plots"] == ["The Descent"]        # from the consequence
