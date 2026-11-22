@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Author per-book campaign-overview fields.
 
-Import creates campaign-overview.json as the default scaffold (genre "Fantasy"),
-so the book's own name, genre and tone have to be written in. The world's own
+Import creates campaign-overview.json as the default scaffold, so the book's own
+name has to be written in (its tone and voice are the world bible's). The world's own
 rules are not kept here: they are the ruleset's (world_rules.py, gm-rule.sh).
 """
 

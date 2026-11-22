@@ -209,13 +209,6 @@ def validate_campaign_overview(data: dict[str, Any]) -> tuple[bool, list[str]]:
     if not isinstance(pos, dict):
         errors.append("Campaign: player_position must be a dict")
 
-    # Validate tone structure
-    tone = data.get('tone', {})
-    if isinstance(tone, dict):
-        for key in ['horror', 'comedy', 'drama']:
-            if key in tone and not isinstance(tone[key], (int, float)):
-                errors.append(f"Campaign: tone.{key} must be a number")
-
     return len(errors) == 0, errors
 
 

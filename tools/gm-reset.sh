@@ -169,12 +169,6 @@ reset_world() {
     cat > "$CAMPAIGN_OVERVIEW" << 'EOF'
 {
   "campaign_name": "New Campaign",
-  "genre": "Fantasy",
-  "tone": {
-    "horror": 30,
-    "comedy": 30,
-    "drama": 40
-  },
   "current_date": "1st of the First Month, Year 1",
   "time_of_day": "Morning",
   "player_position": {

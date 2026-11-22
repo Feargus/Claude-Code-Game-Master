@@ -400,12 +400,6 @@ class CampaignManager:
         if not preserve_existing or not overview_path.exists():
             overview = {
                 "campaign_name": campaign_name,
-                "genre": "",
-                "tone": {
-                    "horror": 30,
-                    "comedy": 30,
-                    "drama": 40
-                },
                 "current_date": "",
                 "time_of_day": "",
                 "player_position": {

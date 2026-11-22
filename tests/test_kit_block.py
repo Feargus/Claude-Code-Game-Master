@@ -87,6 +87,6 @@ def test_new_campaigns_have_no_fantasy_default_and_no_session_log(isolated_world
     cm = CampaignManager()
     cdir = cm.create("Solo", "Solo")
     overview = json.loads((cdir / "campaign-overview.json").read_text())
-    assert overview["genre"] == "" and overview["current_date"] == ""
+    assert "genre" not in overview and "tone" not in overview and overview["current_date"] == ""
     assert not (cdir / "session-log.md").exists()      # plots carry the story (2026-11-14)
     assert "session_count" not in overview

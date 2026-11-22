@@ -53,12 +53,6 @@ Most of these are created lazily — a campaign that has never been illustrated 
 ```json
 {
   "campaign_name": "string",
-  "genre": "Fantasy",
-  "tone": {
-    "horror": 30,
-    "comedy": 30,
-    "drama": 40
-  },
   "current_date": "string (in-game date)",
   "time_of_day": "dawn|morning|midday|afternoon|dusk|evening|night|midnight",
   "player_position": {

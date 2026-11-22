@@ -156,7 +156,7 @@ CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 ```bash
 CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 uv run python lib/overview_seed.py "$CAMPAIGN_DIR" --fields-json <<'EOF'
-{"campaign_name": "<World>", "genre": "...", "tone": {"grim": 40, "adventure": 40, "horror": 20}}
+{"campaign_name": "<World>"}
 EOF
 ```
 
