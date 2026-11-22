@@ -126,8 +126,8 @@ class Cards:
 
     def location_card(self, location: str, waiting: bool = True) -> list[str]:
         """The place as recorded: description, exits, who is usually here, and
-        (with `waiting`) what waits here, then the facts that fit the scene best:
-        those the character knows, and those they don't."""
+        (with `waiting`) what fired here and is still to be played out; then the
+        facts that fit the scene best, those the character knows and those they don't."""
         from session_manager import SessionManager
         place = self.locations.get(location)
         moment = current_time(self.json_ops)
@@ -180,15 +180,18 @@ class Cards:
         return lines
 
     def _waiting_here(self, location: str) -> list[str]:
-        """Consequences that fire at this place, and the open plots that involve it."""
+        """The consequences that fired at this place and are still to be played
+        out, and the open plots that involve it. Those still waiting here aren't
+        listed: the move fires them by itself (decided 2026-11-22)."""
+        from consequence_manager import fired_lines
         lines = []
         lid = f"location:{location}".lower()
         store = self.json_ops.load_json("consequences.json") or {}
         for c in store.get("active", []) if isinstance(store, dict) else []:
-            if any(isinstance(t, dict) and t.get("type") == "on_location"
-                   and str(t.get("match", "")).lower() == lid for t in c.get("triggers") or []):
-                label = "Fired here, not resolved yet" if c.get("fired") else "Waiting here"
-                lines.append(f"{label}: [{str(c.get('id', '?'))[:4]}] {c.get('consequence', '')}")
+            if c.get("fired") and any(
+                    isinstance(t, dict) and t.get("type") == "on_location"
+                    and str(t.get("match", "")).lower() == lid for t in c.get("triggers") or []):
+                lines += fired_lines(c, indent="")
         lines += self._plots_of(f"location:{location}", "Plots here")
         return lines
 

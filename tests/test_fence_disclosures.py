@@ -86,5 +86,5 @@ def test_context_remainder_counts_on_every_truncated_section(tmp_path):
     assert "secret fact 7" in ctx                            # the five under the plot ...
     assert all(ctx.count(f"secret fact {i}") == 1 for i in range(1, 8))   # ... each printed once
     assert "term-14" in ctx
-    assert all(f"event {i} (when: later)" in ctx for i in range(12))
+    assert all(f"c{i:02d} waits for: later.\n    Then: event {i}." in ctx for i in range(12))
     assert "Dawn closed it." not in ctx                      # three sample passages

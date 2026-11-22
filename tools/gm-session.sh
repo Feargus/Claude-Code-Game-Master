@@ -7,7 +7,7 @@ show_usage() {
     echo "Usage: gm-session.sh <action> [args]"
     echo ""
     echo "Session Actions:"
-    echo "  start                    - The start of play: world state, pending consequences"
+    echo "  start                    - The start of play: world state"
     echo "  status                   - Show current campaign status"
     echo "  move <location> [--takes <duration>]"
     echo "                           - Move party to a recorded, described place (gm-location.sh add);"
@@ -85,9 +85,6 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/session_manager.py" start
         RESULT=$?
         if [ $RESULT -ne 0 ]; then exit $RESULT; fi
-        echo ""
-        echo "Pending Consequences:"
-        bash "$TOOLS_DIR/gm-consequence.sh" check
 
         # Auto-query RAG for current location context (GM-internal, minimal output)
         CAMPAIGN_DIR=$(bash "$TOOLS_DIR/gm-campaign.sh" path 2>/dev/null)

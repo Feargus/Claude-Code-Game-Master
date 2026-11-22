@@ -40,9 +40,11 @@ def test_brief_and_check_show_effects(dcc_world):
         "The crew hears of the job", "the job goes loud",
         effects=[{"type": "start_clock", "name": "Vendetta", "segments": 3, "on": "event"},
                  {"type": "tell", "fact": fid, "holders": ["street"]}])
+    brief = SessionManager(dcc_world).get_full_context()
+    assert (f"Then: The crew hears of the job. It also starts clock 'Vendetta' "
+            f"(3 segments, advanced by hand); tells {fid} to street.") in brief
     then = (f"when it fires, starts clock 'Vendetta' (3 segments, advanced by hand); "
             f"tells {fid} to street")
-    assert then in SessionManager(dcc_world).get_full_context()
     out = subprocess.run([sys.executable, str(ROOT / "lib" / "consequence_manager.py"), "check"],
                          capture_output=True, text=True, cwd=str(Path(dcc_world).parent)).stdout
     assert f"[{cid}]" in out and then in out

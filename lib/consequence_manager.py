@@ -806,6 +806,42 @@ def _rule_effects(raws) -> list[dict[str, Any]]:
     return out
 
 
+def short_id(c: dict[str, Any]) -> str:
+    """A consequence's id as the lists show it: its first 4 characters."""
+    return str(c.get('id', '?'))[:4]
+
+
+def sentence(text) -> str:
+    """The text with a full stop at the end, if it has none."""
+    text = str(text or "").strip()
+    return text if not text or text[-1] in ".!?" else f"{text}."
+
+
+def fact_trigger(c: dict[str, Any]) -> str:
+    """What a consequence waits for from a recorded fact, in words (its on_fact
+    triggers, joined); '' when it waits for nothing a fact gives."""
+    return " / ".join(t['match'] for t in ConsequenceManager.structured_triggers(c)
+                      if t['type'] == 'on_fact')
+
+
+def then_line(c: dict[str, Any], indent: str = "    ") -> str:
+    """What happens when a consequence fires: its text, and what the script does
+    then (starts a clock, tells a fact), so it can be weighed before firing it."""
+    also = describe_effects(c.get('effects'))
+    return f"{indent}Then: {sentence(c.get('consequence', '?'))}" + (
+        f" It also {also}." if also else "")
+
+
+def fired_lines(c: dict[str, Any], indent: str = "  ") -> list[str]:
+    """A fired consequence still to be played out (docs/conventions/output.md):
+    the id, what happens, the fact that fired it; then the command that closes it."""
+    by = (c.get('fired') or {}).get('fact')
+    cid = short_id(c)
+    return [f"{indent}[FIRED] {cid} {sentence(c.get('consequence', '?'))}"
+            + (f" By {by}." if by else ""),
+            f"{indent}  Once played out: bash tools/gm-consequence.sh resolve {cid}"]
+
+
 AFTER_FIRING = ("it fires once: play it out, then gm-consequence.sh resolve <id>; "
                 "wrong moment: gm-consequence.sh rearm <id>")
 

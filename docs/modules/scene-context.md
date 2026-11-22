@@ -26,7 +26,9 @@ are the spine: what matters is what belongs to a plot. `Brief.SECTIONS`, in orde
   what `CLAUDE.md` says by default.
 - **PLOTS**, every open plot, most pressing first (`plot_manager.plot_order`): where it
   stands (its one sentence), whose goal it is, its sketches (named, not built), its clocks,
-  the consequences waiting in it, and **what the character doesn't know of it**: secrets
+  its consequences that fired and are still to be played out (`[FIRED]`) and those waiting
+  for a recorded fact (`on_fact`; the scripts fire the others themselves and print them
+  then), and **what the character doesn't know of it**: secrets
   and facts only others hold, up to five, newest first, each with who knows it, then the
   `gm-note.sh find --plot … --hidden` for the rest. What the character knows is not listed
   per plot: the plot's sentence says it, and LATEST shows what just happened. The secrets

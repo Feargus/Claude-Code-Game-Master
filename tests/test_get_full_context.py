@@ -22,9 +22,10 @@ def test_context_includes_active_character(dcc_world):
 
 def test_a_consequence_in_no_plot_is_listed_there(dcc_world):
     from lib.consequence_manager import ConsequenceManager
-    ConsequenceManager(dcc_world).add_consequence("The bouncer remembers", "later")
+    cid = ConsequenceManager(dcc_world).add_consequence("The bouncer remembers", "Carl comes back")
     ctx = _context(dcc_world)
-    assert "--- IN NO PLOT ---" in ctx and "The bouncer remembers (when: later)" in ctx
+    assert "--- IN NO PLOT ---" in ctx
+    assert f"  {cid[:4]} waits for: Carl comes back.\n    Then: The bouncer remembers." in ctx
 
 
 def test_the_brief_states_only_play_styles_that_differ_from_the_default(dcc_world):
@@ -88,12 +89,39 @@ def test_pending_consequences_render_real_text_not_unknown(dcc_world):
     assert "Unknown -> triggers" not in ctx
 
 
-def test_pending_consequences_show_their_typed_triggers(dcc_world):
+def test_only_consequences_a_fact_triggers_or_that_fired_are_listed(dcc_world):
+    """The scripts fire the rest themselves and print them then (decided 2026-11-22):
+    listing every waiting one, nine clock warnings in the Long Hull, said nothing to
+    play. A fired one is to be played out, with the command that closes it."""
     from lib.consequence_manager import ConsequenceManager
-    ConsequenceManager(dcc_world).add_consequence(
+    cm = ConsequenceManager(dcc_world)
+    waits = cm.add_consequence(
         "The bouncer remembers", "when Carl is back at the club",
         triggers=[{"type": "on_location", "match": "Floor 2 Junction"},
                   {"type": "on_npc", "match": "Mordecai"}])
+    fired = cm.add_consequence("The alarm wakes the floor", "someone trips the wire",
+                               trigger_type="on_fact", match="someone trips the wire")
+    cm.fire(fired, reason="Carl did")
     ctx = _context(dcc_world)
-    assert ("(when: when Carl is back at the club; "
-            "on_location location:Floor 2 Junction · on_npc npc:Mordecai)") in ctx
+    assert "The bouncer remembers" not in ctx and waits[:4] not in ctx
+    assert f"  [FIRED] {fired[:4]} The alarm wakes the floor.\n" in ctx
+    assert f"    Once played out: bash tools/gm-consequence.sh resolve {fired[:4]}" in ctx
+
+
+def test_the_location_card_lists_only_what_fired_here(dcc_world):
+    """A consequence still waiting here isn't listed: the move fires it by itself."""
+    from pathlib import Path
+
+    from lib.cards import Cards
+    from lib.consequence_manager import ConsequenceManager
+    from lib.json_ops import JsonOperations
+    ops = JsonOperations(str(Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"))
+    cm = ConsequenceManager(dcc_world)
+    cid = cm.add_consequence("Hekla's patrol arrives", "Carl comes back here",
+                             triggers=[{"type": "on_location", "match": "Warehouse Street Level"}])
+    card = "\n".join(Cards(ops).location_card("Warehouse Street Level"))
+    assert "Hekla's patrol arrives" not in card
+    cm.fire(cid, reason="Carl came back")
+    card = "\n".join(Cards(ops).location_card("Warehouse Street Level"))
+    assert f"[FIRED] {cid[:4]} Hekla's patrol arrives." in card
+    assert f"Once played out: bash tools/gm-consequence.sh resolve {cid[:4]}" in card

@@ -138,8 +138,9 @@ def test_plot_is_the_field_everywhere(world):
 
 
 def test_the_brief_is_ordered_by_plot(world):
-    """Under each plot: its clocks, what waits in it, and what the character
-    doesn't know of it, with who does; LATEST names a fact shown above by id."""
+    """Under each plot: its clocks, and what the character doesn't know of it, with
+    who does (a consequence a clock fires is not listed: the clock fires it); LATEST
+    names a fact shown above by id."""
     from lib.session_manager import SessionManager
     notes = NoteManager(world)
     PlotManager(world).add("The Descent", "Down the stairs.", stands="The timer runs.")
@@ -151,7 +152,7 @@ def test_the_brief_is_ordered_by_plot(world):
                             plots=["The Descent"])
     brief = SessionManager(world).get_full_context()
     block = brief.split("] The Descent: The timer runs.")[1].split("\n---")[0]
-    assert "clock Collapse: 0/3" in block and "The stairs give way (when: Collapse:2" in block
+    assert "clock Collapse: 0/3" in block and "The stairs give way" not in block
     assert f"{secret} Mordecai rigged the stairs. (Mordecai knows)" in block
     latest = brief.split("--- LATEST")[1]
     assert f"newer, above: {secret}" in latest and "rigged" not in latest   # named, not printed again

@@ -131,4 +131,7 @@ files. A new idea gets its word here before it is used.
 - Semantic recall's lines after a fact carry no marker yet (they become `[CHECK]` for a
   consequence it may trigger, `[NOTE]` for a link it made, `[CHECK]` for a suggestion).
 - Consequence ids are upstream's hex codes; the hiding marks are today's.
+- Square brackets that are neither marker nor mark: a plot's kind in the brief (`[main] The
+  Sold Contract`), consequence ids in lists (`[2563]`; the brief and the location card
+  write them bare since 2026-11-22).
 - `Error:` instead of `[ERROR]`, and `[ERROR]` on standard output: `todo.md` → Review.

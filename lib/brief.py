@@ -13,7 +13,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 import facts as fact_file
-from consequence_manager import describe_effects
+from consequence_manager import fact_trigger, fired_lines, sentence, short_id, then_line
 from entity_manager import is_party_member
 from note_manager import fact_text
 from threat_clocks import ThreatClockManager
@@ -225,16 +225,17 @@ class Brief:
             state = "FULL: a beat is due" if cur >= mx else (
                 f"{cur}/{mx}" + ThreatClockManager.due_text(c))
             lines.append(f"  clock {name}: {state}" + (f" ({c['text']})" if c.get('text') else ""))
-        waiting = [c for c in self._open_consequences() if belongs(c.get("plots") or [])]
-        for c in waiting:
-            cid = str(c.get('id', '?'))[:4]
-            if c.get("fired"):       # it happened: to be played out, then resolved
-                lines.append(f"  FIRED, not resolved yet [{cid}]: {c.get('consequence', '?')} "
-                             f"(because: {c['fired'].get('reason', '?')})")
+        # Fired ones are to be played out; of the waiting ones only those a recorded
+        # fact triggers, which the GM must recognise (the scripts fire the others
+        # themselves, and print them then). Decided 2026-11-22.
+        for c in self._open_consequences():
+            if not belongs(c.get("plots") or []):
                 continue
-            then = describe_effects(c.get('effects'))
-            lines.append(f"  waiting [{cid}]: {c.get('consequence', '?')} "
-                         f"(when: {self._when(c)})" + (f"; when it fires, {then}" if then else ""))
+            if c.get("fired"):
+                lines += fired_lines(c)
+            elif fact_trigger(c):
+                lines += [f"  {short_id(c)} waits for: {sentence(fact_trigger(c))}",
+                          then_line(c)]
         unknown = self._scene().rank([f for f in self._facts_newest_first()
                                       if self._unknown_to_character(f)
                                       and belongs(f.get("plots") or [])])
@@ -308,19 +309,6 @@ class Brief:
     def _character_name(self) -> str:
         import sheet as sheet_mod
         return sheet_mod.name(self.json_ops.load_json("character.json") or {}) or "The character"
-
-    @staticmethod
-    def _when(c: dict) -> str:
-        """A consequence's trigger in words, and how it fires when that says more
-        (`on_location location:Floor 2 Junction`); not when it only repeats it."""
-        said = str(c.get('trigger') or '').strip()
-        typed = [t for t in c.get('triggers') or [] if isinstance(t, dict) and t.get('type')]
-        repeats = len(typed) == 1 and said in (str(typed[0].get('match')),
-                                               str(typed[0].get('match')).partition(':')[2])
-        how = " · ".join(f"{t['type']} {t.get('match')}" for t in typed)
-        if how and not repeats:
-            return f"{said}; {how}" if said else how
-        return said or how or "?"
 
     def _open_consequences(self) -> list[dict]:
         store = self.json_ops.load_json("consequences.json") or {}

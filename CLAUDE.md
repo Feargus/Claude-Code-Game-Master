@@ -85,14 +85,14 @@ outcome is genuinely certain (trivial, or literally impossible).
 
 ## Scene context (read at session start) and scene cards (come by themselves)
 `bash tools/gm-session.sh context` is the brief, read at session start: PLOTS (every open plot, most pressing
-first: where it stands, its clocks, the consequences waiting in it, and what the character doesn't know of it), IN NO
+first: where it stands, its clocks, its consequences that fired and are still to be played out (`[FIRED]`, with the command to resolve them), those waiting for a recorded fact, and what the character doesn't know of it), IN NO
 PLOT (the same for what belongs to none), the character, YOUR WORLD'S RULES (full, never truncated), the voice, THE
 SCENE and LATEST (the newest facts not shown above). THE SCENE is cards: the place (description, exits, who is usually found
 there, the facts that fit the scene best: what the character knows, then what they don't), then a card for each person present (their sheet; their attitude towards the player
 first; what they know that the player doesn't; what they believe wrongly; what is true about them that they don't
 know; a count of what they share with the player). Play people from their card. During play the cards come with
-the commands that change the scene: `gm-session.sh move` prints the new place's card (with the consequences and
-threads waiting there), `gm-scene.sh enter` a card for each person who enters, `gm-scene.sh` alone the whole
+the commands that change the scene: `gm-session.sh move` prints the new place's card (with the consequences fired
+there and still to be played out, and the plots that involve it), `gm-scene.sh enter` a card for each person who enters, `gm-scene.sh` alone the whole
 scene. A fact already printed above is named by id ("also f12"). More than three facts in a list: the card names
 the `gm-note.sh find` that lists the rest. `bash tools/gm-context.sh ["loc"]` adds
 grounded source passages.
