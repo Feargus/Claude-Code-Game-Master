@@ -126,7 +126,7 @@ def test_a_new_campaign_asks_how_to_make_the_world():
     new_game = (commands / "new-game.md").read_text(encoding="utf-8")
     quick = new_game[new_game.index("## QUICK WORLD"):]
     assert "no rules of its own but `Standing`" in quick          # 2026-11-20: and the factions
-    assert "Phase C steps 3–5" in quick and "Phase E" in quick     # frame, then the cast
+    assert "Phase C steps 3–4" in quick and "Phase E" in quick     # frame, then the cast
     assert quick.index("**The character:** Phase D") < quick.index("**The character's world:** Phase E")
     assert "gm-session.sh opening" in quick and "/create-character" in quick
 
