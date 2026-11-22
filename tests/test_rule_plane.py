@@ -1,7 +1,6 @@
 """The plane (lib/rule_plane.py, 2026-11-17, step 7): two values read together, with
 results by region; a change moves one axis; an axis can have a rate."""
 
-import json
 import os
 import re
 import shutil
@@ -163,7 +162,6 @@ def test_the_command(dcc_world, ops):
     moved = run("change", "Humanity", "+3", "--axis", "Chrome")
     assert moved.returncode == 0 and moved.stdout.startswith("Humanity (Tandy): Chrome 0 → 3")
     assert run("set", "Alignment", "Carl", "-2", "--axis", "Good").returncode == 0
-    data = json.loads(run("show", "Alignment", "Carl", "--json").stdout)["data"]
-    assert data["state"]["npc:Carl"]["axes"] == {"Law": 0, "Good": -2}
+    assert wr.load_state(ops)["npc:Carl"]["Alignment"]["axes"] == {"Law": 0, "Good": -2}
     refused = run("change", "Humanity", "+1")
     assert refused.returncode == 1 and "--axis Chrome or --axis Anchor" in refused.stderr

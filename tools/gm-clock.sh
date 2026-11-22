@@ -20,13 +20,12 @@
 #   gm-clock.sh text "Name" "new text"        Reword what a clock is about (its name stays)
 #   gm-clock.sh beats                         Filled clocks = dramatic beats due
 #   gm-clock.sh remove "Name"                 Remove a clock
-#
-# All commands accept --json (the clock's data instead of the lines).
+
 
 source "$(dirname "$0")/common.sh"
 
 if [ "$#" -lt 1 ] || [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-    sed -n '3,24p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,22p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
 fi
 

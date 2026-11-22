@@ -15,7 +15,6 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from cli_output import emit
 from entity_manager import npcs_present
 from search import WorldSearcher
 
@@ -72,19 +71,12 @@ class SceneContext:
 def main():
     import argparse
 
-    json_mode = "--json" in sys.argv
-    argv = [a for a in sys.argv[1:] if a != "--json"]
-
     parser = argparse.ArgumentParser(description="Unified scene context for the GM")
     parser.add_argument("location", nargs="?", help="Location (defaults to current)")
     parser.add_argument("--entity", action="append", default=[], help="Named entity to include (repeatable)")
-    args = parser.parse_args(argv)
+    args = parser.parse_args()
 
     ctx = SceneContext().build(args.location, args.entity)
-
-    if json_mode:
-        emit(ctx, json_mode=True)
-        return
 
     print(f"=== SCENE CONTEXT: {ctx['location'] or '(unknown)'} ===")
     loc = ctx["world"]["location"]

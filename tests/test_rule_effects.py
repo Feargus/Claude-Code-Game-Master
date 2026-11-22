@@ -3,7 +3,6 @@ when it comes on (when_off when it goes off), a change they make turns its own
 results on in a chain, a rule changes once per chain, and a consequence can wait on
 a value (on_rule)."""
 
-import json
 import os
 import subprocess
 from pathlib import Path
@@ -193,7 +192,7 @@ def test_the_command_prints_the_chain(dcc_world, ops):
     assert out.returncode == 0, out.stderr
     assert "→ Panic (Tandy): 0 → 2" in out.stdout
     assert "Changed on the character: condition Shaken added" in out.stdout
-    as_json = subprocess.run(["bash", str(ROOT / "tools" / "gm-rule.sh"), "change", "Stress",
-                              "-4", "--json"], capture_output=True, text=True,
-                             env=dict(os.environ, GM_WORLD_STATE_BASE=dcc_world))
-    assert json.loads(as_json.stdout)["data"]["character"] == ["condition Shaken removed"]
+    back = subprocess.run(["bash", str(ROOT / "tools" / "gm-rule.sh"), "change", "Stress", "-4"],
+                          capture_output=True, text=True,
+                          env=dict(os.environ, GM_WORLD_STATE_BASE=dcc_world))
+    assert "Changed on the character: condition Shaken removed" in back.stdout

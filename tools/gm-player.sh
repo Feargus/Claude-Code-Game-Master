@@ -32,7 +32,7 @@ case "$ACTION" in
         echo "Usage: gm-player.sh <action> [args]"
         echo ""
         echo "  create [--canon N] [--replace] <<'EOF' <json> EOF - save a new character from the interview"
-        echo "  show [--json]                - the whole sheet (JSON with --json; get is the same)"
+        echo "  show                         - the whole sheet; get: the same, as raw JSON"
         echo "  set --style \"...\" ...        - text fields: identity, look, personality"
         echo "                                 (--race --role --background --affiliation --physique --style"
         echo "                                  --presence --big-five --demeanor --voice --tells --want --need"

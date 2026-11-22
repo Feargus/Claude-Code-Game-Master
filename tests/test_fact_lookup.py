@@ -93,5 +93,5 @@ def test_cli(notes):
     assert "+2 more" in r.stdout
     recent = run("recent", "2").stdout.splitlines()
     assert len(recent) == 3 and recent[-1].startswith("+") and "narrow it" in recent[-1]
-    assert json.loads(run("show", "f2", "--json").stdout)[0]["versions"] == ["f5"]
+    assert "versions of it: f5" in run("show", "f2").stdout
     assert run("find", "--held-by", "Nobody").returncode == 1

@@ -447,7 +447,7 @@ def _int(text: str, what: str) -> int:
 def main():
     import argparse
 
-    from cli_output import emit, emit_error, strip_json_flag, wants_json
+    from cli_output import emit_error
 
     parser = argparse.ArgumentParser(description='The player character')
     sub = parser.add_subparsers(dest='action')
@@ -497,34 +497,17 @@ def main():
     p.add_argument('cond_action', choices=['add', 'remove', 'list'])
     p.add_argument('condition', nargs='?')
 
-    json_mode = wants_json()
-    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
+    args = parser.parse_args()
     if not args.action:
         parser.print_help()
         sys.exit(1)
     manager = PlayerManager()
 
-    if args.action in ('get', 'show') and json_mode or args.action == 'get':
+    if args.action == 'get':
         char = manager._load_character()
         if not char:
-            sys.exit(emit_error("no character yet", json_mode=True) if json_mode else 1)
-        if json_mode:
-            emit(char, json_mode=True)
-        else:
-            print(json.dumps(char, indent=2, ensure_ascii=False))
-        return
-    if json_mode and args.action in ('kill', 'award'):
-        import contextlib
-        import io
-        with contextlib.redirect_stdout(io.StringIO()):
-            if args.action == 'kill':
-                result = manager.kill_character(args.cause)
-            else:
-                result = manager.award(args.size, args.reason)
-        if result.get('success'):
-            emit(result, json_mode=True)
-        else:
-            sys.exit(emit_error(result.get('error', f'{args.action} failed'), json_mode=True))
+            sys.exit(emit_error("No character yet: /create-character makes one."))
+        print(json.dumps(char, indent=2, ensure_ascii=False))
         return
 
     if args.action == 'show':

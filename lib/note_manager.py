@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Note/fact management module for GM tools."""
 
-import json
 import re
 import sys
 from datetime import UTC, datetime
@@ -855,9 +854,7 @@ def main():
     p.add_argument("--dry-run", dest="dry_run", action="store_true", help="only list")
     p = sub.add_parser("recent", help="the latest facts")
     p.add_argument("count", type=int, nargs="?", default=10)
-    from cli_output import strip_json_flag, wants_json
-    json_mode = wants_json()
-    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
+    args = parser.parse_args()
     if not args.action:
         parser.print_help()
         sys.exit(1)
@@ -923,21 +920,14 @@ def main():
                 result = find_like(manager, args.like, args.limit, args.held_by, args.about,
                                    args.secret, args.hidden, args.truth,
                                    args.text, args.at, plot=args.plot)
-                if json_mode:
-                    print(json.dumps(result, indent=2, ensure_ascii=False))
-                else:
-                    print_found(result, fact_line)
+                print_found(result, fact_line)
                 return
             elif args.action == 'find':
                 found = manager.find(args.held_by, args.about, args.secret, args.hidden,
                                      args.truth, args.text, args.at, plot=args.plot)
             else:
                 found = manager.find()
-                if json_mode:
-                    found = found[:max(0, args.count)]
-            if json_mode:
-                print(json.dumps(found, indent=2, ensure_ascii=False))
-            elif args.action == 'show':
+            if args.action == 'show':
                 print("\n\n".join(fact_details(f) for f in found))
             elif args.action == 'recent':
                 _print_found(found, max(1, args.count), filtered=False)

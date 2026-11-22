@@ -199,9 +199,9 @@ def test_the_command(dcc_world):
     assert "from 2" in run("set", "Bleed", "5").stdout
     bare = run("change", "Bleed", "3")
     assert bare.returncode == 1 and "[ERROR] A change is +N or -N" in bare.stderr
-    acted = run("change", "Patience", "The Crawlers", "-5", "--json")
-    data = json.loads(acted.stdout)
-    assert data["ok"] and data["data"]["holder"] == "faction:crawlers" and data["data"]["after"] == 0
+    assert run("change", "Patience", "The Crawlers", "-5").returncode == 0
+    assert wr.load_state(JsonOperations(str(Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"))
+                         )["faction:crawlers"]["Patience"]["value"] == 0
     assert "Now, The Crawlers: 0" in run("show", "Patience").stdout
     assert run("reveal", "Patience", "faction:crawlers").returncode == 0
     plain = run("plain", given="Credits are gold.\n\nA room costs 2.\n")

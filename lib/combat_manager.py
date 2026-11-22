@@ -151,7 +151,7 @@ class CombatManager(EntityManager):
 def main():
     import argparse
 
-    from cli_output import emit, emit_error, strip_json_flag, wants_json
+    from cli_output import emit_error
 
     parser = argparse.ArgumentParser(description="Persisted fight state")
     sub = parser.add_subparsers(dest='action')
@@ -172,8 +172,7 @@ def main():
     sub.add_parser('status')
     sub.add_parser('end')
 
-    json_mode = wants_json()
-    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
+    args = parser.parse_args()
     if not args.action:
         parser.print_help()
         sys.exit(1)
@@ -184,12 +183,12 @@ def main():
         try:
             out = m.start()
         except ValueError as error:
-            sys.exit(emit_error(str(error), json_mode=json_mode))
+            sys.exit(emit_error(str(error)))
     elif args.action == 'add-enemy':
         try:
             out = m.add_combatant(args.name, args.wounds, args.sheet)
         except ValueError as error:
-            sys.exit(emit_error(str(error), json_mode=json_mode))
+            sys.exit(emit_error(str(error)))
     elif args.action == 'wound':
         out = m.wound(args.name, args.count, args.note)
     elif args.action == 'condition':
@@ -201,13 +200,8 @@ def main():
         return
 
     if out is None:
-        if json_mode:
-            sys.exit(emit_error("combatant not found", json_mode=True))
-        print("[ERROR] combatant not found", file=sys.stderr)
-        sys.exit(1)
-    if json_mode:
-        emit(out, json_mode=True)
-    elif args.action == 'end':
+        sys.exit(emit_error("combatant not found"))
+    if args.action == 'end':
         defeated = ", ".join(out['defeated']) or "nobody"
         print(f"Fight over. Defeated: {defeated}"
               + (f"; +{out['xp']} XP" if out['xp'] else "")

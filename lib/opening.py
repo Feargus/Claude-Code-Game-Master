@@ -350,10 +350,9 @@ def summary(result: dict[str, Any]) -> str:
 
 
 def main() -> int:
-    """opening.py '<json>' (see the module docstring). --json for structured output."""
-    from cli_output import emit, emit_error, strip_json_flag, wants_json
-    json_mode = wants_json()
-    args = strip_json_flag(sys.argv[1:])
+    """opening.py '<json>' (see the module docstring)."""
+    from cli_output import emit_error
+    args = sys.argv[1:]
     if len(args) > 1:
         print("Usage: gm-session.sh opening <<'EOF' (the JSON) EOF   (the fields: lib/opening.py)",
               file=sys.stderr)
@@ -362,15 +361,12 @@ def main() -> int:
     try:
         spec = json_input(args[0] if args else None, "the opening")
     except ValueError as error:
-        return emit_error(str(error), json_mode=json_mode)
+        return emit_error(str(error))
     try:
         result = Opening().apply(spec)
     except OpeningError as error:
-        return emit_error(str(error), json_mode=json_mode)
-    if json_mode:
-        emit(result, json_mode=True)
-    else:
-        print(summary(result))
+        return emit_error(str(error))
+    print(summary(result))
     return 0
 
 

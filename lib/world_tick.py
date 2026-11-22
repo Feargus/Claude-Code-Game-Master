@@ -115,7 +115,7 @@ class WorldTick:
         Returns one entry per development: {"text", "fact", and "consequence" /
         "clock" when it set one up}. Raises WorldTickError and keeps nothing if
         any part is malformed or refused. `cap` is advisory: all apply, and
-        anything past it is named in a warning (stderr + `last_overflow`).
+        anything past it is named in a note (and `last_overflow`).
         """
         self.last_overflow = []
         if not enabled or not developments:
@@ -125,8 +125,7 @@ class WorldTick:
         if len(applied) > cap:
             self.last_overflow = applied[cap:]
             names = ", ".join(a["text"] for a in self.last_overflow)
-            print(f"[WORLD TICK] warning: cap {cap} exceeded; also applied: {names}",
-                  file=sys.stderr)
+            print(f"[NOTE] More than the cap of {cap}; also applied: {names}")
 
         log = self.json_ops.load_json(self.log_file) or {"ticks": []}
         log["ticks"].append({
@@ -268,7 +267,7 @@ def main():
     import argparse
     import json
 
-    from cli_output import emit, emit_error, strip_json_flag, wants_json
+    from cli_output import emit_error
 
     parser = argparse.ArgumentParser(description="Between-session world tick")
     sub = parser.add_subparsers(dest="action")
@@ -279,8 +278,7 @@ def main():
     sub.add_parser("rollback")
     sub.add_parser("history")
 
-    json_mode = wants_json()
-    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
+    args = parser.parse_args()
     if not args.action:
         parser.print_help()
         sys.exit(1)
@@ -291,51 +289,26 @@ def main():
         try:
             devs = json_input(args.developments, "the developments")
         except ValueError as error:
-            sys.exit(emit_error(str(error), json_mode=json_mode))
+            sys.exit(emit_error(str(error)))
         if not isinstance(devs, list):
-            sys.exit(emit_error("developments must be a JSON list", json_mode=json_mode))
-        import contextlib
-        import io
-        out = io.StringIO()
+            sys.exit(emit_error("developments must be a JSON list"))
         try:
-            with contextlib.redirect_stdout(out if json_mode else sys.stdout):
-                applied = wt.apply(devs, cap=args.cap)
+            applied = wt.apply(devs, cap=args.cap)
         except WorldTickError as error:
-            sys.exit(emit_error(f"{str(error).rstrip('.')}. Nothing from this tick was kept.",
-                                json_mode=json_mode))
-        if json_mode:
-            with contextlib.redirect_stdout(out):
-                checks = wt.check(applied)
-            payload = {"applied": applied, "checks": checks}
-            overflow = getattr(wt, "last_overflow", []) or []
-            if overflow:
-                payload["overflow"] = overflow
-                payload["warning"] = (
-                    f"cap {args.cap} exceeded; also applied: "
-                    + ", ".join(a["text"] for a in overflow)
-                )
-            emit(payload, json_mode=True)
-        else:
-            if not applied:
-                print("[WORLD TICK] nothing applied")
-            for a in applied:
-                extra = "".join(f", {k} {a[k]}" for k in ("consequence", "clock") if a.get(k))
-                print(f"[WORLD TICK] {a['fact']}{extra}: {a['text']}")
-            wt.check(applied)
+            sys.exit(emit_error(f"{str(error).rstrip('.')}. Nothing from this tick was kept."))
+        if not applied:
+            print("[WORLD TICK] nothing applied")
+        for a in applied:
+            extra = "".join(f", {k} {a[k]}" for k in ("consequence", "clock") if a.get(k))
+            print(f"[WORLD TICK] {a['fact']}{extra}: {a['text']}")
+        wt.check(applied)
     elif args.action == "rollback":
         ok = wt.rollback_last()
-        if json_mode:
-            emit({"rolled_back": ok}, json_mode=True)
-        else:
-            print("[WORLD TICK] rolled back last tick" if ok else "[WORLD TICK] nothing to roll back")
+        print("[WORLD TICK] rolled back last tick" if ok else "[WORLD TICK] nothing to roll back")
         if not ok:
             sys.exit(1)
     else:
-        out = wt.history()
-        if json_mode:
-            emit({"ticks": out}, json_mode=True)
-        else:
-            print(json.dumps(out, indent=2))
+        print(json.dumps(wt.history(), indent=2))
 
 
 if __name__ == "__main__":

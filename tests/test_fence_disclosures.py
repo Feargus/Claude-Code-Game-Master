@@ -57,9 +57,9 @@ def test_world_tick_applies_five_and_warns_on_overflow(dcc_world, capsys):
     facts = json.loads((Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "facts.json"
                         ).read_text(encoding="utf-8"))
     assert any("fifth development" in f["fact"] for f in facts)
-    err = capsys.readouterr().err
-    assert "fifth development" in err
-    assert "cap 3" in err
+    out = capsys.readouterr().out                 # a note on stdout (output.md)
+    assert "fifth development" in out
+    assert "[NOTE] More than the cap of 3" in out
     assert len(wt.last_overflow) == 2
     assert "fifth development" in wt.last_overflow[-1]["text"]
 

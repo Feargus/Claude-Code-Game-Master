@@ -126,15 +126,12 @@ def main():
     import argparse
     import json
 
-    from cli_output import emit, strip_json_flag, wants_json
-
     parser = argparse.ArgumentParser(description="Loremaster scene brief")
     parser.add_argument("location", nargs="+")
     parser.add_argument("--important", action="store_true")
     parser.add_argument("--full", action="store_true",
                         help="include the entire chapter span (the long-context read)")
-    json_mode = wants_json()
-    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
+    args = parser.parse_args()
 
     try:
         brief = Loremaster().brief_for(" ".join(args.location),
@@ -142,9 +139,7 @@ def main():
     except LoremasterError as error:
         print(f"[ERROR] {error}", file=sys.stderr)
         sys.exit(1)
-    if json_mode:
-        emit(brief, json_mode=True)
-    elif args.full and brief.get("chapter_text"):
+    if args.full and brief.get("chapter_text"):
         meta = {k: v for k, v in brief.items() if k != "chapter_text"}
         print(json.dumps(meta, indent=2))
         print("\n--- FULL CHAPTER SPAN (ground the scene in this) ---")

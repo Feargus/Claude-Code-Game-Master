@@ -134,11 +134,12 @@ def test_alias_status_wrapper_and_context_presence(presence_world):
     assert "Keeps the tap" in status.stdout
 
     ctx = subprocess.run(
-        ["bash", str(ROOT / "tools" / "gm-context.sh"), "--json"],
+        ["bash", str(ROOT / "tools" / "gm-context.sh")],
         cwd=str(ROOT), capture_output=True, text=True, env=env, timeout=60,
     )
     assert ctx.returncode == 0, ctx.stdout + ctx.stderr
-    present = json.loads(ctx.stdout)["data"]["world"]["npcs_present"]
+    line = next(ln for ln in ctx.stdout.splitlines() if ln.startswith("NPCs present: "))
+    present = line[len("NPCs present: "):].split(", ")
     assert "Mara" in present
     assert "Pip" in present
     assert "Voss" not in present

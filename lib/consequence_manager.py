@@ -788,7 +788,7 @@ def _rule_words(e: dict[str, Any]) -> str:
     return f"{e['tokens']}{whose}: {field} " + ", ".join(f"{n} {k}" for k, n in e[field].items())
 
 
-def _rule_effects(raws, json_mode) -> list[dict[str, Any]]:
+def _rule_effects(raws) -> list[dict[str, Any]]:
     """--rule-effect '<json>'...: each a world rule's effect, as a consequence effect."""
     import json
 
@@ -799,10 +799,9 @@ def _rule_effects(raws, json_mode) -> list[dict[str, Any]]:
             given = json.loads(raw)
         except ValueError as error:
             sys.exit(emit_error(f"--rule-effect is JSON, e.g. '{{\"change\": \"Standing\", "
-                                f"\"of\": \"faction:police\", \"by\": -3}}': {error}",
-                                json_mode=json_mode))
+                                f"\"of\": \"faction:police\", \"by\": -3}}': {error}"))
         if not isinstance(given, dict):
-            sys.exit(emit_error("--rule-effect is one JSON object", json_mode=json_mode))
+            sys.exit(emit_error("--rule-effect is one JSON object"))
         out.append({'type': 'rule', **given})
     return out
 
@@ -899,9 +898,8 @@ def main():
     # List resolved
     subparsers.add_parser('list-resolved', help='List resolved consequences')
 
-    from cli_output import emit, emit_error, strip_json_flag, wants_json
-    json_mode = wants_json()
-    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
+    from cli_output import emit_error
+    args = parser.parse_args()
 
     if not args.action:
         parser.print_help()
@@ -914,20 +912,18 @@ def main():
         types, matches = args.trigger_type or [], args.match or []
         if len(types) != len(matches):
             sys.exit(emit_error(f"{len(types)} --trigger-type but {len(matches)} --match: "
-                                f"give exactly one --match per --trigger-type, in the same order",
-                                json_mode=json_mode))
+                                f"give exactly one --match per --trigger-type, in the same order"))
         triggers = [{'type': t, 'match': m} for t, m in zip(types, matches, strict=True)]
         clock_flags = [args.clock_due_in, args.clock_due, args.clock_consequence, args.clock_text]
         if any(clock_flags) and not args.starts_clock:
             sys.exit(emit_error("--clock-... options describe the clock that --starts-clock starts; "
-                                "give --starts-clock \"<name>\" too", json_mode=json_mode))
+                                "give --starts-clock \"<name>\" too"))
         effects = []
         if bool(args.tells) != bool(args.to):
-            sys.exit(emit_error("--tells <fact id> and --to <holder> go together",
-                                json_mode=json_mode))
+            sys.exit(emit_error("--tells <fact id> and --to <holder> go together"))
         if args.tells:
             effects.append({'type': 'tell', 'fact': args.tells, 'holders': args.to})
-        effects += _rule_effects(args.rule_effects, json_mode)
+        effects += _rule_effects(args.rule_effects)
         if args.starts_clock:
             effect = {'type': 'start_clock', 'name': args.starts_clock,
                       'segments': args.clock_segments, 'on': args.clock_on}
@@ -936,26 +932,6 @@ def main():
                 if value:
                     effect[key] = value
             effects.append(effect)
-
-    if json_mode and args.action == 'add':
-        import contextlib
-        import io
-        with contextlib.redirect_stdout(io.StringIO()):  # keep stdout JSON-only
-            cid = manager.add_consequence(args.description, args.trigger,
-                                          triggers=triggers,
-                                          effects=effects, plots=args.plots,
-                                          offscreen=args.offscreen)
-        if cid:
-            emit({"id": cid}, json_mode=True)
-        else:
-            sys.exit(emit_error("failed to add consequence", json_mode=True))
-        return
-    if json_mode and args.action == 'check':
-        emit({"pending": manager.check_pending()}, json_mode=True)
-        return
-    if json_mode and args.action == 'tick':
-        emit(manager.tick_from_session(), json_mode=True)
-        return
 
     if args.action == 'add':
         if not manager.add_consequence(args.description, args.trigger,
@@ -1004,10 +980,7 @@ def main():
         hit = manager.fire(args.id, args.reason, args.by_fact)
         if not hit:
             sys.exit(1)
-        if json_mode:
-            emit({"fired": [hit]}, json_mode=True)
-        else:
-            print_fired([hit])
+        print_fired([hit])
 
     elif args.action == 'resolve':
         if not manager.resolve(args.id):

@@ -5,6 +5,7 @@ Wren is present" needed two linked entries resolved by hand.
 """
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -70,7 +71,7 @@ def test_refuses_a_bad_trigger_in_the_list(dcc_world):
 
 def _cli(world, *args):
     return subprocess.run(
-        [sys.executable, str(ROOT / "lib" / "consequence_manager.py"), "add", *args, "--json"],
+        [sys.executable, str(ROOT / "lib" / "consequence_manager.py"), "add", *args],
         capture_output=True, text=True, cwd=str(Path(world).parent))
 
 
@@ -79,7 +80,7 @@ def test_cli_pairs_repeated_flags_in_order(dcc_world):
              "--trigger-type", "on_location", "--match", "Floor 2 Junction",
              "--trigger-type", "on_npc", "--match", "Mordecai")
     assert r.returncode == 0, r.stdout + r.stderr
-    cid = json.loads(r.stdout)["data"]["id"]
+    cid = re.search(r"Added consequence \[(\w+)\]", r.stdout).group(1)
     assert _entry(dcc_world, cid)["triggers"] == STORED
 
 
@@ -87,4 +88,4 @@ def test_cli_refuses_unpaired_flags(dcc_world):
     r = _cli(dcc_world, "x", "y", "--trigger-type", "on_location",
              "--trigger-type", "on_npc", "--match", "Wren")
     assert r.returncode == 1
-    assert "exactly one --match per --trigger-type" in r.stdout
+    assert "exactly one --match per --trigger-type" in r.stderr

@@ -58,7 +58,7 @@ a runtime error inside the enhancer all produce the same thing: `passages: []` a
 
 The cost of that choice: **a broken RAG install is indistinguishable from a campaign that
 was never vectorized.** Neither logs. If passages are unexpectedly empty, check
-`rag_available` in `gm-context.sh --json`, then confirm the campaign actually has vectors
+the "Source passages" line of `gm-context.sh`, then confirm the campaign actually has vectors
 rather than assuming the import worked. See [RAG stack](rag-stack.md).
 
 ## Which search tool

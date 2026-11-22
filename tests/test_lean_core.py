@@ -96,10 +96,10 @@ def test_world_kit_info_runs():
     import json
     import subprocess
     import sys as _sys
-    r = subprocess.run([_sys.executable, str(ROOT / "lib" / "world_kit.py"), "info", "--json"],
+    r = subprocess.run([_sys.executable, str(ROOT / "lib" / "world_kit.py"), "info"],
                        capture_output=True, text=True, cwd=str(ROOT))
     assert r.returncode == 0, r.stderr
-    data = json.loads(r.stdout)["data"]
+    data = json.loads(r.stdout)
     assert "kit" not in data and "progression_model" not in data
 
 

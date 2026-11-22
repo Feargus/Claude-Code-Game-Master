@@ -2,7 +2,6 @@
 moved only along its allowed moves, on by time spent in a state, with effects on
 entering and leaving, and consequences that wait on a state."""
 
-import json
 import os
 import subprocess
 from pathlib import Path
@@ -178,6 +177,5 @@ def test_starting_values_and_the_command(dcc_world, ops):
     assert refused.returncode == 1 and "can't move from 'clean'" in refused.stderr
     assert run("move", "Addiction", "Tandy", "user").stdout.startswith("Addiction (Tandy): clean → user")
     assert run("set", "Addiction", "Tandy", "recovering").returncode == 0          # any state
-    assert json.loads(run("show", "Addiction", "--json").stdout)["data"]["state"]["player"][
-        "state"] == "recovering"
+    assert wr.load_state(ops)["player"]["Addiction"]["state"] == "recovering"
     assert "is a states" in run("change", "Addiction", "Tandy", "+1").stderr

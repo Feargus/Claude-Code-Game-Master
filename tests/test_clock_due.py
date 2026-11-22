@@ -5,7 +5,6 @@ fill (and fire) now; pushed back it keeps what it has and waits, since clocks
 never empty.
 """
 
-import json
 import subprocess
 import sys
 from datetime import datetime
@@ -94,5 +93,5 @@ def test_cli(tcm, dcc_world):
     assert "Foreclosure: [○○○○] 0/4" in r.stdout and "due 06:00" in r.stdout
     r = run("--earlier", "1d", "--later", "2h")
     assert r.returncode == 1 and "exactly one" in r.stderr
-    r = run("--json", "--later", "1d")
-    assert json.loads(r.stdout)["data"]["due_at"] == "2187-10-30T06:00"
+    r = run("--later", "1d")
+    assert r.returncode == 0 and "due 06:00, Tuesday, 30 October 2187" in r.stdout

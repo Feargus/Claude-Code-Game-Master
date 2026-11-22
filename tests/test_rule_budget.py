@@ -2,7 +2,6 @@
 named parts, all of it at once; each part's effects run once per `per` units; spent
 until refilled, by hand or each period."""
 
-import json
 import os
 import re
 import shutil
@@ -129,5 +128,5 @@ def test_the_command(dcc_world, ops):
     again = run("split", "Downtime", "work=7")
     assert again.returncode == 1 and "is spent for now" in again.stderr
     assert run("refill", "Downtime").stdout.strip() == "Downtime (Tandy): refilled, 7 days to split"
-    gang = run("split", "Soldiers", "The Crawlers", "turf=8", "raids=2", "--json")
-    assert json.loads(gang.stdout)["data"]["split"] == {"turf": 8, "raids": 2}
+    assert run("split", "Soldiers", "The Crawlers", "turf=8", "raids=2").returncode == 0
+    assert wr.load_state(ops)["faction:crawlers"]["Soldiers"]["split"] == {"turf": 8, "raids": 2}

@@ -32,7 +32,7 @@ at import; nothing about rules.
    own, `Standing`, which every world defines.
 
 To check a live campaign: `bash tools/gm-rule.sh list`, or
-`uv run python lib/world_kit.py info --json`.
+`uv run python lib/world_kit.py info`.
 
 ## What is left in the core
 

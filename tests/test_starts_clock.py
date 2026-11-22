@@ -6,6 +6,7 @@ event trigger, or by hand. A clock that already exists is left alone.
 """
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -115,9 +116,9 @@ def test_cli_starts_clock_flags(dcc_world):
     r = run("add", "x", "y", "--clock-due-in", "3d")
     assert r.returncode != 0 and "--starts-clock" in (r.stdout + r.stderr)
     r = run("add", "Word gets out", "the job goes loud", "--starts-clock", "Vendetta",
-            "--clock-segments", "3", "--clock-on", "event", "--json")
+            "--clock-segments", "3", "--clock-on", "event")
     assert r.returncode == 0, r.stderr
-    cid = json.loads(r.stdout)["data"]["id"]
+    cid = re.search(r"Added consequence \[(\w+)\]", r.stdout).group(1)
     stored = next(c for c in ConsequenceManager(dcc_world).check_pending() if c["id"] == cid)
     assert stored["effects"] == [{"type": "start_clock", "name": "Vendetta",
                                   "segments": 3, "on": "event"}]

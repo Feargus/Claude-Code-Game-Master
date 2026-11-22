@@ -150,7 +150,7 @@ class ThreatClockManager(EntityManager):
 
         from consequence_manager import ConsequenceManager
         # add_consequence announces itself on stdout; this one fires from inside
-        # advance and time updates, whose --json output must stay parseable.
+        # advance and time updates, whose own output should not carry it.
         # Its trigger is the clock's last segment, so _fire_on_clock fires it right
         # after the save, with everything else the fill set off.
         with contextlib.redirect_stdout(sys.stderr):
@@ -384,9 +384,6 @@ class ThreatClockManager(EntityManager):
 
 def main():
     import argparse
-    import json
-
-    from cli_output import emit, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description="Threat clocks")
     sub = parser.add_subparsers(dest="action")
@@ -417,8 +414,7 @@ def main():
     sub.add_parser("list")
     sub.add_parser("beats")  # filled clocks = beats due
 
-    json_mode = wants_json()
-    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
+    args = parser.parse_args()
     if not args.action:
         parser.print_help()
         sys.exit(1)
@@ -489,9 +485,6 @@ def main():
     except ValueError as error:
         refuse(str(error))
 
-    if json_mode:
-        emit(out, json_mode=True)
-        return
     print("\n".join(text))
     if args.action in ("advance", "due") and out:
         from consequence_manager import print_fired

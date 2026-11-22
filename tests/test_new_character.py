@@ -38,18 +38,20 @@ def _named(name, **sections):
 
 def _create(*args, data=None):
     words = [json.dumps(data)] if data is not None else []
-    return subprocess.run(["bash", str(ROOT / "tools" / "gm-player.sh"), "create", *words, *args, "--json"],
+    return subprocess.run(["bash", str(ROOT / "tools" / "gm-player.sh"), "create", *words, *args],
                           capture_output=True, text=True, env=os.environ)
 
 
-def _ok(result):
+def _ok(result, campaign=None):
+    """The sheet the command saved (the active campaign's, unless given)."""
     assert result.returncode == 0, result.stdout + result.stderr
-    return json.loads(result.stdout)["data"]
+    campaign = campaign or CampaignManager().get_active_campaign_dir()
+    return json.loads((Path(campaign) / "character.json").read_text())
 
 
 def _error(result):
     assert result.returncode == 1
-    return json.loads(result.stdout)["error"]
+    return result.stderr
 
 
 def _sheet(campaign):
@@ -198,9 +200,9 @@ def test_canon_takes_the_npcs_sheet_and_leaves_npcs_json(dcc_world):
     before = json.loads((camp / "npcs.json").read_text())["Mordecai"]
     result = subprocess.run(["bash", str(ROOT / "tools" / "gm-player.sh"), "create",
                              json.dumps({"identity": {"role": "game guide"}}),
-                             "--canon", "mordecai", "--replace", "--json"],
+                             "--canon", "mordecai", "--replace"],
                             capture_output=True, text=True, env=env)
-    sheet = _ok(result)
+    sheet = _ok(result, camp)
     assert sheet["identity"]["name"] == "Mordecai" and sheet["identity"]["role"] == "game guide"
     assert sheet.get("look") == before.get("look")                    # carried over
     assert "Mordecai" not in json.loads((camp / "npcs.json").read_text())

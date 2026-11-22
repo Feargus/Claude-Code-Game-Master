@@ -57,29 +57,13 @@ Every wrapper sources it, and inherits:
   pre-activation takes an explicit campaign name in any argument position instead
   (`gm-extract.sh`'s campaign-named verbs).
 
-## The `--json` envelope is the machine contract
+## Output is text, for the GM
 
-`lib/cli_output.py` defines two shapes and nothing else:
-
-```json
-{"ok": true,  "data": …}
-{"ok": false, "error": "…", "code": null}
-```
-
-The rationale is in the module's own docstring: it exists to kill stdout-scraping, without
-adding an MCP process. The wiring pattern for a new manager is fixed —
-`wants_json()` to detect, `strip_json_flag()` before argparse (so argparse never sees
-`--json`), `emit()` / `emit_error()` to output. `emit_error` returns `1` so callers write
-`sys.exit(emit_error(...))`.
-
-One trap the existing code already works around: a manager whose logic `print()`s human
-text must suppress that in JSON mode or the envelope is preceded by garbage.
-`consequence_manager` does this with `contextlib.redirect_stdout`
-(`lib/consequence_manager.py:362-367`). Any manager that prints inside its logic needs the
-same treatment.
-
-`DM_JSON=1` turns the envelope on globally, which is the easy way to script a whole
-sequence.
+What a command prints, and how, is in [output.md](output.md). There is no machine format:
+`--json` was removed on 2026-11-22 (the GM used it once in about a thousand tool calls,
+and of 29 commands checked, 8 accepted it but printed text and 10 refused it). Tests call the managers' functions,
+or read the campaign files a command wrote. JSON is only ever input
+(`cli_output.json_input`: the opening, a beat, a character).
 
 ## Input validation is a manager concern, not a wrapper one
 
@@ -88,13 +72,8 @@ managers call before writing. The wrapper layer validates almost nothing — `co
 a `validate_name`, but the real trust boundary is inside the Python. A manager that skips
 `Validators` writes whatever it was handed straight to disk.
 
-## Enforcement point
-
-`tests/test_cli_output_json.py` tests the envelope itself (`emit`, `emit_error`) and
-search's `--json`. The per-manager tests (`test_json_wrappers_*.py`) were removed on
-2026-10-26, so no manager's `--json` output is checked by a test any more.
-
 ## Related
 
 - [A play turn](../flows/play-turn.md) — where these calls sit in the loop
 - [Persist before narrate](persist-before-narrate.md) — when to call them
+- [Output](output.md) — what the commands print

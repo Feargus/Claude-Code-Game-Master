@@ -89,8 +89,8 @@ def test_cap_is_advisory(dcc_world, capsys):
     wt = WorldTick(dcc_world)
     applied = wt.apply(devs, cap=3)
     assert len(applied) == 5
-    err = capsys.readouterr().err
-    assert "cap 3" in err and "development 4" in err
+    out = capsys.readouterr().out                 # a note on stdout (output.md: stderr is errors)
+    assert "[NOTE] More than the cap of 3" in out and "development 4" in out
     assert len(wt.last_overflow) == 2
 
 
@@ -126,21 +126,19 @@ def test_the_check_leaves_out_the_ticks_own_consequences(dcc_world, monkeypatch)
 
 def _cli(world, *args):
     root = Path(__file__).resolve().parent.parent
-    return subprocess.run([sys.executable, str(root / "lib" / "world_tick.py"), *args, "--json"],
+    return subprocess.run([sys.executable, str(root / "lib" / "world_tick.py"), *args],
                           capture_output=True, text=True, cwd=str(Path(world).parent))
 
 
 def test_cli_apply_and_rollback(dcc_world):
     r = _cli(dcc_world, "apply", json.dumps([{"fact": "a rumor spreads"}]))
     assert r.returncode == 0, r.stderr
-    out = json.loads(r.stdout)
-    assert out["ok"] and len(out["data"]["applied"]) == 1
-    assert out["data"]["checks"] == []           # GM_EMBEDDER=off: no vectors
+    assert sum(line.startswith("[WORLD TICK] f") for line in r.stdout.splitlines()) == 1
     r = _cli(dcc_world, "rollback")
-    assert json.loads(r.stdout)["data"]["rolled_back"] is True
+    assert "rolled back last tick" in r.stdout
 
 
 def test_cli_refusal_says_nothing_was_kept(dcc_world):
     r = _cli(dcc_world, "apply", json.dumps([{"consequence": {"text": "x"}}]))
     assert r.returncode == 1
-    assert "Nothing from this tick was kept" in r.stdout
+    assert "Nothing from this tick was kept" in r.stderr

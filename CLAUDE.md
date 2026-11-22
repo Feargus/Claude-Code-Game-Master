@@ -149,7 +149,7 @@ later facts), ask the player out of character before narrating or noting it.
 | Look facts up (never read facts.json yourself) | Filter, usually by two things: `gm-note.sh find --about "npc:Sister Agata" --at "The Dry Quay"` (what happened with her here), `find --held-by "npc:Tod" --about player` (what Tod knows about the character), `find --plot "<plot>" --hidden` (its secrets); also `--secret`, `--truth wrong`, `--text "words"`; filters combine, public facts count as known to everyone; 10 newest by default. `gm-note.sh show <id>...` (in full: truth, versions) · `gm-note.sh recent [N]` (the newest, unfiltered) |
 | A new plot (or async via `plot-weaver`) | `gm-plot.sh add "<short name>" --description "…" [--owner … --goal …] [--kind …] --involves …`; it moves: `gm-plot.sh stands`; it ends: `complete`/`fail` with its summary |
 | The player stops for now (`/gm end`; a twist only on `/gm cliffhanger`) | for each plot that moved: `gm-plot.sh stands "<plot>" "<one sentence: where it stands now>"`. There is no session log or summary: the plots and their facts are the record |
-All tools take `--json` for structured returns. **Always prefix with `bash tools/`.**
+**Always prefix with `bash tools/`.**
 
 ## Search Guide (which tool)
 - **Naming a new thing? Look for an existing record first.** The world's people, places, kinds of enemy and words are records, many of them sketches named but not yet met: `gm-npc.sh list`, `gm-location.sh list`, `gm-mob.sh list`, `gm-glossary.sh list`. A new person or place close to an existing name is refused. A new one that matters later needs a way back into the story: a usual place, or a clock or consequence it is part of.

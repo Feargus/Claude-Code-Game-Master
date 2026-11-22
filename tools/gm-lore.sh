@@ -8,7 +8,7 @@
 # Finds the relevant CHAPTER via the coarse index, returns pointers + a grounded
 # excerpt. Cached per location — routine revisits are free. Needs the retained
 # book text (current-document.txt) in the campaign dir; without it, chapters
-# come back empty. Accepts --json.
+# come back empty.
 
 source "$(dirname "$0")/common.sh"
 

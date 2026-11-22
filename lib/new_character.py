@@ -223,7 +223,7 @@ class CharacterCreator(EntityManager):
 def main():
     import argparse
 
-    from cli_output import emit, emit_error, strip_json_flag, wants_json
+    from cli_output import emit_error
 
     parser = argparse.ArgumentParser(description="Create the player character from a finished interview")
     parser.add_argument("character", nargs="?",
@@ -231,25 +231,24 @@ def main():
     parser.add_argument("--canon", metavar="NPC", help="the character is this NPC from the campaign")
     parser.add_argument("--replace", action="store_true",
                         help="hand the story to a new PC (archives the current one to fallen/)")
-    json_mode = wants_json()
-    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
+    args = parser.parse_args()
 
     from cli_output import json_input
     try:
         data = json_input(args.character, "the character")
     except ValueError as error:
-        sys.exit(emit_error(str(error), json_mode))
+        sys.exit(emit_error(str(error)))
 
     result = CharacterCreator().create(data, canon=args.canon, replace=args.replace)
     if not result["success"]:
-        sys.exit(emit_error(result["error"], json_mode))
+        sys.exit(emit_error(result["error"]))
 
     character = result["character"]
     lines = [f"✓ {sheet_mod.name(character)} enters the world"]
     lines += [f"Note: {w}" for w in result["warnings"]]
     if result["archived"]:
         lines.append(f"Archived the outgoing hero to: {result['archived']}")
-    emit(character, message="\n".join(lines), json_mode=json_mode)
+    print("\n".join(lines))
 
 
 if __name__ == "__main__":

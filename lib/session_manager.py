@@ -275,9 +275,7 @@ def main():
                                 choices=['on', 'off', 'toggle', 'show'],
                                 help='on | off | toggle | show (default: show)')
 
-    from cli_output import emit, strip_json_flag, wants_json
-    json_mode = wants_json()
-    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
+    args = parser.parse_args()
 
     if not args.action:
         parser.print_help()
@@ -285,12 +283,6 @@ def main():
 
     manager = SessionManager()
 
-    if json_mode and args.action == 'status':
-        emit(manager.get_status(), json_mode=True)
-        return
-    if json_mode and args.action == 'context':
-        emit({"context": manager.get_full_context()}, json_mode=True)
-        return
     if args.action == 'header':
         import header
         print(header.line(manager.json_ops, full=args.full))
@@ -301,12 +293,10 @@ def main():
             if args.check:
                 manager.check_destination(location)
                 return
-            result = manager.move_party(location)
+            manager.move_party(location)
         except ValueError as error:
             print(f"[ERROR] {error}", file=sys.stderr)
             sys.exit(1)
-        if json_mode:
-            emit(result, json_mode=True)
         return                               # move_party printed the one line
 
     if args.action == 'start':

@@ -5,7 +5,6 @@
 #   gm-context.sh                          Context for the current location
 #   gm-context.sh "Over City Village"      Context for a specific location
 #   gm-context.sh "Warehouse" --entity "Mordecai" --entity "Katia"
-#   gm-context.sh --json                   Structured JSON envelope
 #
 # Returns world-state facts (location, NPCs present, named entities) plus grounded
 # source passages from RAG when the campaign has a vector store.

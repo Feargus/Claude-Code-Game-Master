@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import facts as fact_file
 from campaign_manager import CampaignManager
-from cli_output import emit, emit_error
 from entity_aliases import resolve_entity_name
 from entity_manager import usual_places
 from json_ops import JsonOperations
@@ -396,7 +395,6 @@ def main():
     parser.add_argument('--tag-location', help='Search NPCs by location tag (substring discovery, not scene presence)')
     parser.add_argument('--tag-quest', help='Search NPCs by quest tag (substring discovery, not scene presence)')
     parser.add_argument('--full', action='store_true', help='Show full descriptions')
-    parser.add_argument('--json', action='store_true', help='Emit a structured JSON envelope')
 
     args = parser.parse_args()
 
@@ -405,27 +403,16 @@ def main():
     # Tag-based search
     if args.tag_location:
         npcs = searcher.search_npcs_by_tag('locations', args.tag_location)
-        if args.json:
-            emit({"npcs": npcs}, json_mode=True)
-        else:
-            searcher.print_npc_results(npcs, 'location', args.tag_location, full=args.full)
+        searcher.print_npc_results(npcs, 'location', args.tag_location, full=args.full)
     elif args.tag_quest:
         npcs = searcher.search_npcs_by_tag('quests', args.tag_quest)
-        if args.json:
-            emit({"npcs": npcs}, json_mode=True)
-        else:
-            searcher.print_npc_results(npcs, 'quest', args.tag_quest, full=args.full)
+        searcher.print_npc_results(npcs, 'quest', args.tag_quest, full=args.full)
     elif args.query:
         # Regular search
         query = ' '.join(args.query)
         results = searcher.search_all(query)
-        if args.json:
-            emit(results, json_mode=True)
-        else:
-            searcher.print_results(results, query, full=args.full)
+        searcher.print_results(results, query, full=args.full)
     else:
-        if args.json:
-            sys.exit(emit_error("no query provided", json_mode=True))
         parser.print_help()
         sys.exit(1)
 

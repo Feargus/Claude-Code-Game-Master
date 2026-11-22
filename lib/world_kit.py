@@ -73,12 +73,9 @@ def main():
     import argparse
     import json
 
-    from cli_output import emit, strip_json_flag, wants_json
-
     parser = argparse.ArgumentParser(description="World Kit info")
     parser.add_argument("action", nargs="?", default="info", choices=["info"])
-    json_mode = wants_json()
-    parser.parse_args(strip_json_flag(sys.argv[1:]))
+    parser.parse_args()
 
     kit = WorldKit()
     info = {
@@ -86,10 +83,7 @@ def main():
         "active_agents": kit.active_agents(),
         "rules": [r.get("name") for r in kit.ruleset.get("rules") or [] if isinstance(r, dict)],
     }
-    if json_mode:
-        emit(info, json_mode=True)
-    else:
-        print(json.dumps(info, indent=2))
+    print(json.dumps(info, indent=2))
 
 
 if __name__ == "__main__":

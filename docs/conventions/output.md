@@ -10,7 +10,7 @@ The GM: a language model reading the output in its context, often only the first
 (`| head -1`), often with the rest of the output dropped. So output is short, readable
 text that says what happened and what to do next. There is no machine format: the tests
 call the Python functions, not the commands, and no script parses a command's output
-(`--json` is being removed, todo).
+(there is no `--json`: removed 2026-11-22).
 
 ## Streams and exit codes
 

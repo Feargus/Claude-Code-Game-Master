@@ -884,20 +884,20 @@ def _parser():
 
 def main() -> int:
     from campaign_manager import CampaignManager
-    from cli_output import emit, emit_error, strip_json_flag, wants_json
+    from cli_output import emit_error
     from json_ops import JsonOperations
 
-    json_mode = wants_json()
-    args = _parser().parse_args(strip_json_flag()[1:])
+    args = _parser().parse_args()
     campaign = CampaignManager().get_active_campaign_dir()
     if campaign is None:
-        return emit_error("No active campaign.", json_mode)
+        return emit_error("No active campaign.")
     ops = JsonOperations(str(campaign))
     try:
         data, message = COMMANDS[args.action](ops, args)
     except RulesError as error:
-        return emit_error(str(error), json_mode)
-    emit(data, message, json_mode)
+        return emit_error(str(error))
+    if message:
+        print(message)
     return 0
 
 

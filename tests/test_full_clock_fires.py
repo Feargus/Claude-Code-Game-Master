@@ -90,7 +90,7 @@ def test_cli_add_accepts_a_consequence(dcc_world):
 
 
 def test_firing_keeps_stdout_parseable(dcc_world, capsys):
-    """The fire happens inside advance/a time update, whose --json output is parsed."""
+    """The fire happens inside advance/a time update, whose own output shouldn't carry it."""
     m = ThreatClockManager(dcc_world)
     m.add_clock("Doom", 1, advance_on="event", consequence=DOOM)
     capsys.readouterr()

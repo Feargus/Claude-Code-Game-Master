@@ -134,42 +134,31 @@ def main():
     import argparse
     import json
 
-    from cli_output import emit, emit_error, strip_json_flag, wants_json
+    from cli_output import emit_error
 
     parser = argparse.ArgumentParser(description="World Bible")
     parser.add_argument('action', nargs='?', default='validate',
                         choices=['validate', 'show', 'review', 'confirm'])
-    json_mode = wants_json()
-    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
+    args = parser.parse_args()
 
     wb = WorldBible()
     if args.action == 'validate':
         ok, errs = wb.validate()
         result = {'valid': ok, 'errors': errs, 'name': wb.bible.get('name')}
-        if json_mode:
-            emit(result, json_mode=True)
-        else:
-            print(json.dumps(result, indent=2))
+        print(json.dumps(result, indent=2))
         sys.exit(0 if ok else 1)
     elif args.action == 'review':
         # The human-facing draft. A drafted world is `confirmed: false` until the
         # PLAYER approves what this prints — never confirm on their behalf.
         summary = wb.review_summary()
-        if json_mode:
-            emit(summary, json_mode=True)
-        else:
-            print(json.dumps(summary, indent=2))
+        print(json.dumps(summary, indent=2))
     elif args.action == 'confirm':
         if not wb.exists():
-            sys.exit(emit_error('no world-bible.json to confirm', json_mode))
+            sys.exit(emit_error('no world-bible.json to confirm'))
         wb.confirm()
-        emit({'confirmed': True, 'name': wb.bible.get('name')},
-             message=f"World bible confirmed: {wb.bible.get('name')}", json_mode=json_mode)
+        print(f"World bible confirmed: {wb.bible.get('name')}")
     else:
-        if json_mode:
-            emit(wb.bible, json_mode=True)
-        else:
-            print(json.dumps(wb.bible, indent=2))
+        print(json.dumps(wb.bible, indent=2))
 
 
 if __name__ == "__main__":

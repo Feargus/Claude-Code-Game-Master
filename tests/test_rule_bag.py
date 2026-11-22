@@ -1,7 +1,6 @@
 """The bag (lib/rule_bag.py, 2026-11-17, step 8): tokens drawn, kept out or put back,
 added and taken; drawn by itself as time passes; a drawn token's result acts."""
 
-import json
 import os
 import re
 import shutil
@@ -180,5 +179,4 @@ def test_the_command(dcc_world, ops):
     took = run("take", "The Job", "world", "trouble", "9")
     assert took.returncode == 1 and "to take out" in took.stderr
     assert run("refill", "The Job", "world").returncode == 0
-    data = json.loads(run("show", "The Job", "world", "--json").stdout)["data"]
-    assert data["state"]["world"]["tokens"] == {"clean": 2, "trouble": 1}
+    assert wr.load_state(ops)["world"]["The Job"]["tokens"] == {"clean": 2, "trouble": 1}

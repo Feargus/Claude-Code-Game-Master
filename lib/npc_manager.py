@@ -430,7 +430,6 @@ def death_fact(args) -> dict[str, Any]:
 def main():
     import argparse
 
-    from cli_output import emit, emit_error, strip_json_flag, wants_json
 
     parser = argparse.ArgumentParser(description='NPC sheets')
     sub = parser.add_subparsers(dest='action')
@@ -504,18 +503,13 @@ def main():
         sub.add_parser(action, help='Into or out of the party').add_argument('name')
     sub.add_parser('party', help='The party members')
 
-    json_mode = wants_json()
-    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
+    args = parser.parse_args()
     if not args.action:
         parser.print_help()
         sys.exit(1)
     manager = NPCManager()
 
     if args.action in ('show', 'status'):
-        if json_mode:
-            npc = manager.get_sheet(args.name)
-            sys.exit(emit_error("NPC not found", json_mode=True)) if npc is None else emit(npc, json_mode=True)
-            return
         text = manager.show(args.name)
         if text is None:
             sys.exit(1)
@@ -587,15 +581,6 @@ def main():
         if not ok:
             sys.exit(1)
     elif args.action == 'kill':
-        if json_mode:
-            import contextlib
-            import io
-            with contextlib.redirect_stdout(io.StringIO()):
-                result = manager.kill_npc(args.name, args.cause, **death_fact(args))
-            if not result.get('success'):
-                sys.exit(emit_error(result.get('error', 'kill failed'), json_mode=True))
-            emit(result, json_mode=True)
-            return
         result = manager.kill_npc(args.name, args.cause, **death_fact(args))
         if not result.get('success'):
             sys.exit(1)
@@ -607,9 +592,6 @@ def main():
         print_fired(result.get('fired'))
     elif args.action == 'list':
         npcs = manager.list_npcs(args.location)
-        if json_mode:
-            emit(npcs, json_mode=True)
-            return
         for key, npc in npcs.items():
             role = sheet_mod.get(npc, "identity", "role", "")
             dead = " (dead)" if is_dead(npc) else ""
