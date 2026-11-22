@@ -833,12 +833,13 @@ def then_line(c: dict[str, Any], indent: str = "    ") -> str:
 
 
 def fired_lines(c: dict[str, Any], indent: str = "  ") -> list[str]:
-    """A fired consequence still to be played out (docs/conventions/output.md):
-    the id, what happens, the fact that fired it; then the command that closes it."""
-    by = (c.get('fired') or {}).get('fact')
+    """A fired consequence still to be played out, in three lines
+    (docs/conventions/output.md): what happens, what fired it, the command that
+    closes it once played out."""
     cid = short_id(c)
-    return [f"{indent}[FIRED] {cid} {sentence(c.get('consequence', '?'))}"
-            + (f" By {by}." if by else ""),
+    why = (c.get('fired') or {}).get('reason') or "fired by the GM"
+    return [f"{indent}[FIRED] {cid} {sentence(c.get('consequence', '?'))}",
+            f"{indent}  Because: {sentence(why)}",
             f"{indent}  Once played out: bash tools/gm-consequence.sh resolve {cid}"]
 
 

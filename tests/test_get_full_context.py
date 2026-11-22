@@ -104,8 +104,9 @@ def test_only_consequences_a_fact_triggers_or_that_fired_are_listed(dcc_world):
     cm.fire(fired, reason="Carl did")
     ctx = _context(dcc_world)
     assert "The bouncer remembers" not in ctx and waits[:4] not in ctx
-    assert f"  [FIRED] {fired[:4]} The alarm wakes the floor.\n" in ctx
-    assert f"    Once played out: bash tools/gm-consequence.sh resolve {fired[:4]}" in ctx
+    assert (f"  [FIRED] {fired[:4]} The alarm wakes the floor.\n"
+            f"    Because: Carl did.\n"
+            f"    Once played out: bash tools/gm-consequence.sh resolve {fired[:4]}") in ctx
 
 
 def test_the_location_card_lists_only_what_fired_here(dcc_world):
@@ -123,5 +124,5 @@ def test_the_location_card_lists_only_what_fired_here(dcc_world):
     assert "Hekla's patrol arrives" not in card
     cm.fire(cid, reason="Carl came back")
     card = "\n".join(Cards(ops).location_card("Warehouse Street Level"))
-    assert f"[FIRED] {cid[:4]} Hekla's patrol arrives." in card
+    assert f"[FIRED] {cid[:4]} Hekla's patrol arrives.\n  Because: Carl came back." in card
     assert f"Once played out: bash tools/gm-consequence.sh resolve {cid[:4]}" in card
