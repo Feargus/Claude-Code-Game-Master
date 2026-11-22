@@ -24,8 +24,9 @@ Actions:
 add:
   "<what happens>"      the text the GM sees when it fires
   "<trigger in words>"  for people reading it; no script matches on it. Without
-                        --trigger-type it becomes an on_event trigger: every fact
-                        recorded lists it, and the GM fires it by judgment
+                        --trigger-type it becomes an on_fact trigger: semantic
+                        recall names it when a recorded fact may trigger it,
+                        and the GM fires it by judgment
   Triggers (repeat --trigger-type/--match pairs; any one fires it):
     --trigger-type on_location --match "<place>"         (a known place, exactly)
     --trigger-type on_npc      --match "<NPC>"           (a known NPC, in the scene)
@@ -39,7 +40,7 @@ add:
   clock:<short name>:<segment>); add new ones first.
     --trigger-type on_clock    --match "<clock's short name>" | "<short name>:<segment>"
     --trigger-type on_learn    --match "<who> learns <fact id>" | "<who> learns about <id>"
-    --trigger-type on_event    --match "<the event, in words>"
+    --trigger-type on_fact    --match "<the fact it waits for, in words>"
   A time limit ("in 2 days") is a clock (gm-clock.sh add), not a trigger.
   Effects, carried out when it fires:
     --starts-clock "<short name>" [--clock-text "<what it is about>"] [--clock-segments N] [--clock-on time|event]
@@ -63,7 +64,7 @@ Examples:
   gm-consequence.sh add "The witness reaches the Palimpsest" "the Witness clock runs out" \
       --trigger-type on_clock --match "Witness" --tells f42 --to "npc:Sister Lacuna"
   gm-consequence.sh add "The Fork bargains" "someone is alone with the chip" \
-      --trigger-type on_event --match "someone is alone with the chip"
+      --trigger-type on_fact --match "someone is alone with the chip"
   gm-consequence.sh fire ab12 --by f17
   gm-consequence.sh resolve ab12
 TEXT

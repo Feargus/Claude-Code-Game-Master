@@ -42,15 +42,15 @@ class ConsequenceManager(EntityManager):
             self.json_ops.save_json(self.consequences_file, data)
 
     # Structured trigger types the reactivity engine can evaluate automatically.
-    TRIGGER_TYPES = ('on_location', 'on_npc', 'on_time', 'on_event', 'on_death', 'on_clock',
+    TRIGGER_TYPES = ('on_location', 'on_npc', 'on_time', 'on_fact', 'on_death', 'on_clock',
                      'on_learn', 'on_rule')
     # Event triggers fire once, inside the command that makes the change
     # (fire_event), never on the scene check that moves and time steps run.
-    # on_event is the GM's: each recorded fact lists the consequences waiting
-    # on one (waiting_on_event), and the GM fires a fitting one by hand.
-    EVENT_TRIGGER_TYPES = ('on_death', 'on_event', 'on_clock', 'on_learn', 'on_rule')
+    # on_fact is the GM's: semantic recall names the consequences a recorded
+    # fact may trigger (recall_notes.py), and the GM fires one by hand.
+    EVENT_TRIGGER_TYPES = ('on_death', 'on_fact', 'on_clock', 'on_learn', 'on_rule')
     # A trigger either matches or not. There is no word matching: free-text
-    # conditions are on_event triggers, judged by the GM.
+    # conditions are on_fact triggers, judged by the GM.
     # Triggers whose match is an id (world_ids.py), checked when added and
     # compared exactly: (the kinds it may be, what to do if it doesn't exist).
     ID_TRIGGERS = {
@@ -69,7 +69,7 @@ class ConsequenceManager(EntityManager):
         Add a new consequence.
 
         Free-text `trigger` is always kept (human-readable). Without structured
-        triggers it becomes the consequence's on_event trigger: the event it waits
+        triggers it becomes the consequence's on_fact trigger: the event it waits
         for, judged by the GM when facts are recorded. STRUCTURED triggers, any one
         of which fires it:
           triggers:     list of {"type": one of TRIGGER_TYPES, "match": value compared
@@ -92,7 +92,7 @@ class ConsequenceManager(EntityManager):
         if trigger_type:
             triggers.append({'type': trigger_type, 'match': match})
         if not triggers and str(trigger or '').strip():
-            triggers = [{'type': 'on_event', 'match': str(trigger).strip()}]
+            triggers = [{'type': 'on_fact', 'match': str(trigger).strip()}]
         for t in triggers:
             if t.get('type') not in self.TRIGGER_TYPES:
                 print(f"[ERROR] Unknown trigger type '{t.get('type')}'. Use one of: "
@@ -446,7 +446,7 @@ class ConsequenceManager(EntityManager):
 
         New entries store a `triggers` list. Older entries are read the same way:
         a single `trigger_type` + `match` as a one-item list, and a bare free-text
-        `trigger` as an on_event trigger.
+        `trigger` as an on_fact trigger.
         """
         if isinstance(consequence.get('triggers'), list):
             return [t for t in consequence['triggers']
@@ -454,7 +454,7 @@ class ConsequenceManager(EntityManager):
         if consequence.get('trigger_type') and consequence.get('match'):
             return [{'type': consequence['trigger_type'], 'match': consequence['match']}]
         if str(consequence.get('trigger', '')).strip():
-            return [{'type': 'on_event', 'match': str(consequence['trigger']).strip()}]
+            return [{'type': 'on_fact', 'match': str(consequence['trigger']).strip()}]
         return []
 
     @staticmethod
@@ -497,7 +497,7 @@ class ConsequenceManager(EntityManager):
     def _matches_now(self, consequence: dict[str, Any], world_state: dict[str, Any]) -> str:
         """Why a state trigger of this consequence matches now, or '' if none does.
 
-        Event triggers (on_death, on_event, on_clock) never match here; they fire where
+        Event triggers (on_death, on_fact, on_clock) never match here; they fire where
         the event is recorded.
         """
         for t in self.structured_triggers(consequence):
@@ -574,16 +574,14 @@ class ConsequenceManager(EntityManager):
         return {t['match'].strip().lower() for c in data.get('active', []) if not c.get('fired')
                 for t in self.structured_triggers(c) if t['type'] == 'on_time'}
 
-    def waiting_on_event(self) -> list[dict[str, Any]]:
-        """Active consequences the GM must match to events by judgment.
-
-        Those with an on_event trigger (old entries with only a free-text trigger
-        count as one). Each comes back with `awaits`: the event it waits for, in words.
-        """
+    def waiting_on_fact(self) -> list[dict[str, Any]]:
+        """Active consequences waiting for a recorded fact (an on_fact trigger;
+        old entries with only a free-text trigger count as one). Each comes back
+        with `awaits`: its trigger, in words."""
         data = self.json_ops.load_json(self.consequences_file)
         out = []
         for c in data.get('active', []):
-            events = [t['match'] for t in self.structured_triggers(c) if t['type'] == 'on_event']
+            events = [t['match'] for t in self.structured_triggers(c) if t['type'] == 'on_fact']
             if events and not c.get('fired'):
                 hit = dict(c)
                 hit['awaits'] = ' / '.join(events)
@@ -642,6 +640,9 @@ class ConsequenceManager(EntityManager):
             reason = f"fact {by_fact}: {fact['fact']}" if fact else "fired by the GM"
         hit = self._stamp_fired(data, c, reason, by_fact)
         self.json_ops.save_json(self.consequences_file, data)
+        if by_fact:                                   # the right answer, for tuning
+            from recall_notes import log_fired
+            log_fired(self.json_ops.world_state_dir, c['id'], by_fact)
         if by_fact and c.get('plots'):
             self._give_plots(by_fact, c['plots'])     # the fact belongs where it led
         self._carry_out([hit])
@@ -820,17 +821,6 @@ def print_fired(fired: list[dict[str, Any]]) -> None:
         print(f"      ↳ fired because: {c['match_reason']} ({AFTER_FIRING})")
         for line in c.get('effects_done', []):
             print(f"      ↳ {line}")
-
-
-def print_waiting(fact_id: str, waiting: list[dict[str, Any]]) -> None:
-    """After a fact is recorded: the consequences the GM must check it against."""
-    if not waiting:
-        return
-    print(f"Waiting on an event — does {fact_id} fulfil one? (your judgment; usually none)")
-    for c in waiting:
-        print(f"  [{c['id']}] awaits \"{c['awaits']}\" → {c['consequence']}")
-    by = fact_id if ',' not in fact_id else "<the fact's id>"
-    print(f"  If one does: bash tools/gm-consequence.sh fire <id> --by {by}")
 
 
 def _print_tick_report(result: dict[str, list[dict[str, Any]]]) -> None:

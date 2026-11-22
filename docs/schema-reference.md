@@ -333,10 +333,10 @@ Tracks events that will trigger in the future.
       "created": "ISO timestamp",
 
       "triggers": [   (OPTIONAL, structured; any one fires it)
-        {"type": "on_location | on_npc | on_time | on_death | on_clock | on_learn | on_event",
+        {"type": "on_location | on_npc | on_time | on_death | on_clock | on_learn | on_fact",
          "match": "on_location: location:<key>; on_npc: npc:<key>; on_death: npc:<key> or player;
                    on_time: a time-of-day word (its hours); on_clock: <clock>:<segment>;
-                   on_learn: <who> learns <fact id> | <who> learns about:<id>; on_event: free text"}
+                   on_learn: <who> learns <fact id> | <who> learns about:<id>; on_fact: the fact it waits for, in words"}
       ],
       "effects": [   (OPTIONAL, carried out by the script each time it fires)
         {"type": "start_clock", "name": "clock name", "segments": 3, "on": "time | event",
@@ -367,7 +367,7 @@ Tracks events that will trigger in the future.
 when the consequence is added) or `player`, and it fires only inside `gm-npc.sh kill` /
 `gm-player.sh kill`, never on the scene check. `gm-consequence.sh fire <id>` fires any
 consequence by hand; `--by <fact id>` records the fact that fulfilled it (`fact` in its
-provenance entry). `on_event` is an event trigger too, matched by the GM: its `match` is
+provenance entry). `on_fact` is an event trigger too, matched by the GM: its `match` is
 the awaited event in words, and every fact recorded with `gm-note.sh` lists the
 consequences waiting on one. `on_clock` is an event trigger whose `match` is
 `"<clock name>:<segment>"` (a bare clock name is stored as its last segment, i.e. full); the
@@ -402,7 +402,7 @@ set it off) and stays in `active` until it is resolved; it matches no trigger an
 **Structured triggers** (`triggers`) are additive and
 optional. Entries written before 2026-11-06 store a single trigger as top-level
 `trigger_type` + `match` instead of a `triggers` list; they are read as a one-item list.
-Entries with only the free-text `trigger` are read as an `on_event` trigger with that
+Entries with only the free-text `trigger` are read as an `on_fact` trigger with that
 text, and `add` stores a bare free-text trigger that way. There is no word matching.
 
 ---

@@ -140,7 +140,7 @@ prepare_document() {
     if ! $PYTHON_CMD "$LIB_DIR/embedder.py" status 2>/dev/null | grep -q "Semantic recall: ready"; then
         echo "Error: the book search needs semantic recall."
         echo ""
-        echo "Install with: uv sync --extra recall"
+        echo "Install with: uv sync"
         echo "  then:       bash tools/gm-recall.sh setup   (the model, 217 MB)"
         exit 1
     fi

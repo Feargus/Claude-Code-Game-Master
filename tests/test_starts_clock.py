@@ -125,9 +125,9 @@ def test_cli_starts_clock_flags(dcc_world):
 
 def test_a_started_clock_takes_a_short_name_and_a_text(dcc_world):
     cm = ConsequenceManager(dcc_world)
-    assert cm.add_consequence("x", "y", trigger_type="on_event", match="y", effects=[
+    assert cm.add_consequence("x", "y", trigger_type="on_fact", match="y", effects=[
         {"type": "start_clock", "name": "A vendetta against the whole crew begins"}]) == ""
-    cid = cm.add_consequence("The job goes loud", "the alarm", trigger_type="on_event",
+    cid = cm.add_consequence("The job goes loud", "the alarm", trigger_type="on_fact",
                              match="the alarm", effects=[
         {"type": "start_clock", "name": "Feud", "text": "The Iron Wolves want blood",
          "segments": 3, "on": "event"}])

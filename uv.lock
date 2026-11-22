@@ -393,10 +393,13 @@ version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
+    { name = "numpy" },
+    { name = "onnxruntime" },
     { name = "pdfplumber" },
     { name = "pypdf" },
     { name = "python-docx" },
     { name = "python-dotenv" },
+    { name = "tokenizers" },
 ]
 
 [package.optional-dependencies]
@@ -409,14 +412,6 @@ dev = [
 ]
 full = [
     { name = "elevenlabs" },
-    { name = "numpy" },
-    { name = "onnxruntime" },
-    { name = "tokenizers" },
-]
-recall = [
-    { name = "numpy" },
-    { name = "onnxruntime" },
-    { name = "tokenizers" },
 ]
 voice = [
     { name = "elevenlabs" },
@@ -427,11 +422,10 @@ requires-dist = [
     { name = "anthropic", specifier = ">=0.76.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "elevenlabs", marker = "extra == 'voice'", specifier = ">=2.8.1" },
-    { name = "gm-claude", extras = ["recall"], marker = "extra == 'full'" },
     { name = "gm-claude", extras = ["voice"], marker = "extra == 'full'" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.5.0" },
-    { name = "numpy", marker = "extra == 'recall'", specifier = ">=1.26" },
-    { name = "onnxruntime", marker = "extra == 'recall'", specifier = ">=1.20" },
+    { name = "numpy", specifier = ">=1.26" },
+    { name = "onnxruntime", specifier = ">=1.20" },
     { name = "pdfplumber", specifier = ">=0.11.9" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.4.0" },
     { name = "pypdf", specifier = ">=5.0" },
@@ -439,9 +433,9 @@ requires-dist = [
     { name = "python-docx", specifier = ">=1.2.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "tokenizers", marker = "extra == 'recall'", specifier = ">=0.20" },
+    { name = "tokenizers", specifier = ">=0.20" },
 ]
-provides-extras = ["voice", "recall", "full", "dev"]
+provides-extras = ["voice", "full", "dev"]
 
 [[package]]
 name = "h11"

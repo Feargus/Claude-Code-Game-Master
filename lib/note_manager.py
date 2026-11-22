@@ -161,7 +161,7 @@ class NoteManager:
         default = ids.present()
         return default + [h for h in extra if h not in default], errors
 
-    def add_fact(self, fact: str, *, list_waiting: bool = True,
+    def add_fact(self, fact: str, *, check: bool = True,
                  about=None, not_about=None, holders=None, secret: bool = False,
                  also=None, truth=None, version_of=None, at=None, nowhere: bool = False,
                  auto_at: bool = True, plots=None, offer_plot: bool = True,
@@ -176,8 +176,10 @@ class NoteManager:
         unknown id refuses the fact. `holders` lists who knows it: by default
         the player and the NPCs present (`also` adds to that); a list given
         replaces it; `secret`
-        (or an empty list) means nobody, a GM-only secret. Afterwards it lists
-        the consequences waiting on an event, unless `list_waiting` is False.
+        (or an empty list) means nobody, a GM-only secret. Afterwards semantic
+        recall compares it with the waiting triggers, the plots and the people
+        (recall_notes.py), unless `check` is False (a caller that records several
+        and checks them together). It needs the model: without it nothing is recorded.
         `at` is where it happened: the place given, else the current location
         (with `auto_at`), or none with `nowhere`. `plots`: the plots it belongs to;
         with none, and `offer_plot`, the one open plot that involves who or where
@@ -185,6 +187,12 @@ class NoteManager:
         time it happened ("YYYY-MM-DD HH:MM"), if earlier than now (a faction turn
         owed since it was drawn, something recorded after the fact).
         """
+        from embedder import EmbedderError, require_embedder
+        try:
+            require_embedder()
+        except EmbedderError as error:
+            print(f"[ERROR] {error}", file=sys.stderr)
+            return ""
         about_ids, found, errors = self._about(fact, about, not_about)
         where, more = self._where(at, nowhere, auto_at)
         errors += more
@@ -250,8 +258,8 @@ class NoteManager:
             self._named_but_absent(fact_id, about_ids, holder_ids)
         from consequence_manager import print_fired
         print_fired(self._learned(fact_id, entry, holder_ids))
-        if list_waiting:
-            self._list_waiting(fact_id)
+        if check:
+            self.check([fact_id])
         return fact_id
 
     def _eyes(self, fact_id: str, where: str, holders) -> None:
@@ -497,15 +505,19 @@ class NoteManager:
             fact_file.save(self.json_ops, kept)
         return len(facts) - len(kept)
 
-    def _list_waiting(self, fact_id: str) -> None:
-        """Show the consequences waiting on an event, so the GM can judge whether
-        the new fact fulfils one (design-notes.md, "World state")."""
-        from consequence_manager import ConsequenceManager, print_waiting
-        try:
-            waiting = ConsequenceManager(self.world_state_dir).waiting_on_event()
-        except RuntimeError:
-            return
-        print_waiting(fact_id, waiting)
+    def check(self, fact_ids, skip=()) -> list[str]:
+        """Semantic recall on new facts, printed: the consequences they may trigger,
+        a plot they look part of, a person they read like they are about
+        (recall_notes.py). Returns the lines. `skip`: consequence ids not to name."""
+        from embedder import require_embedder
+        from recall_notes import check_facts
+        embedder = require_embedder()
+        if embedder is None:                       # GM_EMBEDDER=off: tests without vectors
+            return []
+        lines = check_facts(self.campaign_dir, fact_ids, embedder, skip)
+        for line in lines:
+            print(line)
+        return lines
 
     # ---------- looking facts up ----------
 
@@ -703,7 +715,7 @@ class NoteManager:
             ref = str(item.get("version_of") or "")
             if ref.startswith("#"):
                 ref = written[int(ref[1:]) - 1]
-            fid = self.add_fact(item["fact"], list_waiting=False, about=as_list(item.get("about")),
+            fid = self.add_fact(item["fact"], check=False, about=as_list(item.get("about")),
                                 not_about=as_list(item.get("not_about")),
                                 holders=as_list(item.get("holders")),
                                 secret=bool(item.get("secret")), also=as_list(item.get("also")),
@@ -714,7 +726,7 @@ class NoteManager:
                 self.remove_facts(written)
                 raise ValueError("A fact was refused (see above); none of this beat was kept.")
             written.append(fid)
-        self._list_waiting(", ".join(written))
+        self.check(written)
         return written
 
 

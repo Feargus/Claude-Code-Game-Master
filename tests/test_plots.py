@@ -86,7 +86,7 @@ def test_links_are_stored_on_the_side_where_they_are_made(world, capsys):
     assert not notes.add_fact("x", plots=["No Such Plot"], nowhere=True)
 
     cm = ConsequenceManager(world)
-    cid = cm.add_consequence("The stairs collapse", "someone kicks the rig", trigger_type="on_event",
+    cid = cm.add_consequence("The stairs collapse", "someone kicks the rig", trigger_type="on_fact",
                              match="someone kicks the rig", plots=["The Descent"],
                              effects=[{"type": "start_clock", "name": "Collapse", "segments": 2,
                                        "on": "event", "consequence": "The floor goes"}])
@@ -118,7 +118,7 @@ def test_open_plots_are_sorted_most_pressing_first(world):
     TimeManager(world).set_time(parse_time("2187-10-26 04:00"))
     ThreatClockManager(world).add_clock("Soon", 4, due_in_minutes=60, plots=["Clocked"])
     cm = ConsequenceManager(world)
-    cid = cm.add_consequence("It happens", "now", trigger_type="on_event", match="now",
+    cid = cm.add_consequence("It happens", "now", trigger_type="on_fact", match="now",
                              plots=["Fired"])
     cm.fire(cid, reason="it happened")
     assert plot_order(pm.json_ops) == ["Fired", "Right Here", "Clocked", "Quiet Main",

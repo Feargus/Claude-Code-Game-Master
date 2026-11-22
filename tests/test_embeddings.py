@@ -83,7 +83,7 @@ def test_one_job_at_a_time(dcc_world, monkeypatch):
 
 
 @pytest.mark.skipif(embedder_mod.packages_missing() or embedder_mod.files_missing(),
-                    reason="semantic recall not installed (uv sync --extra recall; gm-recall.sh setup)")
+                    reason="semantic recall not installed (uv sync; gm-recall.sh setup)")
 def test_the_real_model_finds_the_clown():
     e = embedder_mod.Embedder()
     q = e.query("the clown")

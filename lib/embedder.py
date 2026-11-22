@@ -6,13 +6,14 @@ things get vectors that point the same way, so "the clown" finds "Pagliacci took
 off his makeup and wept". Chosen by a benchmark on a Raspberry Pi 4 (2026-11-15):
 0.5 GB of RAM, about 6 s to load, about 0.8 s per text.
 
-Optional. It needs the `recall` extra (`uv sync --extra recall`: numpy,
-onnxruntime, tokenizers) and the model files (`gm-recall.sh setup`, 217 MB, into
-GM_MODELS_DIR, default `models/` beside `lib/`). Without them `get_embedder()`
-returns None and everything works as before, by recency.
+Part of the game (since 2026-11-22): recording a fact needs it (`require_embedder`).
+It needs numpy, onnxruntime and tokenizers (installed by `uv sync`) and the model
+files (`gm-recall.sh setup`, 217 MB, into GM_MODELS_DIR, default `models/` beside
+`lib/`).
 
 Tests set GM_EMBEDDER=fake: vectors from the words' hashes, the same every run,
-so the suite needs neither the packages nor the model.
+so the suite needs neither the packages nor the model; GM_EMBEDDER=off (the tests'
+default) leaves vectors out where a test doesn't need them.
 
     gm-recall.sh setup      download and check the model files
     gm-recall.sh status     what is installed, and where; whether the helper runs
@@ -96,7 +97,7 @@ class Embedder:
         missing = packages_missing()
         if missing:
             raise EmbedderError(f"Semantic recall needs {', '.join(missing)}: "
-                                f"uv sync --extra recall")
+                                f"uv sync")
         if files_missing():
             raise EmbedderError("The model files are missing: bash tools/gm-recall.sh setup")
         ort = _import_onnxruntime()
@@ -167,6 +168,24 @@ def get_embedder():
     return HelperEmbedder(MODEL_NAME)
 
 
+def require_embedder():
+    """The embedder, which recording a fact needs. None only with GM_EMBEDDER=off
+    (tests that need no vectors); raises EmbedderError, saying how to install it,
+    when it is missing."""
+    if os.environ.get("GM_EMBEDDER", "") == "off":
+        return None
+    embedder = get_embedder()
+    if embedder is None:
+        missing = packages_missing()
+        how = ("uv sync (the packages: " + ", ".join(missing) + "), then "
+               if missing else "")
+        raise EmbedderError(
+            "Semantic recall isn't installed, and recording a fact needs it: "
+            f"{how}bash tools/gm-recall.sh setup (the model files, 217 MB). "
+            "bash tools/gm-recall.sh status shows what is missing. Nothing was recorded.")
+    return embedder
+
+
 # ---------- setup and status ----------
 
 def _sha256(path: Path) -> str:
@@ -211,12 +230,12 @@ def status() -> list[str]:
     lines = [f"Model: {MODEL_NAME} ({REPO} at {REVISION[:8]})",
              f"Folder: {models_dir()}",
              "Packages: " + ("installed" if not missing else
-                             f"missing {', '.join(missing)} (uv sync --extra recall)"),
+                             f"missing {', '.join(missing)} (uv sync)"),
              "Files: " + ("all there" if not files else
                           f"missing {', '.join(Path(f).name for f in files)} "
                           f"(bash tools/gm-recall.sh setup)")]
     lines.append("Semantic recall: " + ("ready" if not missing and not files else
-                                        "off; facts are ranked by recency"))
+                                        "not installed: recording a fact is refused until it is"))
     return lines
 
 
@@ -228,7 +247,7 @@ def main() -> int:
                 print(line)
             print("[SUCCESS] The model is ready." if not packages_missing() else
                   "[SUCCESS] The model files are ready; the packages still need: "
-                  "uv sync --extra recall")
+                  "uv sync")
         elif action == "status":
             print("\n".join(status()))
         else:

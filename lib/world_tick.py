@@ -185,7 +185,7 @@ class WorldTick:
             for i, d in enumerate(developments):
                 text = str(d.get("fact") or d.get("text")).strip()
                 plots = as_list(d.get("plot"))
-                fid = notes.add_fact(text, list_waiting=False, about=as_list(d.get("about")),
+                fid = notes.add_fact(text, check=False, about=as_list(d.get("about")),
                                      plots=plots, offer_plot=False,
                                      holders=as_list(d.get("holders")),
                                      truth=d.get("truth"), version_of=d.get("version_of"),
@@ -232,11 +232,13 @@ class WorldTick:
             raise WorldTickError(f"development {i + 1}: clock: {error}") from error
         return name
 
-    def waiting(self, applied: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Consequences waiting on an event that the tick's facts might fulfil
-        (leaving out the ones this tick just created)."""
+    def check(self, applied: list[dict[str, Any]]) -> list[str]:
+        """Semantic recall on the tick's facts, printed: the consequences they may
+        trigger (not the ones this tick just created), plots, people."""
+        from note_manager import NoteManager
         own = {a.get("consequence") for a in applied}
-        return [c for c in self.cm.waiting_on_event() if c["id"] not in own]
+        return NoteManager(self.world_state_dir or "world-state").check(
+            [a["fact"] for a in applied], skip=own)
 
     def rollback_last(self) -> bool:
         """Undo the most recent world tick: its facts, consequences and clocks."""
@@ -301,9 +303,10 @@ def main():
         except WorldTickError as error:
             sys.exit(emit_error(f"{str(error).rstrip('.')}. Nothing from this tick was kept.",
                                 json_mode=json_mode))
-        waiting = wt.waiting(applied)
         if json_mode:
-            payload = {"applied": applied, "waiting_on_event": waiting}
+            with contextlib.redirect_stdout(out):
+                checks = wt.check(applied)
+            payload = {"applied": applied, "checks": checks}
             overflow = getattr(wt, "last_overflow", []) or []
             if overflow:
                 payload["overflow"] = overflow
@@ -318,9 +321,7 @@ def main():
             for a in applied:
                 extra = "".join(f", {k} {a[k]}" for k in ("consequence", "clock") if a.get(k))
                 print(f"[WORLD TICK] {a['fact']}{extra}: {a['text']}")
-            if waiting:
-                from consequence_manager import print_waiting
-                print_waiting(", ".join(a["fact"] for a in applied), waiting)
+            wt.check(applied)
     elif args.action == "rollback":
         ok = wt.rollback_last()
         if json_mode:

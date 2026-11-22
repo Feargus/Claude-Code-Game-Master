@@ -92,7 +92,7 @@ class AgentExtractor:
             missing = get_missing_deps()
             print("ERROR: the book search needs semantic recall.")
             print(f"Missing: {', '.join(missing)}")
-            print("Install with: uv sync --extra recall, then bash tools/gm-recall.sh setup")
+            print("Install with: uv sync, then bash tools/gm-recall.sh setup")
             sys.exit(1)
 
         # Import RAG components (safe now that we checked availability)

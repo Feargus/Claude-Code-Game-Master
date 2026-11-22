@@ -34,7 +34,7 @@ def test_free_text_alone_becomes_an_on_event_trigger(dcc_world):
     cid = cm.add_consequence("plain consequence", "someday")
     data = json.loads(_consq_path(dcc_world).read_text(encoding="utf-8"))
     new = next(c for c in data["active"] if c["id"] == cid)
-    assert new["triggers"] == [{"type": "on_event", "match": "someday"}]
+    assert new["triggers"] == [{"type": "on_fact", "match": "someday"}]
     assert "trigger_type" not in new
 
 
@@ -42,7 +42,7 @@ def test_old_free_text_entries_never_fire_on_shared_words(dcc_world):
     cm = ConsequenceManager(dcc_world)
     old = {"id": "o1", "consequence": "c", "trigger": "when the party returns to the market"}
     assert cm.structured_triggers(old) == [
-        {"type": "on_event", "match": "when the party returns to the market"}]
+        {"type": "on_fact", "match": "when the party returns to the market"}]
     assert cm._matches_now(old, {"location": "the market", "time": "returns"}) == ""
 
 
@@ -50,7 +50,7 @@ def test_fixture_exercises_all_trigger_types_and_a_legacy(dcc_world):
     data = json.loads(_consq_path(dcc_world).read_text(encoding="utf-8"))
     items = data.get("active", []) + data.get("pending", [])
     types = {c.get("trigger_type") for c in items if c.get("trigger_type")}
-    assert {"on_location", "on_npc", "on_time", "on_event"}.issubset(types)
+    assert {"on_location", "on_npc", "on_time", "on_fact"}.issubset(types)
     assert any("trigger_type" not in c for c in items), "expected a legacy free-text consequence too"
 
 

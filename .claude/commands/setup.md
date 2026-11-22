@@ -21,14 +21,14 @@ Run this command to install GM Claude dependencies. This runs automatically on f
    Try uv first (faster), fall back to pip:
    ```bash
    if command -v uv &> /dev/null; then
-       uv sync --extra recall
+       uv sync
    else
-       source .venv/bin/activate && pip install --upgrade pip && pip install -e '.[recall]'
+       source .venv/bin/activate && pip install --upgrade pip && pip install -e .
    fi
    bash tools/gm-recall.sh setup
    ```
 
-   Note: this installs numpy, onnxruntime and tokenizers (about 150 MB) and downloads the model (217 MB, checked) into `models/`. No PyTorch.
+   Note: this installs numpy, onnxruntime and tokenizers (about 150 MB) and downloads the model (217 MB, checked) into `models/`. No PyTorch. Semantic recall is required: without the model, recording a fact is refused.
 
 4. **Create .env if missing**
    ```bash

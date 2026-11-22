@@ -94,7 +94,7 @@ def test_a_rule_effect_moves_the_point(ops):
 def test_a_consequence_carries_rule_effects(ops, dcc_world):
     cm = ConsequenceManager(dcc_world)
     cid = cm.add_consequence(
-        "Meridian hears of the dead guard.", "y", trigger_type="on_event", match="x",
+        "Meridian hears of the dead guard.", "y", trigger_type="on_fact", match="x",
         effects=[{"type": "rule", "change": "standing", "of": "Meridian", "by": -4},
                  {"type": "rule", "rate_of": "Standing", "of": "Meridian", "shift": -1}])
     stored = next(c for c in json.loads((Path(ops.world_state_dir) / "consequences.json")
@@ -117,7 +117,7 @@ def test_a_consequence_carries_rule_effects(ops, dcc_world):
 ])
 def test_a_consequences_rule_effect_is_checked(ops, dcc_world, effect, words, capsys):
     cid = ConsequenceManager(dcc_world).add_consequence(
-        "x happens.", "y", trigger_type="on_event", match="x", effects=[{"type": "rule", **effect}])
+        "x happens.", "y", trigger_type="on_fact", match="x", effects=[{"type": "rule", **effect}])
     assert cid == "" and words in capsys.readouterr().err
 
 
@@ -125,7 +125,7 @@ def test_the_command_line_takes_a_rule_effect(ops, dcc_world):
     env = dict(os.environ, GM_WORLD_STATE_BASE=dcc_world)
     done = subprocess.run(
         ["bash", str(ROOT / "tools" / "gm-consequence.sh"), "add", "The Kin hear of the rescue.",
-         "y", "--trigger-type", "on_event", "--match", "x",
+         "y", "--trigger-type", "on_fact", "--match", "x",
          "--rule-effect", '{"rate_of": "Standing", "of": "Meridian", "shift": 1}'],
         capture_output=True, text=True, env=env)
     assert done.returncode == 0, done.stderr

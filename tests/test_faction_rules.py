@@ -77,7 +77,7 @@ def test_a_relation_is_named_changed_and_waited_on(ops, dcc_world):
 
 def test_a_consequence_can_change_a_relation(ops, dcc_world):
     cm = ConsequenceManager(dcc_world)
-    cid = cm.add_consequence("A truce is signed.", "y", trigger_type="on_event", match="x",
+    cid = cm.add_consequence("A truce is signed.", "y", trigger_type="on_fact", match="x",
                              effects=[{"type": "rule", "rate_of": "Relation",
                                        "of": "system+Meridian", "toward": 2, "by": 1}])
     cm.fire(cid)

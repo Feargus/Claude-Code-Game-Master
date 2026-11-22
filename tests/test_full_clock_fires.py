@@ -110,4 +110,4 @@ def test_the_clocks_consequence_fires_at_once_and_does_not_wait(dcc_world):
     assert len(fired) == 1 and DOOM in fired[0]["consequence"]
     assert fired[0]["match_reason"] == "clock Doom reached 2/2"
     cm = ConsequenceManager(dcc_world)
-    assert not any(DOOM in c["consequence"] for c in cm.waiting_on_event())
+    assert not any(DOOM in c["consequence"] for c in cm.waiting_on_fact())

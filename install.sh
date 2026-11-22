@@ -244,19 +244,18 @@ main() {
     else
         echo
         echo "  Select what to install:"
-        echo "    1) Core only         — basic GM tools, dice, session management"
-        echo "    2) Core + recall     — adds semantic recall and the book search (recommended)"
-        echo "    3) Full              — core + recall + voice (ElevenLabs TTS)"
+        echo "    1) Core              — the GM tools, with semantic recall and the book search"
+        echo "    3) Full              — core + voice (ElevenLabs TTS)"
         echo "    4) Full + Dev tools  — everything + linting & formatting"
         echo
-        echo -n "  Choice [1-4] (default: 2): "
+        echo -n "  Choice [1, 3, 4] (default: 1): "
         read -r choice
 
         case "$choice" in
             1) EXTRAS_FLAG="";;
             3) EXTRAS_FLAG="--all-extras";;
             4) EXTRAS_FLAG="--all-extras";;
-            *) EXTRAS_FLAG="--extra recall";;  # default to 2
+            *) EXTRAS_FLAG="";;  # default to 1
         esac
 
         # Dev extras on top if choice 4
@@ -343,9 +342,9 @@ ENVEOF
         ok "Semantic recall ready (EmbeddingGemma on ONNX Runtime; also the book search)"
         PASS=$((PASS + 1))
     elif uv run python -c "import onnxruntime, tokenizers, numpy" 2>/dev/null; then
-        info "Semantic recall: the packages are there; the model isn't yet (bash tools/gm-recall.sh setup)"
+        warn "Semantic recall: the packages are there, the model isn't yet, and recording a fact needs it: bash tools/gm-recall.sh setup"
     else
-        info "Semantic recall not installed (optional: uv sync --extra recall, then bash tools/gm-recall.sh setup)"
+        warn "Semantic recall not installed, and recording a fact needs it: uv sync, then bash tools/gm-recall.sh setup"
     fi
 
     # jq

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""The campaign's embeddings: one vector per fact, place and plot, kept up to date
-by a background job.
+"""The campaign's embeddings: one vector per fact, place, person, plot and trigger,
+kept up to date by a background job; a new fact and the triggers waiting for one are
+embedded at once, as the fact is recorded (`embed`, recall_notes.py).
 
 Kept in `embeddings.npz` beside facts.json, not in git (derived: rebuilt when
 missing). Each entry has a key (`fact:f12`, `location:The Dry Quay`,
@@ -41,7 +42,6 @@ LOCK = "embeddings.lock"
 LOG = "embeddings.log"
 SAVE_EVERY = 5              # entries embedded between saves, so a killed job loses little
 LOG_LINES = 200
-NOTES_AT_MOST = 10          # new facts in one job; more is a first embedding, not play
 
 
 def _hash(text: str) -> str:
@@ -89,6 +89,23 @@ def texts(campaign_dir: Path) -> dict[str, str]:
         if isinstance(plot, dict):
             parts = [plot.get("description"), plot.get("stands"), plot.get("summary")]
             out[f"plot:{key}"] = f"{key}: " + " ".join(str(p) for p in parts if p)
+    out.update(trigger_texts(load("consequences.json")))
+    return out
+
+
+def trigger_texts(store) -> dict[str, str]:
+    """{"trigger:<consequence id>": the fact it waits for, in words}, for every
+    consequence still waiting on an on_fact trigger. Only the trigger: what the
+    consequence does when it fires would pull in facts about that instead."""
+    active = store.get("active", []) if isinstance(store, dict) else []
+    out = {}
+    for c in active:
+        if not isinstance(c, dict) or c.get("fired") or not c.get("id"):
+            continue
+        words = [str(t.get("match")) for t in c.get("triggers") or []
+                 if isinstance(t, dict) and t.get("type") == "on_fact" and t.get("match")]
+        if words:
+            out[f"trigger:{c['id']}"] = " / ".join(words)
     return out
 
 
@@ -140,7 +157,6 @@ class EmbeddingStore:
         for key in gone:
             stored.pop(key, None)
         items = list(todo.items())[:limit or None]
-        self.last_embedded = [k for k, _ in items]
         done = 0
         for key, text in items:
             stored[key] = (_hash(text), embedder.document(text))
@@ -152,6 +168,25 @@ class EmbeddingStore:
         if done or gone or model != embedder.name:
             self.save(embedder.name, stored)
         return done
+
+    def embed(self, embedder, keys) -> dict:
+        """Embed these keys now, those of them that are new or changed (a fact just
+        recorded, the triggers waiting for one), and save. Returns the vectors, as
+        `vectors`. No lock: a background job running meanwhile may save without
+        them, and then embeds them again; a save never leaves half a file."""
+        wanted = texts(self.dir)
+        model, stored = self.load()
+        if model != embedder.name:
+            stored = {}
+        new = {k: (_hash(wanted[k]), embedder.document(wanted[k])) for k in keys
+               if k in wanted and (k not in stored or stored[k][0] != _hash(wanted[k]))}
+        if new:
+            model, stored = self.load()            # again: a job may have saved meanwhile
+            if model != embedder.name:
+                stored = {}
+            stored.update(new)
+            self.save(embedder.name, stored)
+        return self.vectors(embedder.name)
 
     def counts(self, embedder_name: str) -> tuple[int, int]:
         """(embedded and current, waiting)."""
@@ -196,20 +231,12 @@ def job(campaign_dir) -> int:
         except BlockingIOError:
             return 0
         start = time.time()
-        new_facts = []
         try:
             while True:
                 done = store.update(embedder)
                 total += done
-                new_facts += [k[5:] for k in store.last_embedded if k.startswith("fact:")]
                 if not done:
                     break
-            # Notes for the next command (recall_notes.py); not after a first embedding
-            # of a whole campaign, which would make a note of every fact.
-            if 0 < len(new_facts) <= NOTES_AT_MOST:
-                from recall_notes import add_notes, make_notes
-                add_notes(campaign_dir, make_notes(campaign_dir, new_facts, embedder,
-                                                   store.vectors(embedder.name)))
         except Exception as error:                 # noqa: BLE001 (a background job must log, not crash silently)
             _log(campaign_dir, f"error after {total}: {type(error).__name__}: {error}")
             return 1

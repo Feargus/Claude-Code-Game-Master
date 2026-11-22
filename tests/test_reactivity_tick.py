@@ -27,7 +27,7 @@ def test_a_consequence_fires_once(dcc_world):
     ids = {c["id"] for c in night["fired"]}
     assert "a36a02f6" in ids                                   # Nightstalker, on_time night
     assert "c3e61742" not in ids                               # Sheol has fired: not again
-    assert all(c["id"] != "c3e61742" for c in cm.waiting_on_event())
+    assert all(c["id"] != "c3e61742" for c in cm.waiting_on_fact())
     assert cm.fire("c3e61742") == {}                           # not by hand either
 
 

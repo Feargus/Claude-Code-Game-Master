@@ -23,9 +23,14 @@ classifiers = [
     "Topic :: Games/Entertainment :: Role-Playing",
 ]
 
-# Core dependencies only - minimal for basic functionality
+# Core dependencies. numpy, onnxruntime and tokenizers are semantic recall
+# (EmbeddingGemma on ONNX Runtime, no PyTorch), which recording a fact needs since
+# 2026-11-22; the model itself is downloaded by `bash tools/gm-recall.sh setup`.
 dependencies = [
     "anthropic>=0.76.0",
+    "numpy>=1.26",
+    "onnxruntime>=1.20",
+    "tokenizers>=0.20",
     "pdfplumber>=0.11.9",
     "pypdf>=5.0",
     "python-docx>=1.2.0",
@@ -38,19 +43,9 @@ voice = [
     "elevenlabs>=2.8.1",
 ]
 
-# Semantic recall: facts ranked by meaning, and the book search (EmbeddingGemma on ONNX
-# Runtime, no PyTorch).
-# The model itself is downloaded by `bash tools/gm-recall.sh setup`.
-recall = [
-    "numpy>=1.26",
-    "onnxruntime>=1.20",
-    "tokenizers>=0.20",
-]
-
-# Full installation (all features; the book search comes with `recall`)
+# Full installation (all features)
 full = [
     "gm-claude[voice]",
-    "gm-claude[recall]",
 ]
 
 # Development dependencies

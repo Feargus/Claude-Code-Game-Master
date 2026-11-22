@@ -11,17 +11,20 @@ facts, and before that session summaries and arc entries).
 
 - **The model** (`lib/embedder.py`): EmbeddingGemma-300m, 4-bit, on ONNX Runtime; no
   PyTorch. Chosen by a benchmark on a Raspberry Pi 4: about 6 s to load, under a second per
-  text, 0.5 GB of RAM. Optional (`uv sync --extra recall`, `gm-recall.sh setup`); without it,
-  `--like` ranks by keywords (BM25) and says so.
+  text, 0.5 GB of RAM. Part of the game since 2026-11-22 (the packages come with `uv sync`,
+  the model with `gm-recall.sh setup`): recording a fact is refused without it. Other
+  commands still fall back where it is missing (`--like` ranks by keywords, BM25, and says so).
 - **The helper** (`lib/embed_helper.py`): a process that keeps the model loaded, reached
   through a Unix socket in a RAM folder. The first command that needs the model starts it;
   it exits after 30 minutes unused; a command that finds it outdated (other model files or
   code) replaces it, and one that can't reach it loads the model itself. A question by
   meaning then takes about 1.3 s instead of 7.
-- **The vectors** (`lib/embedding_store.py`): one per fact, place and plot, in the
-  campaign's `embeddings.npz` (derived, not in git). Saving `facts.json`, `locations.json`
-  or `plots.json` starts a background job when the command ends; one job runs at a time
-  (a lock), embeds what is new or changed and exits.
+- **The vectors** (`lib/embedding_store.py`): one per fact, place, person, plot and
+  `on_fact` trigger (`trigger:<consequence id>`: only the fact it waits for, not what the
+  consequence does), in the campaign's `embeddings.npz` (derived, not in git). A new fact
+  and the triggers are embedded at once, as the fact is recorded; for the rest, saving
+  `facts.json`, `locations.json` or `plots.json` starts a background job when the command
+  ends; one job runs at a time (a lock), embeds what is new or changed and exits.
 - **The ranking** (`lib/recall.py`): who knows a fact is a hard filter (`--held-by`,
   `--hidden`, `--secret`, `--truth`, `--text`); what comes from matching words
   is only a bonus (`--about` +0.10, `--at` +0.05, `--plot` +0.05, recency up to +0.05),
@@ -31,11 +34,13 @@ facts, and before that session summaries and arc entries).
   play has begun, `gm-npc.sh create` and `gm-location.sh add` refuse a record that reads like
   an existing one (similarity 0.70 or more; a person re-described scored 0.63 to 0.74,
   different people at most 0.65) unless `--another` is given.
-- **Notes after a fact** (`lib/recall_notes.py`): the background job compares each new fact
-  with the open plots (0.45, clearly the best), the people (0.55, and closer than the
-  character and everyone it is linked to) and the consequences waiting on an event (0.50),
-  and leaves notes in `embeddings.notes.json`; the next command that needs a campaign prints
-  them once (`tools/common.sh`), not into `--json` output. A note acted on meanwhile is dropped.
+- **The check as a fact is recorded** (`lib/recall_notes.py`, since 2026-11-22; before, a
+  background job left notes for the next command): the new fact is compared with the
+  `on_fact` triggers (0.65: each consequence it may trigger, with the command to fire it;
+  nothing fires by itself), the open plots (0.45, clearly the best) and the people (0.55,
+  and closer than the character and everyone it is linked to), and the fact's own output
+  names what fits. Every comparison worth a look goes into `recall-check.log` (per machine),
+  with each consequence the GM fired by a fact, to tune the thresholds.
 - **A fact not embedded yet** (the background job is still running) is embedded by the
   query itself, up to 10; beyond that it counts as average.
 

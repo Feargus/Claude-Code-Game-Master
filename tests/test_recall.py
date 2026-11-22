@@ -177,64 +177,67 @@ def test_before_the_opening_nothing_is_checked(dcc_world, monkeypatch):
     assert npcs.create_npc("The Fence", "a one-eyed fence who buys stolen crawler loot", nowhere=True)
 
 
-# ---------- step f: the background job's notes, printed by the next command ----------
+# ---------- the check as a fact is recorded (recall_notes.py, 2026-11-22) ----------
 
-def test_notes_for_a_new_fact_are_printed_once(dcc_world, monkeypatch):
-    """The fixture's old facts share ids, so its first job looks like a bulk
-    embedding (no notes, by design); the notes are made directly here."""
-    from lib import recall_notes
-    from lib.embedder import FakeEmbedder
-    from lib.embedding_store import EmbeddingStore
+def test_a_new_fact_names_the_plot_and_the_person_it_looks_like(dcc_world, monkeypatch, capsys):
     from lib.npc_manager import NPCManager
     from lib.plot_manager import PlotManager
-    camp = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
     monkeypatch.setenv("GM_EMBEDDER", "fake")
     NPCManager(dcc_world).create_npc("Vex Marrow", "one-eyed fence buying stolen crawler loot",
                                      nowhere=True)
     PlotManager(dcc_world).add("Stolen Loot", "Who buys the stolen crawler loot, and for whom.")
+    capsys.readouterr()
     fid = NoteManager(dcc_world).add_fact("The one-eyed fence was buying stolen crawler loot again.",
-        holders=["player"], nowhere=True)
-    store = EmbeddingStore(camp)
-    notes = recall_notes.make_notes(camp, [fid], FakeEmbedder(), store.vectors("fake"))
-    recall_notes.add_notes(camp, notes)
-    printed = "\n".join(recall_notes.lines(camp))
+                                          holders=["player"], nowhere=True)
+    printed = capsys.readouterr().out
     assert f"{fid} looks part of Stolen Loot" in printed
     assert f"{fid} reads like it is about npc:Vex Marrow" in printed
-    assert recall_notes.lines(camp) == []             # printed once
 
 
-def test_a_note_acted_on_is_dropped(dcc_world, monkeypatch):
-    from lib import recall_notes
+def test_a_new_fact_names_the_consequence_it_may_trigger_and_the_log_keeps_it(
+        dcc_world, monkeypatch, capsys):
+    """Only the trigger is embedded (trigger:<id>), not what the consequence does;
+    the GM fires it, never the check; firing by the fact is logged as the answer."""
+    from lib.consequence_manager import ConsequenceManager
+    from lib.embedding_store import EmbeddingStore
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
     camp = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
+    cm = ConsequenceManager(dcc_world)
+    cid = cm.add_consequence("The auditors open the books", "the factor bids",
+                             trigger_type="on_fact",
+                             match="the factor bids for the contract at the hall")
+    capsys.readouterr()
+    fid = NoteManager(dcc_world).add_fact("The factor bids for the contract at the hall today.",
+                                          holders=["player"], nowhere=True)
+    printed = capsys.readouterr().out
+    assert f"{fid} may trigger [{cid[:4]}]" in printed
+    assert f"gm-consequence.sh fire {cid} --by {fid}" in printed
+    assert not any(c["id"] == cid and c.get("fired") for c in cm.waiting_on_fact())   # not fired
+    from lib.embedder import FakeEmbedder
+    assert f"trigger:{cid}" in EmbeddingStore(camp).vectors(FakeEmbedder.name)
+    log = (camp / "recall-check.log").read_text(encoding="utf-8")
+    assert f"{fid} trigger {cid}" in log
+    cm.fire(cid, by_fact=fid)
+    assert f"fired {cid} by {fid}" in (camp / "recall-check.log").read_text(encoding="utf-8")
+
+
+def test_a_fact_far_from_every_trigger_names_none(dcc_world, monkeypatch, capsys):
+    from lib.consequence_manager import ConsequenceManager
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    ConsequenceManager(dcc_world).add_consequence(
+        "x", "y", trigger_type="on_fact", match="the factor bids for the contract at the hall")
+    capsys.readouterr()
+    NoteManager(dcc_world).add_fact("Rain fell on the quiet market.", holders=["player"],
+                                    nowhere=True)
+    assert "may trigger" not in capsys.readouterr().out
+
+
+def test_without_the_model_a_fact_is_refused(dcc_world, monkeypatch, capsys):
+    import embedder
+    monkeypatch.setenv("GM_EMBEDDER", "")
+    monkeypatch.setattr(embedder, "files_missing", lambda: ["model_q4.onnx_data"])
     n = NoteManager(dcc_world)
-    fid = n.add_fact("Something happened.", holders=["player"], nowhere=True)
-    recall_notes.add_notes(camp, [{"fact": fid, "kind": "about", "target": "npc:Mordecai",
-                                   "score": 0.7}])
-    n.set_about(fid, ["npc:Mordecai"], [])
-    assert recall_notes.lines(camp) == []
-
-
-def test_the_next_command_prints_the_note_on_stderr_but_not_with_json(isolated_world_state):
-    import os
-    import sys
-    root = TOOLS.parent
-
-    def run(*args, embedder="fake"):
-        env = {**os.environ, "GM_EMBEDDER": embedder}
-        return subprocess.run(["bash", str(TOOLS / args[0]), *args[1:]], capture_output=True,
-                              text=True, env=env)
-    run("gm-campaign.sh", "create", "t")
-    run("gm-campaign.sh", "switch", "t")
-    run("gm-npc.sh", "create", "Vex Marrow", "--role", "one-eyed fence buying stolen crawler loot",
-        "--nowhere")
-    run("gm-note.sh", "add", "The one-eyed fence was buying stolen crawler loot again.", "--holders", "player",
-        embedder="off")
-    camp = isolated_world_state / "campaigns" / "t"
-    subprocess.run([sys.executable, str(root / "lib" / "embedding_store.py"), "job", str(camp)],
-                   env={**os.environ, "GM_EMBEDDER": "fake"}, check=True)
-    as_json = run("gm-note.sh", "recent", "--json")
-    assert "[NOTE]" not in as_json.stdout                 # JSON stays JSON ...
-    shown = run("gm-time.sh")                             # ... and it waits, on stderr:
-    assert shown.stderr.startswith("[NOTE]") and "npc:Vex Marrow" in shown.stderr
-    assert "[NOTE]" not in shown.stdout                   # | head -1 keeps the command's line
-    assert "[NOTE]" not in run("gm-time.sh").stderr       # once
+    before = len(n._all())
+    assert n.add_fact("The fence came back at dawn.", holders=["player"], nowhere=True) == ""
+    assert "gm-recall.sh setup" in capsys.readouterr().err
+    assert len(n._all()) == before

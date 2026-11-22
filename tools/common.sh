@@ -119,9 +119,6 @@ fi
 # Helper to check if campaign is active and exit with error if not.
 # Campaigns can exist on disk with none selected, so the failure names both
 # repair paths (activate an existing one / start a fresh adventure).
-# The wrapper's own arguments (this file is sourced without any, so "$@" is theirs).
-GM_COMMAND_ARGS=" $* "
-
 require_active_campaign() {
     if [ -z "$WORLD_STATE_DIR" ]; then
         error "No active campaign. This command needs one."
@@ -129,14 +126,6 @@ require_active_campaign() {
         echo "  Activate one:       bash tools/gm-campaign.sh switch <name>" >&2
         echo "  Or start fresh:     /gm (new adventure) — /new-game or /import" >&2
         exit 1
-    fi
-    # Notes the background embedding job left about facts recorded before (a plot
-    # they look part of, a person they read like they are about): printed once,
-    # before this command's own output (lib/recall_notes.py). Not with --json.
-    # On stderr: they are printed only once, and the GM often cuts stdout short
-    # (| head -1) or drops it (>/dev/null), which lost them in the carnaval playtest.
-    if [ -s "$WORLD_STATE_DIR/embeddings.notes.json" ] && [[ "$GM_COMMAND_ARGS" != *" --json "* ]]; then
-        $PYTHON_CMD "$LIB_DIR/recall_notes.py" print "$WORLD_STATE_DIR" >&2
     fi
 }
 

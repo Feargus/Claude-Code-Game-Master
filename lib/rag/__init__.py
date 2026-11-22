@@ -3,7 +3,7 @@ Book search: a campaign's source book, searchable by meaning.
 
 It uses the same model as the facts' semantic recall (lib/embedder.py:
 EmbeddingGemma on ONNX Runtime) and stores its pieces and vectors in the
-campaign's vectors/ folder (vector_store.py). Install: `uv sync --extra recall`,
+campaign's vectors/ folder (vector_store.py). Install: `uv sync`,
 then `bash tools/gm-recall.sh setup` for the model. Without them the rest of the
 game works; only the book search is off.
 """
@@ -35,7 +35,7 @@ def require_rag():
     """Raise an error if the book search can't run."""
     missing = get_missing_deps()
     if missing:
-        raise ImportError(f"The book search needs {', '.join(missing)}: uv sync --extra recall, "
+        raise ImportError(f"The book search needs {', '.join(missing)}: uv sync, "
                           f"then bash tools/gm-recall.sh setup")
 
 

@@ -116,11 +116,12 @@ def test_rollback_without_a_tick_is_safe(dcc_world):
     assert WorldTick(dcc_world).rollback_last() is False
 
 
-def test_waiting_leaves_out_the_ticks_own_consequences(dcc_world):
+def test_the_check_leaves_out_the_ticks_own_consequences(dcc_world, monkeypatch):
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
     wt = WorldTick(dcc_world)
-    applied = wt.apply([{"fact": "a", "consequence": {
-        "text": "own", "triggers": [{"type": "on_event", "match": "someone talks"}]}}])
-    assert applied[0]["consequence"] not in {c["id"] for c in wt.waiting(applied)}
+    applied = wt.apply([{"fact": "someone talks to the warden", "consequence": {
+        "text": "own", "triggers": [{"type": "on_fact", "match": "someone talks to the warden"}]}}])
+    assert not any(applied[0]["consequence"][:4] in line for line in wt.check(applied))
 
 
 def _cli(world, *args):
@@ -134,7 +135,7 @@ def test_cli_apply_and_rollback(dcc_world):
     assert r.returncode == 0, r.stderr
     out = json.loads(r.stdout)
     assert out["ok"] and len(out["data"]["applied"]) == 1
-    assert "waiting_on_event" in out["data"]
+    assert out["data"]["checks"] == []           # GM_EMBEDDER=off: no vectors
     r = _cli(dcc_world, "rollback")
     assert json.loads(r.stdout)["data"]["rolled_back"] is True
 
