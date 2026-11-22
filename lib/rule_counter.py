@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The counter: one number in a range (rules-proposal.md §3.2), with its options: a
+"""The counter: one number in a range (the gm-rules skill), with its options: a
 rate (rule_time.py), hysteresis (a result's `off_at`), overflow (lasting marks) and
 streak.
 

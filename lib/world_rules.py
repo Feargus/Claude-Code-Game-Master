@@ -18,7 +18,7 @@ written to rule-state.json once it is set or changes. Holders are written as the
 facts write them (player, npc:<key>, location:<key>), plus `faction:<id>` (a faction
 of the world bible's factions graph, until factions have records) and `world`.
 
-The building blocks, one module each (rules-proposal.md in the campaign repo has the plan):
+The building blocks, one module each (the gm-rules skill describes them for the GM):
     counter   one number in a range; results by range, cumulative unless `to` is given;
               options: a rate, hysteresis (`off_at`), overflow (lasting marks), streak
               (rule_counter.py; rates: rule_time.py)

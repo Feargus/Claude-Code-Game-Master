@@ -110,8 +110,7 @@ counter held by factions. A faction's own point is a holder's rate `toward`
 
 **`on_rule`** (`consequence_manager.py`, an event trigger like `on_clock`): the match is
 stored as `"<rule>:<value>@<holder>"`; `world_rules.change` fires it for every value the
-change reached, after the effects. The plan and its decisions: `rules-proposal.md` in the
-campaign repo.
+change reached, after the effects. How the GM uses all this: the `gm-rules` skill.
 
 ## What it replaced (2026-11-17)
 

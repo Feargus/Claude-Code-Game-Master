@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The bag: tokens of named kinds, drawn and added to (rules-proposal.md §3.4). The
+"""The bag: tokens of named kinds, drawn and added to (the gm-rules skill). The
 odds are whatever is in the bag: a job's luck that runs out as things go wrong, the
 years of the melt.
 

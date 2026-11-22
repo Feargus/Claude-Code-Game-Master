@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Results that act: the effects a world rule's results carry out by themselves, and
-the on_rule trigger that lets a consequence wait on a value (rules-proposal.md §7).
+the on_rule trigger that lets a consequence wait on a value (the gm-rules skill, "Results that act").
 
 A counter's result can carry effects, run by the script the moment the result comes
 on (`effects`) or goes off (`when_off`), and a line for the GM (`gm`), printed as
@@ -45,7 +45,6 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 KINDS = ("change", "rate_of", "state", "tokens", "clock", "condition", "credits")
-LATER: dict[str, int] = {}
 FIELDS = {"change": ("change", "axis", "by", "set", "of"),
           "rate_of": ("rate_of", "by", "toward", "shift", "of"),
           "state": ("state", "to", "of"),
@@ -61,7 +60,7 @@ def _is_int(value) -> bool:
 
 
 def kind_of(effect: dict[str, Any]) -> str:
-    return next((k for k in KINDS + tuple(LATER) if k in effect), "")
+    return next((k for k in KINDS if k in effect), "")
 
 
 # ---------- checking (when the rules are defined) ----------
@@ -87,8 +86,6 @@ def _check_one(effect: Any) -> list[str]:
     if not isinstance(effect, dict):
         return ['an effect is an object, e.g. {"change": "Bleed", "by": 1}']
     kind = kind_of(effect)
-    if kind in LATER:
-        return [f"'{kind}' isn't built yet (rules-proposal.md, step {LATER[kind]})"]
     if not kind:
         return [f"an effect is one of {', '.join(KINDS)}; got {sorted(effect)}"]
     problems = [f"'{field}' has no place in a {kind} effect" for field in effect

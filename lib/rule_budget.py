@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The budget: a fixed amount split among named parts, refilled each period
-(rules-proposal.md §3.5). A week of downtime, a gang's soldiers:
+(the gm-rules skill). A week of downtime, a gang's soldiers:
 
     {"name": "Downtime", "block": "budget", "held_by": "player",
      "summary": "...", "when": "Between jobs, when the character lies low for a week.",

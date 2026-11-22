@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The plane: two values read together (rules-proposal.md §3.3). Its results belong
+"""The plane: two values read together (the gm-rules skill). Its results belong
 to regions of the plane, not to each axis alone: much chrome is fine with a strong
 anchor, and cyberpsychosis without one.
 

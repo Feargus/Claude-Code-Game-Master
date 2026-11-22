@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rates: a counter that moves by itself as game time passes (rules-proposal.md §4.2).
+"""Rates: a counter that moves by itself as game time passes (the gm-rules skill).
 
     "rate": {"by": 1, "every": "90d"}                      +1 every 90 days
     "rate": {"by": 1, "every": "7d", "toward": 5}           pulled 1 a week toward 5,

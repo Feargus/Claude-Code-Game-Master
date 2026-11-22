@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The roll: a world rule that keeps nothing (rules-proposal.md §3.1).
+"""The roll: a world rule that keeps nothing (the gm-rules skill).
 
 Dice, plus or minus named amounts, and optionally a holder's value of another rule,
 read once from a list of results. A price for power, a first reaction, a guarded

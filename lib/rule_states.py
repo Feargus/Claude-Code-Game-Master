@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """States: a world rule whose value is a named state, with the moves allowed between
-them (rules-proposal.md §3.6). Addiction, a corporation's alert, a contact's trust:
+them (the gm-rules skill). Addiction, a corporation's alert, a contact's trust:
 
     {"name": "Addiction", "block": "states", "held_by": ["player", "npc"],
      "summary": "...", "when": "A dose: gm-rule.sh move Addiction user (or hooked).",
