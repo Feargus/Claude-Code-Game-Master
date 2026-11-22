@@ -39,7 +39,8 @@ facts, and before that session summaries and arc entries).
   `on_fact` triggers (0.65: each consequence it may trigger, with the command to fire it;
   nothing fires by itself), the open plots (0.45, clearly the best) and the people (0.55,
   and closer than the character and everyone it is linked to), and the fact's own output
-  names what fits. Every comparison worth a look goes into `recall-check.log` (per machine),
+  names what fits. A plot or person from 0.65 (`CONFIDENT`) is linked at once, with the
+  command to undo it; a consequence is only ever named. Every comparison worth a look goes into `recall-check.log` (per machine),
   with each consequence the GM fired by a fact, to tune the thresholds.
 - **A fact not embedded yet** (the background job is still running) is embedded by the
   query itself, up to 10; beyond that it counts as average.

@@ -508,13 +508,19 @@ class NoteManager:
     def check(self, fact_ids, skip=()) -> list[str]:
         """Semantic recall on new facts, printed: the consequences they may trigger,
         a plot they look part of, a person they read like they are about
-        (recall_notes.py). Returns the lines. `skip`: consequence ids not to name."""
+        (recall_notes.py); a plot or person it is confident of is linked at once.
+        Returns the lines. `skip`: consequence ids not to name."""
         from embedder import require_embedder
         from recall_notes import check_facts
         embedder = require_embedder()
         if embedder is None:                       # GM_EMBEDDER=off: tests without vectors
             return []
-        lines = check_facts(self.campaign_dir, fact_ids, embedder, skip)
+        lines, links = check_facts(self.campaign_dir, fact_ids, embedder, skip)
+        for kind, fact_id, target in links:
+            if kind == "plot":
+                self.set_plots(fact_id, add=[target])
+            else:
+                self.set_about(fact_id, add=[target])
         for line in lines:
             print(line)
         return lines

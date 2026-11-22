@@ -180,9 +180,11 @@ def test_before_the_opening_nothing_is_checked(dcc_world, monkeypatch):
 # ---------- the check as a fact is recorded (recall_notes.py, 2026-11-22) ----------
 
 def test_a_new_fact_names_the_plot_and_the_person_it_looks_like(dcc_world, monkeypatch, capsys):
+    import recall_notes
     from lib.npc_manager import NPCManager
     from lib.plot_manager import PlotManager
     monkeypatch.setenv("GM_EMBEDDER", "fake")
+    monkeypatch.setattr(recall_notes, "CONFIDENT", 0.99)    # suggested, not linked
     NPCManager(dcc_world).create_npc("Vex Marrow", "one-eyed fence buying stolen crawler loot",
                                      nowhere=True)
     PlotManager(dcc_world).add("Stolen Loot", "Who buys the stolen crawler loot, and for whom.")
@@ -241,3 +243,25 @@ def test_without_the_model_a_fact_is_refused(dcc_world, monkeypatch, capsys):
     assert n.add_fact("The fence came back at dawn.", holders=["player"], nowhere=True) == ""
     assert "gm-recall.sh setup" in capsys.readouterr().err
     assert len(n._all()) == before
+
+
+def test_a_confident_plot_and_person_are_linked_at_once_with_the_undo(dcc_world, monkeypatch, capsys):
+    """From CONFIDENT a plot or a person is linked, not suggested (2026-11-22)."""
+    import recall_notes                       # as note_manager imports it
+    from lib.npc_manager import NPCManager
+    from lib.plot_manager import PlotManager
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    monkeypatch.setattr(recall_notes, "CONFIDENT", 0.30)    # the fake embedder's plot score is low
+    NPCManager(dcc_world).create_npc("Vex Marrow", "one-eyed fence buying stolen crawler loot",
+                                     nowhere=True)
+    PlotManager(dcc_world).add("Stolen Loot", "Who buys the stolen crawler loot, and for whom.")
+    capsys.readouterr()
+    n = NoteManager(dcc_world)
+    fid = n.add_fact("The one-eyed fence was buying stolen crawler loot again.",
+                     holders=["player"], nowhere=True)
+    printed = capsys.readouterr().out
+    assert f"{fid} put in Stolen Loot by recall" in printed
+    assert f"gm-note.sh plot {fid} --remove \"Stolen Loot\"" in printed
+    assert f"{fid} is about npc:Vex Marrow too, by recall" in printed
+    fact = next(f for f in n._all() if f["id"] == fid)
+    assert fact["plots"] == ["Stolen Loot"] and "npc:Vex Marrow" in fact["about"]

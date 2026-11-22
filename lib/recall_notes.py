@@ -16,6 +16,11 @@ the model loaded), and each is compared with:
   the character and everyone it is linked to already, so a person whose record
   is about the character (a copy of them) isn't suggested for every fact.
 
+A plot or a person from CONFIDENT up is not suggested but linked at once, and the
+output says so with the command to undo it (decided 2026-11-22: a wrong link costs
+less than a missing one; to be lowered step by step as playtests show). A
+consequence is only ever named: the GM fires it.
+
 Every comparison worth a look goes into `recall-check.log` in the campaign folder
 (per machine, not in git), for tuning the thresholds: each trigger from LOG_FLOOR,
 each plot and person suggestion with its score, and, from gm-consequence.sh, each
@@ -31,6 +36,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 TRIGGER_NOTE = 0.65         # 0.50 until 2026-11-22: all nine in the Long Hull playtest (0.51–0.62) were wrong
 PLOT_NOTE, PLOT_MARGIN = 0.45, 0.05
 ABOUT_NOTE = 0.55
+CONFIDENT = 0.65            # a plot or person linked by itself from here (2026-11-22)
 LOG_FLOOR = 0.40            # triggers logged from here, so the misses show too
 LOG = "recall-check.log"
 
@@ -60,9 +66,11 @@ def log_fired(campaign_dir, consequence_id: str, fact_id: str) -> None:
     _log(Path(campaign_dir), [f"fired {consequence_id} by {fact_id}"])
 
 
-def check_facts(campaign_dir, fact_ids, embedder, skip=()) -> list[str]:
-    """Embed the new facts and the waiting triggers, compare, log, and return the
-    lines to print. `skip`: consequence ids not to name (a faction turn's own)."""
+def check_facts(campaign_dir, fact_ids, embedder, skip=()) -> tuple[list[str], list[tuple]]:
+    """Embed the new facts and the waiting triggers, compare and log. Returns the
+    lines to print and the links to make at once, ("plot" | "about", fact id,
+    target), which the lines already announce. `skip`: consequence ids not to
+    name (a faction turn's own)."""
     from embedding_store import EmbeddingStore, trigger_texts
     campaign_dir = Path(campaign_dir)
     triggers = trigger_texts(_load(campaign_dir / "consequences.json"))
@@ -77,7 +85,7 @@ def check_facts(campaign_dir, fact_ids, embedder, skip=()) -> list[str]:
              if isinstance(p, dict) and p.get("status", "open") == "open"}
     people = {k: v for k, v in vectors.items() if k.startswith("npc:")}
     player = vectors.get("player")
-    out, log = [], []
+    out, log, links = [], [], []
     for fid in fact_ids:
         fact, v = facts.get(fid), vectors.get(f"fact:{fid}")
         if fact is None or v is None or fact.get("attitude"):
@@ -98,9 +106,15 @@ def check_facts(campaign_dir, fact_ids, embedder, skip=()) -> list[str]:
             if ranked:
                 gap = ranked[0][0] - ranked[1][0] if len(ranked) > 1 else 1.0
                 log.append(f"{fid} plot \"{ranked[0][1]}\" {ranked[0][0]:.2f} (ahead by {gap:.2f})")
-                if ranked[0][0] >= PLOT_NOTE and gap >= PLOT_MARGIN:
-                    out.append(f"  {fid} looks part of {ranked[0][1]} ({ranked[0][0]:.2f}): "
-                               f"bash tools/gm-note.sh plot {fid} --add \"{ranked[0][1]}\"")
+                score, plot = ranked[0]
+                if score >= CONFIDENT and gap >= PLOT_MARGIN:
+                    links.append(("plot", fid, plot))
+                    log[-1] += " linked"
+                    out.append(f"  {fid} put in {plot} by recall ({score:.2f}); if wrong: "
+                               f"bash tools/gm-note.sh plot {fid} --remove \"{plot}\"")
+                elif score >= PLOT_NOTE and gap >= PLOT_MARGIN:
+                    out.append(f"  {fid} looks part of {plot} ({score:.2f}): "
+                               f"bash tools/gm-note.sh plot {fid} --add \"{plot}\"")
         about = set(fact.get("about") or [])
         floor = max([float(v @ player)] if player is not None else [0.0])
         floor = max([floor] + [float(v @ people[a]) for a in about if a in people])
@@ -108,8 +122,13 @@ def check_facts(campaign_dir, fact_ids, embedder, skip=()) -> list[str]:
                    default=None)
         if best:
             log.append(f"{fid} about {best[1]} {best[0]:.2f} (linked best {floor:.2f})")
-            if best[0] >= ABOUT_NOTE and best[0] > floor:
+            if best[0] >= CONFIDENT and best[0] > floor:
+                links.append(("about", fid, best[1]))
+                log[-1] += " linked"
+                out.append(f"  {fid} is about {best[1]} too, by recall ({best[0]:.2f}); if wrong: "
+                           f"bash tools/gm-note.sh about {fid} --remove \"{best[1]}\"")
+            elif best[0] >= ABOUT_NOTE and best[0] > floor:
                 out.append(f"  {fid} reads like it is about {best[1]} ({best[0]:.2f}), but isn't "
                            f"linked: bash tools/gm-note.sh about {fid} --add \"{best[1]}\"")
     _log(campaign_dir, log)
-    return out
+    return out, links
