@@ -45,8 +45,6 @@ facts, and before that session summaries and arc entries).
 - **A fact not embedded yet** (the background job is still running) is embedded by the
   query itself, up to 10; beyond that it counts as average.
 
-The design and its decisions: the campaign repo's `recall-proposal.md`.
-
 ## The Loremaster re-indexes the whole book per instance
 
 `Loremaster.__init__` loads the campaign's book text and calls `index.build(text)` every

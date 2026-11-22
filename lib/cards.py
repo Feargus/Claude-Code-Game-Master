@@ -156,7 +156,7 @@ class Cards:
         import world_rules
         lines += [f"Rule here: {line}" for line in world_rules.holder_lines(self.json_ops, f"location:{location}")]
         # Not only the facts of the place: whatever fits the scene best, the place's
-        # own facts helped by the bonuses (recall-proposal.md, decision 4). Split by
+        # own facts helped by the bonuses (docs/modules/campaign-memory.md). Split by
         # who knows it, so the GM sees at once what the character can draw on.
         lid = f"location:{location}"
         known, hidden = [], []

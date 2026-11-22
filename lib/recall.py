@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Recall by meaning: facts ranked by how close they are to a question.
 
-`gm-note.sh find --like "<question>"`. Ranking follows recall-proposal.md (§2, §8):
+`gm-note.sh find --like "<question>"` (docs/modules/campaign-memory.md). The ranking:
 
 - **Who knows it is a hard filter** (`--held-by`, `--hidden`, `--secret`, `--truth`,
   `--text`, `--since`/`--until`): those are recorded, not guessed.
@@ -207,7 +207,7 @@ def print_found(result: dict, fact_line) -> None:
 
 def suggest_for_plot(notes, plot_key: str, limit: int = 5) -> dict:
     """The facts not in the plot that are closest to what it is about, best first,
-    for the GM to link (recall-proposal.md, step e). Facts about the people and
+    for the GM to link. Facts about the people and
     places it involves get the --about bonus. {"facts": [...], "method": ...}."""
     plot = (notes.json_ops.load_json("plots.json") or {}).get(plot_key) or {}
     text = f"{plot_key}: " + " ".join(str(plot.get(k)) for k in ("description", "stands", "goal")
@@ -285,7 +285,7 @@ def meaning_refusal(kind: str, new: str, hit) -> str:
 
 class SceneRanker:
     """Ranks facts by how well they fit the scene, with no model loaded: the query
-    is the average of vectors that exist already (recall-proposal.md §3): the
+    is the average of vectors that exist already: the
     place's description, the last 3 facts recorded here, and the sentence of each
     open plot that involves the place or someone in the scene. The score adds the
     same bonuses as find --like, with "here" meaning the place and the people in
