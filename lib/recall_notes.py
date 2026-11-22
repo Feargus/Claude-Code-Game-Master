@@ -32,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 NOTES = "embeddings.notes.json"
 PLOT_NOTE, PLOT_MARGIN = 0.45, 0.05
 ABOUT_NOTE = 0.55
-CONSEQUENCE_NOTE = 0.50
+CONSEQUENCE_NOTE = 0.65         # 0.50 until 2026-11-22: all nine notes in the Long Hull playtest (0.51–0.62) were wrong
 
 
 def _load(path: Path):
