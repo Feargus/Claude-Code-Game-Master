@@ -26,7 +26,6 @@ rewritten towards that goal; until then some details are out of date (the code d
 | [author-a-world.md](flows/author-a-world.md) | `/new-game`: an original world. |
 | [import-a-book.md](flows/import-a-book.md) | `/import`: a world from a book. |
 | [onboarding-and-death.md](flows/onboarding-and-death.md) | The first question of a new game, and how play goes on after the character dies. |
-| [scene-illustration.md](flows/scene-illustration.md) | Pictures of a scene. |
 | **Modules** | |
 | [game-core-and-world-kit.md](modules/game-core-and-world-kit.md) | The engine every campaign shares, and the ruleset each one adds. |
 | [world-rules.md](modules/world-rules.md) | A campaign's own mechanics, built from a few building blocks. |

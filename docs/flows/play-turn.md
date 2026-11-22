@@ -63,4 +63,3 @@ runs pre-activation because the name is explicit.
 ## Related
 
 - [Game core and World Kit](../modules/game-core-and-world-kit.md) — what "resolve through the kit" means
-- [Illustrating a scene](scene-illustration.md) — the background branch off a narrated beat

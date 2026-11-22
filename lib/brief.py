@@ -29,7 +29,7 @@ class Brief:
     # consequences waiting in it and what the character doesn't know of it; then
     # what belongs to no plot; the character; the world; the scene; then the
     # newest facts not shown above, so the cards don't repeat them.
-    SECTIONS = ("header", "kit", "play_style", "images", "plots", "unplotted",
+    SECTIONS = ("header", "kit", "play_style", "plots", "unplotted",
                 "character", "party", "wrong_beliefs", "world_rules", "faction_turns", "voice",
                 "scene", "latest")
     SECRETS_PER_PLOT = 5     # what the character doesn't know, newest first
@@ -132,7 +132,7 @@ class Brief:
     def _section_play_style(self) -> list[str]:
         lines = []
         # --- Play style: only what differs from the defaults CLAUDE.md states ---
-        # (action menu on, adaptive pacing, no book inspiration, no images). A line
+        # (action menu on, adaptive pacing, no book inspiration). A line
         # that only repeated CLAUDE.md cost 300 tokens a brief and drifted from it.
         prefs = self.get_preferences()
         if prefs.get("beat_length", "adaptive") == "tight":
@@ -154,38 +154,6 @@ class Brief:
             lines.append("Play style: action menu OFF — end beats with an open prompt; do "
                          "NOT list numbered choices. The player drives freely. "
                          "(Toggle: /gm choices on|off)")
-        return lines
-
-    def _section_images(self) -> list[str]:
-        lines = []
-        # --- Scene images (gpt-image-2): only when a key is configured ---
-        if os.environ.get("OPENAI_API_KEY"):
-            lines.append("Scene images: ENABLED — illustrate GENEROUSLY and with glee "
-                         "(images cost ~$0.04; lean toward YES). New location, monster/boss "
-                         "reveal, big loot, a styled flourish, a funny beat, a quiet vista — "
-                         "any beat with a real visual or emotional charge earns one. Present "
-                         "it DIEGETICALLY: frame the picture as an artifact made by an in-world "
-                         "chronicler whose style fits this world's voice (e.g. \"BEHOLD, the "
-                         "battle as set down by the scholar Astreus —\") and keep that same "
-                         "artist + art-style across the campaign so it reads like one artbook. "
-                         "Run `bash tools/gm-image.sh generate --title \"...\" --prompt \"...\"`, "
-                         "then show the file:// link. (See gm-craft → Diegetic Illustration.) "
-                         "Skip only truly flat beats and don't re-shoot the same static room.")
-            chronicler = self.json_ops.load_json("chronicler.json") or {}
-            if chronicler.get("name"):
-                bits = [f"This campaign's chronicler is {chronicler['name']}"]
-                if chronicler.get("persona"):
-                    bits.append(f"({chronicler['persona']})")
-                line = " ".join(bits) + "."
-                if chronicler.get("style"):
-                    line += (f" Locked art style: {chronicler['style']} "
-                             "(auto-added to every prompt).")
-                line += " Frame every image as their work and keep them consistent."
-                lines.append("  Chronicler: " + line)
-            else:
-                lines.append("  Chronicler: none yet — name one the first time you "
-                             "illustrate and persist it with `bash tools/gm-image.sh "
-                             "chronicler --name \"...\" --style \"...\" --persona \"...\"`.")
         return lines
 
     def _section_voice(self) -> list[str]:

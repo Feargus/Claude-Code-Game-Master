@@ -18,9 +18,9 @@ distinct; those three do.
 
 | Phase | What happens | Gate |
 |---|---|---|
-| **A — Seed** | genre-aware questionnaire → `world-seed.json` (premise, tone, genre bend, voice, art style, chronicler) | — |
+| **A — Seed** | genre-aware questionnaire → `world-seed.json` (premise, tone, genre bend, voice) | — |
 | **B — Skeleton** | slim bible (voice + signature systems + this street), **shown for approval** | play gates on approval |
-| **C — The kit and the frame** | draft the kit and the world's own rules; the factions' power and relations; the districts and landmarks, kinds of enemy, the world's words; lock the chronicler + art style. No people yet | — |
+| **C — The kit and the frame** | draft the kit and the world's own rules; the factions' power and relations; the districts and landmarks, kinds of enemy, the world's words. No people yet | — |
 | **D — The character** | the `/create-character` interview: their own concept or one of six roles (never a named person), their trouble in broad strokes, fast or slow (`gm-player.sh create`) | — |
 | **E — The character's world** | Standing; their people and places; each faction's first plot (touching the character only indirectly); where and when to start; `gm-session.sh opening` with the main plot, the character's trouble | — |
 

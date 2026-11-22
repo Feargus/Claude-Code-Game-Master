@@ -135,7 +135,6 @@ READ_VERBS = [
     # so the run never reached the campaign resolution this test is about.
     ("tools/gm-condition.sh", "check"),
     ("tools/gm-extract.sh", "list"),
-    ("tools/gm-image.sh", "chronicler"),
 ]
 
 

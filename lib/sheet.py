@@ -222,7 +222,7 @@ def conditions(sheet: dict[str, Any]) -> list[str]:
 
 
 def look_line(sheet: dict[str, Any]) -> str:
-    """The look in one line, for narration and image prompts."""
+    """The look in one line, for narration."""
     look = sheet.get("look") or {}
     return "; ".join(look[f] for f in ("physique", "style", "presence") if look.get(f))
 

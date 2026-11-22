@@ -16,7 +16,7 @@ the campaign file is a journal; the book is the world.
 2. **The door.** Ask who they are, or who they came to meet. Do not preview
    entity counts. Do not run the extractors *as a census* (full records) — their
    one sanctioned use is the light one-sentence World Index (Step 5.5).
-3. **World identity.** Bible → kit and the book's own rules (`gm-rules`) → voice → chronicler. Tone
+3. **World identity.** Bible → kit and the book's own rules (`gm-rules`) → voice. Tone
    and how the holodeck *sounds*. Horizon names, not a gazetteer. The player
    confirms the bible; `/import` never confirms on their behalf.
 4. **The stage.** The `/create-character` interview (`gm-player.sh create`), then one

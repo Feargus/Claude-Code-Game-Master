@@ -21,9 +21,9 @@ Cleared:
   • Session history, world-tick log, loremaster cache
 
 Kept:
-  • Source: current-document.txt, metadata.json, chunks/, vectors/, images/
+  • Source: current-document.txt, metadata.json, chunks/, vectors/
   • World: world-bible.json, world-seed.json
-  • Kit: ruleset.json (the world's own rules), chronicler.json
+  • Kit: ruleset.json (the world's own rules)
 
 Options:
 1. ARCHIVE - Copy current world to world-state/archive/, then reset (safe)

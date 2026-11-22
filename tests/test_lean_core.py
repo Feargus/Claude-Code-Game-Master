@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ALL_SKILLS = ["gm-combat", "gm-conditions", "gm-death", "gm-growth",
-              "gm-sites", "gm-images", "gm-craft", "gm-skills", "gm-social"]
+              "gm-sites", "gm-craft", "gm-skills", "gm-social"]
 
 
 def _claude_md():

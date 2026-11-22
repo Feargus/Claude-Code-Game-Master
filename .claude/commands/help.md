@@ -71,7 +71,6 @@ Display all available commands and tools.
   gm-lore.sh        A grounded brief from the source book
   gm-enhance.sh     Enrich entities from the source book
   gm-extract.sh     Extract a book into a campaign
-  gm-image.sh       Scene images (needs OPENAI_API_KEY)
 
 ================================================================
 
@@ -80,17 +79,6 @@ Display all available commands and tools.
   New campaign:     /new-game
   Continue playing: /gm
   Import module:    /import
-
-  SCENE IMAGES (optional)
-  --------------------------------------------------------
-  The GM illustrates often, framed as an in-world chronicler's art:
-    bash tools/gm-image.sh chronicler --name "Astreus" \
-      --style "rough Frazetta-esque ink wash, woodcut" \
-      --persona "a drunk court-scholar who exaggerates the gore"
-    bash tools/gm-image.sh generate --title "..." --prompt "..."
-  The locked --style is auto-added to every prompt so the gallery
-  reads like one artbook. Saves a PNG + prints a clickable file://
-  link. Needs OPENAI_API_KEY in .env; gm-image.sh log shows spend.
 
 ================================================================
 ```

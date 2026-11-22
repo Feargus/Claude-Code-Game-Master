@@ -22,7 +22,7 @@ commands that change the scene (`lib/cards.py`). It is ordered by plot, because 
 are the spine: what matters is what belongs to a plot. `Brief.SECTIONS`, in order:
 
 - **header**: the world's name, the place and the game time.
-- **kit**, then the **play style** and **images** lines, only where they differ from
+- **kit**, then the **play style** lines, only where they differ from
   what `CLAUDE.md` says by default.
 - **PLOTS**, every open plot, most pressing first (`plot_manager.plot_order`): where it
   stands (its one sentence), whose goal it is, its sketches (named, not built), its clocks,

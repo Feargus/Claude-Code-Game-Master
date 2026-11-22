@@ -48,12 +48,10 @@ FIXTURE_FILES = {
     "world-seed.json": '{"premise": "a test world"}\n',
     "ruleset.json": '{"kit": "test-kit"}\n',
     "rules.md": "# House rules\n",
-    "chronicler.json": '{"artist": "Astreus"}\n',
     "metadata.json": '{"title": "The Book"}\n',
     "current-document.txt": "chapter one\n",
     "chunks/chunk-0001.txt": "a passage\n",
     "vectors/chroma.sqlite3": "not-really-a-db\n",
-    "images/scene.png": "not-really-a-png\n",
 }
 
 # What reset must clear, and what it must keep — "keeps the SOURCE, the WORLD
@@ -66,9 +64,8 @@ CLEARED_FILES = [
 CLEARED_DIRS = ["fallen", "characters"]
 KEPT = [
     "world-bible.json", "world-seed.json",
-    "ruleset.json", "rules.md", "chronicler.json", "metadata.json",
+    "ruleset.json", "rules.md", "metadata.json",
     "current-document.txt", "chunks/chunk-0001.txt", "vectors/chroma.sqlite3",
-    "images/scene.png",
 ]
 
 

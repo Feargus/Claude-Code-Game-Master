@@ -74,10 +74,7 @@ Write `world-seed.json` to the campaign dir:
 {
   "premise": "...", "tone": "...", "magic": "...", "setting": "...",
   "genre_bend": "<the distinct commitments, in a sentence or two>",
-  "voice_exemplar": "<author/work to channel, e.g. 'Robert E. Howard'>",
-  "art_style": "In the style of <a distinctive, fully-specified look> — a mashup of two unexpected references often lands ('In the style of Frank Miller's Batman but rendered in smudged charcoal', 'In the style of a gilded medieval illuminated manuscript but depicting cyberpunk megacities'), or commit hard to one strong style the world already implies. Either way it must be specific enough that two images read as one artist's hand. This is the campaign's locked gallery signature, set ONCE here.",
-  "chronicler_name": "<the in-world artist who 'makes' every image, fits the tone>",
-  "chronicler_persona": "<their voice/bias — grim, sarcastic, reverent, unreliable>"
+  "voice_exemplar": "<author/work to channel, e.g. 'Robert E. Howard'>"
 }
 ```
 
@@ -173,21 +170,6 @@ you suggest, each in a sentence or two with its numbers.
    bash tools/gm-glossary.sh add "<term>" "<what it means here>"            # relics, institutions, slang
    ```
    A name close to one already made is refused (one record per person or place).
-5. **Lock the chronicler and the art style** (the gallery signature is a
-   world-creation decision, not an in-play improvisation), from the seed's
-   `art_style` / `chronicler_*` fields:
-   ```bash
-   bash tools/gm-image.sh chronicler \
-     --name "<chronicler_name>" \
-     --style "<art_style — MUST start with 'In the style of ...'; a distinctive, fully-specified look>" \
-     --persona "<chronicler_persona>"
-   ```
-   The `scene-illustrator` agent READS this locked style and opens every prompt with
-   it — it never picks its own. Make it specific enough that two images read as one
-   artist's hand (a surprising mashup is one way there, not the only one). This single
-   chronicler record carries BOTH halves of the image identity — the **art style**
-   (`--style`) and the **art narrator** (`--name` / `--persona`, the in-world entity
-   who "makes" every picture). Lock both now; they never change in play.
 
 ---
 
@@ -324,12 +306,11 @@ has (Phase E step 1); the campaign plays by the repo's rules (`gm-skills`, `gm-c
 1. **Name the world** from the sentence, then create and switch the campaign
    (Phase A's commands). If the name exists, pick another.
 2. **Seed:** write `world-seed.json` as in Phase A, every field chosen by you: the
-   sentence is the `premise`; tone, setting, genre bend, voice, art style and
-   chronicler fit it.
+   sentence is the `premise`; tone, setting, genre bend and voice fit it.
 3. **Bible:** write `world-bible.json` as in Phase B, with `"confirmed": true`, and
    validate it. Don't present it for approval.
-4. **The frame:** Phase C steps 3–5 (the factions' power and relations, the frame's
-   places, the chronicler). Skip steps 1 and 2 (the kit and the world's own rules).
+4. **The frame:** Phase C steps 3–4 (the factions' power and relations, the frame's
+   places). Skip steps 1 and 2 (the kit and the world's own rules).
 5. **The character:** Phase D, the `/create-character` interview (their own, or one
    of six roles from this world; their trouble; fast or slow).
 6. **The character's world:** Phase E, all of it; choose the start yourself, don't
@@ -338,10 +319,10 @@ has (Phase E step 1); the campaign plays by the repo's rules (`gm-skills`, `gm-c
 ---
 
 ## COMPLETION CHECKLIST (play tonight)
-- [ ] `world-seed.json` (premise, voice, art style)
+- [ ] `world-seed.json` (premise, voice)
 - [ ] `world-bible.json` approved and confirmed (voice, factions, not a planet), with the world's own rules
 - [ ] `ruleset.json` drafted, with the world's own rules (`gm-rule.sh list`)
-- [ ] the frame: factions with power and relations, the districts and landmarks; chronicler locked
+- [ ] the frame: factions with power and relations, the districts and landmarks
 - [ ] the `/create-character` interview (`gm-player.sh create`): who, their trouble, fast or slow
 - [ ] the character's world: Standing, their people and places, each faction's first plot
 - [ ] the opening written with `gm-session.sh opening` (one place, exits, the people there,

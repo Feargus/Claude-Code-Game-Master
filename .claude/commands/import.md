@@ -109,7 +109,7 @@ book's default first page.
 
 ## Step 4: World identity (tone, not inventory)
 
-Draft the bible, kit, voice, and chronicler so the holodeck *sounds* like the book.
+Draft the bible, kit and voice so the holodeck *sounds* like the book.
 This is identity. It is not a census.
 
 ```bash
@@ -195,15 +195,6 @@ uv run python lib/world_bible.py review
 
 Ask them: **looks right — play it** / **change something**.
 `uv run python lib/world_bible.py confirm` only after they say so.
-
-Chronicler (once):
-
-```bash
-bash tools/gm-image.sh chronicler \
-  --name "<in-world artist>" \
-  --style "In the style of ..." \
-  --persona "..."
-```
 
 ---
 

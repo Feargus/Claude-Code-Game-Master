@@ -100,7 +100,7 @@ The **`plot-weaver`** agent (`.claude/agents/plot-weaver.md`) is the async front
 spawned in the background from a one-line seed, it grounds the idea in RAG, weaves it onto
 existing entities/edges/clocks (via the WORLD INDEX), and persists ONE dormant thread —
 `add` + a `--plot` clock + an `on_npc` surfacing consequence — then returns one line.
-It is the story analog of the background scene-illustrator, and it fits "plan as you go,
+It fits "plan as you go,
 never pre-build": one small dormant thread, not a gazetteer.
 
 ## Related

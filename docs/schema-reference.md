@@ -33,18 +33,15 @@ is named in `world-state/active-campaign.txt`.
 ├── session-log.md           # Session history — the canonical ledger
 ├── threat-clocks.json       # Named pressure clocks (optional)
 ├── embeddings.npz           # Vectors for recall by meaning; derived, not in git (embedding_store.py)
-├── chronicler.json          # Locked art style + in-world artist
 ├── world-tick-log.json      # Between-session tick provenance
 ├── loremaster-cache.json    # Per-location grounded briefs
 ├── saves/                   # Snapshot saves
 ├── fallen/                  # Archived sheets of dead PCs
-├── images/                  # Generated scene images + _gen-log.jsonl
 ├── chunks/ · vectors/       # the book's pieces (chunks.json) and their vectors (book.npz)
 └── extracted/               # Legacy census-import staging
 ```
 
-Most of these are created lazily — a campaign that has never been illustrated has no
-`chronicler.json`, and one that was never imported has no `vectors/`.
+Most of these are created lazily — a campaign that was never imported has no `vectors/`.
 
 ---
 
@@ -536,7 +533,7 @@ JSON values are objects; markdown values are strings. A file that is not on disk
 is omitted — never stubbed as `{}`. Restore writes only keys the snapshot has.
 
 Skipped (derived, staging, or the save dir itself): `chunks/`, `vectors/`,
-`images/`, `extracted/`, `canon/`, `authored/`, `loremaster-cache.json`, `saves/`.
+`extracted/`, `canon/`, `authored/`, `loremaster-cache.json`, `saves/`.
 
 Combat lives in `combat_state.json` (the file `CombatManager` actually writes).
 
@@ -567,7 +564,6 @@ items otherwise stay mixed in — do not treat a legacy save as a whole-world re
     "ruleset.json": {},
     "world-bible.json": {},
     "threat-clocks.json": {},
-    "chronicler.json": {},
     "world-tick-log.json": {},
     "combat_state.json": {},
     "rule-state.json": {},
