@@ -151,3 +151,36 @@ def test_player_kill_records_the_death_as_a_fact(dcc_world):
     name = _load(dcc_world, "character.json")["identity"]["name"]
     result = PlayerManager(dcc_world).kill_character()
     assert _fact(dcc_world, result["fact"])["fact"] == f"{name} (the player character) died."
+
+
+def test_a_death_elsewhere_and_earlier_is_recorded_as_such(dcc_world):
+    """Brother Hollis, in the Long Hull playtest, died three weeks before play, in
+    the Choir: the death fact said "here, now, everyone in the salon saw it"."""
+    from lib.note_manager import NoteManager
+    from lib.scene_manager import SceneManager
+    npc = _an_npc(dcc_world)
+    place = next(iter(_load(dcc_world, "locations.json")))
+    SceneManager(dcc_world).enter([npc])
+    result = NPCManager(dcc_world).kill_npc(npc, cause="in his sleep", at=place,
+                                            when="2187-10-01 03:00", holders=["player"])
+    assert result["success"]
+    fact = next(f for f in NoteManager(dcc_world)._all() if f["id"] == result["fact"])
+    assert fact["fact"] == f"{npc} died: in his sleep"
+    assert fact["at"] == f"location:{place}" and fact["holders"] == ["player"]
+    assert fact["game_time"].startswith("2187-10-01T03:00")
+    status = _load(dcc_world, "npcs.json")[npc]["status"]
+    assert status["died_game_time"] == fact["game_time"] and status["death_fact"] == fact["id"]
+
+
+def test_the_dead_hold_no_death_and_a_refused_fact_kills_nobody(dcc_world):
+    from lib.note_manager import NoteManager
+    from lib.scene_manager import SceneManager
+    npc = _an_npc(dcc_world)
+    SceneManager(dcc_world).enter([npc])
+    refused = NPCManager(dcc_world).kill_npc(npc, at="No Such Place")
+    assert not refused["success"]
+    assert _load(dcc_world, "npcs.json")[npc].get("status", {}).get("state") != "dead"
+    assert npc in SceneManager(dcc_world).present()             # still in the scene
+    result = NPCManager(dcc_world).kill_npc(npc)
+    fact = next(f for f in NoteManager(dcc_world)._all() if f["id"] == result["fact"])
+    assert f"npc:{npc}" not in fact["holders"]

@@ -275,34 +275,52 @@ class NPCManager(EntityManager):
         print(message)
         return True
 
-    def kill_npc(self, name: str, cause: str | None = None) -> dict[str, Any]:
+    def kill_npc(self, name: str, cause: str | None = None, **fact) -> dict[str, Any]:
         """Mark an NPC dead, record the death as a fact, and fire the on_death
         consequences waiting for it. Refuses an NPC who is already dead, so
-        on_death fires only once. A dead NPC is no longer present anywhere."""
+        on_death fires only once. A dead NPC is no longer present anywhere.
+
+        `fact`: where, when and who knows, as for any fact (NoteManager.add_fact:
+        at, nowhere, when, holders, secret, also). By default here, now, the people
+        present; a death elsewhere or earlier says so. The death fact is recorded
+        first: if it is refused, nobody dies. A cover story ("old age" for a
+        poisoning) is a wrong version of this fact, recorded with gm-note.sh."""
         key = self._find_entity_name(self.npcs_file, name)
         if not key:
-            print(f"[ERROR] NPC {name} not found")
+            print(f"[ERROR] NPC {name} not found", file=sys.stderr)
             return {'success': False, 'error': f"NPC {name} not found"}
         npcs = self._npcs()
         if is_dead(npcs[key]):
-            print(f"[ERROR] {key} is already dead")
+            print(f"[ERROR] {key} is already dead", file=sys.stderr)
             return {'success': False, 'error': f"{key} is already dead"}
+
+        import facts as fact_file
+        from note_manager import NoteManager
+        notes = NoteManager(self.base_dir)
+        if fact.get("holders") is None and not fact.get("secret"):
+            holders, errors = notes._holders(None, False, fact.pop("also", None))
+            if not errors:                         # the dead don't hold their own death
+                fact["holders"] = [h for h in holders if h != f"npc:{key}"]
+        fact_id = notes.add_fact(f"{key} died" + (f": {cause}" if cause else "."), **fact)
+        if not fact_id:
+            return {'success': False, 'error': f"the death of {key} was not recorded"}
+        entry = fact_file.by_id(fact_file.load(notes.json_ops), fact_id) or {}
+
+        npcs = self._npcs()
         status = sheet_mod.section(npcs[key], "status")
         status.update({'state': 'dead', 'died_at': self.get_timestamp()})
-        game_time = stored_time(self.json_ops)
+        game_time = entry.get('game_time') or stored_time(self.json_ops)
         if game_time:
             status['died_game_time'] = game_time
         if cause:
             status['cause'] = cause
+        status['death_fact'] = fact_id
         status.pop('party_member', None)
         if not self._save(npcs):
             return {'success': False, 'error': 'failed to save'}
         from scene_manager import SceneManager
         SceneManager(self.base_dir).leave([key], strict=False)
 
-        from note_manager import NoteManager
-        fact_id = NoteManager(self.base_dir).add_fact(
-            f"{key} died" + (f": {cause}" if cause else "."))
         from consequence_manager import ConsequenceManager
         fired = ConsequenceManager(self.base_dir).fire_event(
             'on_death', f"npc:{key}", f"{key} died" + (f" ({cause})" if cause else ""))
@@ -402,6 +420,13 @@ def _join(manager, name: str, joins) -> None:
         print(f"[NOTE] {note}")
 
 
+def death_fact(args) -> dict[str, Any]:
+    """The kill command's where, when and who knows, for the death fact."""
+    return {k: v for k, v in {"at": args.at, "nowhere": args.nowhere, "when": args.when,
+                              "holders": args.holders, "also": args.also,
+                              "secret": args.secret}.items() if v}
+
+
 def main():
     import argparse
 
@@ -464,7 +489,14 @@ def main():
 
     p = sub.add_parser('kill', help='Mark an NPC dead; fires its on_death consequences')
     p.add_argument('name')
-    p.add_argument('--cause')
+    p.add_argument('--cause', help='how, without "died" ("in his sleep", "shot on the Spine")')
+    p.add_argument('--at', help='where it happened (default: here), as for gm-note.sh')
+    p.add_argument('--nowhere', action='store_true', help='nowhere in particular')
+    p.add_argument('--when', help='when, if earlier than now: "YYYY-MM-DD HH:MM"')
+    p.add_argument('--holders', action='append',
+                   help='who knows of it (repeatable), instead of the people present')
+    p.add_argument('--also', action='append', help='who else knows of it (repeatable)')
+    p.add_argument('--secret', action='store_true', help='nobody knows of it yet')
 
     p = sub.add_parser('list', help='List NPCs')
     p.add_argument('--location')
@@ -559,12 +591,12 @@ def main():
             import contextlib
             import io
             with contextlib.redirect_stdout(io.StringIO()):
-                result = manager.kill_npc(args.name, args.cause)
+                result = manager.kill_npc(args.name, args.cause, **death_fact(args))
             if not result.get('success'):
                 sys.exit(emit_error(result.get('error', 'kill failed'), json_mode=True))
             emit(result, json_mode=True)
             return
-        result = manager.kill_npc(args.name, args.cause)
+        result = manager.kill_npc(args.name, args.cause, **death_fact(args))
         if not result.get('success'):
             sys.exit(1)
         from factions import succession
