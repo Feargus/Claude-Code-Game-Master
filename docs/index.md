@@ -20,6 +20,7 @@ rewritten towards that goal; until then some details are out of date (the code d
 | [persist-before-narrate.md](conventions/persist-before-narrate.md) | The GM writes a change to the files before describing it. |
 | [lean-core-and-skill-routing.md](conventions/lean-core-and-skill-routing.md) | What stays in `CLAUDE.md` and what goes into skills. |
 | [tool-wrapper-contract.md](conventions/tool-wrapper-contract.md) | How the tools are built: a bash wrapper over a Python manager over campaign JSON. |
+| [output.md](conventions/output.md) | What the commands print: markers, lines, ids, the marks for what the character knows, errors, and the words we use (a target). |
 | **Flows** | |
 | [play-turn.md](flows/play-turn.md) | One turn of play, and what happens without being asked. |
 | [author-a-world.md](flows/author-a-world.md) | `/new-game`: an original world. |
