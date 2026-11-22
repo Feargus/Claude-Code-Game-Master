@@ -49,7 +49,7 @@ fills. That is what keeps it to once per countdown without a flag to keep in syn
 
 The write is wrapped in `redirect_stdout(sys.stderr)`: `add_consequence` announces itself
 on stdout, and this fires from inside `advance` and time updates, whose `--json` output is
-parsed. `gm-clock.sh add` also gained `--consequence` / `--linked-plot`, which `add_clock`
+parsed. `gm-clock.sh add` also gained `--consequence` / `--plot`, which `add_clock`
 had always accepted and the parser could never pass — so hand-made clocks were
 structurally incapable of carrying the payload.
 
@@ -99,7 +99,7 @@ that span files:
 The **`plot-weaver`** agent (`.claude/agents/plot-weaver.md`) is the async front door:
 spawned in the background from a one-line seed, it grounds the idea in RAG, weaves it onto
 existing entities/edges/clocks (via the WORLD INDEX), and persists ONE dormant thread —
-`add` + a `--linked-plot` clock + an `on_npc` surfacing consequence — then returns one line.
+`add` + a `--plot` clock + an `on_npc` surfacing consequence — then returns one line.
 It is the story analog of the background scene-illustrator, and it fits "plan as you go,
 never pre-build": one small dormant thread, not a gazetteer.
 

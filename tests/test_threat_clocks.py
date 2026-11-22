@@ -227,3 +227,12 @@ def test_rewording_a_clock_keeps_its_name_and_its_progress(dcc_world):
     assert "text" not in m.get_clocks()["Tracker"]
     with pytest.raises(ValueError):
         m.set_text("Nobody", "x")
+
+
+def test_an_event_clock_refuses_a_due_time(dcc_world):
+    """An event clock silently dropped --due/--due-in (2026-11-22): the GM would
+    believe in a deadline that never comes."""
+    tcm = ThreatClockManager(dcc_world)
+    with pytest.raises(ValueError, match="Only a time clock has a due time"):
+        tcm.add_clock("Rumour", 3, advance_on="event", due_in_minutes=3 * 24 * 60)
+    assert "Rumour" not in tcm.get_clocks()

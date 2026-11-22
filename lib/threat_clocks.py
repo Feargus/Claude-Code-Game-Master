@@ -88,6 +88,10 @@ class ThreatClockManager(EntityManager):
             raise ValueError(f"A clock needs at least 1 segment, not {segments}.")
         if advance_on not in ("time", "event"):
             raise ValueError(f"A clock advances on time or event, not {advance_on!r}.")
+        if advance_on == "event" and (due_at is not None or due_in_minutes is not None):
+            raise ValueError("Only a time clock has a due time: an event clock fills when "
+                             "the story advances it (gm-clock.sh advance). Drop --due/--due-in, "
+                             "or make it a time clock (--on time).")
         data = self._load()
         taken = self._find(data, name)
         if taken is not None:
@@ -420,66 +424,78 @@ def main():
         sys.exit(1)
 
     m = ThreatClockManager()
-    # The clock's own short name, however it was typed (case, "clock:", its text).
-    shown = m._find(m.get_clocks(), getattr(args, "name", "")) or getattr(args, "name", "")
-    if args.action == "text":
-        try:
-            out = m.set_text(args.name, args.text)
-        except ValueError as error:
-            print(f"Error: {error}", file=sys.stderr)
-            sys.exit(1)
-    elif args.action == "add":
-        from time_manager import TimeError, parse_duration, parse_time
-        try:
+
+    def refuse(message: str):
+        print(f"[ERROR] {message}", file=sys.stderr)
+        sys.exit(1)
+
+    def line(clock_name: str, clock: dict[str, Any]) -> str:
+        return m.render({clock_name: clock})
+
+    try:
+        if args.action == "add":
+            from time_manager import TimeError, parse_duration, parse_time
+            try:
+                due_at = parse_time(args.due) if args.due else None
+                due_in = parse_duration(args.due_in) if args.due_in else None
+            except TimeError as error:
+                refuse(str(error))
             out = m.add_clock(args.name, args.segments, advance_on=args.on,
                               consequence=args.consequence, plots=args.plots,
-                              text=args.text,
-                              due_at=parse_time(args.due) if args.due else None,
-                              due_in_minutes=parse_duration(args.due_in) if args.due_in else None)
-        except (TimeError, ValueError) as error:
-            print(f"Error: {error}", file=sys.stderr)
-            sys.exit(1)
-    elif args.action == "advance":
-        try:
+                              text=args.text, due_at=due_at, due_in_minutes=due_in)
+            key = m._find(m.get_clocks(), args.name)
+            text = [f"[SUCCESS] Clock {line(key, out)}"]
+            if out.get("plots"):
+                text.append(f"  plot: {', '.join(out['plots'])}")
+            if out.get("consequence"):
+                text.append(f"  When full: {out['consequence']}")
+        elif args.action == "advance":
             out = m.advance(args.name, args.ticks)
-        except ValueError as error:
-            print(f"Error: {error}", file=sys.stderr)
-            sys.exit(1)
-        if out is None:
-            print(f"Error: {m._missing(args.name)}", file=sys.stderr)
-            sys.exit(1)
-    elif args.action == "due":
-        from time_manager import TimeError, parse_duration, parse_time
-        try:
-            shift = (-parse_duration(args.earlier) if args.earlier else
-                     parse_duration(args.later) if args.later else None)
-            if args.earlier and args.later:
-                raise ValueError("Give exactly one of --earlier, --later, --due-in or --due.")
-            out = m.move_due(args.name, due_at=parse_time(args.due) if args.due else None,
-                             due_in_minutes=parse_duration(args.due_in) if args.due_in else None,
+            if out is None:
+                refuse(m._missing(args.name))
+            key = m._find(m.get_clocks(), args.name)
+            text = [line(key, out)]
+        elif args.action == "due":
+            from time_manager import TimeError, parse_duration, parse_time
+            if sum(bool(x) for x in (args.earlier, args.later, args.due_in, args.due)) != 1:
+                refuse("Give exactly one of --earlier, --later, --due-in or --due.")
+            try:
+                shift = (-parse_duration(args.earlier) if args.earlier else
+                         parse_duration(args.later) if args.later else None)
+                due_at = parse_time(args.due) if args.due else None
+                due_in = parse_duration(args.due_in) if args.due_in else None
+            except TimeError as error:
+                refuse(str(error))
+            out = m.move_due(args.name, due_at=due_at, due_in_minutes=due_in,
                              shift_minutes=shift)
-        except (TimeError, ValueError) as error:
-            print(f"Error: {error}", file=sys.stderr)
-            sys.exit(1)
-    elif args.action == "remove":
-        out = {"removed": m.remove_clock(args.name)}
-    elif args.action == "beats":
-        out = m.pending_beats()
-    else:
-        out = m.get_clocks()
+            key = m._find(m.get_clocks(), args.name)
+            text = [line(key, out)]
+        elif args.action == "text":
+            out = m.set_text(args.name, args.text)
+            key = m._find(m.get_clocks(), args.name)
+            text = [f"[SUCCESS] {line(key, out)}"]
+        elif args.action == "remove":
+            key = m._find(m.get_clocks(), args.name)
+            if not m.remove_clock(args.name):
+                refuse(m._missing(args.name))
+            out = {"removed": key}
+            text = [f"[SUCCESS] Removed clock {key}"]
+        elif args.action == "beats":
+            out = m.pending_beats()
+            text = [m.render(out) if out else "No clock is full."]
+        else:
+            out = m.get_clocks()
+            text = [m.render(out) if out else "No clocks yet (gm-clock.sh add)."]
+    except ValueError as error:
+        refuse(str(error))
 
     if json_mode:
         emit(out, json_mode=True)
-    else:
-        print(json.dumps(out, indent=2))
-        if args.action == "list":
-            print(m.render(out))
-        if args.action in ("due", "text"):
-            print(m.render({shown: out}))
-        if args.action in ("advance", "due") and out:
-            from consequence_manager import print_fired
-            print_fired(out.get("fired", []))
-
+        return
+    print("\n".join(text))
+    if args.action in ("advance", "due") and out:
+        from consequence_manager import print_fired
+        print_fired(out.get("fired", []))
 
 if __name__ == "__main__":
     main()
