@@ -18,6 +18,12 @@ call the Python functions, not the commands, and no script parses a command's ou
 - **Standard error:** `[ERROR]` lines, and only those.
 - **Exit code:** 0 when the command did what it was asked, 1 when it didn't.
 
+## Square brackets: for the GM
+
+Text in square brackets is for the GM and is never narrated as it stands. At the start
+of a line it is a **marker** (what to do with the line); before a fact's text it is a
+**mark** (what the character knows of it). Nothing else uses square brackets.
+
 ## Markers
 
 A marker is the first word of a line the GM scans, and says what the GM does with it.
@@ -56,8 +62,8 @@ one gets a letter and a number, in the order made.
 |---|---|---|
 | fact | `f` and a number | `f43` |
 | consequence | `c` and a number (target; today upstream's 8 hex characters, shown as the first 4: `[2563]`) | `c12` |
-| person | the name | `npc:Matron Ysabet Corvane` in ids, the name in text |
-| place | the name | `location:The Saffron House` in ids, the name in text |
+| NPC | the name | `npc:Matron Ysabet Corvane` in ids, the name in text |
+| location | the name | `location:The Saffron House` in ids, the name in text |
 | faction | a short id | `faction:houses` in ids, the name in text |
 | plot, clock, world rule, glossary term | the name (one to four words; never changes) | `The Sold Contract`, `Sealing`, `Hunger` |
 | the character | `player` in ids | the character's name in text |
@@ -75,9 +81,9 @@ Put before the text they mark, in square brackets, upper case.
 | `[WRONG → f12]`, `[PARTIAL → f12]` | A wrong or partial version, and the fact that holds the truth | `[WRONG; the truth is f12]`, `[PARTIAL; fuller: f12]`, stored |
 
 `SECRET` and `HIDDEN` mean one thing each: today both words also name a second thing (a
-membership, a rule's value). To decide: a fact the street knows is still hidden from the
-character in the code, one the public knows is not; whether that is meant is written
-down nowhere.
+membership, a rule's value). The character is part of the public but not of the street
+(decided 2026-11-22, for now: the street is not properly built yet), so a fact the street
+knows is still hidden from the character.
 
 ## Errors
 
@@ -104,15 +110,14 @@ files. A new idea gets its word here before it is used.
 | **consequence** | What happens when one of its triggers matches; it **fires** once, is **resolved** once played out, and can be **rearmed** | event, reaction |
 | **trigger** | What a consequence waits for; a recorded fact **triggers** an `on_fact` one | condition, event |
 | **clock** | Segments that fill; **full**, or **due** at a time | timer, countdown |
-| **plot** | What the story turns on; it **stands** somewhere, has an **owner**, **involves** people and places | thread, quest, arc |
-| **scene** | Who is **present** where the character is; people **enter** and **leave** | |
-| **link**, **suggest** | Recall *links* a fact to a plot or person by itself, or *suggests* it | tag, offer |
+| **plot** | What the story turns on; it **stands** somewhere, has an **owner**, **involves** NPCs, locations and factions | thread, quest, arc |
+| **scene** | Who is **present** where the character is; NPCs **enter** and **leave** | |
+| **NPC** | Anyone in the world but the character (`gm-npc.sh`, `npc:<name>`) | person |
+| **location** | A place in the world (`gm-location.sh`, `location:<name>`) | place, spot |
+| **link**, **suggest** | Recall *links* a fact to a plot or NPC by itself, or *suggests* it | tag, offer |
 | **world rule** | A rule of the campaign's own (`gm-rule.sh`); **Standing**, **Relation**, the **powers** are the repo's | signature system, mechanic |
 | **the character** | The player's character, in text | the player, the PC |
 | **currency** | What amounts are shown in (the world bible's word) | credits (only the data's name) |
-
-To decide: **place** or **location** in text (ids and commands say `location`); **person**
-or **NPC**.
 
 ## Where we are (2026-11-22)
 
