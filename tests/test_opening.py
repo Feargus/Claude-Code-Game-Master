@@ -233,3 +233,23 @@ def test_a_place_named_after_another_and_a_needless_alias(world):
     result = Opening(ws).apply(spec)
     assert any("'lanternside' is not kept as an alias" in n for n in result["notes"])
     assert "aliases" not in _load(camp, "locations.json")["Lanternside"]
+
+
+def test_the_opening_names_tied_factions_with_no_relation(world):
+    """Once, as play begins: a tie with no Relation written (unset is not 0)."""
+    from lib import world_rules
+    from lib.factions import FactionManager
+    from lib.json_ops import JsonOperations
+    ws, camp = world
+    ops = JsonOperations(str(camp))
+    m = FactionManager(ops)
+    m.create("The Tenders", "Priests of the machine.", fid="tenders")
+    m.create("The Houses", "The pleasure-houses.", fid="houses")
+    m.create("The Wardens", "The deck militia.", fid="wardens")
+    m.tie("tenders", "houses", "useful sinners")
+    m.tie("wardens", "tenders", "masters who pay in sermons")
+    world_rules.change(ops, "Relation", "tenders+wardens", to=3)
+    text = summary(Opening(ws).apply(json.loads(json.dumps(SPEC))))
+    assert "Tied but no Relation set: The Houses and The Tenders" in text
+    assert "Relation\" \"houses+tenders\" N" in text
+    assert "The Tenders and The Wardens" not in text

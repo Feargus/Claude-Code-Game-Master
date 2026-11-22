@@ -159,8 +159,20 @@ class Opening:
                 raise OpeningError(f"{text}. Nothing of the opening was kept.") from error
             raise
         result["notes"] = [ln.strip() for ln in out.getvalue().splitlines()
-                           if "[NOTE]" in ln or (" alias " in ln and "bash tools/" in ln)]
+                           if "[NOTE]" in ln or (" alias " in ln and "bash tools/" in ln)
+                           or any(k in ln for k in RECALL_LINES)]
+        result["notes"] += self._unset_relations()
         return result
+
+    def _unset_relations(self) -> list[str]:
+        """Once, as play begins: tied factions whose Relation was never written."""
+        import faction_rules
+        import factions
+        names = factions.known(self.json_ops)
+        return [f"[NOTE] Tied but no Relation set: {names.get(a, {}).get('name', a)} and "
+                f"{names.get(b, {}).get('name', b)} (bash tools/gm-rule.sh set \"Relation\" "
+                f"\"{a}+{b}\" N, −5 war … +5 allies)"
+                for a, b in faction_rules.ties_without_relation(self.json_ops)]
 
     # ---------- the parts, in order ----------
 
@@ -309,6 +321,11 @@ class Opening:
                 "present": present, "plot": plot, "hook": hook,
                 "horizon": self.horizon(plot), "facts": written["facts"],
                 "clocks": written["clocks"], "consequences": written["consequences"]}
+
+
+# What semantic recall says about a fact (recall_notes.py), kept in the summary.
+RECALL_LINES = (" may trigger [", "If it does: bash tools/gm-consequence.sh", " by recall (",
+                " looks part of ", " reads like it is about ")
 
 
 def summary(result: dict[str, Any]) -> str:

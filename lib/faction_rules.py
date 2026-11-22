@@ -207,6 +207,20 @@ def relation(json_ops, a: str, b: str) -> int:
     return world_rules.entry(json_ops, rule, pair_id(a, b)).get("value")
 
 
+def ties_without_relation(json_ops) -> list[tuple[str, str]]:
+    """Pairs of factions with a tie (either side's) but no Relation written: unset
+    is not 0 (a value chosen), so the opening names them (opening.py)."""
+    import factions
+    import world_rules
+    state = world_rules.load_state(json_ops)
+    missing = set()
+    for fid, record in factions.known(json_ops).items():
+        for other in (record.get("ties") or {}):
+            if RELATION not in state.get(pair_id(fid, other), {}):
+                missing.add(tuple(sorted((fid, other))))
+    return sorted(missing)
+
+
 def card_lines(json_ops, fid: str) -> list[str]:
     """'power (hidden from the player): Military 6, …' and 'relations: …' for a card."""
     import factions
@@ -216,9 +230,10 @@ def card_lines(json_ops, fid: str) -> list[str]:
     rel = relations(json_ops, fid)
     ties = (names.get(fid) or {}).get("ties") or {}
     others = sorted(set(rel) | set(ties), key=lambda o: (rel.get(o, 0), o))
-    if others:
+    if others:                                 # a tie with no Relation written: "not set", not 0
         lines.append("relations (−5 war … +5 allies; why, as they see it): " + "; ".join(
-            f"{names.get(o, {}).get('name', o)} {rel.get(o, 0):+d}"
+            f"{names.get(o, {}).get('name', o)} "
+            + (f"{rel[o]:+d}" if rel.get(o) is not None else "not set")
             + (f" ({ties[o]})" if ties.get(o) else "") for o in others))
     return lines
 

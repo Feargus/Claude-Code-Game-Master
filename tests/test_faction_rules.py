@@ -107,7 +107,11 @@ def test_a_tie_says_why(ops):
     assert (fid, other, before) == ("meridian-group", "system", "")
     assert load(ops)["meridian-group"]["ties"] == {"system": "rents it guards, and resents the fee"}
     lines = "\n".join(fr.card_lines(ops, "meridian-group"))
-    assert "The System / Borant Corp +0 (rents it guards, and resents the fee)" in lines
+    assert "The System / Borant Corp not set (rents it guards, and resents the fee)" in lines
+    assert fr.ties_without_relation(ops) == [("meridian-group", "system")]
+    wr.change(ops, "Relation", "meridian-group+system", to=0)        # 0, chosen: not "not set"
+    assert "The System / Borant Corp +0 (rents" in "\n".join(fr.card_lines(ops, "meridian-group"))
+    assert fr.ties_without_relation(ops) == []
     assert m.tie("Meridian", "system")[2] == "rents it guards, and resents the fee"   # removed
     assert "ties" not in load(ops)["meridian-group"]
     with pytest.raises(FactionError, match="between two factions"):
