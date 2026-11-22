@@ -88,6 +88,9 @@ IFS=$'\t' read -r NAME RACE CLASS LEVEL CREDITS XP_CUR XP_NEXT < <(
         ] | @tsv' "$CHAR"
 )
 LOC="?"
+# The world's word for its money (world-bible.json "currency"; lib/world_bible.py)
+MONEY=$(jq -r '(.currency // "") | if type == "string" and (gsub("\\s"; "") != "") then . else "credits" end' "$CAMP/world-bible.json" 2>/dev/null)
+[ -n "$MONEY" ] || MONEY="credits"
 
 # Conditions array -> status label; fall back to the wound-derived state.
 CONDS=$(jq -r '(.status.conditions // []) | map(ascii_downcase) | join(", ")' "$CHAR" 2>/dev/null)
@@ -160,7 +163,7 @@ fi
 # Build each line as a string, then emit. Clearer than one packed printf.
 
 L1="${TEAL}⚔ ${BOLD}${NAME}${RESET}  ${DIM}Lv${LEVEL} ${RACE} ${CLASS}${RESET}  ${SEP}  ${AMBER}${LOC}${RESET}"
-L2="  ${DIM}Wounds${RESET} ${WC}${WOUNDS}${RESET} ${SEPV} ${CRED}${CREDITS}cr${RESET} ${SEPV} ${DIM}XP${RESET} ${XP_CUR}/${XP_NEXT} ${SEPV} ${STATEC}${STATE}${RESET}"
+L2="  ${DIM}Wounds${RESET} ${WC}${WOUNDS}${RESET} ${SEPV} ${CRED}${CREDITS} ${MONEY}${RESET} ${SEPV} ${DIM}XP${RESET} ${XP_CUR}/${XP_NEXT} ${SEPV} ${STATEC}${STATE}${RESET}"
 [ -n "$RULES" ] && L2="${L2} ${SEPV} ${TEAL}${RULES}${RESET}"
 
 # Top rule — frames the HUD off from the conversation above.

@@ -124,6 +124,7 @@ bash tools/gm-extract.sh draft-bible --fields-json <<'EOF'
 {
   "tone": "...",
   "themes": ["..."],
+  "currency": "<the book's word for its money, plural: \"gold pieces\", \"marks\">",
   "geography": {"nodes": [{"id":"maul","name":"The Maul"},{"id":"tower","name":"Elephant Tower"}], "edges": [{"from":"maul","to":"tower","adjacency":"across the temple quarter"}]}
 }
 EOF

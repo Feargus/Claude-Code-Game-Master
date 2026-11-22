@@ -104,6 +104,8 @@ in the author's voice at play (surfaced every beat by `get_full_context`):
   term with a line on what it means here, `{"glossary": {"Lantern papers":
   {"description": "the certificate of a ghost; forged ones are expensive and fragile",
   "plots": []}}}`. A few to start; more join in play (`gm-glossary.sh add`).
+- The world's money goes into `currency`: its word, plural (`"currency": "tallies"`).
+  Every amount is shown in it (the header, the sheet); without it, "credits".
 **The factions** (3–5 groups with a goal: a gang, a corp, a church, the claimers on
 the plain) are records of their own, not part of the bible. Write each one, with a
 short id that never changes:

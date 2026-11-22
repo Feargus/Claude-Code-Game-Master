@@ -479,11 +479,13 @@ def _credits(json_ops, effect, chain) -> dict[str, Any]:
     possessions = sheet_mod.section(character, "possessions")
     have = int(possessions.get("credits", 0) or 0)
     if have + effect["credits"] < 0:
-        return {"line": f"not done: the character has {have} credits, not the "
+        from world_bible import currency
+        return {"line": f"not done: the character has {have} {currency(json_ops)}, not the "
                         f"{-effect['credits']} this would take"}
     possessions["credits"] = have + effect["credits"]
     json_ops.save_json("character.json", character)
-    what = f"{effect['credits']:+d} credits (now {possessions['credits']})"
+    from world_bible import currency
+    what = f"{effect['credits']:+d} {currency(json_ops)} (now {possessions['credits']})"
     chain["character"].append(what)
     return {"line": what}
 

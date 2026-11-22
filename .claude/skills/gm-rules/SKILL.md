@@ -699,12 +699,13 @@ It checks every rule and lists every problem at once; nothing is saved until all
 are right. A rule of the same name is replaced (its values are kept).
 `gm-rule.sh remove "<rule>"` drops one.
 
-What is no mechanic (prices, customs, the currency) goes into plain rule lines,
-one per line, shown in the brief:
+What is no mechanic (prices, customs) goes into plain rule lines, one per line,
+shown in the brief. The money's name is the bible's `currency` (plural: "zeds"),
+which every amount is shown in; the lines give what things cost:
 
 ```bash
 bash tools/gm-rule.sh plain <<'EOF'
-Credits are zeds (Lull scrip). A meal costs 1, a stim 2, a lift fare up 100 floors 5.
+Zeds are Lull scrip. A meal costs 1, a stim 2, a lift fare up 100 floors 5.
 An ordinary night's lease pays about 4 zeds; rent in the Middens is about 3 a night.
 EOF
 ```

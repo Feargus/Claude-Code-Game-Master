@@ -385,6 +385,7 @@ class Brief:
         if char:
             import sheet as sheet_mod
             from body import summary as wound_summary
+            from world_bible import currency
             from growth import growth_due, level, next_level_xp, xp_total
             identity = char.get('identity') or {}
             who = " ".join(x for x in (identity.get('race'), identity.get('role')) if x)
@@ -392,7 +393,8 @@ class Brief:
             lines.append(f"{sheet_mod.name(char)}" + (f" ({who})" if who else "")
                          + f" - Level {level(char)} | Wounds: {wound_summary(char)}"
                          f" | XP: {xp_total(char)}/{next_level_xp(char)}"
-                         f" | Credits: {sheet_mod.get(char, 'possessions', 'credits', 0)}")
+                         f" | {currency(self.json_ops).capitalize()}: "
+                         f"{sheet_mod.get(char, 'possessions', 'credits', 0)}")
             lines.append(f"Conditions: {', '.join(conditions) if conditions else '(none)'}")
             visible = sheet_mod.visible_items(char)
             if visible:

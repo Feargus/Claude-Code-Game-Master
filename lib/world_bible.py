@@ -43,7 +43,22 @@ def validate_bible(bible: dict[str, Any]) -> tuple[bool, list[str]]:
     if 'glossary' in bible:
         from glossary import check_entries
         errors.extend(check_entries(bible['glossary']))
+    if 'currency' in bible and not (isinstance(bible['currency'], str)
+                                    and bible['currency'].strip()):
+        errors.append('currency is the word for the money, plural ("tallies", "gold pieces")')
     return (len(errors) == 0), errors
+
+
+DEFAULT_CURRENCY = "credits"
+
+
+def currency(json_ops) -> str:
+    """The world's word for its money, plural (the bible's `currency`): what every
+    amount is shown in. The data and the commands keep calling it credits
+    (`possessions.credits`, `gm-player.sh credits`)."""
+    bible = json_ops.load_json("world-bible.json") or {}
+    word = bible.get("currency") if isinstance(bible, dict) else None
+    return word.strip() if isinstance(word, str) and word.strip() else DEFAULT_CURRENCY
 
 
 class WorldBible:

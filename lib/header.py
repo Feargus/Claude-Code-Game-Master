@@ -60,7 +60,8 @@ def line(json_ops, full: bool = False) -> str:
         parts.append(f"{now:%H:%M}")
     credits = (sheet.get("possessions") or {}).get("credits")
     if credits is not None and (full or shown.get("credits") != credits):
-        parts.append(f"{credits} credits")
+        from world_bible import currency
+        parts.append(f"{credits} {currency(json_ops)}")
     wound = worst_wound(sheet)
     if wound:
         parts.append(wound)

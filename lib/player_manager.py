@@ -58,7 +58,8 @@ class PlayerManager(EntityManager):
         who = " ".join(x for x in (identity.get("race"), identity.get("role")) if x)
         line = (f"{sheet_mod.name(char)}" + (f" - {who}" if who else "")
                 + f" - Level {level(char)} (Wounds: {wound_summary(char)}, "
-                  f"Credits: {sheet_mod.get(char, 'possessions', 'credits', 0)})")
+                  f"{self._money().capitalize()}: "
+                  f"{sheet_mod.get(char, 'possessions', 'credits', 0)})")
         import world_rules
         rules = world_rules.summary(self.json_ops)
         if rules:
@@ -304,6 +305,11 @@ class PlayerManager(EntityManager):
 
     # ---------- credits and items ----------
 
+    def _money(self) -> str:
+        """The world's word for credits (world_bible.currency)."""
+        from world_bible import currency
+        return currency(self.json_ops)
+
     def modify_credits(self, amount: int | None = None) -> dict[str, Any]:
         char = self._sheet()
         if not char:
@@ -312,22 +318,22 @@ class PlayerManager(EntityManager):
         possessions = sheet_mod.section(char, "possessions")
         current = int(possessions.get('credits', 0) or 0)
         if amount is None:
-            print(f"{char_name}: {current} credits")
+            print(f"{char_name}: {current} {self._money()}")
             return {'success': True, 'name': char_name, 'credits': current}
         new = current + amount
         if new < 0:
             # Refused: this used to set the credits to 0 and report the whole sum
             # as spent, so the GM narrated a purchase the character couldn't pay.
-            return self._refuse(f"{char_name} has {current} credits, not the {abs(amount)} "
+            return self._refuse(f"{char_name} has {current} {self._money()}, not the {abs(amount)} "
                                 f"this would spend. Nothing was spent.")
         possessions['credits'] = new
         if not self._save_character(char):
             return {'success': False}
         if amount > 0:
-            print(f"CREDITS_GAINED {char_name} gained {amount} credits!")
+            print(f"CREDITS_GAINED {char_name} gained {amount} {self._money()}!")
         elif amount < 0:
-            print(f"CREDITS_SPENT {char_name} spent {abs(amount)} credits!")
-        print(f"Credits: {new}")
+            print(f"CREDITS_SPENT {char_name} spent {abs(amount)} {self._money()}!")
+        print(f"{self._money().capitalize()}: {new}")
         return {'success': True, 'name': char_name, 'credits_change': amount,
                 'current_credits': new}
 
@@ -388,10 +394,10 @@ class PlayerManager(EntityManager):
             return {'success': False}
         print(f"LOOT {sheet_mod.name(char)} received (into the inventory):")
         if credit_amount > 0:
-            print(f"  + {credit_amount} credits")
+            print(f"  + {credit_amount} {self._money()}")
         for entry in items:
             print(f"  + {entry}")
-        print(f"Credits: {before} -> {possessions.get('credits', before)}")
+        print(f"{self._money().capitalize()}: {before} -> {possessions.get('credits', before)}")
         return {'success': True, 'items_added': items, 'credits_added': credit_amount,
                 'total_credits': possessions.get('credits', before)}
 
