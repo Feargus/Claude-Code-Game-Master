@@ -66,9 +66,13 @@ def check(rate: Any, low: int, high: int) -> list[str]:
     return problems
 
 
-def describe(rate: dict[str, Any]) -> str:
+def describe(rate: dict[str, Any], rule_name: str = "") -> str:
     """'+1 every 90d', '1 every 7d toward 5', '1 every 7d away from 5' or 'half the
-    way to 0 every 1d'."""
+    way to 0 every 1d'. A Relation drifts by its own law (faction_rules.drift),
+    whatever its rate's steps say: give `rule_name` to have that said."""
+    import faction_rules
+    if rule_name == faction_rules.RELATION:
+        return faction_rules.drift_words(rate.get("toward", 0))
     if "share" in rate:
         share = {0.5: "half", 0.25: "a quarter", 1: "all"}.get(rate["share"], f"{rate['share']:g} of")
         return f"{share} the way to {rate['toward']} every {rate['every']} (at least 1)"
@@ -132,6 +136,11 @@ def set_rate(json_ops, raw_rule, raw_holder=None, by: int | None = None,
     rule = world_rules.counter(json_ops, raw_rule)
     if not rule.get("rate"):
         raise world_rules.RulesError(f"{rule['name']} has no rate to change.")
+    import faction_rules
+    if rule["name"] == faction_rules.RELATION and (by, every, add) != (None, None, None):
+        raise world_rules.RulesError(
+            f"A Relation {faction_rules.drift_words('its point')}: only its point changes "
+            f"(--toward N, --shift N), not --by or --every.")
     if (by is not None or add is not None) and "by" not in rule["rate"]:
         raise world_rules.RulesError(f"{rule['name']} has no rate in steps ('by') to change.")
     holder = world_rules.resolve_holder(json_ops, rule, raw_holder)
@@ -156,7 +165,8 @@ def set_rate(json_ops, raw_rule, raw_holder=None, by: int | None = None,
         stored["rate"] = new
     state.setdefault(holder, {})[rule["name"]] = stored
     world_rules.save_state(json_ops, state)
-    world_rules._log(json_ops, holder, rule["name"], f"rate {describe(old)} -> {describe(new)}",
+    world_rules._log(json_ops, holder, rule["name"],
+                     f"rate {describe(old, rule['name'])} -> {describe(new, rule['name'])}",
                      "command" if add is None and shift is None else "an effect")
     return old, new
 

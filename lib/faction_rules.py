@@ -22,9 +22,11 @@ turns and power"): every campaign with factions has them, the same everywhere.
 
 They are world rules like any other (values in rule-state.json, `gm-rule.sh change`,
 `set`, `rate --toward`, `on_rule`, `--rule-effect`), but defined here, not in the
-campaign's ruleset: they can't be defined or removed there. Their rate holds by
-default (`by` 0); a faction or a pair gets its own drift and resting point with
-`gm-rule.sh rate "<rule>" <holder> --by 1 --toward N`. They show on the faction cards,
+campaign's ruleset: they can't be defined or removed there. A power's rate holds by
+default (`by` 0); a faction gets its own drift and resting point with
+`gm-rule.sh rate "<power>" faction:<id> --by 1 --toward N`. A Relation always drifts
+toward its resting point by itself (`drift`, below), so only its point is set:
+`gm-rule.sh rate "Relation" <a>+<b> --toward N`. They show on the faction cards,
 not in the brief's YOUR WORLD'S RULES.
 """
 
@@ -248,6 +250,14 @@ def card_lines(json_ops, fid: str) -> list[str]:
 # rounds to the value is dropped.
 
 RELAX_DAYS = 30          # the drift's time constant: R → R0 + (R − R0)·e^(−Δt/τ)
+
+
+def drift_words(point) -> str:
+    """How a Relation moves by itself, in words (rule_time.describe)."""
+    import math
+    half = round(RELAX_DAYS * math.log(2))
+    return (f"drifts toward {point:+d}" if isinstance(point, int) else f"drifts toward {point}") \
+        + f" by itself (the distance halves in about {half} days)"
 
 
 def _whole(x: float) -> int:

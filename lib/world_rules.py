@@ -805,8 +805,8 @@ def _cmd_rate(ops, args):
     rule = find_rule(ops, name)
     who = holder_name(ops, resolve_holder(ops, rule, holder))
     return ({"before": old, "after": new},
-            f"[SUCCESS] {rule['name']} ({who}): rate {rule_time.describe(old)} → "
-            f"{rule_time.describe(new)}")
+            f"[SUCCESS] {rule['name']} ({who}): rate {rule_time.describe(old, rule['name'])} → "
+            f"{rule_time.describe(new, rule['name'])}")
 
 
 def _cmd_known(ops, args):

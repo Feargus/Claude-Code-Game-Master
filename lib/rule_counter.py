@@ -315,7 +315,7 @@ def rule_lines(json_ops, rule: dict[str, Any], holders=None) -> list[str]:
         on = ", ".join(stored.get("on") or []) or "no result"
         mark_ = "" if world_rules.is_known(rule, stored) else f" {world_rules.HIDDEN}"
         lines.append(f"  Now, {world_rules.holder_name(json_ops, holder)}: {stored.get('value')} "
-                     f"({on}){_extras(stored)}{mark_}")
+                     f"({on}){_extras(stored, rule)}{mark_}")
     return lines
 
 
@@ -324,7 +324,8 @@ def _option_lines(rule: dict[str, Any]) -> list[str]:
     lines = []
     if rule.get("rate"):
         import rule_time
-        lines.append(f"  Rate: {rule_time.describe(rule['rate'])}, by itself as game time passes.")
+        lines.append(f"  Rate: {rule_time.describe(rule['rate'], rule['name'])}, by itself as game "
+                     f"time passes.")
     ov = rule.get("overflow")
     if ov:
         marks = f" (e.g. {'; '.join(ov['marks'])})" if ov.get("marks") else ""
@@ -336,7 +337,7 @@ def _option_lines(rule: dict[str, Any]) -> list[str]:
     return lines
 
 
-def _extras(stored: dict[str, Any]) -> str:
+def _extras(stored: dict[str, Any], rule: dict[str, Any]) -> str:
     """A holder's marks, marks due and own rate, after its value."""
     parts = []
     if stored.get("marks"):
@@ -345,7 +346,7 @@ def _extras(stored: dict[str, Any]) -> str:
         parts.append(f"{stored['marks_due']} mark due")
     if stored.get("rate"):
         import rule_time
-        parts.append(f"its own rate: {rule_time.describe(stored['rate'])}")
+        parts.append(f"its own rate: {rule_time.describe(stored['rate'], rule['name'])}")
     return f"; {', '.join(parts)}" if parts else ""
 
 
@@ -356,7 +357,7 @@ def holder_line(rule: dict[str, Any], stored: dict[str, Any]) -> str:
     on = [f"{label}: {_result(rule, label)['text']}" for label in stored.get("on") or []]
     mark_ = "" if world_rules.is_known(rule, stored) else f" {world_rules.HIDDEN}"
     return (f"{rule['name']} {stored.get('value')} (counter {low}–{high}): "
-            + ("; ".join(on) or "no result") + _extras(stored) + mark_)
+            + ("; ".join(on) or "no result") + _extras(stored, rule) + mark_)
 
 
 def summary(rule: dict[str, Any], stored: dict[str, Any]) -> str:

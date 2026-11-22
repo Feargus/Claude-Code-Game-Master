@@ -409,7 +409,8 @@ def _rate_of(json_ops, effect, holder) -> dict[str, Any]:
     old, new = rule_time.set_rate(json_ops, target["name"], whose, add=effect.get("by"),
                                   toward=effect.get("toward"), shift=effect.get("shift"))
     return {"line": f"{target['name']} ({world_rules.holder_name(json_ops, whose)}): rate "
-                    f"{rule_time.describe(old)} → {rule_time.describe(new)}"}
+                    f"{rule_time.describe(old, target['name'])} → "
+                    f"{rule_time.describe(new, target['name'])}"}
 
 
 def _for_holder(json_ops, effect, holder) -> dict[str, Any]:

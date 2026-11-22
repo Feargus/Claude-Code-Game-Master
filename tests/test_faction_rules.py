@@ -79,10 +79,15 @@ def test_a_consequence_can_change_a_relation(ops, dcc_world):
     cm = ConsequenceManager(dcc_world)
     cid = cm.add_consequence("A truce is signed.", "y", trigger_type="on_fact", match="x",
                              effects=[{"type": "rule", "rate_of": "Relation",
-                                       "of": "system+Meridian", "toward": 2, "by": 1}])
+                                       "of": "system+Meridian", "toward": 2}])
     cm.fire(cid)
     stored = wr.entry(ops, wr.find_rule(ops, "Relation"), "pair:meridian-group+system")
-    assert stored["rate"] == {"by": 1, "every": "28d", "toward": 2}
+    assert stored["rate"]["toward"] == 2                    # it drifts toward the new point
+    cid = cm.add_consequence("Steps.", "y", trigger_type="on_fact", match="x",
+                             effects=[{"type": "rule", "rate_of": "Relation",
+                                       "of": "system+Meridian", "by": 1}])
+    fired = cm.fire(cid)
+    assert "only its point changes" in " ".join(fired.get("effects_done", []))
 
 
 def test_power_and_relations_are_on_the_faction_card_not_in_the_rules(ops, dcc_world):
@@ -118,3 +123,15 @@ def test_a_tie_says_why(ops):
         m.tie("Meridian", "Meridian", "x")
     with pytest.raises(FactionError, match="No faction"):
         m.tie("Meridian", "Nobody", "x")
+
+
+def test_a_relations_rate_says_it_drifts_and_takes_only_a_point(ops):
+    """It printed "held at its value (0 every 28d, toward 3)" while it drifted
+    (the Long Hull playtest); and --by or --every would have changed nothing."""
+    old, new = rule_time.set_rate(ops, "Relation", "meridian-group+system", toward=3)
+    assert rule_time.describe(new, "Relation") == (
+        "drifts toward +3 by itself (the distance halves in about 21 days)")
+    assert "held at its value" not in rule_time.describe(new, "Relation")
+    with pytest.raises(wr.RulesError, match="only its point changes"):
+        rule_time.set_rate(ops, "Relation", "meridian-group+system", by=1)
+    assert rule_time.describe({"by": 0, "every": "28d", "toward": 3}).startswith("held")  # a power
