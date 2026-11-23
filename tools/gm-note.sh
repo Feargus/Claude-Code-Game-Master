@@ -10,6 +10,8 @@ usage() {
     echo "                  [--at <place> | --nowhere]   where it happened (default: here)"
     echo "                  [--plot <plot>]...           the plot it belongs to"
     echo "       gm-note.sh tell <fact id> <holder>...      someone learns it"
+    echo "       gm-note.sh edit <fact id> \"<text>\"          a new text for it"
+    echo "       gm-note.sh remove <fact id>                  recorded by mistake, or twice"
     echo "       gm-note.sh about <fact id> [--add <id>]... [--remove <id>]..."
     echo "       gm-note.sh plot <fact id> [--add <plot>]... [--remove <plot>]..."
     echo "       gm-note.sh truth <fact id> wrong|partial|true [--version-of <id>]"
@@ -55,7 +57,7 @@ case "$1" in
         echo "  gm-note.sh recent [N]  |  find --about <id> / --held-by <id> / --plot <plot> / --text \"words\" / --like \"<question>\"  |  show <fact id>" >&2
         exit 1
         ;;
-    tell|about|plot|truth|show|find|recent|beat|witness)
+    tell|about|plot|truth|edit|remove|show|find|recent|beat|witness)
         $PYTHON_CMD "$LIB_DIR/note_manager.py" "$@"
         ;;
     *)

@@ -23,6 +23,7 @@ is named in `world-state/active-campaign.txt`.
 ├── locations.json           # All locations
 ├── factions.json            # Factions, by id (factions.py, gm-faction.sh)
 ├── facts.json               # World facts, one list
+├── removed-facts.json       # Facts the GM removed (gm-note.sh remove), with when
 ├── plots.json               # Plot hooks and quests
 ├── items.json               # Items (from imports)
 ├── consequences.json        # Pending/resolved events + firing provenance
@@ -250,8 +251,10 @@ Dungeon rooms (stored in `locations.json`) may include:
 ## facts.json
 
 One list of fact **objects**, in the order they were recorded (`lib/facts.py`: every
-script reads and writes the file through it). Until 2026-11-16 the file held one list per
-category; nothing read the categories any more, and a file in that form is refused.
+script reads and writes the file through it). `gm-note.sh edit` gives a fact a new text;
+`gm-note.sh remove` moves one to `removed-facts.json`, with a `removed` timestamp, so its
+id is never given again; a fact something still points at (a version of it, a waiting
+consequence that tells it, an NPC's death) can't be removed.
 
 ```json
 [

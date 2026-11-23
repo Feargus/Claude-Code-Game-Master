@@ -213,7 +213,7 @@ class NoteManager:
         if version_of and not plot_keys:          # a version belongs where its truth does
             plot_keys = list(self._entry(facts, version_of).get('plots') or [])
             inherited = bool(plot_keys)
-        fact_id = fact_file.next_id(facts)
+        fact_id = fact_file.next_id(facts, fact_file.load_removed(self.json_ops))
         entry = {'id': fact_id, 'fact': fact}
         if about_ids:
             entry['about'] = about_ids
@@ -290,7 +290,7 @@ class NoteManager:
         if error or not adjectives:
             raise ValueError(error or "Give the attitude: one or more adjectives (\"wary\").")
         facts = fact_file.load(self.json_ops)
-        fact_id = fact_file.next_id(facts)
+        fact_id = fact_file.next_id(facts, fact_file.load_removed(self.json_ops))
         entry = {'id': fact_id, 'fact': adjectives, 'attitude': True,
                  'about': [whom], 'holders': [who]}
         game_time = stored_time(self.json_ops)
@@ -485,8 +485,83 @@ class NoteManager:
             self._learned(fact_id, entry, new)
         return new
 
+    def edit_fact(self, fact_id: str, text: str) -> dict:
+        """Give a recorded fact a new text (a mistake, or what is left of it once
+        the part someone told is a `tell` of the fact it repeats). Names that only
+        the old text had leave its `about`, names the new one has join it.
+        Returns {"entry", "old", "added", "dropped"}; raises ValueError."""
+        text = " ".join(str(text or "").split())
+        if len(text.split()) < 2:
+            raise ValueError(f"A fact is a sentence, not \"{text}\"; nothing was changed.")
+        from world_ids import WorldIds
+        facts = fact_file.load(self.json_ops)
+        entry = self._entry(facts, fact_id)
+        if entry.get('attitude'):
+            raise ValueError(f"{fact_id} is an attitude: change it with gm-npc.sh attitude. "
+                             f"Nothing was changed.")
+        old = entry.get('fact', '')
+        if text == old:
+            raise ValueError(f"{fact_id} says that already; nothing was changed.")
+        ids = WorldIds(self.json_ops)
+        was, now = set(ids.mentioned(old)), ids.mentioned(text)
+        about = list(entry.get('about') or [])
+        dropped = [i for i in about if i in was and i not in now]
+        added = [i for i in now if i not in about]
+        about = [i for i in about if i not in dropped] + added
+        entry['fact'] = text
+        if about:
+            entry['about'] = about
+        else:
+            entry.pop('about', None)
+        fact_file.save(self.json_ops, facts)
+        return {'entry': entry, 'old': old, 'added': added, 'dropped': dropped}
+
+    def pointing_at(self, fact_id: str) -> tuple[list[str], list[str]]:
+        """What points at a fact: (what keeps it from being removed, what only
+        names it in a record). Versions of it, waiting consequences that tell it
+        or wait for someone to learn it, an NPC's death; fired consequences it
+        fired keep its id in their record."""
+        blocking, records = [], []
+        for f in fact_file.load(self.json_ops):
+            if f.get('version_of') == fact_id:
+                blocking.append(f"{f['id']} is a version of it: give {f['id']} another "
+                                f"truth first (gm-note.sh truth {f['id']} ...), or remove it")
+        store = self.json_ops.load_json("consequences.json") or {}
+        for c in store.get('active', []):
+            cid = str(c.get('id', '?'))[:4]
+            if any(e.get('type') == 'tell' and e.get('fact') == fact_id
+                   for e in c.get('effects') or []):
+                blocking.append(f"consequence {cid} tells it when it fires: resolve it first")
+            if any(t.get('type') == 'on_learn' and str(t.get('match', '')).endswith(f" learns {fact_id}")
+                   for t in c.get('triggers') or []):
+                blocking.append(f"consequence {cid} waits for someone to learn it: resolve it first")
+            if (c.get('fired') or {}).get('fact') == fact_id:
+                records.append(f"consequence {cid} was fired by it")
+        for key, npc in (self.json_ops.load_json("npcs.json") or {}).items():
+            if isinstance(npc, dict) and (npc.get('status') or {}).get('death_fact') == fact_id:
+                blocking.append(f"it is {key}'s death: edit it instead (gm-note.sh edit {fact_id} ...)")
+        return blocking, records
+
+    def remove_fact(self, fact_id: str) -> dict:
+        """Take a fact recorded by mistake (or twice) out of play. It moves to
+        removed-facts.json with the time it was removed, and its id is never given
+        again. Refused while something points at it (pointing_at). Returns
+        {"entry", "records"}; raises ValueError."""
+        facts = fact_file.load(self.json_ops)
+        entry = dict(self._entry(facts, fact_id))
+        blocking, records = self.pointing_at(fact_id)
+        if blocking:
+            raise ValueError(f"{fact_id} can't be removed: " + "; ".join(blocking)
+                             + ". Nothing was removed.")
+        removed = fact_file.load_removed(self.json_ops)
+        removed.append(dict(entry, removed=datetime.now(UTC).isoformat()))
+        fact_file.save_removed(self.json_ops, removed)
+        self.remove_facts([fact_id])
+        return {'entry': entry, 'records': records}
+
     def remove_facts(self, fact_ids) -> int:
-        """Delete the facts with these ids (undoing a world tick). Returns how many."""
+        """Delete the facts with these ids, leaving no trace (undoing a world tick;
+        the GM's removal is remove_fact). Returns how many."""
         ids = set(fact_ids)
         facts = fact_file.load(self.json_ops)
         kept = [f for f in facts if f.get('id') not in ids]
@@ -818,6 +893,11 @@ def main():
     p.add_argument("--version-of", dest="version_of")
     p.add_argument("--no-version", dest="no_version", action="store_true",
                    help="drop the link to the true version")
+    p = sub.add_parser("edit", help="give a recorded fact a new text")
+    p.add_argument("fact_id")
+    p.add_argument("text")
+    p = sub.add_parser("remove", help="take a fact recorded by mistake out of play")
+    p.add_argument("fact_id")
     p = sub.add_parser("tell", help="someone learns a recorded fact")
     p.add_argument("fact_id")
     p.add_argument("holders", nargs="+")
@@ -871,8 +951,8 @@ def main():
             if len(args.fact.split()) < 2:
                 raise ValueError(
                     f"A fact is a sentence, and \"{args.fact}\" is one word; nothing was recorded. "
-                    f"gm-note.sh \"<the fact>\", or one of: tell, about, plot, truth, beat, "
-                    f"witness, show, find, recent.")
+                    f"gm-note.sh \"<the fact>\", or one of: tell, about, plot, truth, edit, remove, "
+                    f"beat, witness, show, find, recent.")
             if not manager.add_fact(args.fact,
                                     about=args.about, not_about=args.not_about,
                                     holders=args.holders, secret=args.secret,
@@ -880,6 +960,24 @@ def main():
                                     version_of=args.version_of, at=args.at,
                                     nowhere=args.nowhere, plots=args.plots, when=args.when):
                 sys.exit(1)
+        elif args.action == 'edit':
+            from embedder import require_embedder
+            require_embedder()
+            done = manager.edit_fact(args.fact_id, args.text)
+            print(f"[SUCCESS] Edited fact {args.fact_id}")
+            print(f"  It said: {done['old']}")
+            if done['added']:
+                print(f"  about, found in the text: {', '.join(done['added'])}")
+            for gone in done['dropped']:
+                print(f"  about: {gone} left with the old text; if it still belongs: "
+                      f"bash tools/gm-note.sh about {args.fact_id} --add \"{gone}\"")
+            manager.check([args.fact_id])
+        elif args.action == 'remove':
+            done = manager.remove_fact(args.fact_id)
+            print(f"[SUCCESS] Removed fact {args.fact_id}")
+            print(f"  It said: {done['entry'].get('fact', '')}")
+            for record in done['records']:
+                print(f"  [NOTE] {record}; its record keeps the id")
         elif args.action == 'truth':
             entry = manager.set_truth(args.fact_id, args.truth, args.version_of,
                                       keep_version=not args.no_version)

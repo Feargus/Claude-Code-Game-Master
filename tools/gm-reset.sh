@@ -41,6 +41,8 @@ ARCHIVE_BASE="$WORLD_STATE_BASE/archive"
 #   STORY (cleared): everything below — blanked when a manager expects the file
 #                    to exist, deleted when it is created lazily.
 STORY_FILES=(
+    removed-facts.json
+    recall-check.log
     plots.json
     items.json
     campaign-memory.json

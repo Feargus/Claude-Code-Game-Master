@@ -93,4 +93,4 @@ def test_a_file_by_category_is_refused_with_the_reason(dcc_world):
                             capture_output=True, text=True,
                             env=dict(os.environ, GM_WORLD_STATE_BASE=dcc_world))
     assert result.returncode == 1 and "Traceback" not in result.stderr
-    assert "[ERROR]" in result.stderr and "start a new one" in result.stderr
+    assert "[ERROR]" in result.stderr and "start a new campaign" in result.stderr
