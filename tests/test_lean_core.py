@@ -110,3 +110,15 @@ def test_there_is_no_gm_save():
         text = (commands / name).read_text(encoding="utf-8")
         assert "/gm save" not in text and "SAVE SESSION" not in text, name
     assert "| save |" not in (commands / "gm.md").read_text(encoding="utf-8")
+
+
+def test_the_start_of_play_is_one_command():
+    """/gm loads the brief with gm-session.sh context alone; start (a banner and
+    counts the brief has) and status are no actions."""
+    import subprocess
+    gm = (ROOT / ".claude" / "commands" / "gm.md").read_text(encoding="utf-8")
+    assert "gm-session.sh context" in gm and "gm-session.sh start" not in gm
+    for gone in ("start", "status"):
+        r = subprocess.run(["bash", str(ROOT / "tools" / "gm-session.sh"), gone],
+                           capture_output=True, text=True)
+        assert r.returncode == 1 and "Unknown action" in r.stdout

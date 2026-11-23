@@ -7,14 +7,13 @@ show_usage() {
     echo "Usage: gm-session.sh <action> [args]"
     echo ""
     echo "Session Actions:"
-    echo "  start                    - The start of play: world state"
-    echo "  status                   - Show current campaign status"
     echo "  move <location> [--takes <duration>]"
     echo "                           - Move party to a recorded, described place (gm-location.sh add);"
     echo "                             --takes 20m lets that much time pass first; it stops on"
     echo "                             the way for what has to be played now (--through \"<name>\":"
     echo "                             not for that, as gm-time.sh advance)"
-    echo "  context                  - Full session context (character, party, consequences, rules)"
+    echo "  context                  - The brief: everything to play from (the start of a session);"
+    echo "                             for a campaign from a book, what the book says of the place"
     echo "  choices [on|off|toggle]  - The action menu (three numbered options) on or off (no arg: show state)"
     echo "  header [--full]          - The header line for a reply, from the records (--full: the start of a session)"
     echo "  opening <<'EOF' <json> EOF - Set up a new campaign's first scene in one go: place, exits,"
@@ -24,8 +23,7 @@ show_usage() {
     echo "  world-tick-rollback      - Undo the most recent world tick"
     echo "  world-tick-log           - Show world-tick history"
     echo ""
-    echo "Examples:"
-    echo "  gm-session.sh start"
+    echo "Example:"
     echo "  gm-session.sh context"
 }
 
@@ -39,7 +37,7 @@ shift
 
 # Every action the case below handles, in one place: the guard and the
 # unknown-action message both read this, so they cannot drift apart.
-VALID_ACTIONS="start status move context choices header opening world-tick world-tick-rollback world-tick-log"
+VALID_ACTIONS="move context choices header opening world-tick world-tick-rollback world-tick-log"
 
 is_valid_action() {
     local valid
@@ -67,41 +65,6 @@ else
 fi
 
 case "$ACTION" in
-    start)
-        # Banner names the world (the bible's name), as the brief's first line does.
-        CAMPAIGN_DIR=$(bash "$TOOLS_DIR/gm-campaign.sh" path 2>/dev/null)
-        WORLD_NAME=""
-        if [ -f "$CAMPAIGN_DIR/world-bible.json" ]; then
-            WORLD_NAME=$($PYTHON_CMD -c "import json,sys; print(json.load(open(sys.argv[1])).get('name','') or '')" "$CAMPAIGN_DIR/world-bible.json" 2>/dev/null)
-        fi
-        if [ -n "$WORLD_NAME" ]; then
-            BANNER="Starting $WORLD_NAME Session"
-        else
-            BANNER="Starting Session"
-        fi
-        echo "$BANNER"
-        printf '%*s\n' "${#BANNER}" '' | tr ' ' '='
-        echo ""
-        $PYTHON_CMD "$LIB_DIR/session_manager.py" start
-        RESULT=$?
-        if [ $RESULT -ne 0 ]; then exit $RESULT; fi
-
-        # Auto-query RAG for current location context (GM-internal, minimal output)
-        CAMPAIGN_DIR=$(bash "$TOOLS_DIR/gm-campaign.sh" path 2>/dev/null)
-        if [ -d "$CAMPAIGN_DIR/vectors" ]; then
-            LOCATION=$($PYTHON_CMD "$LIB_DIR/session_manager.py" status 2>/dev/null | grep -o '"current_location": "[^"]*"' | cut -d'"' -f4)
-            if [ -n "$LOCATION" ] && [ "$LOCATION" != "null" ]; then
-                echo ""
-                # Minimal GM context - silently queries/auto-enhances
-                # Note: scene command is quiet when no RAG exists; real errors will show
-                CONTEXT=$(bash "$TOOLS_DIR/gm-enhance.sh" scene "$LOCATION")
-                if [ -n "$CONTEXT" ]; then
-                    echo "$CONTEXT"
-                fi
-            fi
-        fi
-        ;;
-
     opening)
         # A new campaign's first scene, all or nothing, through the normal functions.
         $PYTHON_CMD "$LIB_DIR/opening.py" "$@"
@@ -118,13 +81,6 @@ case "$ACTION" in
 
     world-tick-log)
         $PYTHON_CMD "$LIB_DIR/world_tick.py" history "$@"
-        ;;
-
-    status)
-        echo "Campaign Status"
-        echo "==============="
-        echo ""
-        $PYTHON_CMD "$LIB_DIR/session_manager.py" status "$@"
         ;;
 
     move)
@@ -210,14 +166,28 @@ case "$ACTION" in
         ;;
 
     context)
-        # Full session context — one command to load everything the GM needs
+        # The brief: one command to load everything the GM needs
         CONTEXT_OUTPUT=$($PYTHON_CMD "$LIB_DIR/session_manager.py" context "$@")
         CONTEXT_STATUS=$?
         echo "$CONTEXT_OUTPUT"
         CONTEXT_CHARS=${#CONTEXT_OUTPUT}
         CONTEXT_TOKENS=$(estimate_tokens_from_chars "$CONTEXT_CHARS")
         log_token_usage "gm-session-context" "output_chars=$CONTEXT_CHARS" "output_tokens_est=$CONTEXT_TOKENS"
-        exit $CONTEXT_STATUS
+        if [ $CONTEXT_STATUS -ne 0 ]; then exit $CONTEXT_STATUS; fi
+
+        # A campaign made from a book: what the book says of the current place
+        # (GM-internal; quiet when the book has nothing on it)
+        CAMPAIGN_DIR=$(bash "$TOOLS_DIR/gm-campaign.sh" path 2>/dev/null)
+        if [ -d "$CAMPAIGN_DIR/vectors" ]; then
+            LOCATION=$($PYTHON_CMD "$LIB_DIR/session_manager.py" location 2>/dev/null)
+            if [ -n "$LOCATION" ]; then
+                BOOK=$(bash "$TOOLS_DIR/gm-enhance.sh" scene "$LOCATION")
+                if [ -n "$BOOK" ]; then
+                    echo ""
+                    echo "$BOOK"
+                fi
+            fi
+        fi
         ;;
 
     choices)

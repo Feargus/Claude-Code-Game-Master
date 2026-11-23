@@ -121,7 +121,7 @@ def _run_from(cwd, *args):
 READ_VERBS = [
     ("tools/gm-player.sh", "show"),
     ("tools/gm-npc.sh", "list"),
-    ("tools/gm-session.sh", "status"),
+    ("tools/gm-session.sh", "header"),
     ("tools/gm-note.sh", "recent", "1"),
     ("tools/gm-search.sh", "carl", "--world-only"),
     ("tools/gm-plot.sh", "list"),

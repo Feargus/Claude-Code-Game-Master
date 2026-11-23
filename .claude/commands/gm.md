@@ -106,10 +106,9 @@ Complete Steps 1-3 before presenting the scene. Do not skip them.
 
 #### Step 1: Load Full Context (PRIMARY)
 ```bash
-bash tools/gm-session.sh start
 bash tools/gm-session.sh context
 ```
-This single command gives you: the plots (with their clocks, waiting consequences and secrets), the character, the campaign's rules, the newest facts, the scene, location and time. Read and internalize ALL of it.
+This single command gives you: the plots (with their clocks, the consequences to play out or to recognise, and secrets), the character, the campaign's rules, the newest facts, the scene, location and time. Read and internalize ALL of it.
 
 The brief's LATEST lists the newest facts not shown above it. For more, filter, usually by two things: `bash tools/gm-note.sh find --about "npc:<who>" --at "<where>"`, or `--plot "<plot>"`, `--held-by "<who>"`; `gm-note.sh show <id>` for one in full. Never read `facts.json` or the other campaign files yourself.
 
@@ -142,7 +141,7 @@ bash tools/gm-npc.sh show "[name]"
 
 ### Using Source Material (GM-Internal)
 
-When `gm-session.sh start` or `move` runs, it queries source material for the current location. The context appears as `[GM Context: ...]` in the tool output - this is for **your eyes only**, not the player's.
+When `gm-session.sh context` or `move` runs in a campaign made from a book, it queries the book for the current location. The context appears as `[GM Context: ...]` in the tool output - this is for **your eyes only**, not the player's.
 
 **How to use GM Context:**
 - Read the context hints internally to understand the scene

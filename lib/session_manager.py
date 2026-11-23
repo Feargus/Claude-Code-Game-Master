@@ -69,34 +69,6 @@ class SessionManager(EntityManager):
         self.json_ops.save_json(self.campaign_file, campaign)
         return self.get_preferences()
 
-    # ==================== Session Lifecycle ====================
-
-    def start_session(self) -> dict[str, Any]:
-        """A short world-state summary for the start of play. Writes nothing: there
-        is no session log (since 2026-11-14 plots carry the story)."""
-        summary = {
-            "facts_count": self._count_items("facts.json"),
-            "npcs_count": self._count_items("npcs.json"),
-            "locations_count": self._count_items("locations.json"),
-            "current_location": self._get_current_location(),
-            "active_character": self._get_active_character(),
-            "timestamp": self.get_timestamp()
-        }
-
-        return summary
-
-    def get_status(self) -> dict[str, Any]:
-        """
-        Get current campaign status
-        """
-        return {
-            "facts_count": self._count_items("facts.json"),
-            "npcs_count": self._count_items("npcs.json"),
-            "locations_count": self._count_items("locations.json"),
-            "current_location": self._get_current_location(),
-            "active_character": self._get_active_character(),
-        }
-
     # ==================== Party Movement ====================
 
     @staticmethod
@@ -223,39 +195,15 @@ class SessionManager(EntityManager):
         """campaign-overview.json's scene list (see gm-scene.sh), or None."""
         return (self.json_ops.load_json(self.campaign_file) or {}).get("scene")
 
-    def _count_items(self, filename: str) -> int:
-        """Count items in a JSON file"""
-        data = self.json_ops.load_json(filename)
-        if isinstance(data, dict):
-            return len(data)
-        if isinstance(data, list):
-            return len(data)
-        return 0
-
-    def _get_current_location(self) -> str | None:
-        """Get current party location"""
-        campaign = self.json_ops.load_json(self.campaign_file)
-        return campaign.get('player_position', {}).get('current_location')
-
-    def _get_active_character(self) -> str | None:
-        """Get active character name"""
-        campaign = self.json_ops.load_json(self.campaign_file)
-        return campaign.get('current_character')
-
 
 def main():
     """CLI interface for session management"""
     import argparse
-    import json
 
     parser = argparse.ArgumentParser(description='Session management')
     subparsers = parser.add_subparsers(dest='action', help='Action to perform')
 
-    # Start session
-    subparsers.add_parser('start', help='Start new session')
-
-    # Status
-    subparsers.add_parser('status', help='Get campaign status')
+    subparsers.add_parser('location', help='the current location, alone on a line')
 
     # Move party
     move_parser = subparsers.add_parser('move', help='Move party to location')
@@ -299,13 +247,9 @@ def main():
             sys.exit(1)
         return                               # move_party printed the one line
 
-    if args.action == 'start':
-        summary = manager.start_session()
-        print(json.dumps(summary, indent=2))
-
-    elif args.action == 'status':
-        status = manager.get_status()
-        print(json.dumps(status, indent=2))
+    if args.action == 'location':
+        pos = (manager.json_ops.load_json(manager.campaign_file) or {}).get('player_position') or {}
+        print(pos.get('current_location') or '' if isinstance(pos, dict) else '')
 
     elif args.action == 'context':
         print(manager.get_full_context())

@@ -329,7 +329,7 @@ ENVEOF
     fi
 
     # Session management
-    if bash tools/gm-session.sh status >/dev/null 2>&1; then
+    if bash tools/gm-session.sh header >/dev/null 2>&1; then
         ok "Session management works"
         PASS=$((PASS + 1))
     else
