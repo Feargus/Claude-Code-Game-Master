@@ -82,8 +82,11 @@ def test_cli_edit_and_remove(dcc_world):
     nm = _fresh(dcc_world)
     fid = nm.add_fact("The stairs are trapped, Mordecai says.")
     env = dict(os.environ, GM_WORLD_STATE_BASE=str(dcc_world), GM_EMBEDDER="off")
-    run = lambda *a: subprocess.run(["bash", "tools/gm-note.sh", *a], cwd=ROOT, env=env,
-                                    capture_output=True, text=True)
+
+    def run(*args):
+        return subprocess.run(["bash", "tools/gm-note.sh", *args], cwd=ROOT, env=env,
+                              capture_output=True, text=True)
+
     r = run("edit", fid, "The stairs are trapped.")
     assert r.returncode == 0, r.stderr
     lines = r.stdout.splitlines()
