@@ -15,7 +15,7 @@ def _consq_path(dcc_world):
     return Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "consequences.json"
 
 
-def test_add_with_structured_trigger(dcc_world):
+def test_add_with_structured_trigger(dcc_world, capsys):
     cm = ConsequenceManager(dcc_world)
     cid = cm.add_consequence("Guards search the market", "next day",
                              trigger_type="on_location", match="Floor 2 Junction")
@@ -23,8 +23,12 @@ def test_add_with_structured_trigger(dcc_world):
     data = json.loads(_consq_path(dcc_world).read_text(encoding="utf-8"))
     new = next(c for c in data["active"] if c["id"] == cid)
     assert new["triggers"] == [{"type": "on_location", "match": "location:Floor 2 Junction"}]
-    # free-text trigger + description still preserved
-    assert new["trigger"] == "next day"
+    # the free text next to a structured trigger is not kept, and the GM is told
+    assert "trigger" not in new
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith("[SUCCESS] Added consequence")
+    assert "waits for: at Floor 2 Junction" in out[0]
+    assert out[1] == "[NOTE] Trigger text ignored: on_location needs none."
     assert new["consequence"] == "Guards search the market"
 
 
@@ -104,3 +108,26 @@ def test_hours_of_each_word():
     assert hours_of("midnight") == "23:00–00:59"
     assert hours_of("night") == "21:00–22:59"
     assert hours_of("teatime") == ""
+
+
+def test_a_consequence_without_any_trigger_is_refused(dcc_world, capsys):
+    assert ConsequenceManager(dcc_world).add_consequence("Something happens") == ""
+    assert "needs a trigger" in capsys.readouterr().err
+
+
+def test_triggers_in_words():
+    """docs/conventions/output.md, "Triggers in words": as short as it goes."""
+    from consequence_manager import trigger_words
+    words = {("on_clock", "clock:Sealing:2"): "clock Sealing at 2",
+             ("on_location", "location:The Saffron House"): "at The Saffron House",
+             ("on_npc", "npc:Mordecai"): "Mordecai is here",
+             ("on_death", "npc:Carl"): "Carl dies",
+             ("on_death", "player"): "the character dies",
+             ("on_learn", "street learns f12"): "the street learns f12",
+             ("on_learn", "anyone learns about:npc:Wren"): "anyone learns about Wren",
+             ("on_rule", "Hunger:4@npc:Ilaria"): "Hunger of Ilaria at 4",
+             ("on_rule", "Addiction:hooked@npc:Wren"): "Addiction of Wren is hooked",
+             ("on_rule", "Sea level:5@world"): "Sea level at 5",
+             ("on_fact", "Pell bids for the contract"): "Pell bids for the contract"}
+    for (ttype, match), expected in words.items():
+        assert trigger_words({"type": ttype, "match": match}) == expected

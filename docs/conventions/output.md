@@ -68,6 +68,25 @@ one gets a letter and a number, in the order made.
 | plot, clock, world rule, glossary term | the name (one to four words; never changes) | `The Sold Contract`, `Sealing`, `Hunger` |
 | the character | `player` in ids | the character's name in text |
 
+## Triggers in words
+
+A consequence's trigger is shown in as few words as it takes, the same words while it
+waits and in the reason it fired with (`trigger_words`, `lib/consequence_manager.py`):
+
+| Trigger | Waits for | Fired because |
+|---|---|---|
+| `on_clock` | `clock Sealing at 2/3` | the same |
+| `on_location` | `at The Saffron House` | the same |
+| `on_npc` | `Mordecai is here` | the same |
+| `on_time` | `it is dusk (19:00–20:59)` | the same |
+| `on_death` | `Carl dies` | `Carl died (shot)` |
+| `on_learn` | `the street learns f12`, `anyone learns about Wren` | `the street learned f12: <its text>` |
+| `on_rule` | `Hunger of Ilaria at 4`, `Addiction of Wren is hooked` | `Hunger of Ilaria went from 3 to 4` |
+| `on_fact` | the GM's own text | `fact f43: <its text>` |
+
+Only an `on_fact` trigger has text of its own; text given with another trigger is
+ignored, with a `[NOTE]`.
+
 ## What the character knows: the marks inside a line
 
 Put before the text they mark, in square brackets, upper case.

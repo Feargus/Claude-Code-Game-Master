@@ -118,7 +118,7 @@ def test_cli_starts_clock_flags(dcc_world):
     r = run("add", "Word gets out", "the job goes loud", "--starts-clock", "Vendetta",
             "--clock-segments", "3", "--clock-on", "event")
     assert r.returncode == 0, r.stderr
-    cid = re.search(r"Added consequence \[(\w+)\]", r.stdout).group(1)
+    cid = re.search(r"Added consequence (\w+):", r.stdout).group(1)
     stored = next(c for c in ConsequenceManager(dcc_world).check_pending() if c["id"] == cid)
     assert stored["effects"] == [{"type": "start_clock", "name": "Vendetta",
                                   "segments": 3, "on": "event"}]

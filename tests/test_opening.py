@@ -197,7 +197,9 @@ def test_the_plot_starts_with_its_hook_and_consequences_say_when(world):
     Opening(ws).apply(json.loads(json.dumps(SPEC)))
     assert _load(camp, "plots.json")["The Writ"]["stands"] == SPEC["plot"]["hook"]
     con = _load(camp, "consequences.json")["active"][0]
-    assert con["trigger"] == "the Lantern"   # the match it waits for
+    from consequence_manager import when_words
+    assert "trigger" not in con
+    assert when_words(con) == "at The Lantern noodle stall"   # what it waits for, in words
 
 
 def test_a_consequence_may_wait_on_a_clock_given_later(world):

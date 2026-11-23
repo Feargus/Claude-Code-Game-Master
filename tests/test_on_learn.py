@@ -54,7 +54,7 @@ def test_tell_fires_for_the_fact_and_for_anyone(dcc_world):
     other = _on_learn(dcc_world, f"street learns {fid}", "Rumours spread")
     nm.tell(fid, ["Mordecai"])
     assert {c["id"] for c in nm.last_fired} == {direct, leak}
-    assert "npc:Mordecai learned" in nm.last_fired[0]["match_reason"]
+    assert "Mordecai learned f" in nm.last_fired[0]["match_reason"]
     nm.tell(fid, ["Mordecai"])                       # knew it already: nothing fires
     assert nm.last_fired == []
     nm.tell(fid, ["street"])
@@ -132,4 +132,4 @@ def test_a_fact_that_becomes_public_is_learned_by_everyone(dcc_world):
     nm.tell(fid, ["public"])
     fired = {c["id"] for c in nm.last_fired}
     assert {street, imani} <= fired and again not in fired  # knowing already isn't learning
-    assert "it became public (everyone)" in _stored(dcc_world, street)["fired"]["reason"]
+    assert "everyone learned f" in _stored(dcc_world, street)["fired"]["reason"]

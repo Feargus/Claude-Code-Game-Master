@@ -231,7 +231,9 @@ class WorldSearcher:
         active = consequences.get('active', [])
 
         if trigger:
-            return [c for c in active if trigger.lower() in c.get('trigger', '').lower()]
+            from consequence_manager import when_words
+            return [c for c in active
+                    if trigger.lower() in when_words(c, self.json_ops).lower()]
         return active
 
     def _format_text(self, text: str, full: bool = False, limit: int = 220) -> str:
@@ -276,8 +278,9 @@ class WorldSearcher:
             found_anything = True
             for c in results['consequences']:
                 consequence_text = self._format_text(c.get('consequence', ''), full=full, limit=180)
-                trigger_text = self._format_text(c.get('trigger', ''), full=full, limit=60)
-                print(f"  [{c.get('id', '?')}] {consequence_text} (triggers: {trigger_text})")
+                from consequence_manager import when_words
+                trigger_text = self._format_text(when_words(c, self.json_ops), full=full, limit=60)
+                print(f"  [{c.get('id', '?')}] {consequence_text} (waits for: {trigger_text})")
 
         if results.get('plots'):
             print("\nPLOTS:")

@@ -395,9 +395,11 @@ class NoteManager:
             cm = ConsequenceManager(self.world_state_dir)
         except RuntimeError:
             return []
-        who = ("it became public (everyone)" if 'public' in new_holders
-               else f"{', '.join(new_holders)} learned")
-        self.last_fired = cm.fire_event('on_learn', values, f"{who} {fact_id}: {entry['fact']}")
+        from world_rules import holder_name
+        who = ("everyone" if 'public' in new_holders
+               else ", ".join(holder_name(self.json_ops, h) for h in new_holders))
+        self.last_fired = cm.fire_event('on_learn', values,
+                                        f"{who} learned {fact_id}: {entry['fact']}")
         return self.last_fired
 
     def _check_version(self, facts: list, truth=None, version_of=None, fact_id=None):

@@ -109,7 +109,7 @@ print(f'   Resolved: {len(resolved)}')
 if active:
     print('\\n   Scheduled Events:')
     for cons in active:
-        trigger = cons.get('trigger', 'unknown')
+        trigger = ' or '.join(t.get('match', '?') for t in cons.get('triggers', [])) or 'unknown'
         desc = cons.get('consequence', '')[:50]
         print(f'   • {trigger}: {desc}...')
 " "$CAMPAIGN_DIR"

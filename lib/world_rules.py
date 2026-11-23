@@ -394,21 +394,24 @@ def _pair(json_ops, text: str) -> str:
 
 
 def holder_name(json_ops, holder: str) -> str:
-    """How a holder is named in the output: the character's name, a faction's name."""
+    """How a holder is named in the output: the character's name, a faction's name,
+    an NPC's name, "the street", "everyone". Without json_ops, by the keys."""
     if holder == "player":
         from sheet import name as sheet_name
-        return sheet_name(json_ops.load_json("character.json") or {}) or "the character"
-    if holder == "world":
-        return "the world"
+        found = sheet_name(json_ops.load_json("character.json") or {}) if json_ops else ""
+        return found or "the character"
+    words = {"world": "the world", "street": "the street", "public": "everyone"}
+    if holder in words:
+        return words[holder]
     kind, _, key = holder.partition(":")
+    names = factions(json_ops) if json_ops and kind in ("faction", "pair") else {}
     if kind == "faction":
-        return factions(json_ops).get(key, key)
+        return names.get(key, key)
     if kind == "pair":
         import faction_rules
         a, b = faction_rules.pair_sides(holder)
-        names = factions(json_ops)
         return f"{names.get(a, a)} and {names.get(b, b)}"
-    return key
+    return key or holder
 
 
 # ---------- values ----------

@@ -94,7 +94,7 @@ def test_links_are_stored_on_the_side_where_they_are_made(world):
     assert notes._entry(_load(world, "facts.json"), trigger)["plots"] == ["The Descent"]
     clocks.advance("Collapse", 2)
     full = [c for c in _load(world, "consequences.json")["active"]
-            if c["consequence"].startswith("[Clock — Collapse]")]
+            if any(t["match"].startswith("clock:Collapse:") for t in c.get("triggers", []))]
     assert full and full[0]["plots"] == ["The Descent"]                        # from the clock
     assert glossary.add(notes.json_ops, "the rig", "A tripwire of chain.", ["The Descent"]) == "the rig"
     assert glossary.glossary(notes.json_ops)["the rig"]["plots"] == ["The Descent"]

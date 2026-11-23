@@ -155,8 +155,7 @@ class ThreatClockManager(EntityManager):
         # after the save, with everything else the fill set off.
         with contextlib.redirect_stdout(sys.stderr):
             cid = ConsequenceManager(self._wsd).add_consequence(
-                f"[Clock — {name}] {text}", trigger=f"the {name} clock ran out",
-                trigger_type="on_clock", match=f"{name}:{clock.get('max', 1)}",
+                text, trigger_type="on_clock", match=f"{name}:{clock.get('max', 1)}",
                 plots=clock.get("plots"))
         clock["consequence_fired"] = cid
         return cid
@@ -174,7 +173,7 @@ class ThreatClockManager(EntityManager):
         for segment in range(before + 1, int(clock.get("current", 0)) + 1):
             # The id, and the bare form consequences stored before clocks had ids.
             fired += cm.fire_event("on_clock", [f"clock:{name}:{segment}", f"{name}:{segment}"],
-                                   f"clock {name} reached {segment}/{mx}")
+                                   f"clock {name} at {segment}/{mx}")
         return fired
 
     def advance(self, name: str, ticks: int = 1) -> dict[str, Any] | None:

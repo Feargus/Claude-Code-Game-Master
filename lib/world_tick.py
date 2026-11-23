@@ -196,9 +196,7 @@ class WorldTick:
 
                 con = d.get("consequence")
                 if con:
-                    when = con.get("trigger") or " or ".join(
-                        str(t.get("match", "")) for t in con["triggers"] if isinstance(t, dict))
-                    cid = self.cm.add_consequence(con["text"], when, triggers=con["triggers"],
+                    cid = self.cm.add_consequence(con["text"], triggers=con["triggers"],
                                                   plots=plots)
                     if not cid:
                         raise WorldTickError(f"development {i + 1}: the consequence was "

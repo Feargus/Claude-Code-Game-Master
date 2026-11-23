@@ -80,7 +80,7 @@ def test_cli_pairs_repeated_flags_in_order(dcc_world):
              "--trigger-type", "on_location", "--match", "Floor 2 Junction",
              "--trigger-type", "on_npc", "--match", "Mordecai")
     assert r.returncode == 0, r.stdout + r.stderr
-    cid = re.search(r"Added consequence \[(\w+)\]", r.stdout).group(1)
+    cid = re.search(r"Added consequence (\w+):", r.stdout).group(1)
     assert _entry(dcc_world, cid)["triggers"] == STORED
 
 

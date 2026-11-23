@@ -298,8 +298,7 @@ class PlayerManager(EntityManager):
             f"{char_name} (the player character) died" + (f": {cause}" if cause else "."))
         from consequence_manager import ConsequenceManager
         fired = ConsequenceManager(self.base_dir).fire_event(
-            'on_death', 'player', f"{char_name} (the player character) died"
-            + (f" ({cause})" if cause else ""))
+            'on_death', 'player', f"{char_name} died" + (f" ({cause})" if cause else ""))
         return {'success': True, 'name': char_name, 'status': 'dead',
                 'died_at': status['died_at'], 'cause': cause, 'fact': fact_id, 'fired': fired}
 

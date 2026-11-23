@@ -287,8 +287,7 @@ class Brief:
         holders = f.get("holders")
         if self._unknown_to_character(f) and holders:
             from world_rules import holder_name
-            names = [holder_name(self.json_ops, h) if h.startswith("faction:") else
-                     h.partition(":")[2] or ("the street" if h == "street" else h) for h in holders]
+            names = [holder_name(self.json_ops, h) for h in holders]
             text += f" ({', '.join(names)} {'knows' if len(names) == 1 else 'know'})"
         return f"{f.get('id')} {text}"
 

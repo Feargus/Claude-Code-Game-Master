@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import facts as fact_file
 from campaign_manager import CampaignManager
+from consequence_manager import when_words
 from json_ops import JsonOperations
 from schemas import PLOT_KINDS
 
@@ -140,7 +141,7 @@ class WorldStats:
         consequences = self.json_ops.load_json("consequences.json")
         if consequences.get("active"):
             details["active_consequences"] = [
-                {"trigger": c.get("trigger"), "description": c.get("consequence", "")[:50]}
+                {"trigger": when_words(c, self.json_ops), "description": c.get("consequence", "")[:50]}
                 for c in consequences["active"][:3]
             ]
 

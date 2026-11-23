@@ -183,8 +183,8 @@ def validate_consequence(data: dict[str, Any]) -> tuple[bool, list[str]]:
         errors.append("Consequence: missing id")
     if not data.get('consequence'):
         errors.append("Consequence: missing consequence description")
-    if not data.get('trigger'):
-        errors.append("Consequence: missing trigger condition")
+    if not data.get('triggers'):
+        errors.append("Consequence: missing triggers")
 
     return len(errors) == 0, errors
 

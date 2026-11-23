@@ -33,7 +33,7 @@ def test_filling_a_clock_fires_its_consequence(dcc_world):
     m.advance("Floor Collapse")
     fired = _fired(dcc_world)
     assert len(fired) == 1
-    assert "[Clock — Floor Collapse]" in fired[0]
+    assert fired[0] == DOOM
 
 
 def test_a_full_clock_does_not_fire_twice(dcc_world):
@@ -97,7 +97,7 @@ def test_firing_keeps_stdout_parseable(dcc_world, capsys):
     m.advance("Doom")
     out = capsys.readouterr()
     assert out.out.strip() == "", f"fire leaked onto stdout: {out.out!r}"
-    assert "[Clock — Doom]" in out.err
+    assert DOOM in out.err
 
 
 def test_the_clocks_consequence_fires_at_once_and_does_not_wait(dcc_world):
@@ -108,6 +108,6 @@ def test_the_clocks_consequence_fires_at_once_and_does_not_wait(dcc_world):
     m.advance("Doom")
     fired = m.advance("Doom")["fired"]
     assert len(fired) == 1 and DOOM in fired[0]["consequence"]
-    assert fired[0]["match_reason"] == "clock Doom reached 2/2"
+    assert fired[0]["match_reason"] == "clock Doom at 2/2"
     cm = ConsequenceManager(dcc_world)
     assert not any(DOOM in c["consequence"] for c in cm.waiting_on_fact())

@@ -105,8 +105,6 @@ def move_id(json_ops, old: str, new: str) -> list[str]:
                 if trigger.get("type") == "on_npc" and new == "player":
                     notes.append(f"Consequence {item.get('id')} waited for {old} to appear, who "
                                  f"is now the player: resolve or replace it.")
-        if item.get("trigger") == old:
-            item["trigger"] = new
         for effect in item.get("effects") or []:
             if old in (effect.get("holders") or []):
                 effect["holders"] = _swap(effect["holders"], old, new)

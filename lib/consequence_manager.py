@@ -60,7 +60,7 @@ class ConsequenceManager(EntityManager):
                      "the player or a known NPC; create a new one with gm-npc.sh create"),
     }
 
-    def add_consequence(self, description: str, trigger: str,
+    def add_consequence(self, description: str, trigger: str = None,
                         trigger_type: str = None, match: str = None,
                         triggers: list[dict[str, str]] = None,
                         effects: list[dict[str, Any]] = None, plots=None,
@@ -68,14 +68,15 @@ class ConsequenceManager(EntityManager):
         """
         Add a new consequence.
 
-        Free-text `trigger` is always kept (human-readable). Without structured
-        triggers it becomes the consequence's on_fact trigger: the event it waits
-        for, judged by the GM when facts are recorded. STRUCTURED triggers, any one
-        of which fires it:
+        Free-text `trigger` is the fact it waits for: an on_fact trigger, judged
+        by the GM when facts are recorded. Or STRUCTURED triggers, any one of which
+        fires it:
           triggers:     list of {"type": one of TRIGGER_TYPES, "match": value compared
                         against world state (location/npc/time/event keyword)}
           trigger_type, match: shorthand for a single trigger (added to `triggers`)
-        Structured fields are additive; legacy consequences omit them.
+        Next to structured triggers the free text is ignored, with a note: they
+        are put into words where shown (trigger_words), so a label would only say
+        the same thing another way.
 
         `effects` are carried out by the script each time it fires (see EFFECT_TYPES):
           {"type": "start_clock", "name", "segments", "on" (time|event, default time),
@@ -91,8 +92,14 @@ class ConsequenceManager(EntityManager):
         triggers = [dict(t) for t in (triggers or [])]
         if trigger_type:
             triggers.append({'type': trigger_type, 'match': match})
-        if not triggers and str(trigger or '').strip():
-            triggers = [{'type': 'on_fact', 'match': str(trigger).strip()}]
+        text = str(trigger or '').strip()
+        ignored = bool(triggers and text)
+        if not triggers and text:
+            triggers = [{'type': 'on_fact', 'match': text}]
+        if not triggers:
+            print("[ERROR] A consequence needs a trigger: the fact it waits for as text, or "
+                  "--trigger-type with --match. Nothing was recorded.", file=sys.stderr)
+            return ""
         for t in triggers:
             if t.get('type') not in self.TRIGGER_TYPES:
                 print(f"[ERROR] Unknown trigger type '{t.get('type')}'. Use one of: "
@@ -156,11 +163,9 @@ class ConsequenceManager(EntityManager):
         consequence = {
             'id': consequence_id,
             'consequence': description,
-            'trigger': trigger,
+            'triggers': triggers,
             'created': self.json_ops.get_timestamp()
         }
-        if triggers:
-            consequence['triggers'] = triggers
         if effects:
             consequence['effects'] = effects
         if plot_keys:
@@ -174,9 +179,13 @@ class ConsequenceManager(EntityManager):
 
         if self.json_ops.save_json(self.consequences_file, data):
             then = describe_effects(effects)
-            print(f"[SUCCESS] Added consequence [{consequence_id}]: {description} "
-                  f"(triggers: {trigger}{'; when it fires, ' + then if then else ''})"
+            print(f"[SUCCESS] Added consequence {consequence_id}: {description} "
+                  f"(waits for: {when_words(consequence, self.json_ops)}"
+                  f"{'; when it fires, ' + then if then else ''})"
                   + (" (off-screen: it doesn't stop time)" if offscreen else ""))
+            if ignored:
+                kinds = ", ".join(dict.fromkeys(t['type'] for t in triggers))
+                print(f"[NOTE] Trigger text ignored: {kinds} needs none.")
             return consequence_id
         return ""
 
@@ -468,15 +477,14 @@ class ConsequenceManager(EntityManager):
         """
         match = str(raw_match).lower()
         if ttype == 'on_location' and match == f"location:{world_state.get('location', '')}".lower():
-            return f"at {raw_match}"
+            return trigger_words({'type': ttype, 'match': raw_match})
         if ttype == 'on_npc' and match in {f"npc:{n}".lower()
                                           for n in world_state.get('present_npcs') or []}:
-            return f"{raw_match} is here"
+            return trigger_words({'type': ttype, 'match': raw_match})
         if ttype == 'on_time':
-            from time_manager import hours_of
             word = ConsequenceManager._time_word(world_state)
             if word and match.strip() == word.lower():
-                return f"it is {word} ({hours_of(word)})"
+                return trigger_words({'type': ttype, 'match': word})
         return ''
 
     @staticmethod
@@ -824,6 +832,62 @@ def fact_trigger(c: dict[str, Any]) -> str:
                       if t['type'] == 'on_fact')
 
 
+def _clock_max(json_ops, key: str):
+    """A clock's segments: from the clocks file, or from the waiting consequence
+    that starts it; None if neither has it."""
+    clock = (json_ops.load_json("threat-clocks.json") or {}).get(key) if json_ops else None
+    if isinstance(clock, dict):
+        return clock.get('max', 1)
+    store = (json_ops.load_json("consequences.json") or {}) if json_ops else {}
+    for c in store.get('active', []):
+        for e in c.get('effects') or []:
+            if e.get('type') == 'start_clock' and e.get('name') == key:
+                return e.get('segments', 1)
+    return None
+
+
+def trigger_words(t: dict[str, str], json_ops=None) -> str:
+    """One trigger in words, as short as it goes and the same words as the reason
+    it fires with: "clock Sealing at 2/3", "at The Saffron House", "Mordecai is
+    here", "it is dusk (19–21)", "Carl dies", "the street learns f12", "Hunger of
+    Ilaria at 4"; an on_fact trigger is its own text. Without json_ops a holder is
+    named by its key."""
+    from world_rules import holder_name
+    ttype, match = t.get('type'), str(t.get('match', '')).strip()
+    if ttype == 'on_clock':                                  # clock:<key>:<segment>
+        key, _, segment = match.partition(':')[2].rpartition(':')
+        mx = _clock_max(json_ops, key)
+        return f"clock {key} at {segment}" + (f"/{mx}" if mx else "")
+    if ttype == 'on_location':
+        return f"at {match.partition(':')[2] or match}"
+    if ttype == 'on_npc':
+        return f"{holder_name(json_ops, match)} is here"
+    if ttype == 'on_time':
+        from time_manager import hours_of
+        return f"it is {match} ({hours_of(match)})"
+    if ttype == 'on_death':
+        return f"{holder_name(json_ops, match)} dies"
+    if ttype == 'on_learn':                   # "<who> learns <fact>" / "... learns about:<id>"
+        who, _, what = match.partition(' learns ')
+        if what.startswith('about:'):
+            what = f"about {holder_name(json_ops, what[6:])}"
+        return f"{'anyone' if who == 'anyone' else holder_name(json_ops, who)} learns {what}"
+    if ttype == 'on_rule':                                   # <rule>:<value>@<holder>
+        head, _, holder = match.partition('@')
+        rule, _, value = head.rpartition(':')
+        whose = f" of {holder_name(json_ops, holder)}" if holder and holder != 'world' else ""
+        verb = "at" if value.lstrip('-').isdigit() else "is"
+        return f"{rule}{whose} {verb} {value}"
+    return match
+
+
+def when_words(c: dict[str, Any], json_ops=None) -> str:
+    """What a consequence waits for, in words: its triggers, any one of which
+    fires it."""
+    return " or ".join(trigger_words(t, json_ops)
+                       for t in ConsequenceManager.structured_triggers(c)) or "?"
+
+
 def then_line(c: dict[str, Any], indent: str = "    ") -> str:
     """What happens when a consequence fires: its text, and what the script does
     then (starts a clock, tells a fact), so it can be weighed before firing it."""
@@ -879,7 +943,9 @@ def main():
     # Add consequence
     add_parser = subparsers.add_parser('add', help='Add new consequence')
     add_parser.add_argument('description', help='Consequence description')
-    add_parser.add_argument('trigger', help='Trigger condition (free-text)')
+    add_parser.add_argument('trigger', nargs='?',
+                            help='The fact it waits for, in words (an on_fact trigger); '
+                                 'leave out with --trigger-type')
     add_parser.add_argument('--trigger-type', dest='trigger_type', action='append',
                             choices=list(ConsequenceManager.TRIGGER_TYPES),
                             help='Structured trigger type (enables auto-firing). Repeat with '
@@ -989,7 +1055,7 @@ def main():
                     print(f"  [{c['id']}] FIRED, not resolved yet: {c['consequence']} "
                           f"(because: {c['fired'].get('reason', '?')})")
                     continue
-                print(f"  [{c['id']}] {c['consequence']} (triggers: {c['trigger']})"
+                print(f"  [{c['id']}] {c['consequence']} (waits for: {when_words(c, manager.json_ops)})"
                       + (f"; when it fires, {then}" if then else ""))
 
     elif args.action == 'tick':
@@ -1011,7 +1077,7 @@ def main():
         except ValueError as error:
             print(f"[ERROR] {error}", file=sys.stderr)
             sys.exit(1)
-        print(f"[SUCCESS] [{c['id']}] waits again: {c['consequence']} (triggers: {c['trigger']})")
+        print(f"[SUCCESS] {c['id']} waits again for: {when_words(c, manager.json_ops)}")
 
     elif args.action == 'fire':
         hit = manager.fire(args.id, args.reason, args.by_fact)

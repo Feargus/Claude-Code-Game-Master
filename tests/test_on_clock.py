@@ -46,7 +46,7 @@ def test_advancing_fires_each_crossed_segment_once(dcc_world):
     assert tcm.advance("Tracker")["fired"] == []                        # 1/4
     hit = tcm.advance("Tracker", ticks=2)["fired"]                     # 1 → 3 crosses 2
     assert [c["id"] for c in hit] == [two]
-    assert hit[0]["match_reason"] == "clock Tracker reached 2/4"
+    assert hit[0]["match_reason"] == "clock Tracker at 2/4"
     assert [c["id"] for c in tcm.advance("Tracker")["fired"]] == [full]  # 4/4
     assert tcm.advance("Tracker")["fired"] == []                        # already full
 

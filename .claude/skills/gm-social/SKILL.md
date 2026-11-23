@@ -42,7 +42,7 @@ What happened is a fact, with the NPC among its holders (they were there). When 
 A conversation is where most knowledge moves. Anything said in the scene that matters goes in as a fact: its default holders are the player and everyone in the scene (`gm-scene.sh`), so an eavesdropper not in the scene needs `--also "npc:[name]"`. When the player tells an NPC something already recorded (or the NPC lets slip one of their facts), `bash tools/gm-note.sh tell <fact id> <holder>...`. A lie the player tells is a wrong version: the truth (if recorded) stays as it is, the lie is a fact the listener holds, `--truth wrong --version-of <truth id>`.
 
 ## 5. Consequences
-Positive (NPC helps later) / negative (NPC hinders) → `bash tools/gm-consequence.sh add "[event]" "[trigger]" [--trigger-type on_npc --match "[name]"]`. **Mandatory** whenever the interaction leaves ongoing fallout — a failed ask that changes how this NPC treats you later is exactly that.
+Positive (NPC helps later) / negative (NPC hinders) → `bash tools/gm-consequence.sh add "[event]" "[the fact it waits for]"`, or `add "[event]" --trigger-type on_npc --match "[name]"`. **Mandatory** whenever the interaction leaves ongoing fallout — a failed ask that changes how this NPC treats you later is exactly that.
 
 ## Failure — the ask is DENIED and it costs (see `gm-skills → Narrate by quality`)
 Decide before rolling what refusal COSTS (never tell the player). On a failed social check:

@@ -33,8 +33,9 @@ ever move by hand.
 
 ## A clock that fills fires (since 2026-08-14)
 
-`_fire_if_filled` writes the clock's stored `consequence` into the consequence engine as
-`[Clock — <name>] <text>`, with an `on_clock` trigger on the clock's last segment, so it
+`_fire_if_filled` writes the clock's stored `consequence` into the consequence engine
+(its text as it is; until 2026-11-23 behind `[Clock — <name>]`, which the reason "clock
+<name> at 3/3" now says), with an `on_clock` trigger on the clock's last segment, so it
 fires at once with any other `on_clock` consequences the fill reaches (until 2026-11-06 it
 got a free-text trigger and sat waiting on an event that had already happened). Before this the text was
 only echoed in a print, so a countdown running out was a line the GM might notice rather

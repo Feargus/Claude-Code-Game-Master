@@ -155,7 +155,7 @@ def test_a_failed_action_or_one_not_for_the_plot_moves_nothing(ops, dcc_world):
 def test_a_full_plan_clock_fires_the_plans_success(ops, dcc_world):
     _plan(dcc_world, segments=1, consequence="Meridian owns every guard post")
     text = "\n".join(ft.run(ops, [TAKE], Dice(6, 1), only="Meridian"))
-    assert "[Clock — Takeover] Meridian owns every guard post (fired)" in text
+    assert "Meridian owns every guard post (fired)" in text
     assert "the plan succeeds: play out its consequence, then gm-plot.sh complete " \
            "\"Hostile Takeover\"" in text
 
