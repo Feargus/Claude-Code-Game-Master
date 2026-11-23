@@ -98,3 +98,39 @@ def test_cli_edit_and_remove(dcc_world):
                                          "  It said: The stairs are trapped."]
     r = run("remove", fid)
     assert r.returncode == 1 and r.stderr.startswith("[ERROR] No fact")
+
+
+# --- who told it (--from) -----------------------------------------------------
+
+def test_tell_from_records_the_telling(dcc_world):
+    nm = _fresh(dcc_world)
+    fid = nm.add_fact("The vault code is 0451.", holders=["npc:Mordecai"])
+    assert nm.tell(fid, ["player"], by="Mordecai") == ["player"]
+    entry = _load(dcc_world, "facts.json")[0]
+    assert entry["holders"] == ["npc:Mordecai", "player"]
+    told = entry["told"][0]
+    assert told["to"] == ["player"] and told["by"] == "npc:Mordecai"
+
+
+def test_a_teller_must_know_the_fact_they_tell(dcc_world):
+    nm = _fresh(dcc_world)
+    truth = nm.add_fact("The vault holds nothing.", secret=True)
+    lie = nm.add_fact("The vault holds gold.", holders=["npc:Mordecai"],
+                      truth="wrong", version_of=truth)
+    with pytest.raises(ValueError, match="doesn't know"):
+        nm.tell(truth, ["player"], by="Mordecai")         # he holds only the lie
+    assert nm.tell(lie, ["player"], by="Mordecai") == ["player"]
+    assert "player" not in _load(dcc_world, "facts.json")[0]["holders"]
+
+
+def test_a_version_someone_tells_needs_them_to_know_a_version(dcc_world):
+    nm = _fresh(dcc_world)
+    truth = nm.add_fact("The guards change at dawn.", holders=["npc:Mordecai"])
+    stranger = nm.add_fact("The guards never change.", holders=["player"], by="Mordecai",
+                           truth="partial", version_of=truth)
+    entry = _load(dcc_world, "facts.json")[-1]
+    assert entry["id"] == stranger and "npc:Mordecai" in entry["holders"]
+    assert entry["told"] == [{"to": ["player"], "by": "npc:Mordecai"}]
+    secret = nm.add_fact("The vault holds nothing.", secret=True)
+    assert nm.add_fact("The vault holds gold.", holders=["player"], by="Mordecai",
+                       truth="wrong", version_of=secret) == ""          # he knows no version

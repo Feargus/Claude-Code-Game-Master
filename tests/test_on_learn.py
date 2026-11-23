@@ -115,7 +115,7 @@ def test_cli_tell_prints_what_fired(dcc_world):
     r = subprocess.run([sys.executable, str(root / "lib" / "note_manager.py"), "tell", fid, "street"],
                        capture_output=True, text=True, cwd=str(Path(dcc_world).parent))
     assert r.returncode == 0, r.stderr
-    assert "street now know(s) it" in r.stdout and "The secret is out" in r.stdout
+    assert f"Told {fid} to street" in r.stdout and "The secret is out" in r.stdout
 
 
 def test_a_fact_that_becomes_public_is_learned_by_everyone(dcc_world):

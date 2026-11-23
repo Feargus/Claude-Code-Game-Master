@@ -164,7 +164,7 @@ class NoteManager:
                  about=None, not_about=None, holders=None, secret: bool = False,
                  also=None, truth=None, version_of=None, at=None, nowhere: bool = False,
                  auto_at: bool = True, plots=None,
-                 when=None) -> str:
+                 when=None, by=None) -> str:
         """Record a fact. Returns its id, or "" on failure. Everything but the
         text is given by name (a fact has no category any more: facts.py).
 
@@ -183,7 +183,9 @@ class NoteManager:
         (with `auto_at`), or none with `nowhere`. `plots`: the plots it belongs to
         (with none, semantic recall suggests or links one: recall_notes.py). `when`: the game
         time it happened ("YYYY-MM-DD HH:MM"), if earlier than now (a faction turn
-        owed since it was drawn, something recorded after the fact).
+        owed since it was drawn, something recorded after the fact). `by`: who said
+        it (`--from`): they hold it too, and a version they tell needs them to hold
+        a version of its truth; the fact keeps the telling under `told`.
         """
         from embedder import EmbedderError, require_embedder
         try:
@@ -204,6 +206,22 @@ class NoteManager:
         errors += more
         happened, more = self._when(when)
         errors += more
+        teller = None
+        if by and secret:
+            errors.append("A fact someone tells is no secret: leave out --secret or --from.")
+        elif by:
+            try:
+                if version_of:
+                    teller = self._teller(facts, by, version_of, any_version=True)
+                else:
+                    from world_ids import WorldIds
+                    teller, error = WorldIds(self.json_ops).resolve_holder(by)
+                    if error:
+                        errors.append(f"--from: {error}")
+            except ValueError as error:
+                errors.append(str(error).replace(" Nothing was changed.", ""))
+        if teller and teller not in holder_ids:
+            holder_ids = holder_ids + [teller]
         if errors:
             for error in errors:
                 print(f"[ERROR] {error}", file=sys.stderr)
@@ -224,6 +242,8 @@ class NoteManager:
             entry['version_of'] = version_of
         if where:
             entry['at'] = where
+        if teller:
+            entry['told'] = [{'to': [h for h in holder_ids if h != teller], 'by': teller}]
         if plot_keys:
             entry['plots'] = plot_keys
         game_time = happened or stored_time(self.json_ops)
@@ -464,10 +484,35 @@ class NoteManager:
             raise ValueError(f"No fact '{fact_id}'.")
         return entry
 
-    def tell(self, fact_id: str, holders) -> list:
+    def _teller(self, facts: list, by, fact_id: str, any_version: bool = False) -> str:
+        """The holder id of who tells a fact (`--from`), checked: they hold it; with
+        `any_version` (a version they tell), it or any version of it (the truth, a
+        partial or a wrong one). Raises ValueError."""
+        from factions import knowers
+        from world_ids import WorldIds
+        teller, error = WorldIds(self.json_ops).resolve_holder(by)
+        if error:
+            raise ValueError(f"--from: {error}")
+        entry = self._entry(facts, fact_id)
+        root = entry.get('version_of') or fact_id
+        family = ([f for f in facts if f.get('id') == root or f.get('version_of') == root]
+                  if any_version else [entry])
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        mine = knowers(teller, npcs)
+        if not any(mine & set(f.get('holders') or []) or 'public' in (f.get('holders') or [])
+                   for f in family):
+            what = f"{fact_id} or any version of it" if any_version else fact_id
+            raise ValueError(f"{teller} doesn't know {what}, so can't "
+                             f"tell it. If they learned it, tell them first: bash "
+                             f"tools/gm-note.sh tell {fact_id} \"{teller}\". Nothing was changed.")
+        return teller
+
+    def tell(self, fact_id: str, holders, by=None) -> list:
         """Someone learns a recorded fact: add holders. Returns those who are new
         (already knowing isn't learning: a member knows what their faction knows).
-        Raises ValueError for an unknown fact or id."""
+        `by`: who told them (they must hold it or a version of it); the fact keeps
+        the telling under `told`, with the place and the game time. Raises
+        ValueError for an unknown fact or id."""
         from factions import knowers
         from world_ids import WorldIds
         adding, errors = WorldIds(self.json_ops).resolve_all(holders, holders=True)
@@ -475,12 +520,22 @@ class NoteManager:
             raise ValueError("; ".join(errors))
         facts = fact_file.load(self.json_ops)
         entry = self._entry(facts, fact_id)
+        teller = self._teller(facts, by, fact_id) if by else None
         known = entry.setdefault('holders', [])
         npcs = self.json_ops.load_json("npcs.json") or {}
         new = [h for h in adding if not knowers(h, npcs) & set(known)]   # they or their faction
         self.last_fired = []
         if new:
             known.extend(new)
+            if teller:
+                told = {'to': new, 'by': teller}
+                where, _ = self._where()
+                if where:
+                    told['at'] = where
+                game_time = stored_time(self.json_ops)
+                if game_time:
+                    told['game_time'] = game_time
+                entry.setdefault('told', []).append(told)
             fact_file.save(self.json_ops, facts)
             self._learned(fact_id, entry, new)
         return new
@@ -726,7 +781,7 @@ class NoteManager:
 
         Each item is a fact as `add` takes it ({"fact", "about", "not_about",
         "holders", "also", "secret", "truth", "version_of", "at", "nowhere",
-        "plot"}; "plot" is one plot's name or a list, as `--plot` is on the
+        "plot", "when", "from"}; "plot" is one plot's name or a list, as `--plot` is on the
         command line, the opening and the world tick); `version_of` may name an
         earlier item of the same call as
         "#1", "#2", ... (a deception: the truth first, then the false impression
@@ -734,7 +789,7 @@ class NoteManager:
         nothing if any item is refused.
         """
         allowed = {"fact", "about", "not_about", "holders", "also", "secret",
-                   "truth", "version_of", "at", "nowhere", "plot", "when"}
+                   "truth", "version_of", "at", "nowhere", "plot", "when", "from"}
         def as_list(value):
             return None if value is None else [value] if isinstance(value, str) else list(value)
         if not isinstance(items, list) or not items:
@@ -791,7 +846,8 @@ class NoteManager:
                                 secret=bool(item.get("secret")), also=as_list(item.get("also")),
                                 truth=item.get("truth"), version_of=ref or None,
                                 at=item.get("at"), nowhere=bool(item.get("nowhere")),
-                                plots=as_list(item.get("plot")), when=item.get("when"))
+                                plots=as_list(item.get("plot")), when=item.get("when"),
+                                by=item.get("from"))
             if not fid:
                 self.remove_facts(written)
                 raise ValueError("A fact was refused (see above); none of this beat was kept.")
@@ -831,6 +887,10 @@ def fact_details(f: dict) -> str:
                                                   if f.get('version_of') else ""))
     if f.get('versions'):
         lines.append(f"  versions of it: {', '.join(f['versions'])}")
+    for t in f.get('told') or []:
+        place = f" at {t['at']}" if t.get('at') else ""
+        when = f", {t['game_time'].replace('T', ' ')}" if t.get('game_time') else ""
+        lines.append(f"  told by {t.get('by')} to {', '.join(t.get('to') or [])}{place}{when}")
     return "\n".join(lines)
 
 
@@ -883,6 +943,9 @@ def main():
     p_add.add_argument("--plot", action="append", dest="plots", default=[],
                        help="the plot it belongs to (repeatable)")
     p_add.add_argument("--when", help="when it happened, if earlier than now: \"YYYY-MM-DD HH:MM\"")
+    p_add.add_argument("--from", dest="by",
+                       help="who said it (an NPC): they know it too; a version they tell "
+                            "needs them to know a version of its truth")
     p = sub.add_parser("plot", help="add a recorded fact to a plot, or take it out")
     p.add_argument("fact_id")
     p.add_argument("--add", action="append", default=[])
@@ -901,6 +964,7 @@ def main():
     p = sub.add_parser("tell", help="someone learns a recorded fact")
     p.add_argument("fact_id")
     p.add_argument("holders", nargs="+")
+    p.add_argument("--from", dest="by", help="who told them (they must know it)")
     p = sub.add_parser("about", help="change a recorded fact's about")
     p.add_argument("fact_id")
     p.add_argument("--add", action="append", default=[])
@@ -958,7 +1022,8 @@ def main():
                                     holders=args.holders, secret=args.secret,
                                     also=args.also, truth=args.truth,
                                     version_of=args.version_of, at=args.at,
-                                    nowhere=args.nowhere, plots=args.plots, when=args.when):
+                                    nowhere=args.nowhere, plots=args.plots, when=args.when,
+                                    by=args.by):
                 sys.exit(1)
         elif args.action == 'edit':
             from embedder import require_embedder
@@ -983,9 +1048,9 @@ def main():
                                       keep_version=not args.no_version)
             print(f"{args.fact_id}: {fact_text(entry)}")
         elif args.action == 'tell':
-            new = manager.tell(args.fact_id, args.holders)
-            print(f"{args.fact_id}: {', '.join(new)} now know(s) it" if new else
-                  f"{args.fact_id}: they knew it already")
+            new = manager.tell(args.fact_id, args.holders, by=args.by)
+            print(f"[SUCCESS] Told {args.fact_id} to {', '.join(new)}" if new else
+                  f"[SUCCESS] Nothing to tell: they knew {args.fact_id} already")
             from consequence_manager import print_fired
             print_fired(manager.last_fired)
         elif args.action == 'plot':

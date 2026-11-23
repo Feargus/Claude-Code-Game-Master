@@ -124,9 +124,9 @@ def test_cli(dcc_world):
     assert r.returncode == 0, r.stderr
     fid = r.stdout.split("Recorded fact ")[1].split()[0].rstrip(":")
     r = run("tell", fid, "Mordecai", "street")
-    assert r.returncode == 0 and "npc:Mordecai, street now know(s) it" in r.stdout
+    assert r.returncode == 0 and f"[SUCCESS] Told {fid} to npc:Mordecai, street" in r.stdout
     r = run("tell", fid, "Mordecai")
-    assert "knew it already" in r.stdout
+    assert f"they knew {fid} already" in r.stdout
     r = run("add", "Carl saw it", "--holders", "Carl", "--holders", "player")
     assert r.returncode == 0 and "known to: npc:Carl, player" in r.stdout
 

@@ -281,6 +281,10 @@ consequence that tells it, an NPC's death) can't be removed.
   `--secret` stores `[]`. Off-screen facts from the world tick default to `[]`. `[]` means
   nobody knows: a GM-only secret. A missing field (facts from before 2026-11-06) means not
   recorded. `gm-note.sh tell <fact id> <holder>...` adds holders.
+- `told` (optional): who told it to whom, a list of `{"to": [ids], "by": id, "at":
+  location id, "game_time"}`; written by `tell --from` (the teller must hold the fact) and
+  by recording with `--from` (`{"to", "by"}`; a version needs the teller to hold a version
+  of its truth). `gm-note.sh show` lists them.
 - `truth` (optional): missing means true; `"partial"` is true but leaves things out;
   `"wrong"` is plain wrong. `version_of` (optional): the id of the fullest true version
   (needs a `truth`). A version of a version is stored as pointing at its root, so the
