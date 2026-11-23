@@ -146,7 +146,9 @@ def test_the_brief_is_ordered_by_plot(world):
     from lib.session_manager import SessionManager
     notes = NoteManager(world)
     PlotManager(world).add("The Descent", "Down the stairs.", stands="The timer runs.")
-    ThreatClockManager(world).add_clock("Collapse", 3, advance_on="event", plots=["The Descent"])
+    ThreatClockManager(world).add_clock("Collapse", 3, advance_on="event", plots=["The Descent"],
+                                        text="The stairs wear thin",
+                                        consequence="The whole stairwell falls")
     ConsequenceManager(world).add_consequence("The stairs give way", "Collapse:2",
                                               triggers=[{"type": "on_clock", "match": "Collapse:2"}],
                                               plots=["The Descent"])
@@ -154,7 +156,9 @@ def test_the_brief_is_ordered_by_plot(world):
                             plots=["The Descent"])
     brief = SessionManager(world).get_full_context()
     block = brief.split("] The Descent: The timer runs.")[1].split("\n---")[0]
-    assert "clock Collapse: 0/3" in block and "The stairs give way" not in block
+    assert "clock Collapse at 0/3\n    When full: The whole stairwell falls." in block
+    assert "The stairs wear thin" not in block           # what it is about is the plot's
+    assert "The stairs give way" not in block
     assert f"{secret} Mordecai rigged the stairs. (Mordecai knows)" in block
     latest = brief.split("--- LATEST")[1]
     assert f"newer, above: {secret}" in latest and "rigged" not in latest   # named, not printed again

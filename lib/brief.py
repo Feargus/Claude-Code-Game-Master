@@ -203,10 +203,15 @@ class Brief:
         clocks = {n: c for n, c in (self.json_ops.load_json("threat-clocks.json") or {}).items()
                   if isinstance(c, dict) and belongs(c.get("plots") or [])}
         for name, c in ThreatClockManager.by_urgency(clocks):
+            # What it is about is its plot's; what the brief adds is what happens when
+            # it fills. A full one has fired that already ([FIRED] below).
             cur, mx = int(c.get('current', 0)), int(c.get('max', 1))
-            state = "FULL: a beat is due" if cur >= mx else (
-                f"{cur}/{mx}" + ThreatClockManager.due_text(c))
-            lines.append(f"  clock {name}: {state}" + (f" ({c['text']})" if c.get('text') else ""))
+            if cur >= mx:
+                lines.append(f"  clock {name} at {cur}/{mx}: full")
+                continue
+            lines.append(f"  clock {name} at {cur}/{mx}{ThreatClockManager.due_text(c)}")
+            if c.get('consequence'):
+                lines.append(f"    When full: {sentence(c['consequence'])}")
         # Fired ones are to be played out; of the waiting ones only those a recorded
         # fact triggers, which the GM must recognise (the scripts fire the others
         # themselves, and print them then). Decided 2026-11-22.
