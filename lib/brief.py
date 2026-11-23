@@ -19,7 +19,6 @@ from note_manager import fact_text
 from threat_clocks import ThreatClockManager
 
 
-
 def _clock_lines(clocks: dict) -> list[str]:
     """Clocks, most urgent first: how far and when due, and what happens when one
     fills. What a clock is about is its plot's; a full one has fired already."""
@@ -333,8 +332,8 @@ class Brief:
         if char:
             import sheet as sheet_mod
             from body import summary as wound_summary
-            from world_bible import currency
             from growth import growth_due, level, next_level_xp, xp_total
+            from world_bible import currency
             identity = char.get('identity') or {}
             who = " ".join(x for x in (identity.get('race'), identity.get('role')) if x)
             conditions = sheet_mod.conditions(char)
