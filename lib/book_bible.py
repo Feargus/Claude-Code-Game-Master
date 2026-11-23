@@ -4,10 +4,9 @@ Book Bible import helpers — long-context reading instead of chunk-and-delete.
 
 The import flow keeps the book text (not deleted on cleanup), a world-bible
 subagent reads LARGE spans (whole chapters via long context, not 3000-char
-chunks) and emits a structured world-bible.json, and that bible AUTO-DRAFTS the
-World Kit ruleset (the world's own rules are added to it with gm-rule.sh define).
-This module holds the deterministic, testable pieces: chapter segmentation, the
-bible→ruleset draft, and token observability. The subagent read itself is orchestrated by the /import command.
+chunks) and emits a structured world-bible.json (the world's own rules go into
+ruleset.json with gm-rule.sh define). This module holds the deterministic,
+testable pieces: chapter segmentation, the bible draft, and token observability. The subagent read itself is orchestrated by the /import command.
 """
 
 import copy
@@ -59,20 +58,6 @@ def segment_into_chapters(text: str, max_chars: int = 20000) -> list[dict[str, A
             chapters.append({"index": idx, "title": first_line, "text": piece})
             idx += 1
     return chapters
-
-
-def draft_ruleset_from_bible(bible: dict[str, Any]) -> dict[str, Any]:
-    """Auto-draft a World Kit ruleset.json from a world-bible.
-
-    No rules yet: the world's own rules are added with `gm-rule.sh define`
-    (world_rules.py); wounds come with every character. No progression: XP and
-    levels are the same for every campaign (growth.py).
-    """
-    agents = ["npc-builder"]
-    return {
-        "name": bible.get("name", "Imported World"),
-        "active_agents": agents,
-    }
 
 
 def draft_voice(style: str, sample_passages: list[str], source_text: str,
@@ -180,16 +165,6 @@ def draft_bible(campaign_dir, name: str = None, voice: dict[str, Any] = None,
     return bible
 
 
-def write_ruleset(campaign_dir, force: bool = False) -> dict[str, Any]:
-    """Draft the World Kit from the bible and write it to ruleset.json."""
-    path = Path(campaign_dir) / "ruleset.json"
-    if path.exists() and not force:
-        raise FileExistsError(f"{path} already exists — pass --force to redraft it")
-    ruleset = draft_ruleset_from_bible(load_bible(campaign_dir))
-    path.write_text(json.dumps(ruleset, indent=2, ensure_ascii=False), encoding="utf-8")
-    return ruleset
-
-
 def main():
     import argparse
 
@@ -206,28 +181,19 @@ def main():
                          help="JSON object of creative fields (tone/themes/factions/...); "
                               "without a value: read from after the command")
 
-    p_kit = sub.add_parser("draft-ruleset", help="draft ruleset.json from the bible")
-    p_kit.add_argument("campaign_dir")
-    p_kit.add_argument("--force", action="store_true", help="overwrite an existing ruleset.json")
-
     args = parser.parse_args()
     from cli_output import json_input
 
     try:
-        if args.action == "draft-bible":
-            bible = draft_bible(
-                args.campaign_dir,
-                name=args.name,
-                voice=json_input(args.voice_json, "--voice-json") if args.voice_json else None,
-                fields=json_input(args.fields_json, "--fields-json") if args.fields_json else None,
-            )
-            print(f"world-bible.json drafted: {bible['name']} "
-                  f"({len(bible['voice']['sample_passages'])} verbatim passages, confirmed=False)")
-        else:
-            ruleset = write_ruleset(args.campaign_dir, force=args.force)
-            print(f"ruleset.json drafted: {ruleset['name']} "
-                  f"| agents: {ruleset['active_agents']}")
-    except (ConfirmedBibleError, FileNotFoundError, FileExistsError, ValueError) as e:
+        bible = draft_bible(
+            args.campaign_dir,
+            name=args.name,
+            voice=json_input(args.voice_json, "--voice-json") if args.voice_json else None,
+            fields=json_input(args.fields_json, "--fields-json") if args.fields_json else None,
+        )
+        print(f"world-bible.json drafted: {bible['name']} "
+              f"({len(bible['voice']['sample_passages'])} verbatim passages, confirmed=False)")
+    except (ConfirmedBibleError, FileNotFoundError, ValueError) as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)
 

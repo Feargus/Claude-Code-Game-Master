@@ -1,4 +1,4 @@
-"""Tests for the character validator and kit-driven XP thresholds."""
+"""Tests for the character validator and the XP thresholds."""
 
 import json
 from pathlib import Path

@@ -1,6 +1,6 @@
 # /new-game - Create Your World
 
-Author tonight's table, not a planet. Same dream as `/import`: kit, voice, one
+Author tonight's table, not a planet. Same dream as `/import`: the world's rules, voice, one
 street. The campaign file is a **journal of where the table has
 been**. The world grows AS YOU PLAY — seed a clock, a thread, or a plot when you
 see a long-game opportunity, materialize the next face or place when play walks
@@ -135,15 +135,16 @@ you suggest, each in a sentence or two with its numbers.
 
 ---
 
-## PHASE C — THE KIT AND THE FRAME
+## PHASE C — THE RULES AND THE FRAME
 
-1. Draft the kit: `gm-extract.sh draft-ruleset`. Attributes, rolls and growth are always the repo's (`gm-skills`, `gm-growth`); the world adds its own rules.
-2. **Write the world's own rules** as the player approved them, in the formats of the
+1. **Write the world's own rules** as the player approved them, in the formats of the
    `gm-rules` skill: `bash tools/gm-rule.sh define <<'EOF'`, the list, a line `EOF`; what
    is no mechanic (prices, customs) with `gm-rule.sh plain`; starting values of the
    world and the factions with `gm-rule.sh set`. Check with `gm-rule.sh list`: that is
    what the brief will show. The player's starting values come with the character.
-3. **The factions' power and relations**, in every world, a quick one too: the repo's
+   Attributes, rolls and growth are always the repo's (`gm-skills`, `gm-growth`); the
+   world only adds its own rules.
+2. **The factions' power and relations**, in every world, a quick one too: the repo's
    faction rules (`gm-rules`, "The repo's faction rules"), not the world's. Unset, every
    power is 3 and every relation 0, which makes all factions alike.
    - **Power:** Military, Economic, Political, Covert, 0–10, about 3 on average per
@@ -160,7 +161,7 @@ you suggest, each in a sentence or two with its numbers.
      "<power>" "faction:<id>" --by 1 --toward N`), or a pair (`gm-rule.sh rate
      "Relation" "<id>+<id>" --toward N`: a Relation drifts toward its point by itself).
    Check with `bash tools/gm-faction.sh show <id>`: Power and Relations.
-4. **The frame's places, enemies and words:** the districts and landmarks from the
+3. **The frame's places, enemies and words:** the districts and landmarks from the
    geography, each faction's stronghold, with who is around where; the kinds of enemy;
    a few of the world's own words. No people yet (Phase E).
    ```bash
@@ -309,8 +310,8 @@ has (Phase E step 1); the campaign plays by the repo's rules (`gm-skills`, `gm-c
    sentence is the `premise`; tone, setting, genre bend and voice fit it.
 3. **Bible:** write `world-bible.json` as in Phase B, with `"confirmed": true`, and
    validate it. Don't present it for approval.
-4. **The frame:** Phase C steps 3–4 (the factions' power and relations, the frame's
-   places). Skip steps 1 and 2 (the kit and the world's own rules).
+4. **The frame:** Phase C steps 2–3 (the factions' power and relations, the frame's
+   places). Skip step 1 (the world's own rules).
 5. **The character:** Phase D, the `/create-character` interview (their own, or one
    of six roles from this world; their trouble; fast or slow).
 6. **The character's world:** Phase E, all of it; choose the start yourself, don't
@@ -321,7 +322,7 @@ has (Phase E step 1); the campaign plays by the repo's rules (`gm-skills`, `gm-c
 ## COMPLETION CHECKLIST (play tonight)
 - [ ] `world-seed.json` (premise, voice)
 - [ ] `world-bible.json` approved and confirmed (voice, factions, not a planet), with the world's own rules
-- [ ] `ruleset.json` drafted, with the world's own rules (`gm-rule.sh list`)
+- [ ] the world's own rules (`gm-rule.sh list`)
 - [ ] the frame: factions with power and relations, the districts and landmarks
 - [ ] the `/create-character` interview (`gm-player.sh create`): who, their trouble, fast or slow
 - [ ] the character's world: Standing, their people and places, each faction's first plot

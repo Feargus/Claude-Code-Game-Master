@@ -16,7 +16,7 @@ the campaign file is a journal; the book is the world.
 2. **The door.** Ask who they are, or who they came to meet. Do not preview
    entity counts. Do not run the extractors *as a census* (full records) — their
    one sanctioned use is the light one-sentence World Index (Step 5.5).
-3. **World identity.** Bible → kit and the book's own rules (`gm-rules`) → voice. Tone
+3. **World identity.** Bible → the book's own rules (`gm-rules`) → voice. Tone
    and how the holodeck *sounds*. Horizon names, not a gazetteer. The player
    confirms the bible; `/import` never confirms on their behalf.
 4. **The stage.** The `/create-character` interview (`gm-player.sh create`), then one
@@ -45,9 +45,9 @@ protagonist picks the page; the stage is built from that page.
 `draft-bible` writes what the source can prove (the empty World Index scaffold,
 verbatim voice filter, skeleton keys — as of 2026-08-15 it no longer persists a
 chapter map; `segment_into_chapters` now feeds only the RAG coarse index). The
-model authors tone / themes / a *handful* of factions and places. `draft-ruleset` takes attributes and progression
-from the importer (always this fork's nine attributes and `xp-levels`). The book's
-own rules are written into the kit with `gm-rule.sh define`. A missing
+model authors tone / themes / a *handful* of factions and places. The attributes and growth are
+always this fork's. The book's own rules are written into `ruleset.json` with
+`gm-rule.sh define`. A missing
 `current-document.txt` means `prepare` did not finish; an already-confirmed
 bible refuses a silent overwrite.
 

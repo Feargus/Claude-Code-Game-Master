@@ -3,14 +3,14 @@
 *Claude, 2026-11-19: kept from the upstream docs, not yet rewritten.*
 
 `/new-game` is `/import` with the book replaced by generation. The door is the
-same: kit, voice, one street. There is no fan-out — you author
+same: the world's rules, voice, one street. There is no fan-out — you author
 tonight's one stage, then the world grows AS YOU PLAY. See
 [the dream](../conventions/the-dream.md).
 
 The one problem everything upstream of play is aimed at — **any model asked for "a
 fantasy world" produces the same world** — is solved at the seed, not by scale. The
 anti-generic levers are the **genre bend**, the **voice exemplar** (narration reads
-like a real author), and a **World Kit derived from this world** (never a silent 5e
+like a real author), and **the world's own rules, derived from this world** (never a silent 5e
 default). A gazetteer authored before anyone sits down does not make a world
 distinct; those three do.
 
@@ -20,7 +20,7 @@ distinct; those three do.
 |---|---|---|
 | **A — Seed** | genre-aware questionnaire → `world-seed.json` (premise, tone, genre bend, voice) | — |
 | **B — Skeleton** | slim bible (voice + signature systems + this street), **shown for approval** | play gates on approval |
-| **C — The kit and the frame** | draft the kit and the world's own rules; the factions' power and relations; the districts and landmarks, kinds of enemy, the world's words. No people yet | — |
+| **C — The rules and the frame** | the world's own rules; the factions' power and relations; the districts and landmarks, kinds of enemy, the world's words. No people yet | — |
 | **D — The character** | the `/create-character` interview: their own concept or one of six roles (never a named person), their trouble in broad strokes, fast or slow (`gm-player.sh create`) | — |
 | **E — The character's world** | Standing; their people and places; each faction's first plot (touching the character only indirectly); where and when to start; `gm-session.sh opening` with the main plot, the character's trouble | — |
 

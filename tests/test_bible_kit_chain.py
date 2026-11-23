@@ -1,7 +1,7 @@
-"""The import chain: source text -> world-bible -> ruleset -> campaign_rules.
+"""The import chain: source text -> world-bible (the world's own rules go into
+ruleset.json with gm-rule.sh define).
 
-Import Step 6.7 used to read a world-bible.json that no step wrote, and the kit
-was a hand-pasted 5e heredoc. These cover the wired chain — every fixture is a
+Import Step 6.7 used to read a world-bible.json that no step wrote. These cover the wired chain — every fixture is a
 throwaway tmp campaign, never a live one.
 """
 
@@ -94,32 +94,6 @@ def test_draft_bible_without_source_text_fails_loudly(tmp_path):
         book_bible.draft_bible(tmp_path)
 
 
-def test_ruleset_is_drafted_from_the_bible(campaign):
-    book_bible.draft_bible(campaign, name="The Iron Tangle")
-    ruleset = book_bible.write_ruleset(campaign)
-
-    assert json.loads((campaign / "ruleset.json").read_text(encoding="utf-8")) == ruleset
-    assert "kit" not in ruleset
-    assert ruleset["name"] == "The Iron Tangle"
-    assert ruleset["active_agents"] == ["npc-builder"]
-    assert "progression" not in ruleset   # growth is the same for every campaign
-    assert set(ruleset) == {"name", "active_agents"}   # its own rules: gm-rule.sh define
-
-
-def test_ruleset_will_not_clobber_a_sibling_kit(campaign):
-    book_bible.draft_bible(campaign)
-    (campaign / "ruleset.json").write_text('{"name": "Copied Sibling Kit"}', encoding="utf-8")
-
-    with pytest.raises(FileExistsError):
-        book_bible.write_ruleset(campaign)
-    assert book_bible.write_ruleset(campaign, force=True)["name"]
-
-
-def test_chain_without_a_bible_names_the_step_that_writes_it(campaign):
-    with pytest.raises(FileNotFoundError, match="draft-bible"):
-        book_bible.write_ruleset(campaign)
-
-
 def test_review_survives_string_faction_nodes(dcc_world):
     # The review screen is what the player approves the draft from, and faction
     # nodes are model-authored: conan's live bible lists them as bare strings.
@@ -142,12 +116,6 @@ def test_cli_drives_the_whole_chain(campaign):
     assert run("draft-bible", str(campaign), "--name", "The Iron Tangle",
                "--voice-json", json.dumps({"style": "clipped", "sample_passages": [VERBATIM]}),
                "--fields-json", json.dumps({"tone": "clipped dread"})).returncode == 0
-    assert run("draft-ruleset", str(campaign)).returncode == 0
-    for gone in ("campaign-rules", "write-systems"):          # removed 2026-11-17
+    for gone in ("campaign-rules", "write-systems", "draft-ruleset"):   # removed
         assert run(gone, str(campaign)).returncode == 2
-
-    ruleset = json.loads((campaign / "ruleset.json").read_text(encoding="utf-8"))
-    assert ruleset["name"] == "The Iron Tangle" and "stat_schema" not in ruleset
-
-    # Second draft-ruleset is refused rather than silently overwriting.
-    assert run("draft-ruleset", str(campaign)).returncode == 1
+    assert not (campaign / "ruleset.json").exists()   # gm-rule.sh define makes it

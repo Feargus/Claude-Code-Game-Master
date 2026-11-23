@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# gm-extract.sh - Preparing a book for play (/import): prepare, the bible and kit,
+# gm-extract.sh - Preparing a book for play (/import): prepare, the bible,
 # list, clean. See show_usage.
 
 set -e
@@ -83,10 +83,7 @@ Commands:
                             Draft/refresh the campaign's world-bible.json from
                             current-document.txt (chapter map + verbatim-filtered
                             voice + skeleton keys). Idempotent; refuses a
-                            confirmed bible. Run BEFORE draft-ruleset.
-  draft-ruleset [campaign] [--force]
-                            Draft the World Kit (ruleset.json) from the bible;
-                            the world's own rules: gm-rule.sh define
+                            confirmed bible.
   list                      List the campaigns made from a document
   clean [campaign]          Remove a campaign folder (a failed import)
 
@@ -266,9 +263,9 @@ case "$1" in
 
 
 
-    draft-bible|draft-ruleset)
-        # The bible -> kit chain (lib/book_bible.py). The
-        # campaign argument is optional here because every flag these verbs take
+    draft-bible)
+        # The bible (lib/book_bible.py). The
+        # campaign argument is optional here because every flag this verb takes
         # is a --long option: anything starting with -- is passed through, so
         # `draft-bible --name "X"` still means the ACTIVE campaign.
         verb="$1"; shift

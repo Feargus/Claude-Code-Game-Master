@@ -27,7 +27,7 @@ rewritten towards that goal; until then some details are out of date (the code d
 | [import-a-book.md](flows/import-a-book.md) | `/import`: a world from a book. |
 | [onboarding-and-death.md](flows/onboarding-and-death.md) | The first question of a new game, and how play goes on after the character dies. |
 | **Modules** | |
-| [game-core-and-world-kit.md](modules/game-core-and-world-kit.md) | The engine every campaign shares, and the ruleset each one adds. |
+| [game-core-and-rules.md](modules/game-core-and-rules.md) | The engine every campaign shares, and the rules each one adds. |
 | [world-rules.md](modules/world-rules.md) | A campaign's own mechanics, built from a few building blocks. |
 | [living-world.md](modules/living-world.md) | Consequences, clocks and the time walk: the world moving on its own. |
 | [npc-model.md](modules/npc-model.md) | What an NPC carries. |

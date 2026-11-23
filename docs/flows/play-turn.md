@@ -13,7 +13,7 @@ the harness adds over "a model pretending to be a GM" lives in the first and fou
 2. **DECIDE** — route on what the player said. The table in `CLAUDE.md` maps phrasing to a
    Skill; the Skill is loaded on demand rather than living in the always-on core. See
    [lean core and skill routing](../conventions/lean-core-and-skill-routing.md).
-3. **EXECUTE** — resolve through the active World Kit, never a hardcoded rule set.
+3. **EXECUTE** — resolve through the repo's rules and the world's own, never a hardcoded rule set.
    Dice only ever come from `lib/dice.py`, one roll per command, never inlined.
 4. **PERSIST** — write every state change *before* narrating. See
    [persist before narrate](../conventions/persist-before-narrate.md).
@@ -62,4 +62,4 @@ runs pre-activation because the name is explicit.
 
 ## Related
 
-- [Game core and World Kit](../modules/game-core-and-world-kit.md) — what "resolve through the kit" means
+- [Game core and the world's rules](../modules/game-core-and-rules.md) — what the rules are

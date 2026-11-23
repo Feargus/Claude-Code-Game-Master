@@ -68,14 +68,14 @@ fi
 
 case "$ACTION" in
     start)
-        # Banner names the active World Kit, not D&D — each book plays as its own game.
+        # Banner names the world (the bible's name), as the brief's first line does.
         CAMPAIGN_DIR=$(bash "$TOOLS_DIR/gm-campaign.sh" path 2>/dev/null)
-        KIT_NAME=""
-        if [ -f "$CAMPAIGN_DIR/ruleset.json" ]; then
-            KIT_NAME=$($PYTHON_CMD -c "import json,sys; print(json.load(open(sys.argv[1])).get('name','') or '')" "$CAMPAIGN_DIR/ruleset.json" 2>/dev/null)
+        WORLD_NAME=""
+        if [ -f "$CAMPAIGN_DIR/world-bible.json" ]; then
+            WORLD_NAME=$($PYTHON_CMD -c "import json,sys; print(json.load(open(sys.argv[1])).get('name','') or '')" "$CAMPAIGN_DIR/world-bible.json" 2>/dev/null)
         fi
-        if [ -n "$KIT_NAME" ]; then
-            BANNER="Starting $KIT_NAME Session"
+        if [ -n "$WORLD_NAME" ]; then
+            BANNER="Starting $WORLD_NAME Session"
         else
             BANNER="Starting Session"
         fi

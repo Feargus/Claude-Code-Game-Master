@@ -32,7 +32,6 @@ from entity_manager import EntityManager
 from handover import hand_over
 from sheet import ATTRIBUTES
 from stat_block import common_skills
-from world_kit import WorldKit
 
 DEFAULT_ATTRIBUTE = 12
 DEFAULT_LUCK = 7
@@ -117,7 +116,7 @@ def _body(character: dict[str, Any], given: dict[str, Any]) -> None:
         raise CharacterError(f"Armor or cyberware: {error}") from error
 
 
-def build_character(data: dict[str, Any], kit: WorldKit) -> tuple[dict[str, Any], list[str]]:
+def build_character(data: dict[str, Any], campaign_dir) -> tuple[dict[str, Any], list[str]]:
     """The full sheet (sheet.py) from the interview's answers, with defaults for the
     rest. The answers come in the sheet's sections; `untrained` lists common skills
     the character lacks."""
@@ -137,7 +136,7 @@ def build_character(data: dict[str, Any], kit: WorldKit) -> tuple[dict[str, Any]
     character = sheet_mod.merge(data, {
         "identity": identity,
         "stats": {"attributes": _attributes(given_attributes),
-                  "skills": _skills(stats.get("skills") or {}, untrained, kit.campaign_dir),
+                  "skills": _skills(stats.get("skills") or {}, untrained, campaign_dir),
                   "traits": _named(stats.get("traits"), "traits"),
                   "perks": _named(stats.get("perks"), "perks"),
                   "luck": luck},
@@ -195,8 +194,7 @@ class CharacterCreator(EntityManager):
             data["identity"]["name"] = resolved
 
         try:
-            character, warnings = build_character(
-                data, WorldKit(str(self.campaign_mgr.world_state_dir)))
+            character, warnings = build_character(data, self.campaign_dir)
             from world_ids import check_player_aliases
             aliases = check_player_aliases(
                 self.json_ops, character, "aliases" in (data.get("identity") or {}),

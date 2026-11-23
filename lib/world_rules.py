@@ -63,7 +63,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 RULESET = "ruleset.json"
 STATE = "rule-state.json"
 LOG = "rules.log"
-BIBLE = "world-bible.json"
 
 HOLDER_KINDS = ("player", "npc", "faction", "location", "world", "pair")   # pair: two factions
 STANDING = "Standing"    # how each faction regards the character: every campaign has it,
@@ -201,11 +200,7 @@ def check_rule(raw: Any) -> dict[str, Any]:
 
 
 def _ruleset(json_ops) -> dict[str, Any]:
-    ruleset = json_ops.load_json(RULESET) or {}
-    if not ruleset.get("name"):
-        bible = json_ops.load_json(BIBLE) or {}
-        ruleset["name"] = bible.get("name") or Path(json_ops.world_state_dir).name
-    return ruleset
+    return json_ops.load_json(RULESET) or {}
 
 
 def define(json_ops, given: Any) -> list[tuple[str, str]]:

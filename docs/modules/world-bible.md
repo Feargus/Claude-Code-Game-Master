@@ -27,15 +27,12 @@ It refuses to touch a bible whose `confirmed` flag is absent or true
 (`lib/book_bible.py:173`) — the same rule `WorldBible.is_confirmed` reads, so a
 hand-authored or approved bible can never be flattened by a re-import.
 
-## The bible is upstream of the kit
+## The bible is upstream of the rules
 
-`draft_ruleset_from_bible` drafts a World Kit skeleton into `ruleset.json`
-(`gm-extract.sh draft-ruleset`, which is how `/import` and `/new-game` call it): the
-world's name and its active agents, nothing more. The world's own rules are added to it
-with `gm-rule.sh define`, after the player approved them with the bible.
-
-There is no `kit` field any more: every world plays by this fork's rules, and a book's
-magic is one of the world's own rules, not spell slots. See [game core and World Kit](game-core-and-world-kit.md).
+The world's own rules go into `ruleset.json` with `gm-rule.sh define`, after the player
+approved them with the bible. Every world plays by this fork's rules, and a book's magic
+is one of the world's own rules, not spell slots. See [game core and the world's
+rules](game-core-and-rules.md).
 
 ## Voice is grounded by a verbatim filter
 

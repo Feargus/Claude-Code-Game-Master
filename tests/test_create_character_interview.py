@@ -126,7 +126,7 @@ def test_a_new_campaign_asks_how_to_make_the_world():
     new_game = (commands / "new-game.md").read_text(encoding="utf-8")
     quick = new_game[new_game.index("## QUICK WORLD"):]
     assert "no rules of its own but `Standing`" in quick          # 2026-11-20: and the factions
-    assert "Phase C steps 3–4" in quick and "Phase E" in quick     # frame, then the cast
+    assert "Phase C steps 2–3" in quick and "Phase E" in quick     # frame, then the cast
     assert quick.index("**The character:** Phase D") < quick.index("**The character's world:** Phase E")
     assert "gm-session.sh opening" in quick and "/create-character" in quick
 
@@ -143,6 +143,6 @@ def test_the_character_comes_before_the_cast_and_brings_the_main_plot():
     assert "Never a named person" in interview and "their trouble" in interview
     new_game = (commands / "new-game.md").read_text(encoding="utf-8")
     for later in ("## PHASE D — THE CHARACTER", "## PHASE E — THE CHARACTER'S WORLD"):
-        assert new_game.index("## PHASE C — THE KIT AND THE FRAME") < new_game.index(later)
+        assert new_game.index("## PHASE C — THE RULES AND THE FRAME") < new_game.index(later)
     assert "touches the character only indirectly" in new_game
     assert "touches the character only indirectly" in (commands / "gm.md").read_text(encoding="utf-8")

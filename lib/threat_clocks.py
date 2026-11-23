@@ -7,7 +7,7 @@ context so stakes are visible and trustworthy. A time clock runs on the in-game
 wall clock: it stores when it started and when it is due, and every time change
 recomputes how many segments are filled. An event clock is advanced by hand.
 A filled clock fires its consequence; consequences with an on_clock trigger
-fire at the segment they name. Tone-respecting: a kit/campaign that wants no
+fire at the segment they name. Tone-respecting: a campaign that wants no
 doom clock simply declares none.
 """
 

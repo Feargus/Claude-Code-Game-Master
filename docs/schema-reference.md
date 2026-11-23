@@ -26,7 +26,7 @@ is named in `world-state/active-campaign.txt`.
 ├── plots.json               # Plot hooks and quests
 ├── items.json               # Items (from imports)
 ├── consequences.json        # Pending/resolved events + firing provenance
-├── ruleset.json             # World Kit — how this world plays, with its own rules
+├── ruleset.json             # The world's own rules (gm-rule.sh define)
 ├── rule-state.json          # Where the world's own rules stand, per holder (world_rules.py)
 ├── rules.log                # Every change of those values; per machine, not in git
 ├── world-bible.json         # Fidelity spine (voice, glossary, geography)
@@ -584,15 +584,13 @@ items otherwise stay mixed in — do not treat a legacy save as a whole-world re
 - Boolean fields default to `false` if omitted
 - The `created` field is auto-set by managers when entities are created
 
-## ruleset.json (World Kit)
+## ruleset.json
 
-Per-campaign ruleset that drives play through the generic `game_core`. Declares
-how a world plays without baking in D&D 5e.
+The world's own rules, on top of the repo's. Made by `gm-rule.sh define`; a world
+without rules of its own has no file.
 
 ```json
 {
-  "name": "Idle Cycles",
-  "active_agents": ["npc-builder"],
   "rules": [
     {"name": "Bleed", "block": "counter", "held_by": "player", "known": true,
      "range": [0, 6], "start": 0,
@@ -658,9 +656,8 @@ bible.
 
 Required: name, voice, tone, themes, geography (graph). The factions and their ties are in
 `factions.json`; an older bible lists them as a `factions` graph, and in a campaign without
-`factions.json` those are its factions. The bible
-drafts the World Kit ruleset; the world's own rules are added to it with `gm-rule.sh
-define`.
+`factions.json` those are its factions. The world's
+own rules are in `ruleset.json` (`gm-rule.sh define`).
 
 ## factions.json
 

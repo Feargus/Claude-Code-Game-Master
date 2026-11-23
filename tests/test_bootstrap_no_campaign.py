@@ -89,7 +89,7 @@ def test_no_tool_dies_silently(no_active_campaign, argv):
     assert output.strip(), f"{argv} produced no output (exit {result.returncode})"
 
 
-@pytest.mark.parametrize("verb", ["draft-bible", "draft-ruleset"])
+@pytest.mark.parametrize("verb", ["draft-bible"])
 def test_extract_verbs_needing_a_campaign_fail_loudly(no_active_campaign, verb):
     """The raw-cat sites: each of these verbs needs a campaign and had none, so it
     must name the problem and the fix — not exit 1 with an empty terminal."""
@@ -242,7 +242,8 @@ def test_legacy_campaign_directory_is_reachable_from_extract_verbs(tmp_path):
     script = _isolated_extract(tmp_path)
     legacy = tmp_path / "world-state" / "campaigns" / "curse_of_strahd"
     legacy.mkdir(parents=True)
-    (legacy / "world-bible.json").write_text('{"name": "Curse of Strahd"}')
+    (legacy / "world-bible.json").write_text('{"name": "Curse of Strahd", "confirmed": false}')
+    (legacy / "current-document.txt").write_text("Chapter One\nThe mists close in.\n")
     env = _isolated_env(tmp_path)
 
     switched = subprocess.run(
@@ -253,7 +254,7 @@ def test_legacy_campaign_directory_is_reachable_from_extract_verbs(tmp_path):
     assert (tmp_path / "world-state" / "active-campaign.txt").read_text() == "curse_of_strahd"
 
     result = subprocess.run(
-        ["bash", str(script), "draft-ruleset"],
+        ["bash", str(script), "draft-bible"],
         cwd=PROJECT_ROOT,  # so `uv run python` resolves this project's environment
         env=env, capture_output=True, text=True, timeout=120,
     )

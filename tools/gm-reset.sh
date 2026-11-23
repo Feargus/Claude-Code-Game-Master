@@ -32,12 +32,12 @@ done
 
 ARCHIVE_BASE="$WORLD_STATE_BASE/archive"
 
-# Reset keeps the SOURCE, the WORLD and the KIT, clears the STORY.
+# Reset keeps the SOURCE, the WORLD and the RULES, clears the STORY.
 #   SOURCE (kept): source/current-document.txt, metadata.json, chunks/, vectors/,
 #                  extracted*/, canon/, authored/
 #   WORLD  (kept): world-bible.json, world-seed.json — world identity, authored
 #                  once and never regenerated during play
-#   KIT    (kept): ruleset.json (with the world's own rules)
+#   RULES  (kept): ruleset.json (the world's own rules)
 #   STORY (cleared): everything below — blanked when a manager expects the file
 #                    to exist, deleted when it is created lazily.
 STORY_FILES=(
@@ -74,7 +74,7 @@ show_usage() {
     echo "  gm-reset.sh hard                 # Nuclear option"
     echo ""
     echo "Reset keeps the SOURCE (source/current-document.txt, metadata.json, chunks/, vectors/),"
-    echo "the WORLD (world-bible.json, world-seed.json) and the KIT (ruleset.json); it clears the"
+    echo "the WORLD (world-bible.json, world-seed.json) and the RULES (ruleset.json); it clears the"
     echo "STORY (characters, NPCs, locations,"
     echo "facts, plots, items, consequences, combat, memory, clocks, the rules' values, session log,"
     echo "fallen/)."
@@ -138,10 +138,10 @@ preview_world() {
         [ -d "$WORLD_STATE_DIR/$name" ] && echo "  • $WORLD_STATE_DIR/$name/"
     done
     echo ""
-    echo "📚 Kept (reset keeps the SOURCE, the WORLD and the KIT, clears the STORY):"
+    echo "📚 Kept (reset keeps the SOURCE, the WORLD and the RULES, clears the STORY):"
     echo "  • Source: source/current-document.txt, metadata.json, chunks/, vectors/"
     echo "  • World:  world-bible.json, world-seed.json"
-    echo "  • Kit:    ruleset.json"
+    echo "  • Rules:  ruleset.json"
 }
 
 reset_world() {
@@ -206,7 +206,7 @@ EOF
 
     echo ""
     echo "✅ Story reset to blank slate — source (chunks/, vectors/, source/current-document.txt),"
-    echo "   world (world-bible.json, world-seed.json) and kit (ruleset.json) kept."
+    echo "   world (world-bible.json, world-seed.json) and rules (ruleset.json) kept."
 }
 
 case "$ACTION" in

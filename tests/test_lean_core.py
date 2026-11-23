@@ -84,23 +84,11 @@ def test_craft_skill_preserves_the_soul():
     assert "Yes, and" in text and "Persist before narrating" in text
 
 
-def test_no_skill_instructs_world_kit_info():
-    for name in ALL_SKILLS:
-        text = (ROOT / ".claude" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
-        assert "world_kit.py info" not in text, (
-            f"{name} must not instruct world_kit.py info for what context now carries"
-        )
-
-
-def test_world_kit_info_runs():
-    import json
-    import subprocess
-    import sys as _sys
-    r = subprocess.run([_sys.executable, str(ROOT / "lib" / "world_kit.py"), "info"],
-                       capture_output=True, text=True, cwd=str(ROOT))
-    assert r.returncode == 0, r.stderr
-    data = json.loads(r.stdout)
-    assert "kit" not in data and "progression_model" not in data
+def test_the_brief_has_no_kit_section(dcc_world):
+    """It named the ruleset (the campaign's name again) and a skill list nothing
+    wrote any more (removed 2026-11-23); the world's own rules have their section."""
+    from lib.session_manager import SessionManager
+    assert "--- KIT ---" not in SessionManager(dcc_world).get_full_context()
 
 
 def test_gm_md_holds_no_rules_for_the_middle_of_play():

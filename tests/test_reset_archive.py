@@ -43,10 +43,10 @@ FIXTURE_FILES = {
     "threat-clocks.json": '{"Doom": {"filled": 2, "segments": 6}}\n',
     "world-tick-log.json": '{"ticks": []}\n',
     "loremaster-cache.json": '{"The Pit": {"brief": "dark"}}\n',
-    # Source, world and kit — reset must leave these alone.
+    # Source, world and rules — reset must leave these alone.
     "world-bible.json": '{"voice": "grim"}\n',
     "world-seed.json": '{"premise": "a test world"}\n',
-    "ruleset.json": '{"kit": "test-kit"}\n',
+    "ruleset.json": '{"plain_rules": ["A meal costs 1."]}\n',
     "rules.md": "# House rules\n",
     "metadata.json": '{"title": "The Book"}\n',
     "current-document.txt": "chapter one\n",
@@ -55,7 +55,7 @@ FIXTURE_FILES = {
 }
 
 # What reset must clear, and what it must keep — "keeps the SOURCE, the WORLD
-# and the KIT, clears the STORY".
+# and the RULES, clears the STORY".
 CLEARED_FILES = [
     "character.json", "plots.json", "items.json", "campaign-memory.json",
     "combat_state.json", "threat-clocks.json", "world-tick-log.json",

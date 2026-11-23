@@ -109,7 +109,7 @@ book's default first page.
 
 ## Step 4: World identity (tone, not inventory)
 
-Draft the bible, kit and voice so the holodeck *sounds* like the book.
+Draft the bible and voice so the holodeck *sounds* like the book.
 This is identity. It is not a census.
 
 ```bash
@@ -144,15 +144,10 @@ relationships (the villain's faction vs the player's, the caravan vs the hunt)
 pay off in every scene. Do not build a full relationship map.
 
 Then give the factions their power, relations and `Standing` as the book has them:
-the steps are `/new-game`'s Phase C step 3 and Phase E step 1 (`.claude/commands/new-game.md`). Unset, every
+the steps are `/new-game`'s Phase C step 2 and Phase E step 1 (`.claude/commands/new-game.md`). Unset, every
 faction has 3 in each power and 0 with every other, which makes them all alike.
 
 Attributes are always the nine from `gm-skills`, actions are skill contests, and growth is `gm-growth`'s.
-
-```bash
-CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
-[ -f "$CAMPAIGN_DIR/ruleset.json" ] || bash tools/gm-extract.sh draft-ruleset
-```
 
 ```bash
 CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)

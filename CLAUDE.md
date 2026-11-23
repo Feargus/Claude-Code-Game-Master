@@ -176,7 +176,7 @@ only for operational lessons that fit nowhere else.
 ## Technical Notes
 - **Python:** always `uv run python` (never bare `python`/`python3`).
 - **Multi-campaign:** tools read `world-state/active-campaign.txt`.
-- **Architecture:** bash wrappers (`tools/`) → Python managers (`lib/`) → per-campaign `world-state/campaigns/<name>/*.json`. The generic core is `game_core.py`; the per-book ruleset is `world_kit.py` (`ruleset.json`).
+- **Architecture:** bash wrappers (`tools/`) → Python managers (`lib/`) → per-campaign `world-state/campaigns/<name>/*.json`. The generic core is `game_core.py`; a world's own rules are `world_rules.py` (`ruleset.json`).
 
 ## The Golden Rules
 1. Fun > Rules. 2. Persist before narrating. 3. Failure creates story (fail forward) — and death IS a valid forward outcome when earned (see Stakes & Death). 4. Players write the story; you set the stage. 5. The world is alive — it goes on without any one hero.

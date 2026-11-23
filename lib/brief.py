@@ -17,7 +17,6 @@ from consequence_manager import fact_trigger, fired_lines, sentence, short_id, t
 from entity_manager import is_party_member
 from note_manager import fact_text
 from threat_clocks import ThreatClockManager
-from world_kit import WorldKit
 
 
 class Brief:
@@ -29,7 +28,7 @@ class Brief:
     # consequences waiting in it and what the character doesn't know of it; then
     # what belongs to no plot; the character; the world; the scene; then the
     # newest facts not shown above, so the cards don't repeat them.
-    SECTIONS = ("header", "kit", "play_style", "plots", "unplotted",
+    SECTIONS = ("header", "play_style", "plots", "unplotted",
                 "character", "party", "wrong_beliefs", "world_rules", "faction_turns", "voice",
                 "scene", "latest")
     SECRETS_PER_PLOT = 5     # what the character doesn't know, newest first
@@ -108,25 +107,6 @@ class Brief:
         lines.append(f"Location: {location} | Time: {time_str}")
         self.campaign = campaign
         self.location = location
-        return lines
-
-    def _section_kit(self) -> list[str]:
-        lines = []
-        # --- KIT (ambient; skills defer here instead of calling world_kit.py info) ---
-        kit = None
-        try:
-            kit = WorldKit(self._wsd)
-            if kit.campaign_dir is None:
-                kit = None
-        except Exception:
-            kit = None
-        if kit is not None:
-            skills = kit.skills()
-            lines.append("")
-            lines.append("--- KIT ---")
-            lines.append(f"name: {kit.name()}")
-            lines.append(f"skills: {', '.join(skills) if skills else 'the standard list (gm-skills)'}")
-        self.kit = kit
         return lines
 
     def _section_play_style(self) -> list[str]:
