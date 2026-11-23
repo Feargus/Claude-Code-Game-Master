@@ -417,7 +417,7 @@ def _lines(json_ops, r, powers, places) -> list[str]:
     for (f, p), (before, after, fired) in powers.items():
         if f == fid and p == r.get("power") and kind in COMPLEX + ("build",):
             lines.append(f"  {possessive(name(f))} {p}: {before} → {after}")
-            lines += [f"  [{c['id']}] {c['consequence']} ({AFTER_FIRING})" for c in fired]
+            lines += [f"  {c['id']} {c['consequence']} ({AFTER_FIRING})" for c in fired]
     return lines
 
 
@@ -501,7 +501,7 @@ def _plan_lines(r) -> list[str]:
     if clock is None:
         return ["plan clock: not moved, not the active campaign"]
     out = [f"plan clock {r['clock']} ({r['plot']}): {clock['current']}/{clock['max']}"]
-    out += [f"[{c['id']}] {c['consequence']} (fired)" for c in clock.get("fired") or []]
+    out += [f"{c['id']} {c['consequence']} (fired)" for c in clock.get("fired") or []]
     if clock["current"] >= clock["max"]:
         out.append(f"the plan succeeds: play out its consequence, then gm-plot.sh complete "
                    f"\"{r['plot']}\" \"<what came of it>\" --next \"<the bigger plot that "

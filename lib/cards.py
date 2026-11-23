@@ -199,10 +199,10 @@ class Cards:
 
     def _plots_of(self, cid: str, label: str) -> list[str]:
         """The open plots that involve `cid`, most pressing first, one line each."""
-        from plot_manager import plot_order
+        from plot_manager import plot_name, plot_order
         plots = self.json_ops.load_json("plots.json") or {}
         keys = [k for k in plot_order(self.json_ops, plots) if cid in (plots[k].get("involves") or [])]
-        return [f"{label}: [{plots[k].get('kind', '?')}] {k}: "
+        return [f"{label}: {plot_name(self.json_ops, k, plots[k])}: "
                 f"{plots[k].get('stands') or plots[k].get('goal', '')}"
                 for k in keys]
 

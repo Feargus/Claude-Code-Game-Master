@@ -212,7 +212,7 @@ def test_a_new_fact_names_the_consequence_it_may_trigger_and_the_log_keeps_it(
     fid = NoteManager(dcc_world).add_fact("The factor bids for the contract at the hall today.",
                                           holders=["player"], nowhere=True)
     printed = capsys.readouterr().out
-    assert f"{fid} may trigger [{cid[:4]}]" in printed
+    assert f"{fid} may trigger {cid} " in printed
     assert f"gm-consequence.sh fire {cid} --by {fid}" in printed
     assert not any(c["id"] == cid and c.get("fired") for c in cm.waiting_on_fact())   # not fired
     from lib.embedder import FakeEmbedder

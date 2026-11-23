@@ -280,7 +280,7 @@ class WorldSearcher:
                 consequence_text = self._format_text(c.get('consequence', ''), full=full, limit=180)
                 from consequence_manager import when_words
                 trigger_text = self._format_text(when_words(c, self.json_ops), full=full, limit=60)
-                print(f"  [{c.get('id', '?')}] {consequence_text} (waits for: {trigger_text})")
+                print(f"  {c.get('id', '?')} {consequence_text} (waits for: {trigger_text})")
 
         if results.get('plots'):
             print("\nPLOTS:")

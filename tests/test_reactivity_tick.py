@@ -10,6 +10,8 @@ eyeballed.
 import json
 from pathlib import Path
 
+import pytest
+
 from lib.consequence_manager import ConsequenceManager
 
 
@@ -50,7 +52,9 @@ def test_rearm_makes_a_fired_consequence_wait_again(dcc_world):
     cm = ConsequenceManager(dcc_world)
     scene = {"location": "Floor 3 - The Over City", "time": "day", "present_npcs": []}
     cm.tick(scene)
-    assert "fired" not in cm.rearm("c3e6")                     # a prefix is enough
+    with pytest.raises(ValueError, match="No active consequence"):
+        cm.rearm("c3e6")                                       # the id, not a prefix of it
+    assert "fired" not in cm.rearm("C3E61742")                 # case aside
     assert any(c["id"] == "c3e61742" for c in cm.tick(scene)["fired"])
     cm.resolve("c3e61742")
     for wrong in ("c3e61742", "a36a02f6"):                     # resolved; and one still waiting

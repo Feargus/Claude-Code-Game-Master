@@ -102,7 +102,7 @@ def check_facts(campaign_dir, fact_ids, embedder, skip=()) -> tuple[list[str], l
                 break
             log.append(f"{fid} trigger {cid} {score:.2f}")
             if score >= TRIGGER_NOTE:
-                out.append(f"  {fid} may trigger [{cid[:4]}] \"{triggers['trigger:' + cid]}\" "
+                out.append(f"  {fid} may trigger {cid} \"{triggers['trigger:' + cid]}\" "
                            f"({score:.2f}) → {effects.get(cid, '')}")
                 out.append(f"    If it does: bash tools/gm-consequence.sh fire {cid} --by {fid}")
         if not fact.get("plots"):

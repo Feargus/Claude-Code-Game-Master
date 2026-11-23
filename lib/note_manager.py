@@ -583,7 +583,7 @@ class NoteManager:
                                 f"truth first (gm-note.sh truth {f['id']} ...), or remove it")
         store = self.json_ops.load_json("consequences.json") or {}
         for c in store.get('active', []):
-            cid = str(c.get('id', '?'))[:4]
+            cid = c.get('id', '?')
             if any(e.get('type') == 'tell' and e.get('fact') == fact_id
                    for e in c.get('effects') or []):
                 blocking.append(f"consequence {cid} tells it when it fires: resolve it first")

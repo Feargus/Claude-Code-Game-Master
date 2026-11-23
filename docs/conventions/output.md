@@ -61,7 +61,7 @@ one gets a letter and a number, in the order made.
 | Record | Id | Written as |
 |---|---|---|
 | fact | `f` and a number | `f43` |
-| consequence | `c` and a number (target; today upstream's 8 hex characters, shown as the first 4: `[2563]`) | `c12` |
+| consequence | `c` and a number | `c12` |
 | NPC | the name | `npc:Matron Ysabet Corvane` in ids, the name in text |
 | location | the name | `location:The Saffron House` in ids, the name in text |
 | faction | a short id | `faction:houses` in ids, the name in text |
@@ -150,8 +150,5 @@ files. A new idea gets its word here before it is used.
 - Semantic recall's lines after a fact carry no marker yet, but for an earlier fact it may
   repeat (they become `[CHECK]` for a consequence it may trigger, `[NOTE]` for a link it
   made, `[CHECK]` for a suggestion).
-- Consequence ids are upstream's hex codes; the hiding marks are today's.
-- Square brackets that are neither marker nor mark: a plot's kind in the brief (`[main] The
-  Sold Contract`), consequence ids in lists (`[2563]`; the brief and the location card
-  write them bare since 2026-11-22).
+- The hiding marks are today's (the table above).
 - `Error:` instead of `[ERROR]`, and `[ERROR]` on standard output: `todo.md` → Review.

@@ -362,7 +362,7 @@ def test_a_faction_owns_and_is_in_plots(borant, dcc_world):
     key = plots.add("Hostile Takeover", "own every guard post on Floor 1", owner="Meridian", involves=["faction:system"])
     stored = plots.plots()[key]
     assert stored["owner"] == "faction:meridian-group" and stored["involves"] == ["faction:system"]
-    assert "(main, Meridian Group's, open)" in plots.show(key)
+    assert "=== Hostile Takeover (main, Meridian Group, open) ===" in plots.show(key)
     assert "goal: own every guard post on Floor 1" in plots.show(key)
     assert "Plot Hostile Takeover (open), goal: own every guard post on Floor 1" in borant.show("Meridian")
     assert "In plots: Hostile Takeover" in borant.show("system")
@@ -373,7 +373,7 @@ def test_a_faction_owns_and_is_in_plots(borant, dcc_world):
 def test_the_brief_names_a_faction_owner(borant, dcc_world):
     from lib.session_manager import SessionManager
     _plots(dcc_world).add("Hostile Takeover", "own every guard post", owner="Meridian")
-    assert "Hostile Takeover (Meridian Group): own every guard post" in SessionManager(dcc_world).get_full_context()
+    assert "Hostile Takeover (main, Meridian Group): own every guard post" in SessionManager(dcc_world).get_full_context()
 
 
 def test_a_faction_with_a_member_here_gets_a_card(borant, ops, dcc_world):

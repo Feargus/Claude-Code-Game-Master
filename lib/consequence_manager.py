@@ -4,8 +4,8 @@ Consequence management module for GM tools
 Handles tracking future events and consequences
 """
 
+import re
 import sys
-import uuid
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +16,13 @@ import facts as fact_file
 from entity_manager import EntityManager, npcs_present
 from game_time import STORED_FORMAT
 
+
+def next_id(data: dict[str, Any]) -> str:
+    """The id the next consequence gets: c and one past every number given, waiting
+    or resolved (as facts count: f12)."""
+    numbers = [int(str(c.get('id'))[1:]) for c in (data.get('active') or []) + (data.get('resolved') or [])
+               if isinstance(c, dict) and re.fullmatch(r"c\d+", str(c.get('id', '')))]
+    return f"c{max(numbers, default=0) + 1}"
 
 class ConsequenceManager(EntityManager):
     """The campaign's consequences: things waiting to happen.
@@ -159,7 +166,7 @@ class ConsequenceManager(EntityManager):
 
         data = self.json_ops.load_json(self.consequences_file)
 
-        consequence_id = str(uuid.uuid4())[:8]
+        consequence_id = next_id(data)
         consequence = {
             'id': consequence_id,
             'consequence': description,
@@ -271,7 +278,7 @@ class ConsequenceManager(EntityManager):
         if isinstance(report, dict):
             lines += world_rules.report_lines(self.json_ops, report)
         for c in done.get('fired') or []:
-            lines.append(f"that fired [{c['id']}] {c['consequence']}")
+            lines.append(f"that fired {c['id']}: {c['consequence']}")
         return lines
 
     def _check_tell(self, effect: dict[str, Any]) -> str:
@@ -353,7 +360,7 @@ class ConsequenceManager(EntityManager):
             return [f"{', '.join(e.get('holders') or [])} knew {e['fact']} already"]
         lines = [f"{', '.join(new)} now know(s) {e['fact']}"]
         for c in notes.last_fired:
-            lines.append(f"that fired [{c['id']}] {c['consequence']}")
+            lines.append(f"that fired {c['id']}: {c['consequence']}")
             lines += [f"  {line}" for line in c.get('effects_done', [])]
         return lines
 
@@ -601,22 +608,11 @@ class ConsequenceManager(EntityManager):
         return fact_file.by_id(fact_file.load(self.json_ops), fact_id) or {}
 
     def _find_active(self, data: dict[str, Any], consequence_id: str):
-        """The active consequence whose id is or starts with `consequence_id`.
-
-        Returns (consequence, error). The session brief shows 4-character ids, so a
-        unique prefix is enough.
-        """
+        """The active consequence with this id (c12). Returns (consequence, error)."""
         cid = str(consequence_id).strip()
-        matches = [c for c in data.get('active', []) if str(c.get('id', '')).startswith(cid)]
-        if not cid or not matches:
-            return None, f"No active consequence '{consequence_id}'"
-        exact = [c for c in matches if c.get('id') == cid]
-        if exact:
-            return exact[0], ''
-        if len(matches) > 1:
-            return None, (f"'{consequence_id}' fits several consequences: "
-                          f"{', '.join(c['id'] for c in matches)}")
-        return matches[0], ''
+        found = next((c for c in data.get('active', []) if str(c.get('id', '')).lower() == cid.lower()),
+                     None)
+        return (found, '') if found and cid else (None, f"No active consequence '{consequence_id}'")
 
     def fire(self, consequence_id: str, reason: str = None,
              by_fact: str = None) -> dict[str, Any]:
@@ -633,7 +629,7 @@ class ConsequenceManager(EntityManager):
             print(f"[ERROR] {error}", file=sys.stderr)
             return {}
         if c.get('fired'):
-            print(f"[ERROR] [{c['id']}] has fired already ({c['fired'].get('reason', '?')}). "
+            print(f"[ERROR] {c['id']} has fired already ({c['fired'].get('reason', '?')}). "
                   f"Play it out and resolve it (gm-consequence.sh resolve {c['id']}); to let "
                   f"it happen again, arm it first: gm-consequence.sh rearm {c['id']}",
                   file=sys.stderr)
@@ -678,7 +674,7 @@ class ConsequenceManager(EntityManager):
         if not c:
             raise ValueError(error)
         if not c.get('fired'):
-            raise ValueError(f"[{c['id']}] hasn't fired: it is waiting already.")
+            raise ValueError(f"{c['id']} hasn't fired: it is waiting already.")
         del c['fired']
         self.json_ops.save_json(self.consequences_file, data)
         return c
@@ -814,11 +810,6 @@ def _rule_effects(raws) -> list[dict[str, Any]]:
     return out
 
 
-def short_id(c: dict[str, Any]) -> str:
-    """A consequence's id as the lists show it: its first 4 characters."""
-    return str(c.get('id', '?'))[:4]
-
-
 def sentence(text) -> str:
     """The text with a full stop at the end, if it has none."""
     text = str(text or "").strip()
@@ -900,7 +891,7 @@ def fired_lines(c: dict[str, Any], indent: str = "  ") -> list[str]:
     """A fired consequence still to be played out, in three lines
     (docs/conventions/output.md): what happens, what fired it, the command that
     closes it once played out."""
-    cid = short_id(c)
+    cid = c.get('id', '?')
     why = (c.get('fired') or {}).get('reason') or "fired by the GM"
     return [f"{indent}[FIRED] {cid} {sentence(c.get('consequence', '?'))}",
             f"{indent}  Because: {sentence(why)}",
@@ -917,7 +908,7 @@ def print_fired(fired: list[dict[str, Any]]) -> None:
         return
     print(f"[REACTIVITY] fired these {len(fired)}")
     for c in fired:
-        print(f"  [{c['id']}] {c['consequence']}")
+        print(f"  {c['id']} {c['consequence']}")
         print(f"      ↳ fired because: {c['match_reason']} ({AFTER_FIRING})")
         for line in c.get('effects_done', []):
             print(f"      ↳ {line}")
@@ -986,17 +977,17 @@ def main():
 
     subparsers.add_parser('log', help='Why each consequence fired')
     rearm_parser = subparsers.add_parser('rearm', help='A fired consequence waits again')
-    rearm_parser.add_argument('id', help='Consequence ID (a unique prefix is enough)')
+    rearm_parser.add_argument('id', help='Consequence id (c12)')
 
     # Fire by hand
     fire_parser = subparsers.add_parser('fire', help='Fire a consequence by hand (its condition happened)')
-    fire_parser.add_argument('id', help='Consequence ID (a unique prefix is enough)')
+    fire_parser.add_argument('id', help='Consequence id (c12)')
     fire_parser.add_argument('--reason', help='What happened that fired it')
     fire_parser.add_argument('--by', dest='by_fact', help='Id of the recorded fact that fulfilled it (f17)')
 
     # Resolve
     resolve_parser = subparsers.add_parser('resolve', help='Resolve a consequence')
-    resolve_parser.add_argument('id', help='Consequence ID')
+    resolve_parser.add_argument('id', help='Consequence id (c12)')
 
     # List resolved
     subparsers.add_parser('list-resolved', help='List resolved consequences')
@@ -1052,10 +1043,10 @@ def main():
             for c in pending:
                 then = describe_effects(c.get('effects'))
                 if c.get('fired'):
-                    print(f"  [{c['id']}] FIRED, not resolved yet: {c['consequence']} "
+                    print(f"  {c['id']} FIRED, not resolved yet: {c['consequence']} "
                           f"(because: {c['fired'].get('reason', '?')})")
                     continue
-                print(f"  [{c['id']}] {c['consequence']} (waits for: {when_words(c, manager.json_ops)})"
+                print(f"  {c['id']} {c['consequence']} (waits for: {when_words(c, manager.json_ops)})"
                       + (f"; when it fires, {then}" if then else ""))
 
     elif args.action == 'tick':
@@ -1068,7 +1059,7 @@ def main():
         else:
             print(f"{len(prov)} reactive firing(s):")
             for p in prov:
-                print(f"  [{p['id']}] {p['consequence']}")
+                print(f"  {p['id']} {p['consequence']}")
                 print(f"      ↳ {p['reason']} @ {p['fired_at']}")
 
     elif args.action == 'rearm':

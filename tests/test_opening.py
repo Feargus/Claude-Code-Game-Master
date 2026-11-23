@@ -113,7 +113,7 @@ def test_the_brief_carries_the_hook_and_horizon_on(world):
     ws, _ = world
     Opening(ws).apply(json.loads(json.dumps(SPEC)))
     ctx = SessionManager(ws).get_full_context()
-    assert "[main] The Writ (Dekker): Dekker's crew walks into the market with a writ for a sleeve." in ctx
+    assert "The Writ (main, Dekker): Dekker's crew walks into the market with a writ for a sleeve." in ctx
     assert "  goal: bring the sleeve back to Meridian" in ctx
     assert "  still sketches (named, not built): Dekker, Seraphine Halcyon-Vey" in ctx
     assert "PRIMER" not in ctx

@@ -552,7 +552,7 @@ def _fired_lines(fired, indent: str) -> list[str]:
     from consequence_manager import AFTER_FIRING
     lines = []
     for c in fired:
-        lines.append(f"{indent}[REACTIVITY] fired [{c['id']}] {c['consequence']}")
+        lines.append(f"{indent}[REACTIVITY] fired {c['id']} {c['consequence']}")
         lines.append(f"{indent}    ↳ fired because: {c.get('match_reason', '')} ({AFTER_FIRING})")
         lines += [f"{indent}    ↳ {line}" for line in c.get("effects_done") or []]
     return lines

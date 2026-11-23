@@ -47,4 +47,4 @@ def test_brief_and_check_show_effects(dcc_world):
             f"tells {fid} to street")
     out = subprocess.run([sys.executable, str(ROOT / "lib" / "consequence_manager.py"), "check"],
                          capture_output=True, text=True, cwd=str(Path(dcc_world).parent)).stdout
-    assert f"[{cid}]" in out and then in out
+    assert f"  {cid} " in out and then in out

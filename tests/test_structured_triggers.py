@@ -131,3 +131,18 @@ def test_triggers_in_words():
              ("on_fact", "Pell bids for the contract"): "Pell bids for the contract"}
     for (ttype, match), expected in words.items():
         assert trigger_words({"type": ttype, "match": match}) == expected
+
+
+def test_consequence_ids_count_up_like_facts(dcc_world):
+    """c1, c2, …: one past every id given, waiting or resolved; found by the id
+    whole (a prefix of c12 is c1)."""
+    cm = ConsequenceManager(dcc_world)
+    first = cm.add_consequence("One", "Carl opens the door")
+    second = cm.add_consequence("Two", "Carl opens the window")
+    assert (first, second) == ("c1", "c2")
+    cm.resolve(first)
+    assert cm.add_consequence("Three", "Carl opens the hatch") == "c3"
+    data = json.loads(_consq_path(dcc_world).read_text(encoding="utf-8"))
+    found, _ = cm._find_active(data, "c3")
+    assert found["consequence"] == "Three"
+    assert cm._find_active(data, "c")[0] is None

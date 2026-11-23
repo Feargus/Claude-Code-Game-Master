@@ -258,7 +258,7 @@ def timeline_lines(json_ops, moments: list[dict[str, Any]], place: str, present:
         cons += [c for report in m["rules"] for c in fired(report)]
         for c in cons:
             tag = "off-screen" if c.get("offscreen") else "fired"
-            full.append(f"  {when}: [{c['id']}] {c['consequence']} ({tag})")
+            full.append(f"  {when}: {c['id']} {c['consequence']} ({tag})")
             full += [f"      ↳ {line}" for line in c.get("effects_done", [])]
     lines = [f"  {text} — {', '.join(times)}" for text, times in grouped.items()]
     return lines + full

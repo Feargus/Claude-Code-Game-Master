@@ -247,7 +247,7 @@ def test_off_screen_does_not_stop_but_keeps_its_do_now(dcc_world, ops):
     assert manager.stopped is None
     lines = "\n".join(time_stops.timeline_lines(ops, manager.moments, *manager.here, manager.through))
     assert "Do now (off-screen, Grudge from 2): Start a clock for them." in lines
-    assert f"[{cid}] The Syndicate meets (off-screen)" in lines
+    assert f"{cid} The Syndicate meets (off-screen)" in lines
 
 
 def test_the_output_when_time_stops(dcc_world, quiet):

@@ -75,6 +75,17 @@ def owner_name(json_ops, owner: str) -> str:
     return world_rules.holder_name(json_ops, owner)
 
 
+def plot_name(json_ops, key: str, plot: dict[str, Any], status: bool = False) -> str:
+    """A plot as the lists name it: "The Sold Contract (main, Cantor Aurel Strake)",
+    with its status too when asked ("…, open)")."""
+    parts = [plot.get("kind", "?")]
+    if plot.get("owner"):
+        parts.append(owner_name(json_ops, plot["owner"]))
+    if status:
+        parts.append(plot.get("status", "open"))
+    return f"{key} ({', '.join(parts)})"
+
+
 def moved_by(json_ops, key: str) -> list[str]:
     """What will move a plot by itself: its clocks and waiting consequences, by name
     or id (an owner's goal goes nowhere without one, 2026-11-18)."""
@@ -327,15 +338,14 @@ class PlotManager(EntityManager):
         """One plot on one line: kind, key, where it stands (or what it is after)."""
         p = self.plots()[key]
         text = p.get("stands") or p.get("goal", "")
-        return f"[{p.get('kind', '?')}] {key}: {text}"
+        return f"{plot_name(self.json_ops, key, p)}: {text}"
 
     def show(self, raw_key: str) -> str:
         """The plot in full, with its clocks, consequences and facts."""
         from note_manager import fact_line
         key = self.key(raw_key)
         p = self.plots()[key]
-        whose = f", {owner_name(self.json_ops, p['owner'])}'s" if p.get("owner") else ""
-        lines = [f"=== {key} ({p.get('kind', '?')}{whose}, {p.get('status', 'open')}) ===",
+        lines = [f"=== {plot_name(self.json_ops, key, p, status=True)} ===",
                  f"goal: {p.get('goal', '')}"]
         if p.get("stands"):
             lines.append(f"stands: {p['stands']}")
@@ -352,7 +362,7 @@ class PlotManager(EntityManager):
         store = self.json_ops.load_json("consequences.json") or {}
         for c in store.get("active", []):
             if key in (c.get("plots") or []):
-                lines.append(f"consequence [{str(c.get('id'))[:4]}] {c.get('consequence', '')}")
+                lines.append(f"consequence {c.get('id')}: {c.get('consequence', '')}")
         facts = [f for f in fact_file.newest_first(fact_file.load(self.json_ops))
                  if key in (f.get("plots") or [])]
         if facts:

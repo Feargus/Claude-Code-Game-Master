@@ -138,7 +138,7 @@ def test_a_complex_action_for_the_plot_moves_its_plan_clock_and_portents(ops, dc
         "Rumour: Meridian is hiring.", "y", trigger_type="on_clock", match="Takeover:1",
         offscreen=True)
     text = "\n".join(ft.run(ops, [TAKE], Dice(6, 1), only="Meridian"))   # 6+3 against 1+2
-    assert "plan clock Takeover (Hostile Takeover): 1/3" in text and f"[{cid}]" in text
+    assert "plan clock Takeover (Hostile Takeover): 1/3" in text and f"{cid} " in text
 
 
 def test_a_failed_action_or_one_not_for_the_plot_moves_nothing(ops, dcc_world):

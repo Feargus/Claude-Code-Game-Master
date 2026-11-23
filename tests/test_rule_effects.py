@@ -179,7 +179,7 @@ def test_a_consequence_waits_on_a_value(dcc_world, ops, capsys):
         assert why in capsys.readouterr().err
     rise = wr.change(ops, "Sea level", by=4)                         # 2 → 6 passes 5
     assert [c["id"] for c in rise["fired"]] == [flood]
-    assert "[REACTIVITY] fired [" in "\n".join(wr.change_lines(ops, rise))
+    assert "[REACTIVITY] fired c" in "\n".join(wr.change_lines(ops, rise))
     assert wr.change(ops, "Sea level", to=4)["fired"] == []          # fires once
     assert wr.change(ops, "Patience", "faction:system", to=0)["fired"] == []   # another faction
     assert [c["id"] for c in wr.change(ops, "Patience", "faction:crawlers", by=-5)["fired"]] == [act]

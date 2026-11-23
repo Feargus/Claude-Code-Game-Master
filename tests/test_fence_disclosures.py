@@ -81,7 +81,7 @@ def test_context_remainder_counts_on_every_truncated_section(tmp_path):
     ws, _ = _campaign(tmp_path, extra={"plots.json": plots, "facts.json": facts,
                                        "world-bible.json": bible, "consequences.json": pending})
     ctx = SessionManager(ws).get_full_context()
-    assert all(f"] Thread {i}:" in ctx for i in range(8))
+    assert all(f"Thread {i} (" in ctx for i in range(8))
     assert '+ 2 more: gm-note.sh find --plot "Thread 0" --hidden' in ctx
     assert "secret fact 7" in ctx                            # the five under the plot ...
     assert all(ctx.count(f"secret fact {i}") == 1 for i in range(1, 8))   # ... each printed once

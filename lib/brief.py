@@ -13,7 +13,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 import facts as fact_file
-from consequence_manager import fact_trigger, fired_lines, sentence, short_id, then_line
+from consequence_manager import fact_trigger, fired_lines, sentence, then_line
 from entity_manager import is_party_member
 from note_manager import fact_text
 from threat_clocks import ThreatClockManager
@@ -178,7 +178,7 @@ class Brief:
         clocks, the consequences waiting in it, and what the character doesn't
         know of it (secrets and facts only others hold), newest first."""
         from opening import Opening
-        from plot_manager import plot_order
+        from plot_manager import plot_name, plot_order
         plots = self.json_ops.load_json("plots.json") or {}
         self.open_plots = keys = plot_order(self.json_ops, plots)
         if not keys:
@@ -187,11 +187,7 @@ class Brief:
         lines = ["", "--- PLOTS (most pressing first; gm-plot.sh show \"<plot>\" for one in full) ---"]
         for key in keys:
             p = plots[key]
-            whose = ""
-            if p.get("owner"):
-                from plot_manager import owner_name
-                whose = f" ({owner_name(self.json_ops, p['owner'])})"
-            lines.append(f"[{p.get('kind', '?')}] {key}{whose}: {p.get('stands') or p.get('goal', '')}")
+            lines.append(f"{plot_name(self.json_ops, key, p)}: {p.get('stands') or p.get('goal', '')}")
             if p.get("stands") and p.get("goal"):
                 lines.append(f"  goal: {p['goal']}")
             sketches = horizon(key)
@@ -226,7 +222,7 @@ class Brief:
             if c.get("fired"):
                 lines += fired_lines(c)
             elif fact_trigger(c):
-                lines += [f"  {short_id(c)} waits for: {sentence(fact_trigger(c))}",
+                lines += [f"  {c['id']} waits for: {sentence(fact_trigger(c))}",
                           then_line(c)]
         unknown = self._scene().rank([f for f in self._facts_newest_first()
                                       if self._unknown_to_character(f)

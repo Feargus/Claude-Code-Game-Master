@@ -76,7 +76,7 @@ def test_the_ladder_climbs_by_itself(dcc_world):
     fired = tcm.advance("Witness")["fired"]
     lines = fired[0]["effects_done"]
     assert lines[0] == f"npc:Mordecai now know(s) {fid}"
-    assert lines[1] == f"that fired [{hunt}] Mordecai hunts Tandy"
+    assert lines[1] == f"that fired {hunt}: Mordecai hunts Tandy"
     assert lines[2].strip() == "started clock The hunt (0/3, on event)"
     assert "The hunt" in tcm.get_clocks()
 
