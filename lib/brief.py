@@ -19,6 +19,21 @@ from note_manager import fact_text
 from threat_clocks import ThreatClockManager
 
 
+
+def _clock_lines(clocks: dict) -> list[str]:
+    """Clocks, most urgent first: how far and when due, and what happens when one
+    fills. What a clock is about is its plot's; a full one has fired already."""
+    lines = []
+    for name, c in ThreatClockManager.by_urgency(clocks):
+        cur, mx = int(c.get('current', 0)), int(c.get('max', 1))
+        if cur >= mx:
+            lines.append(f"  clock {name} at {cur}/{mx}: full")
+            continue
+        lines.append(f"  clock {name} at {cur}/{mx}{ThreatClockManager.due_text(c)}")
+        if c.get('consequence'):
+            lines.append(f"    When full: {sentence(c['consequence'])}")
+    return lines
+
 class Brief:
     """The brief for one campaign, built from a SessionManager's view of it."""
 
@@ -202,16 +217,7 @@ class Brief:
         lines = []
         clocks = {n: c for n, c in (self.json_ops.load_json("threat-clocks.json") or {}).items()
                   if isinstance(c, dict) and belongs(c.get("plots") or [])}
-        for name, c in ThreatClockManager.by_urgency(clocks):
-            # What it is about is its plot's; what the brief adds is what happens when
-            # it fills. A full one has fired that already ([FIRED] below).
-            cur, mx = int(c.get('current', 0)), int(c.get('max', 1))
-            if cur >= mx:
-                lines.append(f"  clock {name} at {cur}/{mx}: full")
-                continue
-            lines.append(f"  clock {name} at {cur}/{mx}{ThreatClockManager.due_text(c)}")
-            if c.get('consequence'):
-                lines.append(f"    When full: {sentence(c['consequence'])}")
+        lines += _clock_lines(clocks)
         # Fired ones are to be played out; of the waiting ones only those a recorded
         # fact triggers, which the GM must recognise (the scripts fire the others
         # themselves, and print them then). Decided 2026-11-22.
