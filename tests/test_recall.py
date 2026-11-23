@@ -265,3 +265,26 @@ def test_a_confident_plot_and_person_are_linked_at_once_with_the_undo(dcc_world,
     assert f"{fid} is about npc:Vex Marrow too, by recall" in printed
     fact = next(f for f in n._all() if f["id"] == fid)
     assert fact["plots"] == ["Stolen Loot"] and "npc:Vex Marrow" in fact["about"]
+
+
+def test_a_new_fact_that_repeats_an_earlier_one_is_named_with_the_fix(dcc_world, monkeypatch, capsys):
+    """"X told Y …" after the news is on record: tell the earlier fact, keep only
+    what is new. Versions of one truth are meant to resemble it: never named."""
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    nm = NoteManager(dcc_world)
+    news = nm.add_fact("Seren is to marry Strake at the next feast of the Steward.",
+                       holders=["npc:Mordecai"], nowhere=True)
+    capsys.readouterr()
+    told = nm.add_fact("Seren is to marry Strake at the next feast of the Steward, she said.",
+                       holders=["player", "npc:Mordecai"], nowhere=True)
+    printed = capsys.readouterr().out
+    assert f"[CHECK] {told} may repeat {news}" in printed
+    assert f"gm-note.sh tell {news} player --from" in printed
+    assert f"gm-note.sh edit {told}" in printed
+    again = nm.add_fact("Seren is to marry Strake at the next feast of the Steward, again.",
+                        holders=["npc:Mordecai"], nowhere=True)
+    assert f"They know {news} already. If it does: bash tools/gm-note.sh remove {again}" \
+        in capsys.readouterr().out
+    nm.add_fact("Seren is to marry Strake at the last feast of the Steward.", holders=["player"],
+                truth="wrong", version_of=news, nowhere=True)
+    assert f"may repeat {news}" not in capsys.readouterr().out

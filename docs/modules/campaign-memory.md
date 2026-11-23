@@ -34,12 +34,13 @@ facts, and before that session summaries and arc entries).
   play has begun, `gm-npc.sh create` and `gm-location.sh add` refuse a record that reads like
   an existing one (similarity 0.70 or more; a person re-described scored 0.63 to 0.74,
   different people at most 0.65) unless `--another` is given.
-- **The check as a fact is recorded** (`lib/recall_notes.py`, since 2026-11-22; before, a
-  background job left notes for the next command): the new fact is compared with the
-  `on_fact` triggers (0.65: each consequence it may trigger, with the command to fire it;
-  nothing fires by itself), the open plots (0.45, clearly the best) and the people (0.55,
-  and closer than the character and everyone it is linked to), and the fact's own output
-  names what fits. A plot or person from 0.65 (`CONFIDENT`) is linked at once, with the
+- **The check as a fact is recorded** (`lib/recall_notes.py`): the new fact is compared
+  with the `on_fact` triggers (0.65: each consequence it may trigger, with the command to
+  fire it; nothing fires by itself), the open plots (0.45, clearly the best), the people
+  (0.55, and closer than the character and everyone it is linked to) and the earlier facts
+  (0.70, versions of one truth aside: a fact it may repeat, with the commands to tell the
+  earlier one and edit the new one down to what is new), and the fact's own output names
+  what fits. A plot or person from 0.65 (`CONFIDENT`) is linked at once, with the
   command to undo it; a consequence is only ever named. Every comparison worth a look goes into `recall-check.log`,
   with each consequence the GM fired by a fact, to tune the thresholds.
 - **A fact not embedded yet** (the background job is still running) is embedded by the

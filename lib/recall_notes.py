@@ -13,7 +13,11 @@ the model loaded), and each is compared with:
 - **a person it reads like it is about but isn't linked to** (a missed name
   check: "the clown came back", Pagliacci): ABOUT_NOTE or more, and closer than
   the character and everyone it is linked to already, so a person whose record
-  is about the character (a copy of them) isn't suggested for every fact.
+  is about the character (a copy of them) isn't suggested for every fact;
+- **an earlier fact it repeats** (TWIN_NOTE or more; versions of one truth
+  aside): "Seren told Ilaria she is to marry Strake" after the betrothal is on
+  record. The GM then tells the earlier fact to those who don't hold it and
+  edits the new one down to what is new, or removes it.
 
 A plot or a person from CONFIDENT up is not suggested but linked at once, and the
 output says so with the command to undo it: a wrong link costs less than a missing
@@ -35,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 TRIGGER_NOTE = 0.65         # the Long Hull playtest's nine wrong matches scored 0.51–0.62
 PLOT_NOTE, PLOT_MARGIN = 0.45, 0.05
 ABOUT_NOTE = 0.55
+TWIN_NOTE = 0.70            # the Long Hull's "X told Y …" facts and their twins: 0.66–0.81
 CONFIDENT = 0.65            # a plot or person linked by itself from here
 LOG_FLOOR = 0.40            # triggers logged from here, so the misses show too
 LOG = "recall-check.log"
@@ -84,6 +89,7 @@ def check_facts(campaign_dir, fact_ids, embedder, skip=()) -> tuple[list[str], l
              if isinstance(p, dict) and p.get("status", "open") == "open"}
     people = {k: v for k, v in vectors.items() if k.startswith("npc:")}
     player = vectors.get("player")
+    from facts import number
     out, log, links = [], [], []
     for fid in fact_ids:
         fact, v = facts.get(fid), vectors.get(f"fact:{fid}")
@@ -129,5 +135,37 @@ def check_facts(campaign_dir, fact_ids, embedder, skip=()) -> tuple[list[str], l
             elif best[0] >= ABOUT_NOTE and best[0] > floor:
                 out.append(f"  {fid} reads like it is about {best[1]} ({best[0]:.2f}), but isn't "
                            f"linked: bash tools/gm-note.sh about {fid} --add \"{best[1]}\"")
+        out += _twins(fid, fact, facts, v, vectors, log, number)
     _log(campaign_dir, log)
     return out, links
+
+
+def _quoted(holder: str) -> str:
+    return f'"{holder}"' if " " in holder else holder
+
+
+def _twins(fid, fact, facts, v, vectors, log, number) -> list[str]:
+    """The earlier facts this one repeats, with what to do: tell the earlier one
+    to whoever doesn't hold it, and keep only what is new here."""
+    root = fact.get("version_of") or fid
+    ranked = sorted(((float(v @ vectors[f"fact:{k}"]), k) for k, other in facts.items()
+                     if number(other) < number(fact) and f"fact:{k}" in vectors
+                     and not other.get("attitude") and (other.get("version_of") or k) != root),
+                    reverse=True)
+    if ranked and ranked[0][0] >= LOG_FLOOR:
+        log.append(f"{fid} repeats {ranked[0][1]} {ranked[0][0]:.2f}")
+    out = []
+    for score, k in [r for r in ranked if r[0] >= TWIN_NOTE][:2]:
+        known = set(facts[k].get("holders") or [])
+        missing = [] if "public" in known else [h for h in fact.get("holders") or []
+                                                if h not in known]
+        out.append(f"[CHECK] {fid} may repeat {k} ({score:.2f}): {facts[k].get('fact', '')}")
+        if missing:
+            out.append(f"  If it does, tell it: bash tools/gm-note.sh tell {k} "
+                       f"{' '.join(_quoted(h) for h in missing)} --from \"<who told them>\"")
+            out.append(f"  and keep only what is new: bash tools/gm-note.sh edit {fid} "
+                       f"\"<what is new>\", or remove {fid} if nothing is")
+        else:
+            out.append(f"  They know {k} already. If it does: bash tools/gm-note.sh remove {fid}, "
+                       f"or edit {fid} \"<what is new>\"")
+    return out

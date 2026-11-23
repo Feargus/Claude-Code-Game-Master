@@ -147,8 +147,9 @@ files. A new idea gets its word here before it is used.
   `CREDITS_SPENT`, `LOOT`, `DEATH`, `GROWTH_DUE`, `XP_GAIN`, `GROWN`, `RAISED`, `PERK`
   (become `[SUCCESS]` sentences).
 - The fact's output reads its own text back (`[SUCCESS] Recorded fact f83: <the text>`).
-- Semantic recall's lines after a fact carry no marker yet (they become `[CHECK]` for a
-  consequence it may trigger, `[NOTE]` for a link it made, `[CHECK]` for a suggestion).
+- Semantic recall's lines after a fact carry no marker yet, but for an earlier fact it may
+  repeat (they become `[CHECK]` for a consequence it may trigger, `[NOTE]` for a link it
+  made, `[CHECK]` for a suggestion).
 - Consequence ids are upstream's hex codes; the hiding marks are today's.
 - Square brackets that are neither marker nor mark: a plot's kind in the brief (`[main] The
   Sold Contract`), consequence ids in lists (`[2563]`; the brief and the location card
