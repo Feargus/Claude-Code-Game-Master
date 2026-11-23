@@ -88,11 +88,12 @@ class Cards:
             or _norm(fact_text(fact)) in self.shown_texts or _norm(fact["fact"]) in self.shown_texts
 
     def _fact_list(self, label: str, facts: list, hint: str, tag=None,
-                   hidden_is_given: bool = False, location: str = None) -> list[str]:
+                   hidden_is_given: bool = False, location: str = None,
+                   name_shown: bool = True) -> list[str]:
         """Up to PER_LIST facts under `label`, those that fit the scene best first
-        (recall.SceneRanker), not counting those printed already: a better-fitting
-        one printed above is named by id. Then how many
-        more there are, and the command that lists them. `hidden_is_given`: the
+        (recall.SceneRanker), not counting those printed already: with `name_shown`
+        (a person's lists: who knows it is news) a better-fitting one printed above
+        is named by id. Then how many more there are, and the command that lists them. `hidden_is_given`: the
         label says the player doesn't know them, so the [HIDDEN FROM PLAYER] mark
         is left out."""
         if not facts:
@@ -115,7 +116,7 @@ class Cards:
                 text = text.replace("[HIDDEN FROM PLAYER] ", "", 1)
             fid = f"{f['id']} " if f.get("id") else ""
             lines.append(f"  {label}{extra}: {fid}{text}")
-        if again:
+        if again and name_shown:
             lines.append(f"  {label}: also {', '.join(again)} (above)")
         rest = len(facts) - len(fresh) - len(again)
         if rest > 0:
@@ -172,11 +173,12 @@ class Cards:
             else:
                 hidden.append(f)
         like = 'gm-note.sh find --like "<what is happening>"'
+        # A place only ranks its facts: one printed above says nothing more here.
         lines += self._fact_list("fits here", known, f'{like} --held-by player --at "{location}"',
-                                 location=location)
+                                 location=location, name_shown=False)
         lines += self._fact_list(f"fits here, {self.player} doesn't know", hidden,
                                  f'{like} --hidden --at "{location}"', hidden_is_given=True,
-                                 location=location)
+                                 location=location, name_shown=False)
         return lines
 
     def _waiting_here(self, location: str) -> list[str]:

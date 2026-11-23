@@ -102,7 +102,7 @@ def test_the_brief_marks_and_lists_wrong_beliefs(message):
     nm, true, wrong = message
     nm.add_fact("The guild pays in scrip.", holders=["player"], truth="partial")
     ctx = SessionManager(nm.world_state_dir).get_full_context()
-    assert f"[WRONG; the truth is {true}] The message names the drop: Pier 9" in ctx   # KEY FACTS
+    assert ctx.count("The message names the drop: Pier 9 at midnight.") == 1       # printed once
     i = ctx.index("GETS WRONG")
     section = ctx[i:ctx.index("\n---", i)]
     assert f"{wrong} (believes): The message names the drop: Pier 9 at midnight." in section
@@ -165,3 +165,22 @@ def test_a_fact_the_player_does_not_hold_is_marked():
     assert fact_text({"fact": "x", "holders": ["npc:Mordecai", "street"]}) == "[HIDDEN FROM PLAYER] x"
     assert fact_text({"fact": "x", "holders": ["npc:Mordecai", "public"]}) == "x"
     assert fact_text({"fact": "x", "holders": ["player", "npc:Mordecai"]}) == "x"
+
+
+def test_a_truth_printed_above_is_named_by_id(dcc_world):
+    from lib.plot_manager import PlotManager
+    PlotManager(dcc_world).add("The Drop", "find where the guild drops its scrip")
+    nm = NoteManager(dcc_world)
+    true = nm.add_fact("The guild drops its scrip in the back room.", holders=["npc:Mordecai"],
+                       plots=["The Drop"])
+    wrong = nm.add_fact("The guild drops its scrip at Pier 9.", holders=["player"],
+                        truth="wrong", version_of=true)
+    ctx = SessionManager(dcc_world).get_full_context()
+    assert f"{wrong} (believes): The guild drops its scrip at Pier 9.  → truth: {true} (above)" in ctx
+    assert ctx.count("The guild drops its scrip in the back room.") == 1
+
+
+def test_nothing_to_report_is_no_line(dcc_world):
+    """No conditions, no party: no line saying so (docs/conventions/output.md)."""
+    ctx = SessionManager(dcc_world).get_full_context()
+    assert "Conditions:" not in ctx and "\n(none)" not in ctx

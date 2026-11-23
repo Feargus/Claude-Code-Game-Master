@@ -344,7 +344,8 @@ class Brief:
                          f" | XP: {xp_total(char)}/{next_level_xp(char)}"
                          f" | {currency(self.json_ops).capitalize()}: "
                          f"{sheet_mod.get(char, 'possessions', 'credits', 0)}")
-            lines.append(f"Conditions: {', '.join(conditions) if conditions else '(none)'}")
+            if conditions:
+                lines.append(f"Conditions: {', '.join(conditions)}")
             visible = sheet_mod.visible_items(char)
             if visible:
                 lines.append(f"Gear (what others can see): {self._truncate(', '.join(visible), 200)}")
@@ -363,10 +364,12 @@ class Brief:
         # --- Party Members ---
         npcs = self.json_ops.load_json("npcs.json") or {}
         party = [n for n, d in npcs.items() if isinstance(d, dict) and is_party_member(d)]
+        self.npcs = npcs
+        if not party:
+            return lines
         lines.append("")
         lines.append(f"--- PARTY MEMBERS (with {self._character_name()} wherever they go) ---")
-        lines.append(", ".join(party) if party else "(none)")
-        self.npcs = npcs
+        lines.append(", ".join(party))
         return lines
 
     def _section_scene(self) -> list[str]:
@@ -400,7 +403,8 @@ class Brief:
 
     def _wrong_beliefs(self):
         """Lines for what the player character holds that is wrong or partial,
-        each with the truth beside it, so the GM narrates from the belief."""
+        each with the truth beside it, so the GM narrates from the belief; a truth
+        printed above is named by its id."""
         entries = fact_file.load(self.json_ops)
         by_id = {f.get('id'): f for f in entries}
         out = []
@@ -410,8 +414,14 @@ class Brief:
             kind = "believes" if f['truth'] == 'wrong' else "knows only part"
             line = f"{f.get('id')} ({kind}): {f.get('fact', '')}"
             true = by_id.get(f.get('version_of'))
-            if true:
+            shown = getattr(self, "shown_ids", set())
+            if true and true.get('id') in shown:
+                line += f"  → truth: {true.get('id')} (above)"
+            elif true:
                 line += f"  → truth, {true.get('id')}: {true.get('fact', '')}"
+                shown.add(true.get('id'))
+            shown.add(f.get('id'))
+            self.shown_ids = shown
             out.append(line)
             self.shown_texts = getattr(self, "shown_texts", []) + [f.get('fact', '')]
         return out
