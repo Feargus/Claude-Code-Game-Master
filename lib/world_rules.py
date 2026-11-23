@@ -565,10 +565,18 @@ def rule_lines(json_ops, rule: dict[str, Any], holders=None) -> list[str]:
     return block(rule).rule_lines(json_ops, rule, holders)
 
 
+def has_effect(stored: dict[str, Any]) -> bool:
+    """Whether a holder's value does anything now. A rule with results keeps the
+    ones on (`on`): none is the neutral value, whatever the number. Rules without
+    results (states, bag, budget) always count."""
+    return "on" not in stored or bool(stored["on"])
+
+
 def brief_lines(json_ops) -> list[str]:
     """YOUR WORLD'S RULES in the brief: the plain lines, then each rule in full with
-    where it stands for the character, the world and the factions. NPCs' and
-    places' values are on their cards."""
+    where it stands for the character, the world and the factions, those whose value
+    does something (has_effect; gm-rule.sh show has them all). NPCs' and places'
+    values are on their cards."""
     lines = [f"- {line}" for line in plain_rules(json_ops)]
     state = load_state(json_ops)
     for rule in rules(json_ops):
@@ -580,6 +588,7 @@ def brief_lines(json_ops) -> list[str]:
         holders = [h for h in ("player", "world") if h in rule["held_by"]]
         holders += sorted(h for h, values in state.items()
                           if h.startswith("faction:") and rule["name"] in values)
+        holders = [h for h in holders if has_effect(entry(json_ops, rule, h, state))]
         lines += rule_lines(json_ops, rule, holders)
         if {"npc", "location"} & set(rule["held_by"]):
             lines.append(f"  The values of people and places are on their cards "

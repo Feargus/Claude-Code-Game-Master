@@ -61,6 +61,13 @@ def newest_first(facts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(facts, key=number, reverse=True)
 
 
+def unheard(fact: dict[str, Any]) -> bool:
+    """A wrong or partial version nobody holds yet: a rumour waiting to be told (a
+    faction's portent). It says nothing about what anyone knows, so the lists of
+    what the character doesn't know and the cards leave it out until it is told."""
+    return fact.get("truth") in ("wrong", "partial") and fact.get("holders") == []
+
+
 def by_id(facts: list[dict[str, Any]], fact_id: str) -> dict[str, Any] | None:
     """The fact with this id, or None."""
     return next((f for f in facts if f.get("id") == fact_id), None)

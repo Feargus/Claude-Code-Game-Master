@@ -95,3 +95,18 @@ def test_cli(notes):
     assert len(recent) == 3 and recent[-1].startswith("+") and "narrow it" in recent[-1]
     assert "versions of it: f5" in run("show", "f2").stdout
     assert run("find", "--held-by", "Nobody").returncode == 1
+
+
+def test_a_rumour_nobody_holds_yet_is_in_no_list(dcc_world):
+    """A version nobody holds (a portent waiting to be told) is neither known nor
+    unknown to anyone: the brief and the cards leave it out until it is told."""
+    from lib.note_manager import NoteManager
+    from lib.session_manager import SessionManager
+    nm = NoteManager(dcc_world)
+    truth = nm.add_fact("The vault on Floor 3 holds nothing at all.", holders=["npc:Mordecai"])
+    rumour = nm.add_fact("The vault on Floor 3 is stuffed with gold.", secret=True,
+                         truth="wrong", version_of=truth)
+    brief = SessionManager(dcc_world).get_full_context()
+    assert f"{truth} " in brief and f"{rumour} " not in brief
+    nm.tell(rumour, ["street"])
+    assert f"{rumour} " in SessionManager(dcc_world).get_full_context()

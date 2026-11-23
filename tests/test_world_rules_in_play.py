@@ -63,7 +63,7 @@ def test_the_brief_shows_the_rules_in_full_once(dcc_world, ops):
     assert 'Command: gm-rule.sh change "Bleed" +N|-N' in section
     assert "Now, Tandy: 4 (from 2, from 4)" in section
     assert "Now, The Crawlers: 1 (from 0 to 1) " + wr.HIDDEN in section
-    assert "Now, the world: 2 (no result)" in section
+    assert "Now, the world" not in section                  # 2 does nothing: no line (has_effect)
     assert "Carl" not in section                                       # people: on their cards
     assert 'values of people and places are on their cards (all: gm-rule.sh show "Heat")' in section
 

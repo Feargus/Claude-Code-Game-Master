@@ -243,7 +243,8 @@ class Brief:
         """What just happened, for picking up where play stopped: the newest facts
         not printed above. The newer ones that were are named by id first, so the
         order stays readable."""
-        facts = [f for f in self._facts_newest_first() if not f.get("attitude")]
+        facts = [f for f in self._facts_newest_first()
+                 if not f.get("attitude") and not fact_file.unheard(f)]
         fresh = [f for f in facts if f.get("id") not in self.shown_ids][:self.LATEST]
         if not fresh:
             return []
@@ -265,11 +266,12 @@ class Brief:
 
     @staticmethod
     def _unknown_to_character(f: dict) -> bool:
-        """A secret, or a fact only others hold; attitudes are on the cards, and
-        the character's wrong beliefs have their own section."""
+        """A secret, or a fact only others hold; attitudes are on the cards, the
+        character's wrong beliefs have their own section, and a rumour nobody holds
+        yet isn't known or unknown to anyone (facts.unheard)."""
         holders = f.get("holders")
         return (isinstance(holders, list) and not {"player", "public"} & set(holders)
-                and not f.get("attitude"))
+                and not f.get("attitude") and not fact_file.unheard(f))
 
     def _fact_line(self, f: dict) -> str:
         """`fN <text>` with who knows it when only others do; marks it printed."""

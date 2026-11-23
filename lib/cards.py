@@ -161,7 +161,7 @@ class Cards:
         lid = f"location:{location}"
         known, hidden = [], []
         for f in self.facts:
-            if f.get("attitude"):
+            if f.get("attitude") or fact_file.unheard(f):
                 continue
             holders = f.get("holders")
             if holders is None:                   # an old fact: only if it is the place's
@@ -223,7 +223,7 @@ class Cards:
         mine = knowers(nid, self.npcs)            # they know what their factions know
         knows, wrong, about, shared = [], [], [], 0
         for f in self.facts:
-            if f.get("attitude"):
+            if f.get("attitude") or fact_file.unheard(f):
                 continue
             holders = f.get("holders")
             if holders is None:                       # before holders were recorded
