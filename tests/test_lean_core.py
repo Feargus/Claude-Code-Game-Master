@@ -85,8 +85,8 @@ def test_craft_skill_preserves_the_soul():
 
 
 def test_the_brief_has_no_kit_section(dcc_world):
-    """It named the ruleset (the campaign's name again) and a skill list nothing
-    wrote any more (removed 2026-11-23); the world's own rules have their section."""
+    """The world's own rules have their own section; the campaign's name is the
+    header's."""
     from lib.session_manager import SessionManager
     assert "--- KIT ---" not in SessionManager(dcc_world).get_full_context()
 

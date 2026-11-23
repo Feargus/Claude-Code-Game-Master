@@ -31,15 +31,12 @@ itself (`⚠ FULL — a dramatic beat is due`) in the tick output and the sessio
 Clocks that must not move on the calendar are declared `advance_on: "event"` and only
 ever move by hand.
 
-## A clock that fills fires (since 2026-08-14)
+## A clock that fills fires
 
-`_fire_if_filled` writes the clock's stored `consequence` into the consequence engine
-(its text as it is; until 2026-11-23 behind `[Clock — <name>]`, which the reason "clock
-<name> at 3/3" now says), with an `on_clock` trigger on the clock's last segment, so it
-fires at once with any other `on_clock` consequences the fill reaches (until 2026-11-06 it
-got a free-text trigger and sat waiting on an event that had already happened). Before this the text was
-only echoed in a print, so a countdown running out was a line the GM might notice rather
-than a beat that arrived. The clock's `consequence` field is authored when the clock is
+`_fire_if_filled` writes the clock's stored `consequence` into the consequence engine,
+with an `on_clock` trigger on the clock's last segment, so it fires at once with any
+other `on_clock` consequences the fill reaches; its reason is "clock <name> at 3/3". A
+countdown running out is a beat that arrives, not a line the GM might notice. The clock's `consequence` field is authored when the clock is
 created (`gm-clock.sh`), from the pressure the beat is meant to apply.
 
 Firing is the **transition into full**, not a state check: a clock that was already full

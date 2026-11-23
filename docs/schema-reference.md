@@ -28,11 +28,11 @@ is named in `world-state/active-campaign.txt`.
 ├── consequences.json        # Pending/resolved events + firing provenance
 ├── ruleset.json             # The world's own rules (gm-rule.sh define)
 ├── rule-state.json          # Where the world's own rules stand, per holder (world_rules.py)
-├── rules.log                # Every change of those values; per machine, not in git
+├── rules.log                # Every change of those values
 ├── world-bible.json         # Fidelity spine (voice, glossary, geography)
 ├── session-log.md           # Session history — the canonical ledger
 ├── threat-clocks.json       # Named pressure clocks (optional)
-├── embeddings.npz           # Vectors for recall by meaning; derived, not in git (embedding_store.py)
+├── embeddings.npz           # Vectors for recall by meaning; derived (embedding_store.py)
 ├── world-tick-log.json      # Between-session tick provenance
 ├── loremaster-cache.json    # Per-location grounded briefs
 ├── saves/                   # Snapshot saves

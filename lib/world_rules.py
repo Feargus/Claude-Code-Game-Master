@@ -10,7 +10,7 @@ world's numbers and words:
     rule-state.json  where each rule stands now, per holder:
                      {"player": {"Bleed": {"value": 4, "on": ["from 2", "from 4"], ...}},
                       "faction:lull": {"Patience": {"value": 1}}, "world": {...}}
-    rules.log        every change, with its cause (per machine, like skill-contest.log)
+    rules.log        every change, with its cause
 
 A rule says who can hold it (`held_by`): the player, NPCs, factions, places or the
 world. Each holder has its own value, which starts at the rule's `start` and is

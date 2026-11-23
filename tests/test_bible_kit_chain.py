@@ -116,6 +116,6 @@ def test_cli_drives_the_whole_chain(campaign):
     assert run("draft-bible", str(campaign), "--name", "The Iron Tangle",
                "--voice-json", json.dumps({"style": "clipped", "sample_passages": [VERBATIM]}),
                "--fields-json", json.dumps({"tone": "clipped dread"})).returncode == 0
-    for gone in ("campaign-rules", "write-systems", "draft-ruleset"):   # removed
+    for gone in ("campaign-rules", "write-systems", "draft-ruleset"):   # no such commands
         assert run(gone, str(campaign)).returncode == 2
     assert not (campaign / "ruleset.json").exists()   # gm-rule.sh define makes it

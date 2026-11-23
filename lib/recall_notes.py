@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """What semantic recall notices about a fact as it is recorded, printed in the fact's
-own output (since 2026-11-22; before, a background job left notes for the next
-command).
+own output.
 
 The new facts are embedded at once (EmbeddingStore.embed, about a second each with
 the model loaded), and each is compared with:
@@ -17,12 +16,12 @@ the model loaded), and each is compared with:
   is about the character (a copy of them) isn't suggested for every fact.
 
 A plot or a person from CONFIDENT up is not suggested but linked at once, and the
-output says so with the command to undo it (decided 2026-11-22: a wrong link costs
-less than a missing one; to be lowered step by step as playtests show). A
+output says so with the command to undo it: a wrong link costs less than a missing
+one. The thresholds are set from playtests (recall-check.log below). A
 consequence is only ever named: the GM fires it.
 
-Every comparison worth a look goes into `recall-check.log` in the campaign folder
-(per machine, not in git), for tuning the thresholds: each trigger from LOG_FLOOR,
+Every comparison worth a look goes into `recall-check.log` in the campaign folder,
+for tuning the thresholds: each trigger from LOG_FLOOR,
 each plot and person suggestion with its score, and, from gm-consequence.sh, each
 consequence the GM fired by a fact (`log_fired`), which says which match was right.
 """
@@ -33,10 +32,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-TRIGGER_NOTE = 0.65         # 0.50 until 2026-11-22: all nine in the Long Hull playtest (0.51–0.62) were wrong
+TRIGGER_NOTE = 0.65         # the Long Hull playtest's nine wrong matches scored 0.51–0.62
 PLOT_NOTE, PLOT_MARGIN = 0.45, 0.05
 ABOUT_NOTE = 0.55
-CONFIDENT = 0.65            # a plot or person linked by itself from here (2026-11-22)
+CONFIDENT = 0.65            # a plot or person linked by itself from here
 LOG_FLOOR = 0.40            # triggers logged from here, so the misses show too
 LOG = "recall-check.log"
 

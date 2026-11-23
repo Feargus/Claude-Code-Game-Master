@@ -3,9 +3,8 @@
 kept up to date by a background job; a new fact and the triggers waiting for one are
 embedded at once, as the fact is recorded (`embed`, recall_notes.py).
 
-Kept in `embeddings.npz` beside facts.json, not in git (derived: rebuilt when
-missing). Each entry has a key (`fact:f12`, `location:The Dry Quay`,
-`plot:The Lapse`), a hash of the text it was made from, and the vector, stored
+Kept in `embeddings.npz` beside facts.json (derived: rebuilt when missing). Each
+entry has a key (`fact:f12`, `location:The Dry Quay`, `plot:The Lapse`), a hash of the text it was made from, and the vector, stored
 as 16-bit numbers (1.5 KB each; ranking doesn't notice the precision). A changed
 text is embedded again; a change of model embeds everything again.
 

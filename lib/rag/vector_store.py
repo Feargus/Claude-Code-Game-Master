@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The book's pieces and their vectors, for searching a campaign's source book by meaning.
 
-Kept in the campaign's `vectors/` folder (not in git: rebuilt from the book):
+Kept in the campaign's `vectors/` folder (rebuilt from the book when missing):
 
     chunks.json   the pieces of the book: [{"id", "text", "metadata"}], written at import
     book.npz      their vectors (16-bit), by id, and the name of the model that made them

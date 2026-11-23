@@ -21,7 +21,7 @@ facts, and before that session summaries and arc entries).
   meaning then takes about 1.3 s instead of 7.
 - **The vectors** (`lib/embedding_store.py`): one per fact, place, person, plot and
   `on_fact` trigger (`trigger:<consequence id>`: only the fact it waits for, not what the
-  consequence does), in the campaign's `embeddings.npz` (derived, not in git). A new fact
+  consequence does), in the campaign's `embeddings.npz` (derived). A new fact
   and the triggers are embedded at once, as the fact is recorded; for the rest, saving
   `facts.json`, `locations.json` or `plots.json` starts a background job when the command
   ends; one job runs at a time (a lock), embeds what is new or changed and exits.
@@ -40,7 +40,7 @@ facts, and before that session summaries and arc entries).
   nothing fires by itself), the open plots (0.45, clearly the best) and the people (0.55,
   and closer than the character and everyone it is linked to), and the fact's own output
   names what fits. A plot or person from 0.65 (`CONFIDENT`) is linked at once, with the
-  command to undo it; a consequence is only ever named. Every comparison worth a look goes into `recall-check.log` (per machine),
+  command to undo it; a consequence is only ever named. Every comparison worth a look goes into `recall-check.log`,
   with each consequence the GM fired by a fact, to tune the thresholds.
 - **A fact not embedded yet** (the background job is still running) is embedded by the
   query itself, up to 10; beyond that it counts as average.
@@ -51,8 +51,8 @@ facts, and before that session summaries and arc entries).
 time it is constructed (`lib/loremaster.py:29-31`). There is no persisted index, so
 construction cost scales with book size — which is why `gm-lore.sh` is an on-demand call
 for new/important scenes, not something wired into every context load. It reads `current-document.txt` or
-`book-text.txt` from the campaign directory — both are gitignored, so a cloned campaign
-has no book text and every brief comes back with empty chapters.
+`book-text.txt` from the campaign directory; without either, every brief comes back
+with empty chapters.
 
 The gate is the point of the module: a cached location that is not flagged `important`
 returns immediately with no read. Two tiers of output (since 2026-08-13):

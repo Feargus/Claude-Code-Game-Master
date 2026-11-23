@@ -13,7 +13,7 @@ in `/new-game` or `/import` (the `gm-rules` skill), and played from the brief.
 | The rules: one building block each, with this world's numbers and words | `ruleset.json` → `rules` | `gm-rule.sh define` (at creation) |
 | Rule lines that are no mechanic (prices, the currency) | `ruleset.json` → `plain_rules` | `gm-rule.sh plain` |
 | Where each rule stands, per holder | `rule-state.json` | `gm-rule.sh change`/`set`/`reveal`/`hide`, the character's creation, a hand-over |
-| Every change, with its cause | `rules.log` (per machine, not in git) | the same |
+| Every change, with its cause | `rules.log` | the same |
 
 A rule says who can hold it (`held_by`: `player`, `npc`, `faction`, `location`,
 `world`). Each holder has its own value, which starts at the rule's `start` and is
