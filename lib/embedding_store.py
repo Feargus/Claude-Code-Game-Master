@@ -60,10 +60,17 @@ def location_text(name: str, place: dict) -> str:
     return f"{name}: " + str(place.get("description") or place.get("position") or "").strip()
 
 
+def plot_text(key: str, plot: dict) -> str:
+    """A plot as recall compares it: what it is after, where it stands, and what
+    came of it."""
+    parts = [plot.get("goal"), plot.get("stands"), plot.get("outcome")]
+    return f"{key}: " + " ".join(str(p) for p in parts if p)
+
+
 def texts(campaign_dir: Path) -> dict[str, str]:
     """What should have a vector: {key: text}. Facts (attitudes aside: they are
     adjectives, shown on the cards), places, people, and plots (what they are
-    about and where they stand)."""
+    after, where they stand, what came of them)."""
     def load(name):
         path = Path(campaign_dir) / name
         try:
@@ -86,8 +93,7 @@ def texts(campaign_dir: Path) -> dict[str, str]:
         out["player"] = npc_text(character["identity"].get("name") or "the character", character)
     for key, plot in (load("plots.json") or {}).items():
         if isinstance(plot, dict):
-            parts = [plot.get("description"), plot.get("stands"), plot.get("summary")]
-            out[f"plot:{key}"] = f"{key}: " + " ".join(str(p) for p in parts if p)
+            out[f"plot:{key}"] = plot_text(key, plot)
     out.update(trigger_texts(load("consequences.json")))
     return out
 

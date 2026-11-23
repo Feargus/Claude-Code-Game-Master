@@ -2,12 +2,12 @@
 # gm-plot.sh - Plots: someone's goal with progress, or the problem the story turns on
 # (wrapper for plot_manager.py)
 #
-#   gm-plot.sh add "<key>" --description "..." [--owner <player, npc or faction>] [--goal "..."] [--kind K]
+#   gm-plot.sh add "<key>" --goal "<what it is after>" [--owner <player, npc or faction>] [--kind K]
 #                  [--involves <npc, place or faction>]... [--stands "..."] [--follows "<key>"] [--another]
 #                                      a new plot; the key is a short name that never changes
 #   gm-plot.sh stands "<key>" "<where it stands now>"
 #   gm-plot.sh involve "<key>" <npc, place or faction>... [--remove <one>]
-#   gm-plot.sh description "<key>" "<what it is about>"
+#   gm-plot.sh goal "<key>" "<what it is after>"    the owner's aim, or what solving it means
 #   gm-plot.sh complete|fail "<key>" "<what came of it>" [--next "<key>"]
 #                                      --next: the plot that replaces it (add it first)
 #   gm-plot.sh show "<key>"            the plot with its clocks, consequences and facts

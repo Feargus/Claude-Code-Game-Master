@@ -21,7 +21,7 @@ usage() {
     echo "                    --physique --style --presence                  (look)"
     echo "                    --big-five \"O1 C-2 E3 A-1 N2\" --demeanor --voice --tells"
     echo "                    --want --need --values --fears                 (personality)"
-    echo "                    --goal                                         (what they're after now)"
+    echo "                    --goal                                         (what they are after now)"
     echo "  show <name>                    The whole sheet, and what they know and feel about the player"
     echo "  stats <name> [--attr STR=12]... [--skill Handguns=4]... [--remove-skill X] [--wounds N]"
     echo "  alias <name> <alias>... [--remove <alias>]"

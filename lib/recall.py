@@ -210,8 +210,8 @@ def suggest_for_plot(notes, plot_key: str, limit: int = 5) -> dict:
     for the GM to link. Facts about the people and
     places it involves get the --about bonus. {"facts": [...], "method": ...}."""
     plot = (notes.json_ops.load_json("plots.json") or {}).get(plot_key) or {}
-    text = f"{plot_key}: " + " ".join(str(plot.get(k)) for k in ("description", "stands", "goal")
-                                      if plot.get(k))
+    from embedding_store import plot_text
+    text = plot_text(plot_key, plot)
     facts = [f for f in notes.find() if not f.get("attitude")
              and plot_key not in (f.get("plots") or [])]
     if not facts:

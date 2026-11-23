@@ -17,7 +17,7 @@ after the character exists and the player has said where and when to start.
              "aliases": ["Ro"], "location": ["The Lantern noodle stall"],
              "present": true, "physique": "...", "big_five": "O0 C2 E1 A1 N-1",
              "voice": "..."}],
-   "plot": {"name": "The Writ", "kind": "main", "description": "...",
+   "plot": {"name": "The Writ", "kind": "main",
             "hook": "Dekker's crew walks into the market with a writ ...",
             "owner": "Dekker", "goal": "clear the market by the end of the week",
             "involves": ["Dekker", "Seraphine Halcyon-Vey", "The Chrome"]},
@@ -37,7 +37,8 @@ after the character exists and the player has said where and when to start.
   refused unless the entry has `"another": true`.
 - The plot is required: every campaign starts with at least one. Its `name` is a
   short key (plot_manager.check_key); its `hook`, the problem that won't wait, is
-  where it stands at the start. `owner` and `goal` say whose goal it is, if
+  where it stands at the start; its `goal` is what it is after (the owner's aim,
+  or what solving its problem means); `owner` says whose goal it is, if
   anyone's; `kind` is one of schemas.PLOT_KINDS (default main). `involves` names
   people and places that exist already, sketches included (/new-game step 2c);
   those still sketches are the horizon: named, and not built until play walks
@@ -114,6 +115,9 @@ class Opening:
             raise OpeningError('The plot needs a "name".')
         if not str(hook or "").strip():
             raise OpeningError('The plot needs a "hook": the problem that won\'t wait.')
+        if isinstance(plot, dict) and not str(plot.get("goal") or "").strip():
+            raise OpeningError('The plot needs a "goal": what it is after, in a line (the '
+                               'owner\'s aim, or what solving its problem means).')
         if not isinstance(spec.get("developments") or [], list):
             raise OpeningError('"developments" is a list, as /gm world takes it.')
 
@@ -253,8 +257,7 @@ class Opening:
                 plots.set_stands(key, hook)
                 return key, hook
             hook = str(plot["hook"]).strip()
-            key = plots.add(plot["name"], plot.get("description") or hook,
-                            owner=plot.get("owner") or "", goal=plot.get("goal") or "",
+            key = plots.add(plot["name"], plot["goal"], owner=plot.get("owner") or "",
                             kind=plot.get("kind") or "main",
                             involves=_as_list(plot.get("involves")), stands=hook,
                             another=bool(plot.get("another")))

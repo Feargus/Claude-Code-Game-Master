@@ -4,16 +4,16 @@
 plots.json, keyed by a short name that is the plot's id (`plot:<key>`), like a
 clock's. A plot holds:
 
-    description   what it is about
+    goal          what it is after, one line: the owner's aim, or for a plot nobody
+                  owns, what solving its problem means
     owner         whose goal it is (player, npc:<key>, faction:<id>); may be empty
-    goal          what the owner is after, one line
     kind          one of schemas.PLOT_KINDS (main, antagonist, mystery, ...)
     status        open, completed or failed
     stands        where it stands now, one line, replaced by each update
     stands_at     the game time of that update
     involves      ids of the people, places and factions it involves (npc:, location:, faction:)
     follows       the plot this one replaces, if any (goals get replaced)
-    summary       what came of it, written when it ends
+    outcome       what came of it, written when it ends
     game_time, created   when it began, in the game and in real time
 
 Its history is its facts: facts, consequences, clocks and glossary entries
@@ -57,7 +57,7 @@ def check_key(raw) -> str:
             f"A plot's name is a short key, one to {MAX_KEY_WORDS} words and at most "
             f"{MAX_KEY_CHARS} characters, without a colon (\"Eleventh Question\"): facts, "
             f"clocks and consequences point at it, so it has to stay the same. What the plot "
-            f"is about goes into --description. Got '{key}'.")
+            f"is after goes into --goal. Got '{key}'.")
     return key
 
 
@@ -221,7 +221,7 @@ class PlotManager(EntityManager):
 
     # ---------- making and changing ----------
 
-    def add(self, raw_key: str, description: str, owner: str = "", goal: str = "",
+    def add(self, raw_key: str, goal: str, owner: str = "",
             kind: str = "main", involves=(), follows: str = "", stands: str = "",
             another: bool = False) -> str:
         """A new plot. Returns its key; raises PlotError."""
@@ -235,14 +235,13 @@ class PlotManager(EntityManager):
                             f"two names splits its story. If it really is another plot, add --another.")
         if kind not in PLOT_KINDS:
             raise PlotError(f"A plot's kind is one of {', '.join(PLOT_KINDS)}, not '{kind}'.")
-        if not str(description or "").strip():
-            raise PlotError("Say what the plot is about: --description \"...\".")
-        row = {"description": " ".join(str(description).split()), "kind": kind,
+        if not str(goal or "").strip():
+            raise PlotError("Say what the plot is after, in a line: --goal \"...\" (the "
+                            "owner's aim, or what solving its problem means).")
+        row = {"goal": " ".join(str(goal).split()), "kind": kind,
                "status": "open", "involves": self._ids(involves, INVOLVED)}
         if owner:
             row["owner"] = self._ids([owner], OWNERS)[0]
-        if str(goal or "").strip():
-            row["goal"] = " ".join(goal.split())
         if follows:
             row["follows"] = self.key(follows)
         now = stored_time(self.json_ops)
@@ -264,7 +263,7 @@ class PlotManager(EntityManager):
             raise PlotError("Say where the plot stands now, in a line.")
         plots = self.plots()
         if plots[key].get("status", "open") != "open":
-            raise PlotError(f"'{key}' is {plots[key]['status']}; it has its summary.")
+            raise PlotError(f"'{key}' is {plots[key]['status']}; it has its outcome.")
         before = plots[key].get("stands", "")
         plots[key]["stands"] = " ".join(stands.split())
         now = stored_time(self.json_ops)
@@ -288,31 +287,32 @@ class PlotManager(EntityManager):
         self._save(plots)
         return have
 
-    def set_description(self, raw_key: str, description: str) -> tuple[str, str]:
+    def set_goal(self, raw_key: str, goal: str) -> tuple[str, str]:
+        """Reword what a plot is after. Returns (key, what it said before)."""
         key = self.key(raw_key)
-        if not str(description or "").strip():
-            raise PlotError("Say what the plot is about.")
+        if not str(goal or "").strip():
+            raise PlotError("Say what the plot is after, in a line.")
         plots = self.plots()
-        before = plots[key].get("description", "")
-        plots[key]["description"] = " ".join(description.split())
+        before = plots[key].get("goal", "")
+        plots[key]["goal"] = " ".join(goal.split())
         self._save(plots)
         return key, before
 
-    def end(self, raw_key: str, status: str, summary: str, next_plot: str = "") -> str:
-        """Complete or fail a plot with its summary. `next_plot` names the plot that
+    def end(self, raw_key: str, status: str, outcome: str, next_plot: str = "") -> str:
+        """Complete or fail a plot with its outcome. `next_plot` names the plot that
         replaces it (made first); that one then follows it."""
         if status not in ("completed", "failed"):
             raise PlotError(f"A plot ends completed or failed, not '{status}'.")
         key = self.key(raw_key)
-        if not str(summary or "").strip():
-            raise PlotError("Say what came of it: the summary is what stays of the plot.")
+        if not str(outcome or "").strip():
+            raise PlotError("Say what came of it: the outcome is what stays of the plot.")
         plots = self.plots()
         if plots[key].get("status", "open") != "open":
             raise PlotError(f"'{key}' is {plots[key]['status']} already.")
         follower = self.key(next_plot) if next_plot else ""
         if follower == key:
             raise PlotError("A plot can't follow itself.")
-        plots[key].update(status=status, summary=" ".join(summary.split()))
+        plots[key].update(status=status, outcome=" ".join(outcome.split()))
         now = stored_time(self.json_ops)
         if now:
             plots[key]["ended_at"] = now
@@ -324,9 +324,9 @@ class PlotManager(EntityManager):
     # ---------- showing ----------
 
     def line(self, key: str) -> str:
-        """One plot on one line: kind, key, where it stands (or what it is about)."""
+        """One plot on one line: kind, key, where it stands (or what it is after)."""
         p = self.plots()[key]
-        text = p.get("stands") or p.get("description", "")
+        text = p.get("stands") or p.get("goal", "")
         return f"[{p.get('kind', '?')}] {key}: {text}"
 
     def show(self, raw_key: str) -> str:
@@ -334,21 +334,17 @@ class PlotManager(EntityManager):
         from note_manager import fact_line
         key = self.key(raw_key)
         p = self.plots()[key]
-        lines = [f"=== {key} ({p.get('kind', '?')}, {p.get('status', 'open')}) ===",
-                 p.get("description", "")]
-        if p.get("owner"):
-            lines.append(f"{owner_name(self.json_ops, p['owner'])} wants: "
-                         f"{p.get('goal', '(no goal written)')}")
-        elif p.get("goal"):
-            lines.append(f"goal: {p['goal']}")
+        whose = f", {owner_name(self.json_ops, p['owner'])}'s" if p.get("owner") else ""
+        lines = [f"=== {key} ({p.get('kind', '?')}{whose}, {p.get('status', 'open')}) ===",
+                 f"goal: {p.get('goal', '')}"]
         if p.get("stands"):
             lines.append(f"stands: {p['stands']}")
         if p.get("involves"):
             lines.append(f"involves: {', '.join(p['involves'])}")
         if p.get("follows"):
             lines.append(f"follows: {p['follows']}")
-        if p.get("summary"):
-            lines.append(f"summary: {p['summary']}")
+        if p.get("outcome"):
+            lines.append(f"outcome: {p['outcome']}")
         clocks = {n: c for n, c in (self.json_ops.load_json("threat-clocks.json") or {}).items()
                   if key in (c.get("plots") or [])}
         for name, c in clocks.items():
@@ -387,9 +383,9 @@ def main() -> int:
     sub = parser.add_subparsers(dest="action", required=True)
     p = sub.add_parser("add", help="a new plot")
     p.add_argument("key", help='its short name, e.g. "Eleventh Question"')
-    p.add_argument("--description", required=True, help="what it is about")
+    p.add_argument("--goal", required=True,
+                   help="what it is after, one line: the owner's aim, or what solving it means")
     p.add_argument("--owner", default="", help="whose goal it is: player, an NPC or a faction")
-    p.add_argument("--goal", default="", help="what the owner is after, one line")
     p.add_argument("--kind", default="main", choices=list(PLOT_KINDS))
     p.add_argument("--involves", action="append", default=[],
                    help="a person, place or faction it involves (repeatable)")
@@ -403,13 +399,13 @@ def main() -> int:
     p.add_argument("key")
     p.add_argument("ids", nargs="*")
     p.add_argument("--remove", action="append", default=[])
-    p = sub.add_parser("description", help="reword what a plot is about")
+    p = sub.add_parser("goal", help="reword what a plot is after")
     p.add_argument("key")
-    p.add_argument("description")
+    p.add_argument("goal")
     for action in ("complete", "fail"):
         p = sub.add_parser(action, help=f"the plot ends: {action}")
         p.add_argument("key")
-        p.add_argument("summary", help="what came of it")
+        p.add_argument("outcome", help="what came of it")
         p.add_argument("--next", default="", help="the plot that replaces it (made first)")
     sub.add_parser("show", help="a plot in full").add_argument("key")
     p = sub.add_parser("list", help="plots, most pressing first")
@@ -419,7 +415,7 @@ def main() -> int:
     try:
         m = PlotManager()
         if args.action == "add":
-            key = m.add(args.key, args.description, args.owner, args.goal, args.kind,
+            key = m.add(args.key, args.goal, args.owner, args.kind,
                         args.involves, args.follows, args.stands, args.another)
             print(f"[SUCCESS] Plot {key} ({args.kind})")
             if args.owner and not moved_by(m.json_ops, key):
@@ -434,12 +430,12 @@ def main() -> int:
         elif args.action == "involve":
             have = m.involve(args.key, args.ids, args.remove)
             print(f"{m.key(args.key)} involves: {', '.join(have) or 'nobody yet'}")
-        elif args.action == "description":
-            key, before = m.set_description(args.key, args.description)
-            print(f"[SUCCESS] {key} reworded (was: {before})")
+        elif args.action == "goal":
+            key, before = m.set_goal(args.key, args.goal)
+            print(f"[SUCCESS] {key}'s goal reworded (was: {before})")
         elif args.action in ("complete", "fail"):
             key = m.end(args.key, "completed" if args.action == "complete" else "failed",
-                        args.summary, args.next)
+                        args.outcome, args.next)
             print(f"[SUCCESS] {key} {args.action}d" if args.action == "complete"
                   else f"[SUCCESS] {key} failed")
         elif args.action == "show":

@@ -173,11 +173,13 @@ class Brief:
         lines = ["", "--- PLOTS (most pressing first; gm-plot.sh show \"<plot>\" for one in full) ---"]
         for key in keys:
             p = plots[key]
-            lines.append(f"[{p.get('kind', '?')}] {key}: {p.get('stands') or p.get('description', '')}")
+            whose = ""
             if p.get("owner"):
                 from plot_manager import owner_name
-                lines.append(f"  {owner_name(self.json_ops, p['owner'])} wants: "
-                             f"{p.get('goal') or '(no goal written)'}")
+                whose = f" ({owner_name(self.json_ops, p['owner'])})"
+            lines.append(f"[{p.get('kind', '?')}] {key}{whose}: {p.get('stands') or p.get('goal', '')}")
+            if p.get("stands") and p.get("goal"):
+                lines.append(f"  goal: {p['goal']}")
             sketches = horizon(key)
             if sketches:
                 lines.append(f"  still sketches (named, not built): {', '.join(sketches)}")

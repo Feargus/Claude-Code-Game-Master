@@ -120,8 +120,8 @@ def validate_plot(name: str, data: dict[str, Any]) -> tuple[bool, list[str]]:
     errors = []
 
     # Required fields
-    if not data.get('description') and not data.get('name'):
-        errors.append(f"Plot '{name}': missing description")
+    if not data.get('goal'):
+        errors.append(f"Plot '{name}': missing goal")
 
     kind = str(data.get('kind') or '').lower()
     if kind and kind not in PLOT_KINDS:

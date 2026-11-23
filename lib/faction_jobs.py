@@ -248,7 +248,7 @@ def ask(json_ops, rng=None) -> list[str]:
              "  Bring it in person, by message or by call, at the next quiet moment, from what "
              f"{who} wants and fears (gm-npc.sh show \"{who}\"); a hostile one makes a demand.",
              "  A favour is a beat; anything larger is a small side plot (gm-plot.sh add "
-             f"\"<short name>\" --kind side --owner \"{who}\" --description \"…\" --goal \"…\").",
+             f"\"<short name>\" --kind side --owner \"{who}\" --goal \"…\").",
              "  If it can't fit this moment, draw again once: bash tools/gm-faction.sh ask --again"]
     if settled is None:
         lines.append("  (no ask was owed: drawn anyway)")

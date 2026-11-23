@@ -518,7 +518,7 @@ class FactionManager:
 
     def _plot_lines(self, cid: str) -> list[str]:
         plots = self.json_ops.load_json("plots.json") or {}
-        lines = [f"  Wants: {p.get('goal') or '(no goal written)'} (plot {k}, {p.get('status', 'open')})"
+        lines = [f"  Plot {k} ({p.get('status', 'open')}), goal: {p.get('goal', '')}"
                  for k, p in plots.items() if isinstance(p, dict) and p.get("owner") == cid]
         involved = [k for k, p in plots.items() if isinstance(p, dict) and p.get("owner") != cid
                     and cid in (p.get("involves") or [])]

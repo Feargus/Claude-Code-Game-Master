@@ -1,6 +1,6 @@
 # World State JSON Schema Reference
 
-*Claude, 2026-11-19: kept in step with the code since 2026-11; the npcs.json and plots.json sections are known to be stale.*
+*Claude, 2026-11-19: kept in step with the code since 2026-11; the npcs.json section is known to be stale.*
 
 The on-disk shape of a campaign, which no single source file declares — the managers each
 write their own slice. **`lib/schemas.py` is the authority on every enum below**; where
@@ -24,7 +24,7 @@ is named in `world-state/active-campaign.txt`.
 ├── factions.json            # Factions, by id (factions.py, gm-faction.sh)
 ├── facts.json               # World facts, one list
 ├── removed-facts.json       # Facts the GM removed (gm-note.sh remove), with when
-├── plots.json               # Plot hooks and quests
+├── plots.json               # Plots: goal, owner, where they stand
 ├── items.json               # Items (from imports)
 ├── consequences.json        # Pending/resolved events + firing provenance
 ├── ruleset.json             # The world's own rules (gm-rule.sh define)
@@ -413,37 +413,34 @@ text, and `add` stores a bare free-text trigger that way. There is no word match
 
 ## plots.json
 
-A dictionary keyed by plot name.
-
-`type` comes from the single canonical taxonomy, `schemas.PLOT_TYPES` — derived from
-`schemas.PLOT_TYPE_SORT`, whose ranks are also the display/sort order for STORY THREADS
-and plot listings. `validators`, `minor_stubs`, `plot_manager` and `session_manager` all
-import it; there is no second copy. `minor_stubs.validate_plot_types` (the `/import`
-validate step) passes canonical types through untouched, maps extractor synonyms
-(`quest`→`side`, `arc`→`main`, `conflict`→`threat`, …) via `PLOT_TYPE_SYNONYMS`, and only
-falls back to `side` — with a warning naming the original — for a type it does not know.
+A dictionary keyed by the plot's short name, which is its id (`plot:<key>`) and never
+changes (`lib/plot_manager.py`, whose docstring is the reference).
 
 ```json
 {
-  "PLOT_NAME": {
-    "type": "main|threat|mystery|side|personal|world|optional|scene|theme|idea|lore|background|other",
-    "status": "active|completed|failed|dormant|available",
-    "sequence": 1,
-    "depends_on": ["earlier plot name"],
-    "description": "string (what the quest is about)",
-    "npcs": ["involved", "npc", "names"],
-    "locations": ["relevant", "locations"],
-    "objectives": ["optional objective strings"],
-    "rewards": "optional string",
-    "consequences": "optional string",
-    "events": [
-      {"event": "progress update", "timestamp": "ISO timestamp"}
-    ],
-    "completed_at": "ISO timestamp or null",
-    "failed_at": "ISO timestamp or null"
+  "The Sold Contract": {
+    "goal": "own Ilaria's contract, and with it the jade pendant Brother Hollis gave her",
+    "owner": "npc:Cantor Aurel Strake",
+    "kind": "main",
+    "status": "open",
+    "stands": "Ilaria knows her contract is sold to an unnamed buyer …",
+    "stands_at": "1311-04-13T02:22",
+    "involves": ["npc:Jory Fenn", "location:The Ledger Hall"],
+    "game_time": "1311-04-12T19:30",
+    "created": "2026-11-21T19:08:54Z"
   }
 }
 ```
+
+- `goal`: what the plot is after, one line: the owner's aim, or, for a plot nobody owns,
+  what solving its problem means. Required.
+- `owner` (optional): `player`, `npc:<key>` or `faction:<id>`.
+- `kind`: one of `schemas.PLOT_KINDS`; `status`: open, completed or failed.
+- `stands`, `stands_at`: where it stands now, one line, and the game time it was written.
+- `involves`: the people, places and factions it involves; `follows`: the plot it replaces.
+- `outcome`: what came of it, written when it ends (`gm-plot.sh complete|fail`).
+- Its facts, clocks and consequences point at it (their `plots`); recall compares a plot by
+  its goal, where it stands and its outcome (`embedding_store.plot_text`).
 
 ---
 

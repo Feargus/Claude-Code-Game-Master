@@ -359,12 +359,12 @@ def _here(ops):
 
 def test_a_faction_owns_and_is_in_plots(borant, dcc_world):
     plots = _plots(dcc_world)
-    key = plots.add("Hostile Takeover", "Meridian buys the floor.", owner="Meridian",
-                    goal="own every guard post on Floor 1", involves=["faction:system"])
+    key = plots.add("Hostile Takeover", "own every guard post on Floor 1", owner="Meridian", involves=["faction:system"])
     stored = plots.plots()[key]
     assert stored["owner"] == "faction:meridian-group" and stored["involves"] == ["faction:system"]
-    assert "Meridian Group wants: own every guard post on Floor 1" in plots.show(key)
-    assert "Wants: own every guard post on Floor 1 (plot Hostile Takeover, open)" in borant.show("Meridian")
+    assert "(main, Meridian Group's, open)" in plots.show(key)
+    assert "goal: own every guard post on Floor 1" in plots.show(key)
+    assert "Plot Hostile Takeover (open), goal: own every guard post on Floor 1" in borant.show("Meridian")
     assert "In plots: Hostile Takeover" in borant.show("system")
     plots.involve(key, ["The Crawlers"], [])
     assert plots.plots()[key]["involves"] == ["faction:system", "faction:crawlers"]
@@ -372,15 +372,13 @@ def test_a_faction_owns_and_is_in_plots(borant, dcc_world):
 
 def test_the_brief_names_a_faction_owner(borant, dcc_world):
     from lib.session_manager import SessionManager
-    _plots(dcc_world).add("Hostile Takeover", "Meridian buys the floor.", owner="Meridian",
-                          goal="own every guard post")
-    assert "Meridian Group wants: own every guard post" in SessionManager(dcc_world).get_full_context()
+    _plots(dcc_world).add("Hostile Takeover", "own every guard post", owner="Meridian")
+    assert "Hostile Takeover (Meridian Group): own every guard post" in SessionManager(dcc_world).get_full_context()
 
 
 def test_a_faction_with_a_member_here_gets_a_card(borant, ops, dcc_world):
     from tests.scene_helpers import put_in_scene
-    _plots(dcc_world).add("Hostile Takeover", "Meridian buys the floor.", owner="Meridian",
-                          goal="own every guard post")
+    _plots(dcc_world).add("Hostile Takeover", "own every guard post", owner="Meridian")
     borant.join("Meridian", "Mordecai", secret=True)
     put_in_scene(ops.world_state_dir, "Mordecai")
     scene = "\n".join(_cards(ops).scene())
@@ -393,8 +391,7 @@ def test_a_faction_with_a_member_here_gets_a_card(borant, ops, dcc_world):
 
 
 def test_a_faction_tied_to_the_place_by_a_plot_gets_a_card(borant, ops, dcc_world):
-    _plots(dcc_world).add("Hostile Takeover", "Meridian buys the floor.", owner="Meridian",
-                          goal="own every guard post", involves=[f"location:{_here(ops)}"])
+    _plots(dcc_world).add("Hostile Takeover", "own every guard post", owner="Meridian", involves=[f"location:{_here(ops)}"])
     scene = "\n".join(_cards(ops).scene())
     assert "FACTION Meridian Group" in scene and "tied to this place by: Hostile Takeover" in scene
 

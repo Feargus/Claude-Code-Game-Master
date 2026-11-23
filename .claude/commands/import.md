@@ -242,9 +242,9 @@ bash tools/gm-session.sh opening <<'EOF'
             "aliases": ["<short name the story uses>"], "physique": "<…>", "style": "<…>",
             "presence": "<…>", "big_five": "<O1 C0 E2 A-1 N1>", "voice": "<…>"}],
   "plot": {"name": "<short name, one to four words>", "kind": "main",
-           "description": "<what it is about>",
            "hook": "<the problem that will not wait: where it stands at the start>",
-           "owner": "<whose goal it is, if anyone's: an NPC>", "goal": "<what they are after>",
+           "goal": "<what it is after: the owner's aim, or what solving its problem means>",
+           "owner": "<whose goal it is, if anyone's: an NPC>",
            "involves": ["<people and places it involves; each a record already, sketches too>"]},
   "developments": [
     {"fact": "<what is true here that the book establishes>", "holders": ["<who knows it>"]},

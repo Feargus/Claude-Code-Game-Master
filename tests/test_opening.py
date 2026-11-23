@@ -30,7 +30,6 @@ SPEC = {
              {"name": "Seraphine Halcyon-Vey", "who": "the sleeve's first owner",
               "nowhere": True, "present": False}],
     "plot": {"name": "The Writ", "kind": "main",
-             "description": "Meridian wants the sleeve back, with its mind.",
              "hook": "Dekker's crew walks into the market with a writ for a sleeve.",
              "owner": "Dekker", "goal": "bring the sleeve back to Meridian",
              "involves": ["Dekker", "Seraphine Halcyon-Vey", "Lanternside"]},
@@ -114,8 +113,8 @@ def test_the_brief_carries_the_hook_and_horizon_on(world):
     ws, _ = world
     Opening(ws).apply(json.loads(json.dumps(SPEC)))
     ctx = SessionManager(ws).get_full_context()
-    assert "[main] The Writ: Dekker's crew walks into the market with a writ for a sleeve." in ctx
-    assert "  Dekker wants: bring the sleeve back to Meridian" in ctx
+    assert "[main] The Writ (Dekker): Dekker's crew walks into the market with a writ for a sleeve." in ctx
+    assert "  goal: bring the sleeve back to Meridian" in ctx
     assert "  still sketches (named, not built): Dekker, Seraphine Halcyon-Vey" in ctx
     assert "PRIMER" not in ctx
 
@@ -135,6 +134,7 @@ def test_refusals(world):
     for broken, why in [({}, "needs a \"place\""),
                         ({"place": "X"}, "needs a \"plot\""),
                         ({"place": "X", "plot": {"name": "P"}}, "needs a \"hook\""),
+                        ({"place": "X", "plot": {"name": "P", "hook": "h"}}, "needs a \"goal\""),
                         ({"place": "X", "plot": "P", "hook": "h", "room": "Y"}, "Unknown field")]:
         with pytest.raises(OpeningError, match=why):
             Opening(ws).apply(broken)

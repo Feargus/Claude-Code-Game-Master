@@ -114,8 +114,7 @@ def _job(ops, dcc_world, **more):
     from lib.plot_manager import PlotManager
     from lib.threat_clocks import ThreatClockManager
     wr.define(ops, [STANDING])
-    PlotManager(dcc_world).add("Hostile Takeover", "Meridian buys the floor.", owner="Meridian",
-                               goal="own every guard post")
+    PlotManager(dcc_world).add("Hostile Takeover", "own every guard post", owner="Meridian")
     ThreatClockManager(dcc_world).add_clock("Takeover", 3, advance_on="event",
                                             plots=["Hostile Takeover"], text="the buy-out")
     return fj.offer(ops, "Meridian", {"action": "take", "power": "Covert", "who": "Mordecai",

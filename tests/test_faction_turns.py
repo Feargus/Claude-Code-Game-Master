@@ -112,8 +112,7 @@ def test_seize_takes_a_place_or_an_asset(ops):
 def _plan(dcc_world, segments=3, consequence=None, plot="Hostile Takeover"):
     from lib.plot_manager import PlotManager
     from lib.threat_clocks import ThreatClockManager
-    PlotManager(dcc_world).add(plot, "Meridian buys the floor.", owner="Meridian",
-                               goal="own every guard post")
+    PlotManager(dcc_world).add(plot, "own every guard post", owner="Meridian")
     ThreatClockManager(dcc_world).add_clock("Takeover", segments, advance_on="event",
                                             plots=[plot], text="the buy-out",
                                             consequence=consequence)
@@ -165,10 +164,10 @@ def test_which_plot_an_action_is_for(ops, dcc_world):
     text = "\n".join(ft.run(ops, [TAKE], Dice(6, 1), only="Meridian"))
     assert "plan clock" not in text                                  # no plot of its own
     from lib.plot_manager import PlotManager
-    PlotManager(dcc_world).add("Hostile Takeover", "x", owner="Meridian", goal="y")
+    PlotManager(dcc_world).add("Hostile Takeover", "y", owner="Meridian")
     text = "\n".join(ft.run(ops, [TAKE], Dice(6, 1), only="Meridian"))
     assert "for Hostile Takeover, which has no plan clock to move" in text
-    PlotManager(dcc_world).add("Second Front", "x", owner="Meridian", goal="z")
+    PlotManager(dcc_world).add("Second Front", "z", owner="Meridian")
     with pytest.raises(ft.TurnError, match="which plot is it for"):
         ft.check(ops, [TAKE])
     assert ft.check(ops, [dict(TAKE, plot="Second Front")])[0]["plot"] == "Second Front"
@@ -269,8 +268,7 @@ def test_campaigns_behind_a_symlink(dcc_world, tmp_path):
     assert _base(ops) == str(Path(dcc_world).absolute())
 
     FactionManager(ops).create("Meridian Group", "A security firm.", aliases=["Meridian"])
-    PlotManager(dcc_world).add("Hostile Takeover", "Meridian buys the floor.", owner="Meridian",
-                               goal="own every guard post")
+    PlotManager(dcc_world).add("Hostile Takeover", "own every guard post", owner="Meridian")
     ThreatClockManager(dcc_world).add_clock("Takeover", 3, advance_on="event",
                                             plots=["Hostile Takeover"], text="the buy-out")
     lines = ft.run(ops, [TAKE], Dice(6, 1), only="Meridian")

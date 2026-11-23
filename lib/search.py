@@ -110,7 +110,7 @@ class WorldSearcher:
         return results
 
     def search_plots(self, query: str) -> dict[str, dict]:
-        """Search plots by name, description, NPCs, locations, or objectives"""
+        """Search plots by name, goal, where they stand, or NPCs"""
         plots = self.json_ops.load_json('plots.json')
         results = {}
         query_lower = query.lower()
@@ -124,8 +124,8 @@ class WorldSearcher:
                 results[name] = data
                 continue
 
-            # Search in description
-            if query_lower in data.get('description', '').lower():
+            # Search in its goal and where it stands
+            if query_lower in f"{data.get('goal', '')} {data.get('stands', '')}".lower():
                 results[name] = data
                 continue
 
@@ -294,7 +294,7 @@ class WorldSearcher:
                 elif status == 'FAILED':
                     status_marker = " [FAILED]"
                 print(f"  - {name} ({plot_type}){status_marker}")
-                print(f"    {self._format_text(plot.get('description', ''), full=full, limit=80)}")
+                print(f"    {self._format_text(plot.get('stands') or plot.get('goal', ''), full=full, limit=80)}")
 
         if results.get('related_plots'):
             related_items = list(results['related_plots'].items())

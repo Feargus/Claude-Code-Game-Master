@@ -228,7 +228,7 @@ EOF
 - A turn can't be undone (every power change is in `rules.log`). Faction actions are about the world, not the character: their facts are held by factions, the street or the public, and time doesn't stop for them.
 
 **A faction's plot** (its first, and each that replaces it) is written from its values and impulses and where it stands now: power, assets, leader, presence, relations. It touches the character only indirectly: it plays out in a place they know or frequent, or reaches them or their people because it reaches many (a rent rise, a raid on their street). It is never aimed at the character; that is the main plot's job. With it, in one go:
-1. `gm-plot.sh add "<short name>" --owner faction:<id> --goal "<what they are after>" --description "…"`;
+1. `gm-plot.sh add "<short name>" --owner faction:<id> --goal "<what they are after, a line>"`;
 2. its plan clock, an event clock, with what happens when the plan succeeds: `gm-clock.sh add "<short name>" <2–6> --on event --text "<the plan>" --consequence "<the plan succeeds: what changes>" --plot "<plot>"`; each segment is one successful action for it;
 3. the true plan as a fact the faction holds (`gm-note.sh "<the plan>" --holders faction:<id> --nowhere --plot "<plot>"`);
 4. its portents: a lie or a half-truth each, recorded as a secret version of the plan (`--secret --truth wrong|partial --version-of <id>`), and an `--offscreen` consequence that tells it to the street or the public when the clock reaches its segment (`--trigger-type on_clock --match "<clock>:<segment>" --tells <id> --to street`). One portent on a clock of 2–3 segments, two on 4–6, spread evenly.

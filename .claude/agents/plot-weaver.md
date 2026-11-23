@@ -61,8 +61,8 @@ someone's scheme, its **owner** and their **goal** — every name drawn from the
 ```bash
 # The plot. Its --involves are what bring it forward: the cards show it when its people or
 # places come into play. Records that exist (sketches too); make a sketch first if needed.
-bash tools/gm-plot.sh add "<short name>" --kind <kind> --description "<one-line grounded hook>" \
-  [--owner "<NPC or faction>" --goal "<what they are after>"] \
+bash tools/gm-plot.sh add "<short name>" --kind <kind> --goal "<what it is after, a line>" \
+  [--owner "<NPC or faction>"] --stands "<one-line grounded hook>" \
   --involves "<existing NPC>" --involves "<existing place>"
 
 # The clock that brings it to a head if left alone (e.g. 3d, 2w).

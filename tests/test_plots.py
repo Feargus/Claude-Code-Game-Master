@@ -1,5 +1,5 @@
 """Plots (lib/plot_manager.py): a short key as the id; owner, goal and kind;
-where it stands; who and what it involves; a summary when it ends. Facts,
+where it stands; who and what it involves; an outcome when it ends. Facts,
 consequences, clocks and glossary entries point at their plots, and some links
 are inherited. Open plots are sorted most pressing first."""
 
@@ -28,8 +28,8 @@ def world(dcc_world):
 
 def test_a_plot_has_a_short_key_and_the_new_fields(world):
     pm = PlotManager(world)
-    key = pm.add(" The  Descent ", "Carl has to get Donut down the stairs alive.",
-                 owner="Mordecai", goal="keep his crawlers alive", kind="main",
+    key = pm.add(" The  Descent ", "keep his crawlers alive",
+                 owner="Mordecai", kind="main",
                  involves=["Princess Donut", "Floor 1 Stairs"], stands="The timer runs.")
     assert key == "The Descent"
     p = _load(world, "plots.json")["The Descent"]
@@ -45,6 +45,8 @@ def test_a_plot_has_a_short_key_and_the_new_fields(world):
     with pytest.raises(PlotError, match="No npc"):
         pm.add("Rats", "x", involves=["Nobody Here"])
     assert pm.add("Descent", "another plot", another=True) == "Descent"
+    with pytest.raises(PlotError, match="--goal"):
+        pm.add("Rats", " ")                                  # every plot has a goal
     assert check_key("Eleventh Question") == "Eleventh Question"
 
 
@@ -55,12 +57,12 @@ def test_where_it_stands_who_it_involves_and_how_it_ends(world):
     assert pm.set_stands("the descent", "Carl found the stairs.") == ("The Descent", "")
     assert pm.involve("The Descent", ["Carl", "Bone Garden"]) == ["npc:Carl", "location:Bone Garden"]
     assert pm.involve("The Descent", remove=["Carl"]) == ["location:Bone Garden"]
-    with pytest.raises(PlotError, match="summary"):
+    with pytest.raises(PlotError, match="outcome"):
         pm.end("The Descent", "completed", "")
     pm.end("Mordecai's Debt", "completed", "Paid in teeth.", next_plot="The Descent")
     plots = _load(world, "plots.json")
     assert plots["Mordecai's Debt"]["status"] == "completed"
-    assert plots["Mordecai's Debt"]["summary"] == "Paid in teeth."
+    assert plots["Mordecai's Debt"]["outcome"] == "Paid in teeth."
     assert plots["The Descent"]["follows"] == "Mordecai's Debt"
     with pytest.raises(PlotError, match="completed"):
         pm.set_stands("Mordecai's Debt", "x")
@@ -168,7 +170,6 @@ def test_an_owners_plot_with_nothing_to_move_it_says_so(world):
     def add(*words):
         return subprocess.run(["bash", str(root / "tools/gm-plot.sh"), "add", *words],
                               capture_output=True, text=True, env=env).stdout
-    out = add("The Heist", "--description", "Kira robs the vault.", "--owner", "player",
-              "--goal", "the vault")
+    out = add("The Heist", "--goal", "rob the vault", "--owner", "player")
     assert "[NOTE] Nothing will move this plot by itself" in out and '--plot "The Heist"' in out
-    assert "[NOTE] Nothing will move" not in add("The Rot", "--description", "Something spreads.")
+    assert "[NOTE] Nothing will move" not in add("The Rot", "--goal", "find what spreads the rot")

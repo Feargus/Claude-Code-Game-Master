@@ -201,7 +201,7 @@ class Cards:
         plots = self.json_ops.load_json("plots.json") or {}
         keys = [k for k in plot_order(self.json_ops, plots) if cid in (plots[k].get("involves") or [])]
         return [f"{label}: [{plots[k].get('kind', '?')}] {k}: "
-                f"{plots[k].get('stands') or plots[k].get('description', '')}"
+                f"{plots[k].get('stands') or plots[k].get('goal', '')}"
                 for k in keys]
 
     # ---------- the NPC card ----------
@@ -277,7 +277,7 @@ class Cards:
         for label, value in (("voice", personality.get("voice")),
                              ("tells", personality.get("tells")),
                              ("wants", personality.get("want")),
-                             ("after now", status.get("goal")),
+                             ("goal", status.get("goal")),
                              ("fears", personality.get("fears"))):
             if value:
                 lines.append(f"  {label}: {value}")
