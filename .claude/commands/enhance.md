@@ -23,7 +23,7 @@ bash tools/gm-enhance.sh find "$ARGUMENTS"
 This returns one of:
 - `npc` - Character enhancement
 - `location` - Place enhancement
-- `site` - The target of a run, a job or a dungeon, laid out as areas
+- `site` - The target of a run, a job or a dungeon, laid out as locations
 - `item` - A notable object
 - `plot` - Quest or story hook
 
@@ -103,13 +103,13 @@ When entity type is `site` (or a location the player is about to make a run on):
    ```bash
    bash tools/gm-enhance.sh site-check "$ARGUMENTS"
    ```
-   It lists the site's areas (locations saved as `<Site> - <Area>`).
+   It lists the site's locations (saved as `<Site>#<Location>`).
 2. **Query the source:**
    ```bash
    bash tools/gm-enhance.sh query "$ARGUMENTS" --type site -n 15
    ```
-3. **No areas yet:** spawn `site-architect` with the passages (names, security, who holds it, what's kept there). It saves the areas and connections itself. Use the source's names exactly; improvise only the gaps.
-4. **Areas exist:** offer to add the passages as context to the site, or to update area descriptions with source details (`gm-location.sh describe`).
+3. **No locations yet:** spawn `site-architect` with the passages (names, security, who holds it, what's kept there). It saves the site, its locations and connections itself. Use the source's names exactly; improvise only the gaps.
+4. **Locations exist:** offer to add the passages as context to the site, or to update the locations' descriptions with source details (`gm-location.sh describe`).
 
 Lay a site out when the player commits to the job, not at the door. See `gm-sites`.
 
@@ -125,7 +125,7 @@ Lay a site out when the player commits to the job, not at the door. See `gm-site
 | `apply "name"` | Save enhancements to entity |
 | `summary "name"` | Full entity + passages report |
 | `list-unenhanced` | Find entities needing enhancement |
-| `site-check "name"` | List a site's areas |
+| `site-check "name"` | List a site's locations |
 
 ## Notes
 

@@ -139,6 +139,8 @@ def plot_order(json_ops, plots: dict[str, Any] | None = None) -> list[str]:
     npcs = json_ops.load_json("npcs.json") or {}
     scene = {f"npc:{n}" for n in npcs_present(npcs, here, overview.get("scene"))}
     scene.add(f"location:{here}")
+    import sites
+    scene.add(f"location:{sites.site_of(here)}")          # the site it is in
 
     fired: dict[str, str] = {}
     store = json_ops.load_json("consequences.json") or {}

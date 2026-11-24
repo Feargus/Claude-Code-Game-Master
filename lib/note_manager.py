@@ -12,6 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import facts as fact_file
+import sites
 from campaign_manager import CampaignManager
 from game_time import STORED_FORMAT, stored_time
 from json_ops import JsonOperations
@@ -682,7 +683,7 @@ class NoteManager:
                 continue
             if words and not all(w in str(f.get('fact', '')).lower() for w in words):
                 continue
-            if place and f.get('at') != place:
+            if place and not sites.at(f.get('at') or '', place):
                 continue
             if plot_key and plot_key not in (f.get('plots') or []):
                 continue

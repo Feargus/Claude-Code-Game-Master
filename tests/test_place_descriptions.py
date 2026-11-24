@@ -102,13 +102,13 @@ def test_the_brief_shows_the_place_and_its_exits(dcc_world):
                                             "Coffins rented by the week, stacked eight high.")
     SessionManager(dcc_world).move_party("The Kettle")
     brief = SessionManager(dcc_world).get_full_context()
-    assert "Here: Coffins rented by the week, stacked eight high." in brief
+    assert "The Kettle: Coffins rented by the week, stacked eight high." in brief
     assert "Exits: Warehouse Street Level (traveled)" in brief
 
 
 def test_the_brief_asks_for_a_missing_description(dcc_world):
     brief = SessionManager(dcc_world).get_full_context()
-    assert 'Here: (no description yet: write one before narrating the place' in brief
+    assert ': (no description yet: write one before narrating the place' in brief
 
 
 def test_gm_note_takes_an_optional_add(dcc_world):

@@ -34,6 +34,7 @@ NEAR_MISSES = 3
 
 
 import facts as fact_file  # noqa: E402 (after the path line above, like every lib import)
+import sites  # noqa: E402
 
 _number = fact_file.number
 
@@ -105,7 +106,7 @@ def _bonus(fact: dict, abouts, place, plot_key, newest: int) -> float:
     bonus = 0.0
     if abouts and set(abouts) & set(fact.get("about") or []):
         bonus += ABOUT_BONUS
-    if place and fact.get("at") == place:
+    if place and sites.at(fact.get("at") or "", place):
         bonus += AT_BONUS
     if plot_key and plot_key in (fact.get("plots") or []):
         bonus += PLOT_BONUS
@@ -287,7 +288,8 @@ class SceneRanker:
     """Ranks facts by how well they fit the scene, with no model loaded: the query
     is the average of vectors that exist already: the
     place's description, the last 3 facts recorded here, and the sentence of each
-    open plot that involves the place or someone in the scene. The score adds the
+    open plot that involves the place or someone in the scene (a site: the site or one
+    of its locations, sites.py). The score adds the
     same bonuses as find --like, with "here" meaning the place and the people in
     the scene. Without vectors (semantic recall off, or not embedded yet), the
     bonuses and recency alone decide: the place's and the people's own facts first,
@@ -306,9 +308,10 @@ class SceneRanker:
         plots = json_ops.load_json("plots.json") or {}
         self.plots_here = {k for k, p in plots.items() if isinstance(p, dict)
                            and p.get("status", "open") == "open"
-                           and self.here & set(p.get("involves") or [])}
+                           and any(self._here(i) for i in p.get("involves") or [])}
         parts = [self.vectors.get(self.place)]
-        recent_here = sorted((f for f in everything if self.place and f.get("at") == self.place),
+        recent_here = sorted((f for f in everything if self.place and sites.at(f.get("at") or "",
+                                                                                self.place)),
                              key=_number, reverse=True)[:3]
         parts += [self.vectors.get(f"fact:{f['id']}") for f in recent_here]
         parts += [self.vectors.get(f"plot:{k}") for k in sorted(self.plots_here)]
@@ -329,11 +332,17 @@ class SceneRanker:
             self._average = sum(self._sims.values()) / len(self._sims) if self._sims else 0.0
         return self._sims.get(f"fact:{fact.get('id')}", self._average)
 
+    def _here(self, cid: str) -> bool:
+        """Whether an id is here: the place (a site: any of its locations, sites.py)
+        or someone in the scene."""
+        return cid in self.here or (bool(self.place) and str(cid).startswith("location:")
+                                    and sites.at(cid, self.place))
+
     def score(self, fact: dict) -> float:
         bonus = 0.0
-        if self.here & set(fact.get("about") or []):
+        if any(self._here(a) for a in fact.get("about") or []):
             bonus += ABOUT_BONUS
-        if self.place and fact.get("at") == self.place:
+        if self.place and sites.at(fact.get("at") or "", self.place):
             bonus += AT_BONUS
         if self.plots_here & set(fact.get("plots") or []):
             bonus += PLOT_BONUS

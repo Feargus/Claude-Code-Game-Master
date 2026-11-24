@@ -138,8 +138,10 @@ def here(json_ops, on_the_way: bool = False) -> tuple[str, set[str]]:
 
 
 def holder_here(holder: str, place: str, present: set[str]) -> bool:
+    import sites
     h = str(holder).lower()
-    return h in ("player", "world") or h in present or (bool(place) and h == f"location:{place}".lower())
+    return h in ("player", "world") or h in present or (
+        bool(place) and h.startswith("location:") and sites.at(place, h))
 
 
 def judge(json_ops, moment: dict[str, Any], through: Through, place: str,

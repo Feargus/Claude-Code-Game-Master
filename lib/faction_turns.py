@@ -411,10 +411,9 @@ def _lines(json_ops, r, powers, places) -> list[str]:
     if kind in COMPLEX:
         more = _plan_lines(r) + more
     lines += [f"  → {line}" for line in more]
-    if kind in COMPLEX:
-        lines += [line for c in (r.get("clock_after") or {}).get("fired") or []
-                  for line in fired_lines(c)]
-    if r.get("at") and r["at"] == _here(json_ops):
+    lines += _plan_fired(r, kind)
+    import sites
+    if r.get("at") and sites.at(_here(json_ops), r["at"]):
         lines.append(f"  HERE: {_character(json_ops)} is at {r['at']} and sees it happen: narrate "
                      f"what shows (patrols arriving, a shop shut, smoke, a fight in the street).")
     for (f, p), (before, after, fired) in powers.items():
@@ -488,6 +487,14 @@ def _advance(json_ops, r) -> dict[str, Any] | None:
         return None
     with contextlib.redirect_stdout(sys.stderr):
         return ThreatClockManager(base).advance(r["clock"])
+
+
+def _plan_fired(r, kind: str) -> list[str]:
+    """What a complex action's plan clock fired, as [FIRED] lines."""
+    from consequence_manager import fired_lines
+    if kind not in COMPLEX:
+        return []
+    return [line for c in (r.get("clock_after") or {}).get("fired") or [] for line in fired_lines(c)]
 
 
 def _plan_lines(r) -> list[str]:

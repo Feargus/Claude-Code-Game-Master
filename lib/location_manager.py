@@ -52,10 +52,12 @@ class LocationManager(EntityManager):
             for error in errors:
                 print(f"[ERROR] {error}")
             return False
-        # Validate name
-        valid, error = self.validators.validate_name(name)
-        if not valid:
-            print(f"[ERROR] {error}")
+        # Validate name: a site, or "<site>#<location>" (sites.py)
+        import sites
+        errors = sites.name_errors(name, self.json_ops.load_json(self.locations_file) or {})
+        if errors:
+            for error in errors:
+                print(f"[ERROR] {error}")
             return False
 
         # Check if location already exists
@@ -63,20 +65,10 @@ class LocationManager(EntityManager):
             print(f"[ERROR] Location '{name}' already exists")
             return False
 
-        from world_ids import close_name_refusal
-        refusal = "" if another else close_name_refusal(
-            ids.close_names(name, "location"), "location", name)
+        refusal = "" if another else self._like_another(ids, name, position, description)
         if refusal:
             print(f"[ERROR] {refusal}")
             return False
-        if not another:                           # somewhere like this exists (recall.py)
-            from embedding_store import location_text
-            from recall import close_in_meaning, meaning_refusal
-            hit = close_in_meaning(self.json_ops, "location", location_text(
-                name, {"description": description, "position": position}))
-            if hit:
-                print(f"[ERROR] {meaning_refusal('location', name, hit)}")
-                return False
         # Create location data
         location_data = {
             'position': position,
@@ -92,6 +84,28 @@ class LocationManager(EntityManager):
             self._report_added(name, position, location_data.get('aliases'), description, dropped)
             return True
         return False
+
+    def _like_another(self, ids, name: str, position: str, description: str) -> str:
+        """Why a new place reads like one that exists ('' if it doesn't): a close
+        name (world_ids.close_names) or, once play has begun, a close meaning.
+        Compared with its own kind only: a site with sites, a location with the
+        other locations of its site ("Kitchen" may be in every House; a room
+        reads like its house)."""
+        import sites
+        from world_ids import close_name_refusal
+
+        def kin(other: str) -> bool:
+            return sites.in_site(other) == sites.in_site(name) and (
+                not sites.in_site(name) or sites.same_site(other, name))
+        close = [c for c in ids.close_names(name, "location") if kin(c)]
+        refusal = close_name_refusal(close, "location", name)
+        if refusal:
+            return refusal
+        from embedding_store import location_text
+        from recall import close_in_meaning, meaning_refusal
+        hit = close_in_meaning(self.json_ops, "location", location_text(
+            name, {"description": description, "position": position}))
+        return meaning_refusal("location", name, hit) if hit and kin(hit[0]) else ""
 
     def connect_locations(self, from_loc: str, to_loc: str, path: str) -> bool:
         """

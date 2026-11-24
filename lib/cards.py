@@ -2,7 +2,8 @@
 """Scene cards: what the GM needs about a place or a person, when it comes into play.
 
 The commands that change the scene print them, so the GM never has to ask:
-`gm-session.sh move` prints the location card, `gm-scene.sh enter` an NPC card
+`gm-session.sh move` prints the site card (from another site) or the location's
+own lines (within one: lib/sites.py), `gm-scene.sh enter` an NPC card
 for each person who enters, and `gm-scene.sh` alone the whole scene. The brief
 shows the scene the same way.
 
@@ -10,9 +11,13 @@ A card shows what the record says about its subject, then a few facts, those tha
 fit the scene best first (recall.SceneRanker: by meaning when semantic recall is
 installed, else by the place, the people present and recency):
 
-    location card   the description and exits; who is usually found there; the
-                    consequences waiting there and the plots that involve it; the facts
-                    that fit the scene, those the character knows and those they don't
+    site card       the description and exits; presence; who is usually found in
+                    it (and in which location); the plots that involve it or one of
+                    its locations; the facts that fit the scene anywhere in it, those
+                    the character knows and those they don't
+    location lines  a location in a site on its own: its description, and its own
+                    exits (a laid-out site); after a move within the site, all
+                    that is printed
     NPC card        the sheet: who they are and how to play them; their
                     attitudes (towards the player first); what they know that
                     the player doesn't; what they believe that is wrong or only
@@ -75,11 +80,10 @@ class Cards:
         """The scene's ranking (recall.SceneRanker): the given place, or the current
         one, and the people in the scene."""
         if location is None:
-            pos = self.overview.get("player_position") or {}
-            location = pos.get("current_location", "") if isinstance(pos, dict) else ""
+            location = self._here()
         if location not in self._rankers:
             from recall import SceneRanker
-            present = npcs_present(self.npcs, location, self.overview.get("scene"))
+            present = npcs_present(self.npcs, self._here(), self.overview.get("scene"))
             self._rankers[location] = SceneRanker(self.json_ops, location, present)
         return self._rankers[location]
 
@@ -125,48 +129,96 @@ class Cards:
 
     # ---------- the location card ----------
 
+    def _here(self) -> str:
+        pos = self.overview.get("player_position") or {}
+        return pos.get("current_location", "") if isinstance(pos, dict) else ""
+
     def location_card(self, location: str, plots: bool = True) -> list[str]:
-        """The place as recorded: description, exits, who is usually here, and
-        (with `plots`) the open plots that involve it; then the facts that fit the
-        scene best, those the character knows and those they don't."""
+        """The place as the GM needs it on arriving from another site: the site card,
+        then, for a location in the site, its own lines (location_lines)."""
+        import sites
+        lines = self.site_card(sites.site_of(location), plots=plots)
+        if sites.in_site(location):
+            lines += self.location_lines(location)
+        return lines
+
+    def location_lines(self, location: str) -> list[str]:
+        """A place on its own, as on a move within its site: "<name>: <description>",
+        and the exits of a location that has its own (a site's layout: site-architect)."""
+        import sites
         from session_manager import SessionManager
         place = self.locations.get(location)
-        moment = current_time(self.json_ops)
-        when = ""
-        if moment:
-            from time_manager import derive_time_of_day
-            when = f", {moment:%H:%M} ({derive_time_of_day(moment)})"
-        lines = [f"SCENE: {location or '(no location)'}{when}"]
+        name = sites.own_name(location)
+        if not isinstance(place, dict):
+            return [f"{name}: (not recorded)"]
+        description = str(place.get("description") or "").strip()
+        lines = [f"{name}: {description}" if description else
+                 f"{name}: (no description yet: write one before narrating the place, "
+                 f"bash tools/gm-location.sh describe \"{location}\" \"...\")"]
+        exits, _ = SessionManager._normalize_connection_list(place.get("connections", []))
+        if exits and sites.in_site(location):
+            lines.append("  Exits: " + "; ".join(
+                f"{sites.own_name(c['to']) if sites.same_site(c['to'], location) else c['to']}"
+                + (f" ({c['path']})" if c.get("path") else "") for c in exits))
+        import world_rules
+        if sites.in_site(location):
+            lines += [f"  Rule here: {line}" for line in
+                      world_rules.holder_lines(self.json_ops, f"location:{location}")]
+        return lines
+
+    def _usual_line(self, site: str) -> list[str]:
+        """Who is usually found in the site and isn't in the scene, each with their
+        location in it where one is given."""
+        import sites
+        present = set(npcs_present(self.npcs, self._here(), self.overview.get("scene")))
+        usual = []
+        for n, data in npcs_usually_at(self.npcs, site).items():
+            if n in present:
+                continue
+            inside = [sites.own_name(p) for p in (data.get("places") or {}).get("usual") or []
+                      if sites.in_site(p) and sites.same_site(p, site)]
+            usual.append(n + (f" ({', '.join(inside)})" if inside else ""))
+        return [f"Usually found here, not in the scene: {', '.join(usual)} "
+                f"(if one is actually here: bash tools/gm-scene.sh enter \"<name>\")"] if usual else []
+
+    def site_card(self, site: str, plots: bool = True) -> list[str]:
+        """A site as recorded: its description and exits, presence, who is usually
+        found in it (with their location), (with `plots`) the open plots that involve
+        it or one of its locations; then the facts that fit the scene best, those the
+        character knows and those they don't, a fact anywhere in the site counting
+        as the site's (sites.py)."""
+        import sites
+        from session_manager import SessionManager
+        place = self.locations.get(site)
+        lines = []
         if isinstance(place, dict):
             description = str(place.get("description") or "").strip()
-            lines.append(f"Here: {description}" if description else
-                         f"Here: (no description yet: write one before narrating the place, "
-                         f"bash tools/gm-location.sh describe \"{location}\" \"...\")")
+            lines.append(f"{site}: {description}" if description else
+                         f"{site}: (no description yet: write one before narrating the place, "
+                         f"bash tools/gm-location.sh describe \"{site}\" \"...\")")
             exits, _ = SessionManager._normalize_connection_list(place.get("connections", []))
             if exits:
                 lines.append("Exits: " + "; ".join(
                     f"{c['to']} ({c['path']})" if c.get("path") else c["to"] for c in exits))
-            lines += self._presence_line(location)
-        present = set(npcs_present(self.npcs, location, self.overview.get("scene")))
-        usual = [n for n in npcs_usually_at(self.npcs, location) if n not in present]
-        if usual:
-            lines.append(f"Usually found here, not in the scene: {', '.join(usual)} "
-                         f"(if one is actually here: bash tools/gm-scene.sh enter \"<name>\")")
+            lines += self._presence_line(site)
+        else:
+            lines.append(f"{site or '(no location)'}: (not recorded)")
+        lines += self._usual_line(site)
         if plots:
-            lines += self._plots_of(f"location:{location}", "Plots here")
+            lines += self._plots_of(f"location:{site}", "Plots here")
         import world_rules
-        lines += [f"Rule here: {line}" for line in world_rules.holder_lines(self.json_ops, f"location:{location}")]
-        # Not only the facts of the place: whatever fits the scene best, the place's
+        lines += [f"Rule here: {line}" for line in world_rules.holder_lines(self.json_ops, f"location:{site}")]
+        # Not only the facts of the place: whatever fits the scene best, the site's
         # own facts helped by the bonuses (docs/modules/campaign-memory.md). Split by
         # who knows it, so the GM sees at once what the character can draw on.
-        lid = f"location:{location}"
         known, hidden = [], []
         for f in self.facts:
             if f.get("attitude") or fact_file.unheard(f):
                 continue
             holders = f.get("holders")
-            if holders is None:                   # an old fact: only if it is the place's
-                if f.get("at") == lid or lid in (f.get("about") or []):
+            if holders is None:                   # an old fact: only if it is the site's
+                if sites.at(f.get("at") or "", site) or any(
+                        sites.at(a, site) for a in f.get("about") or [] if a.startswith("location:")):
                     known.append(f)
             elif {"player", "public"} & set(holders):
                 known.append(f)
@@ -174,18 +226,21 @@ class Cards:
                 hidden.append(f)
         like = 'gm-note.sh find --like "<what is happening>"'
         # A place only ranks its facts: one printed above says nothing more here.
-        lines += self._fact_list("fits here", known, f'{like} --held-by player --at "{location}"',
-                                 location=location, name_shown=False)
+        lines += self._fact_list("fits here", known, f'{like} --held-by player --at "{site}"',
+                                 location=site, name_shown=False)
         lines += self._fact_list(f"fits here, {self.player} doesn't know", hidden,
-                                 f'{like} --hidden --at "{location}"', hidden_is_given=True,
-                                 location=location, name_shown=False)
+                                 f'{like} --hidden --at "{site}"', hidden_is_given=True,
+                                 location=site, name_shown=False)
         return lines
 
     def _plots_of(self, cid: str, label: str) -> list[str]:
         """The open plots that involve `cid`, most pressing first, one line each."""
         from plot_manager import plot_name, plot_order
         plots = self.json_ops.load_json("plots.json") or {}
-        keys = [k for k in plot_order(self.json_ops, plots) if cid in (plots[k].get("involves") or [])]
+        import sites
+        keys = [k for k in plot_order(self.json_ops, plots)
+                if any(i == cid or (cid.startswith("location:") and i.startswith("location:")
+                                    and sites.at(i, cid)) for i in plots[k].get("involves") or [])]
         return [f"{label}: {plot_name(self.json_ops, k, plots[k])}: "
                 f"{plots[k].get('stands') or plots[k].get('goal', '')}"
                 for k in keys]
@@ -285,10 +340,15 @@ class Cards:
     # ---------- the whole scene ----------
 
     def scene(self, plots: bool = True) -> list[str]:
-        """The location card, then a card for everyone present."""
-        pos = self.overview.get("player_position") or {}
-        location = pos.get("current_location", "") if isinstance(pos, dict) else ""
-        lines = self.location_card(location, plots=plots)
+        """The place and the time, the location card, then a card for everyone present."""
+        location = self._here()
+        moment = current_time(self.json_ops)
+        when = ""
+        if moment:
+            from time_manager import derive_time_of_day
+            when = f", {moment:%H:%M} ({derive_time_of_day(moment)})"
+        lines = [f"SCENE: {location or '(no location)'}{when}"]
+        lines += self.location_card(location, plots=plots)
         present = npcs_present(self.npcs, location, self.overview.get("scene"))
         for name in present:
             lines += [""] + self.npc_card(name)
@@ -313,8 +373,10 @@ class Cards:
 
     def factions_here(self, location: str, present) -> list[tuple[str, str]]:
         """(faction id, why it is here) for each faction present at this place
-        (presence 1 or more), with a member in the scene, or with an open plot
-        involving the place; most present first."""
+        (presence 1 or more, its site's), with a member in the scene, or with an
+        open plot involving the place's site or one of its locations; most present
+        first."""
+        import sites
         from factions import load, members, presence
         from plot_manager import plot_order
         plots = self.json_ops.load_json("plots.json") or {}
@@ -324,7 +386,8 @@ class Cards:
         for fid in load(self.json_ops):
             here = [(k, s) for k, s in members(self.npcs, fid) if k in present]
             tied = [k for k in plot_order(self.json_ops, plots)
-                    if lid in (plots[k].get("involves") or [])
+                    if any(i.startswith("location:") and sites.same_site(i, lid)
+                           for i in plots[k].get("involves") or [])
                     and f"faction:{fid}" in [plots[k].get("owner"), *(plots[k].get("involves") or [])]]
             why = [f"presence here: {strength[fid]}"] if strength.get(fid) else []
             if here:
@@ -364,7 +427,9 @@ class Cards:
 
 
 def main() -> int:
-    """`cards.py location [<place>]` | `cards.py npc <name>...` | `cards.py scene`."""
+    """`cards.py location [<place>]` | `cards.py npc <name>...` | `cards.py scene`.
+    `location` alone is the card after a move: after a move within one site only
+    the place's own lines (Cards.location_lines)."""
     from campaign_manager import CampaignManager
     from json_ops import JsonOperations
     args = sys.argv[1:]
@@ -377,9 +442,12 @@ def main() -> int:
     if action == "scene":
         print("\n".join(cards.scene()))
     elif action == "location":
+        import sites
         pos = cards.overview.get("player_position") or {}
-        here = " ".join(args[1:]) or (pos.get("current_location", "") if isinstance(pos, dict) else "")
-        print("\n".join(cards.location_card(here)))
+        before = pos.get("previous_location", "") if isinstance(pos, dict) else ""
+        here = " ".join(args[1:]) or cards._here()
+        within = not args[1:] and sites.same_site(before, here) and before.lower() != here.lower()
+        print("\n".join(cards.location_lines(here) if within else cards.location_card(here)))
     elif action == "npc" and args[1:]:
         blocks = [cards.npc_card(name) for name in args[1:]]
         print("\n\n".join("\n".join(b) for b in blocks))

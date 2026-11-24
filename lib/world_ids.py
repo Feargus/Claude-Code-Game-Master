@@ -225,6 +225,8 @@ class WorldIds:
             for key, data in self._load()[kind].items():
                 if kind != "faction":            # a faction's id is no name ("psm")
                     out.append((f"{kind}:{key}", key))
+                if kind == "location" and "#" in key:    # its own name in its site
+                    out.append((f"{kind}:{key}", key.split("#", 1)[1].strip()))
                 out += [(f"{kind}:{key}", a) for a in aliases_of(data)]
         return out
 

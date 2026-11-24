@@ -62,9 +62,10 @@ ENTITY_QUERIES = {
 
 
 def _is_site(name: str, locations: dict[str, Any]) -> bool:
-    """A location is a site when other locations are its areas, named '<name> - <area>'."""
-    prefix = f"{name} - "
-    return any(other.startswith(prefix) for other in locations)
+    """A location is a laid-out site when other locations are in it, named
+    '<name>#<location>' (sites.py)."""
+    import sites
+    return any(other != name and sites.at(other, name) for other in locations)
 
 class EntityEnhancer:
     """
@@ -130,7 +131,7 @@ class EntityEnhancer:
 
         Search order: NPCs -> Locations -> Items -> Plots
         Uses exact match first, then fuzzy matching.
-        A location with areas saved as '<name> - <area>' is typed as 'site'.
+        A location with locations in it ('<name>#<location>') is typed as 'site'.
 
         Args:
             name: Entity name to search for
@@ -503,16 +504,17 @@ class EntityEnhancer:
         return False
 
     def get_site_info(self, site_name: str) -> dict[str, Any]:
-        """A site's areas: the locations saved as '<site> - <area>' by site-architect."""
+        """A site's locations: those saved as '<site>#<location>' (site-architect)."""
+        import sites
         locations = self.json_ops.load_json("locations.json")
         if not isinstance(locations, dict):
             locations = {}
-        areas = sorted(name for name in locations if name.startswith(f"{site_name} - "))
+        inside = sorted(name for name in locations if name != site_name and sites.at(name, site_name))
         return {
             "site_name": site_name,
-            "area_count": len(areas),
-            "has_structure": bool(areas),
-            "areas": areas,
+            "location_count": len(inside),
+            "has_structure": bool(inside),
+            "locations": inside,
         }
 
     def get_scene_context(self, location_name: str) -> dict[str, Any] | None:
@@ -832,7 +834,7 @@ def main():
     search_parser.add_argument('--excerpt-chars', type=int, default=350, help='Excerpt length when not using --full')
 
     # Dungeon check command
-    site_parser = subparsers.add_parser('site-check', help='List the areas of a site')
+    site_parser = subparsers.add_parser('site-check', help='List the locations of a site')
     site_parser.add_argument('name', help='Site name to check')
 
     # Scene context command (GM-internal, minimal output)
@@ -949,13 +951,13 @@ def main():
     elif args.action == 'site-check':
         info = enhancer.get_site_info(args.name)
         print(f"Site: {info['site_name']}")
-        print(f"Areas: {info['area_count']}")
-        if info['areas']:
-            for area in info['areas']:
-                print(f"  {area}")
+        print(f"Locations: {info['location_count']}")
+        if info['locations']:
+            for name in info['locations']:
+                print(f"  {name}")
         else:
-            print("\n** No areas laid out yet **")
-            print("Consider spawning site-architect to lay out its areas.")
+            print("\n** No locations laid out yet **")
+            print("Consider spawning site-architect to lay out its locations.")
 
         # Output JSON for script parsing
         print("\n--- JSON ---")

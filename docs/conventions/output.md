@@ -64,7 +64,7 @@ one gets a letter and a number, in the order made.
 | fact | `f` and a number | `f43` |
 | consequence | `c` and a number | `c12` |
 | NPC | the name | `npc:Matron Ysabet Corvane` in ids, the name in text |
-| location | the name | `location:The Saffron House` in ids, the name in text |
+| location | the name; one in a site `<site>#<location>` | `location:The Saffron House`, `location:The Saffron House#Ilaria's Room` in ids, the name in text |
 | faction | a short id | `faction:houses` in ids, the name in text |
 | plot, clock, world rule, glossary term | the name (one to four words; never changes) | `The Sold Contract`, `Sealing`, `Hunger` |
 | the character | `player` in ids | the character's name in text |
@@ -134,6 +134,7 @@ files. A new idea gets its word here before it is used.
 | **scene** | Who is **present** where the character is; NPCs **enter** and **leave** | |
 | **NPC** | Anyone in the world but the character (`gm-npc.sh`, `npc:<name>`) | person |
 | **location** | A place in the world (`gm-location.sh`, `location:<name>`) | place, spot |
+| **site** | A location that holds others (`<site>#<location>`, `lib/sites.py`); the one-level kind of place | area, zone, building |
 | **link**, **suggest** | Recall *links* a fact to a plot or NPC by itself, or *suggests* it | tag, offer |
 | **world rule** | A rule of the campaign's own (`gm-rule.sh`); **Standing**, **Relation**, the **powers** are the repo's | signature system, mechanic |
 | **the character** | The player's character, in text | the player, the PC |

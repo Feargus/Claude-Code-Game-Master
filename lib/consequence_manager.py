@@ -13,6 +13,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 import facts as fact_file
+import sites
 from entity_manager import EntityManager, npcs_present
 from game_time import STORED_FORMAT
 
@@ -478,12 +479,14 @@ class ConsequenceManager(EntityManager):
         """The reason a single structured trigger matches now, or '' if it doesn't.
 
         on_location and on_npc hold ids (location:<key>, npc:<key>), compared
-        with the current location and the NPCs present, whose names are keys.
+        with the current location (a site's trigger matches in each of its
+        locations: sites.at) and the NPCs present, whose names are keys.
         on_time holds a time-of-day word, compared with the word for the game
         time, so it fires exactly in that word's hours ("noon": 11:00–12:59).
         """
         match = str(raw_match).lower()
-        if ttype == 'on_location' and match == f"location:{world_state.get('location', '')}".lower():
+        if ttype == 'on_location' and world_state.get('location') \
+                and sites.at(world_state['location'], match):
             return trigger_words({'type': ttype, 'match': raw_match})
         if ttype == 'on_npc' and match in {f"npc:{n}".lower()
                                           for n in world_state.get('present_npcs') or []}:

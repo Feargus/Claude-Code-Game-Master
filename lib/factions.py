@@ -139,8 +139,10 @@ EYES = 4              # from here, a fact recorded at the place gets the hint "t
 
 
 def presence(json_ops, place: str) -> dict[str, int]:
-    """{faction id: 0–5} at a place (its key); a faction not listed: never written."""
-    loc = (json_ops.load_json("locations.json") or {}).get(place) or {}
+    """{faction id: 0–5} at a place (its key); a faction not listed: never written.
+    A location in a site has its site's (sites.py)."""
+    import sites
+    loc = (json_ops.load_json("locations.json") or {}).get(sites.site_of(place)) or {}
     found = loc.get("presence") if isinstance(loc, dict) else None
     return dict(found) if isinstance(found, dict) else {}
 

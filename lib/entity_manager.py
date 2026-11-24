@@ -54,20 +54,19 @@ def npcs_present(npcs, location, scene=None):
 
 
 def npcs_usually_at(npcs, location):
-    """NPCs whose location tags name this place (case-insensitive, exact), alive
-    and not in the party: where they are usually found, a hint for the GM.
-    Substring matching is search (CLI `--tag-location`), not this: "The Inn"
-    must not match "The Inner Sanctum".
+    """NPCs whose location tags name this place (case-insensitive, exact; for a
+    site, one of its locations too: sites.at), alive and not in the party: where
+    they are usually found, a hint for the GM. Substring matching is search (CLI
+    `--tag-location`), not this: "The Inn" must not match "The Inner Sanctum".
     """
+    import sites
     if not isinstance(npcs, dict):
         return {}
-    loc_l = (location or "").lower()
     out = {}
     for name, data in npcs.items():
         if not isinstance(data, dict) or is_dead(data) or is_party_member(data):
             continue
-        locs = [str(x).lower() for x in usual_places(data)]
-        if loc_l and loc_l in locs:
+        if location and any(sites.at(str(x), location) for x in usual_places(data)):
             out[name] = data
     return out
 

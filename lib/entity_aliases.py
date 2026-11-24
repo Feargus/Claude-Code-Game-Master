@@ -8,7 +8,8 @@ title / case / parenthetical drift in a cross-reference becomes a broken link
 `normalize_entity_name()` canonicalizes a name (lowercase, fold diacritics, drop
 parentheticals, drop punctuation, strip leading honorifics). `resolve_entity_name()`
 matches a query against a set of entity keys in increasing looseness: exact ->
-case-fold -> explicit aliases -> normalized equality. `reuse_existing_key()` is the
+case-fold -> explicit aliases -> normalized equality -> a location's own name
+within its site, when unique. `reuse_existing_key()` is the
 import-time variant: resolve, then the longest existing key whose normalized name
 is a token-prefix of the query (long descriptive query -> short existing key).
 Used by
@@ -108,7 +109,16 @@ def resolve_entity_name(query, entities, aliases_key="aliases"):
             if normalize_entity_name(k) == q_norm:
                 return k
 
-    return None
+    return _in_a_site(keys, q_lower, q_norm)
+
+
+def _in_a_site(keys, q_lower: str, q_norm: str):
+    """A location in a site by its own name ("Ilaria's Room" for "The Saffron
+    House#Ilaria's Room", sites.py), when only one location has it; else None."""
+    inside = [k for k in keys if "#" in k
+              and ((own := k.split("#", 1)[1].strip()).lower() == q_lower
+                   or (q_norm and normalize_entity_name(own) == q_norm))]
+    return inside[0] if len(inside) == 1 else None
 
 
 def reuse_existing_key(query, entities, aliases_key="aliases"):

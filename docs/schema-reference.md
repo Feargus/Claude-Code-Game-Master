@@ -193,7 +193,7 @@ bash tools/gm-npc.sh hp "Name" +3   # Heal
 
 ## locations.json
 
-A dictionary keyed by location name.
+A dictionary keyed by location name (a site, or `<site>#<location>`: below).
 
 ```json
 {
@@ -228,23 +228,15 @@ Notes:
 - **`background: true`** on a location is the same entity tier described under
   [npcs.json](#npcsjson).
 
-### Dungeon Rooms (Extended Schema)
+### Sites and their locations
 
-Dungeon rooms (stored in `locations.json`) may include:
-
-```json
-{
-  "ROOM_NAME": {
-    "dungeon": "string (dungeon name)",
-    "room_number": 1,
-    "description": "string",
-    "exits": {
-      "north": {"to": "Room 2", "type": "open|door|secret|stairs-up|stairs-down"}
-    },
-    "state": {"discovered": false, "visited": false, "cleared": false}
-  }
-}
-```
+A key with `#` is a location in a site: `"The Saffron House#Ilaria's Room"` is in the
+site `"The Saffron House"`, which is recorded first and is a place too (`lib/sites.py`).
+One level only; every key without `#` is a site. What is written for the site holds in
+each of its locations: its `presence`, an NPC's usual place there, an `on_location`
+trigger, `gm-note.sh find --at` and the card's ranking of facts. Connections between the
+locations of one site are its layout (site-architect); a move within a site adds none,
+while a move between sites connects the two sites.
 
 ---
 

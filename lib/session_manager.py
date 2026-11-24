@@ -115,9 +115,15 @@ class SessionManager(EntityManager):
 
     def _ensure_location_and_connection(self, old_location: str, new_location: str) -> None:
         """
-        Add a bidirectional connection between the old and the new location if
-        one doesn't exist (the new one is recorded already: check_destination).
+        Add a bidirectional connection between the old and the new place's sites
+        if one doesn't exist (the new one is recorded already: check_destination).
+        Within one site every location is reached from every other: no connection
+        (sites.py).
         """
+        import sites
+        if sites.same_site(old_location, new_location):
+            return
+        old_location, new_location = sites.site_of(old_location), sites.site_of(new_location)
         locations = self.json_ops.load_json("locations.json") or {}
         changed = False
 
