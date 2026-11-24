@@ -8,7 +8,7 @@ authors = [
 readme = "README.md"
 license = { text = "CC-BY-NC-SA-4.0" }
 requires-python = ">=3.11"
-keywords = ["dnd", "dungeons-and-dragons", "claude", "ai", "dm", "dungeon-master"]
+keywords = ["tabletop", "rpg", "game-master", "claude", "ai"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -24,36 +24,22 @@ classifiers = [
 ]
 
 # Core dependencies. numpy, onnxruntime and tokenizers are semantic recall
-# (EmbeddingGemma on ONNX Runtime, no PyTorch), which recording a fact needs since
-# 2026-11-22; the model itself is downloaded by `bash tools/gm-recall.sh setup`.
+# (EmbeddingGemma on ONNX Runtime, no PyTorch), which recording a fact needs; the
+# model itself is downloaded by `bash tools/gm-recall.sh setup`. pdfplumber, pypdf and
+# python-docx read a book for import.
 dependencies = [
-    "anthropic>=0.76.0",
     "numpy>=1.26",
     "onnxruntime>=1.20",
     "tokenizers>=0.20",
     "pdfplumber>=0.11.9",
     "pypdf>=5.0",
     "python-docx>=1.2.0",
-    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]
-# Voice features (ElevenLabs TTS)
-voice = [
-    "elevenlabs>=2.8.1",
-]
-
-# Full installation (all features)
-full = [
-    "gm-claude[voice]",
-]
-
 # Development dependencies
 dev = [
-    "black>=23.0.0",
     "ruff>=0.1.0",
-    "mypy>=1.5.0",
-    "pre-commit>=3.4.0",
     "pytest>=8.0.0",
 ]
 
@@ -75,10 +61,6 @@ packages = ["lib"]
 [tool.setuptools.package-data]
 "*" = ["*.json", "*.md", "*.txt"]
 
-[tool.black]
-line-length = 100
-target-version = ["py311", "py312"]
-
 [tool.ruff]
 line-length = 100
 target-version = "py311"
@@ -88,14 +70,7 @@ src = ["lib", "."]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "C90", "I", "N", "UP", "B", "A", "C4", "SIM", "RET"]
-ignore = ["E501"]  # Line too long - handled by black
-
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = false
-ignore_missing_imports = true
+ignore = ["E501"]  # line length: the line-length above is a guide, not a rule
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

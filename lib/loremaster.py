@@ -51,14 +51,11 @@ class Loremaster(EntityManager):
         return {"embedder": "meaning", "store": store}
 
     def _load_book_text(self) -> str:
-        for candidate in ("source/current-document.txt", "current-document.txt", "book-text.txt"):
-            p = self.campaign_dir / candidate
-            if p.exists():
-                try:
-                    return p.read_text(encoding="utf-8")
-                except (OSError, ValueError):
-                    return ""
-        return ""
+        p = self.campaign_dir / "source" / "current-document.txt"
+        try:
+            return p.read_text(encoding="utf-8") if p.exists() else ""
+        except (OSError, ValueError):
+            return ""
 
     def _cache(self) -> dict[str, Any]:
         return self.json_ops.load_json(self.cache_file) or {}

@@ -33,8 +33,8 @@ SOURCE = (
 def campaign(tmp_path):
     """A bare campaign directory holding only the prepared source text."""
     cdir = tmp_path / "campaigns" / "iron-tangle"
-    cdir.mkdir(parents=True)
-    (cdir / "current-document.txt").write_text(SOURCE, encoding="utf-8")
+    (cdir / "source").mkdir(parents=True)
+    (cdir / "source" / "current-document.txt").write_text(SOURCE, encoding="utf-8")
     return cdir
 
 

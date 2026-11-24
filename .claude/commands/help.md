@@ -19,8 +19,8 @@ Display all available commands and tools.
   /gm world        Let the world move off-screen (no ending)
   /gm choices      Action menu on/off (on | off | toggle)
   /gm character    Show character sheet & inventory
-  /gm overview     View campaign state summary
-  /gm status       Quick world summary
+  /gm overview     The campaign: its name, folder, character and counts
+  /gm status       Where and when, and how much the world holds
 
   CAMPAIGN SETUP
   --------------------------------------------------------
@@ -41,13 +41,14 @@ Display all available commands and tools.
   CLI TOOLS (bash tools/gm-*.sh; most print their usage when run bare)
   --------------------------------------------------------
   Session and world
-  gm-session.sh     Start/end sessions, the brief (context), moves, the opening
+  gm-session.sh     The brief (context), moves, the header, the opening, world ticks
   gm-campaign.sh    Create and switch campaigns
   gm-time.sh        In-game time
   gm-rule.sh        The world's own rules: their values, changed
   gm-scene.sh       Who is in the scene
-  gm-location.sh    Add and connect locations
-  gm-overview.sh    Quick world summary
+  gm-location.sh    Add and connect places, sites and their locations, presence
+  gm-glossary.sh    The world's own words
+  gm-overview.sh    Where and when, and how much the world holds
   Character
   gm-player.sh      The player's sheet: fields, items, credits, XP and growth
   gm-body.sh        Wounds, armor and cyberware

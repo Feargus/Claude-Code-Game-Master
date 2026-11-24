@@ -51,9 +51,8 @@ facts, and before that session summaries and arc entries).
 `Loremaster.__init__` loads the campaign's book text and calls `index.build(text)` every
 time it is constructed (`lib/loremaster.py:29-31`). There is no persisted index, so
 construction cost scales with book size — which is why `gm-lore.sh` is an on-demand call
-for new/important scenes, not something wired into every context load. It reads `current-document.txt` or
-`book-text.txt` from the campaign directory; without either, every brief comes back
-with empty chapters.
+for new/important scenes, not something wired into every context load. It reads `source/current-document.txt` in
+the campaign directory; without it, every brief comes back with empty chapters.
 
 The gate is the point of the module: a cached location that is not flagged `important`
 returns immediately with no read. Two tiers of output (since 2026-08-13):

@@ -30,23 +30,12 @@ Run this command to install GM Claude dependencies. This runs automatically on f
 
    Note: this installs numpy, onnxruntime and tokenizers (about 150 MB) and downloads the model (217 MB, checked) into `models/`. No PyTorch. Semantic recall is required: without the model, recording a fact is refused.
 
-4. **Create .env if missing**
-   ```bash
-   if [ ! -f ".env" ]; then
-       cat > .env << 'EOF'
-   # GM Claude Configuration
-   DEFAULT_CAMPAIGN_NAME="My Campaign"
-   DEFAULT_STARTING_LOCATION="Thornwick"
-   EOF
-   fi
-   ```
-
-5. **Set script permissions**
+4. **Set script permissions**
    ```bash
    chmod +x tools/*.sh tools/*.py lib/*.py
    ```
 
-6. **Verify installation**
+5. **Verify installation**
    ```bash
    bash tools/gm-dice.sh "1d20"
    ```

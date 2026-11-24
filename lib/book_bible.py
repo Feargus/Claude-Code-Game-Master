@@ -135,12 +135,8 @@ def draft_bible(campaign_dir, name: str = None, voice: dict[str, Any] = None,
 
     src_path = cdir / "source" / "current-document.txt"
     if not src_path.exists():
-        legacy = cdir / "current-document.txt"  # pre-source/ campaigns
-        if legacy.exists():
-            src_path = legacy
-        else:
-            raise FileNotFoundError(
-                f"no source/current-document.txt in {campaign_dir} — run `gm-extract.sh prepare` first")
+        raise FileNotFoundError(
+            f"no source/current-document.txt in {campaign_dir} — run `gm-extract.sh prepare` first")
     source = src_path.read_text(encoding="utf-8", errors="replace")
     log_token_estimate(source, label="draft-bible")
 

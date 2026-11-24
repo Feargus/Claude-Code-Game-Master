@@ -30,7 +30,6 @@ FIXTURE_FILES = {
     "facts.json": '{"f1": {"fact": "The door is barred"}}\n',
     "consequences.json": '{"active": [], "resolved": []}\n',
     "campaign-overview.json": '{"campaign_name": "Reset Fixture", "session_count": 3}\n',
-    "session-log.md": "# Campaign Session Log\n\nSession 1 happened.\n",
     "character.json": '{"name": "Testarossa", "hp": {"current": 9, "max": 12}}\n',
     "fallen/Dead Guy.json": '{"name": "Dead Guy"}\n',
     "plots.json": '{"The Heist": {"status": "active"}}\n',
@@ -49,7 +48,7 @@ FIXTURE_FILES = {
     "ruleset.json": '{"plain_rules": ["A meal costs 1."]}\n',
     "rules.md": "# House rules\n",
     "metadata.json": '{"title": "The Book"}\n',
-    "current-document.txt": "chapter one\n",
+    "source/current-document.txt": "chapter one\n",
     "chunks/chunk-0001.txt": "a passage\n",
     "vectors/chroma.sqlite3": "not-really-a-db\n",
 }
@@ -65,7 +64,7 @@ CLEARED_DIRS = ["fallen", "characters"]
 KEPT = [
     "world-bible.json", "world-seed.json",
     "ruleset.json", "rules.md", "metadata.json",
-    "current-document.txt", "chunks/chunk-0001.txt", "vectors/chroma.sqlite3",
+    "source/current-document.txt", "chunks/chunk-0001.txt", "vectors/chroma.sqlite3",
 ]
 
 

@@ -21,7 +21,7 @@ Cleared:
   • Session history, world-tick log, loremaster cache
 
 Kept:
-  • Source: current-document.txt, metadata.json, chunks/, vectors/
+  • Source: source/current-document.txt, metadata.json, chunks/, vectors/
   • World: world-bible.json, world-seed.json
   • Rules: ruleset.json (the world's own rules)
 

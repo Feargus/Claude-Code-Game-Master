@@ -31,12 +31,10 @@ is named in `world-state/active-campaign.txt`.
 ├── rule-state.json          # Where the world's own rules stand, per holder (world_rules.py)
 ├── rules.log                # Every change of those values
 ├── world-bible.json         # Fidelity spine (voice, glossary, geography)
-├── session-log.md           # Session history — the canonical ledger
 ├── threat-clocks.json       # Named pressure clocks (optional)
 ├── embeddings.npz           # Vectors for recall by meaning; derived (embedding_store.py)
 ├── world-tick-log.json      # Between-session tick provenance
 ├── loremaster-cache.json    # Per-location grounded briefs
-├── saves/                   # Snapshot saves
 ├── fallen/                  # Archived sheets of dead PCs
 ├── chunks/ · vectors/       # the book's pieces (chunks.json) and their vectors (book.npz)
 └── extracted/               # Legacy census-import staging
@@ -514,61 +512,6 @@ See [the player character sheet](modules/player-character.md).
 `xp` accepts a bare integer and is normalized to `{current, next_level}` on load. The
 world's own rules (Bleed, a sea level) are not on the sheet: their values are in
 `rule-state.json`.
-
----
-
-## Save Files (saves/*.json)
-
-A named point-in-time copy of **live campaign state**, not of derived indexes.
-`SessionManager.create_save` writes `{YYYYMMDD-HHMMSS}-{name}.json` under `saves/`;
-a same-second collision uniquifies the filename instead of overwriting.
-
-**Versioned (`save_version: 1`).** Snapshot keys are campaign filenames plus the
-`characters` helper (the PC sheet, keyed `character`) and `fallen/<file>.json`.
-JSON values are objects; markdown values are strings. A file that is not on disk
-is omitted — never stubbed as `{}`. Restore writes only keys the snapshot has.
-
-Skipped (derived, staging, or the save dir itself): `chunks/`, `vectors/`,
-`extracted/`, `canon/`, `authored/`, `loremaster-cache.json`, `saves/`.
-
-Combat lives in `combat_state.json` (the file `CombatManager` actually writes).
-
-**Autosaves.** A save whose name is `autosave` (the Stop hook) keeps the newest
-`AUTOSAVE_KEEP` (3) matching files; named manual saves are not rotated.
-`_find_save("autosave")` returns the newest remaining autosave.
-
-**Legacy (no `save_version`).** Snapshot used underscored keys covering six files
-(`campaign_overview`, `npcs`, `locations`, `facts`, `consequences`, `characters`).
-Restore still applies those six, then prints a partial-restore warning naming
-contract files the snapshot did not include. Present-time plots, clocks, and
-items otherwise stay mixed in — do not treat a legacy save as a whole-world revert.
-
-```json
-{
-  "save_version": 1,
-  "name": "string (save name)",
-  "created": "ISO timestamp",
-  "session_number": 5,
-  "snapshot": {
-    "campaign-overview.json": {},
-    "npcs.json": {},
-    "locations.json": {},
-    "facts.json": [],
-    "plots.json": {},
-    "items.json": {},
-    "consequences.json": {},
-    "ruleset.json": {},
-    "world-bible.json": {},
-    "threat-clocks.json": {},
-    "world-tick-log.json": {},
-    "combat_state.json": {},
-    "rule-state.json": {},
-    "session-log.md": "text...",
-    "fallen/hero.json": {},
-    "characters": { "character": {} }
-  }
-}
-```
 
 ---
 

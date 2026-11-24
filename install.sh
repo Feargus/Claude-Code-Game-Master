@@ -4,7 +4,7 @@
 #
 # Usage:
 #   ./install.sh          Interactive installation with prompts
-#   ./install.sh --auto   Non-interactive (installs everything, full extras)
+#   ./install.sh --auto   Non-interactive (installs the GM tools and the dev tools)
 #
 # What it installs (if missing):
 #   - Homebrew (macOS only)
@@ -239,29 +239,21 @@ main() {
     EXTRAS_FLAG=""
 
     if [ "$AUTO_MODE" = true ]; then
-        info "Auto mode: installing full dependencies (core + recall + voice)"
-        EXTRAS_FLAG="--all-extras"
+        info "Auto mode: installing the GM tools and the dev tools (tests, lint)"
+        EXTRAS_FLAG="--extra dev"
     else
         echo
         echo "  Select what to install:"
         echo "    1) Core              — the GM tools, with semantic recall and the book search"
-        echo "    3) Full              — core + voice (ElevenLabs TTS)"
-        echo "    4) Full + Dev tools  — everything + linting & formatting"
+        echo "    2) Core + Dev tools  — and the tests and lint (pytest, ruff)"
         echo
-        echo -n "  Choice [1, 3, 4] (default: 1): "
+        echo -n "  Choice [1, 2] (default: 1): "
         read -r choice
 
         case "$choice" in
-            1) EXTRAS_FLAG="";;
-            3) EXTRAS_FLAG="--all-extras";;
-            4) EXTRAS_FLAG="--all-extras";;
+            2) EXTRAS_FLAG="--extra dev";;
             *) EXTRAS_FLAG="";;  # default to 1
         esac
-
-        # Dev extras on top if choice 4
-        if [ "$choice" = "4" ]; then
-            EXTRAS_FLAG="--all-extras"
-        fi
     fi
 
     info "Running: uv sync $EXTRAS_FLAG"
@@ -273,26 +265,9 @@ main() {
     ok "Python dependencies installed"
 
     # ------------------------------------------------------------------
-    # 6. Project setup (env, permissions, world-state dirs)
+    # 6. Project setup (permissions, world-state dirs)
     # ------------------------------------------------------------------
     step "6/7  Project configuration"
-
-    # .env file
-    if [ ! -f ".env" ]; then
-        cat > .env << 'ENVEOF'
-# GM Claude Configuration
-#
-# Campaign Settings
-DEFAULT_CAMPAIGN_NAME="My Campaign"
-DEFAULT_STARTING_LOCATION="Thornwick"
-
-# Optional: Discord webhook for session logging
-# DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
-ENVEOF
-        ok "Created .env file"
-    else
-        ok ".env file already exists"
-    fi
 
     # World-state directories
     mkdir -p world-state/campaigns
@@ -319,12 +294,12 @@ ENVEOF
         FAIL=$((FAIL + 1))
     fi
 
-    # Anthropic SDK import
-    if uv run python -c "import anthropic" 2>/dev/null; then
-        ok "Anthropic SDK importable"
+    # Semantic recall's runtime
+    if uv run python -c "import onnxruntime, tokenizers" 2>/dev/null; then
+        ok "Semantic recall's runtime importable"
         PASS=$((PASS + 1))
     else
-        err "Anthropic SDK import failed"
+        err "Semantic recall's runtime (onnxruntime, tokenizers) import failed"
         FAIL=$((FAIL + 1))
     fi
 

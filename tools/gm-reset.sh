@@ -127,7 +127,6 @@ preview_world() {
     echo "  • $WORLD_STATE_DIR/facts.json"
     echo "  • $WORLD_STATE_DIR/consequences.json"
     echo "  • $WORLD_STATE_DIR/campaign-overview.json"
-    echo "  • $WORLD_STATE_DIR/session-log.md"
     # New format (character.json); the legacy characters/ dir is in STORY_DIRS.
     if [ -f "$WORLD_STATE_DIR/character.json" ]; then
         echo "  • $WORLD_STATE_DIR/character.json"
@@ -181,9 +180,6 @@ reset_world() {
 }
 EOF
     echo "  ✓ Campaign overview reset"
-
-    # An old campaign's session log goes with the story (none is written any more)
-    rm -f "$WORLD_STATE_DIR/session-log.md"
 
     # Remove character file
     if [ -f "$CHARACTER_FILE" ]; then

@@ -243,7 +243,8 @@ def test_legacy_campaign_directory_is_reachable_from_extract_verbs(tmp_path):
     legacy = tmp_path / "world-state" / "campaigns" / "curse_of_strahd"
     legacy.mkdir(parents=True)
     (legacy / "world-bible.json").write_text('{"name": "Curse of Strahd", "confirmed": false}')
-    (legacy / "current-document.txt").write_text("Chapter One\nThe mists close in.\n")
+    (legacy / "source").mkdir()
+    (legacy / "source" / "current-document.txt").write_text("Chapter One\nThe mists close in.\n")
     env = _isolated_env(tmp_path)
 
     switched = subprocess.run(
