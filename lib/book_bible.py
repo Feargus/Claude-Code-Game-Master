@@ -106,15 +106,6 @@ def _bible_path(campaign_dir) -> Path:
     return Path(campaign_dir) / "world-bible.json"
 
 
-def load_bible(campaign_dir) -> dict[str, Any]:
-    """Read a campaign's world-bible.json, or raise with the step that writes it."""
-    path = _bible_path(campaign_dir)
-    if not path.exists():
-        raise FileNotFoundError(
-            f"no world-bible.json in {campaign_dir} — run `gm-extract.sh draft-bible` first")
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
 def draft_bible(campaign_dir, name: str = None, voice: dict[str, Any] = None,
                 fields: dict[str, Any] = None) -> dict[str, Any]:
     """Draft (or refresh) an unconfirmed world-bible.json from the campaign's source text.

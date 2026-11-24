@@ -13,14 +13,6 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 
-# Valid attitudes for NPCs
-VALID_ATTITUDES = {'ally', 'neutral', 'enemy', 'friendly', 'hostile', 'suspicious', 'helpful'}
-
-# Valid plot types — THE canonical plot taxonomy. Every other site
-# (validators, plot_manager, session_manager) imports these;
-# do not re-declare a local copy.
-# The values are ordered by narrative weight: this is both the sort order for
-# STORY THREADS and the display order for plot listings.
 # The kinds of plot, in the order the brief and gm-plot.sh list sort them (the
 # last tie-breaker). Add a kind here, where it belongs; nowhere else lists them.
 PLOT_KINDS = {
@@ -33,26 +25,6 @@ PLOT_KINDS = {
 }
 PLOT_KIND_ORDER = {kind: i for i, kind in enumerate(PLOT_KINDS)}
 PLOT_STATUSES = ('open', 'completed', 'failed')
-
-# Valid item types (broad categories - specific weapon/armor types allowed)
-VALID_ITEM_TYPES = {
-    'weapon', 'armor', 'potion', 'scroll', 'wondrous', 'treasure', 'equipment',
-    'prop', 'artifact', 'misc', 'consumable', 'ring', 'amulet', 'tool', 'vehicle',
-    'map', 'key', 'document', 'holy symbol', 'focus', 'container', 'clothing',
-    # Specific weapon types (D&D)
-    'sword', 'greatsword', 'longsword', 'shortsword', 'scimitar', 'rapier',
-    'dagger', 'axe', 'greataxe', 'handaxe', 'mace', 'warhammer', 'maul',
-    'spear', 'javelin', 'halberd', 'glaive', 'pike', 'trident', 'lance',
-    'bow', 'longbow', 'shortbow', 'crossbow', 'heavy crossbow', 'light crossbow',
-    'staff', 'quarterstaff', 'club', 'greatclub', 'flail', 'morningstar', 'whip',
-    # Specific armor types
-    'light armor', 'medium armor', 'heavy armor', 'shield',
-    # Fantasy types
-    'treasure hoard', 'ring (artifact)', 'various'
-}
-
-# Valid item rarities
-VALID_RARITIES = {'common', 'uncommon', 'rare', 'very rare', 'legendary', 'artifact'}
 
 
 def validate_npc(name: str, data: dict[str, Any]) -> tuple[bool, list[str]]:
@@ -138,35 +110,6 @@ def validate_plot(name: str, data: dict[str, Any]) -> tuple[bool, list[str]]:
     return len(errors) == 0, errors
 
 
-def validate_item(name: str, data: dict[str, Any]) -> tuple[bool, list[str]]:
-    """Validate item data against schema.
-
-    Args:
-        name: Item name (key)
-        data: Item data dictionary
-
-    Returns:
-        Tuple of (is_valid, list of error messages)
-    """
-    errors = []
-
-    # Required fields
-    if not data.get('description') and not data.get('name'):
-        errors.append(f"Item '{name}': missing description")
-
-    # Validate type if present
-    item_type = data.get('type', '').lower()
-    if item_type and item_type not in VALID_ITEM_TYPES:
-        errors.append(f"Item '{name}': invalid type '{item_type}' (valid: {', '.join(VALID_ITEM_TYPES)})")
-
-    # Validate rarity if present
-    rarity = data.get('rarity', '').lower()
-    if rarity and rarity not in VALID_RARITIES:
-        errors.append(f"Item '{name}': invalid rarity '{rarity}' (valid: {', '.join(VALID_RARITIES)})")
-
-    return len(errors) == 0, errors
-
-
 def validate_consequence(data: dict[str, Any]) -> tuple[bool, list[str]]:
     """Validate consequence data against schema.
 
@@ -242,7 +185,6 @@ def validate_world_state(campaign_dir: str) -> dict[str, list[str]]:
         'npcs.json': ('npcs', validate_npc),
         'locations.json': ('locations', validate_location),
         'plots.json': ('plots', validate_plot),
-        'items.json': ('items', validate_item),
         'campaign-overview.json': (None, validate_campaign_overview),
         'character.json': (None, validate_character),
     }

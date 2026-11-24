@@ -588,20 +588,6 @@ class ConsequenceManager(EntityManager):
         return {t['match'].strip().lower() for c in data.get('active', []) if not c.get('fired')
                 for t in self.structured_triggers(c) if t['type'] == 'on_time'}
 
-    def waiting_on_fact(self) -> list[dict[str, Any]]:
-        """Active consequences waiting for a recorded fact (an on_fact trigger;
-        old entries with only a free-text trigger count as one). Each comes back
-        with `awaits`: its trigger, in words."""
-        data = self.json_ops.load_json(self.consequences_file)
-        out = []
-        for c in data.get('active', []):
-            events = [t['match'] for t in self.structured_triggers(c) if t['type'] == 'on_fact']
-            if events and not c.get('fired'):
-                hit = dict(c)
-                hit['awaits'] = ' / '.join(events)
-                out.append(hit)
-        return out
-
     def _find_fact(self, fact_id: str) -> dict[str, Any]:
         """The fact with this id, or {}."""
         return fact_file.by_id(fact_file.load(self.json_ops), fact_id) or {}

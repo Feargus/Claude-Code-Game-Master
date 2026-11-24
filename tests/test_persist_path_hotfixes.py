@@ -7,7 +7,6 @@ Unrelated leaks on the persist path, fixed together:
    `world-state/` behind them) whenever the GM ran them from anywhere but the
    project root.
 2. `kill` still marks a character dead (the corpse guard went with `modify_hp`).
-3. `get_xp_status` — a read verb — rewrote `character.json` on every call.
 
 The wrapper tests run the real scripts against a fixture campaign built under
 tmp_path, with GM_WORLD_STATE_BASE pointing the whole tool layer at it, so an
@@ -16,7 +15,6 @@ The single exception is the unpinned foreign-cwd test, which needs the default
 resolution to be under test and so reads (only reads) the live tree.
 """
 
-import hashlib
 import json
 import shutil
 import subprocess
@@ -146,22 +144,4 @@ def test_kill_marks_the_character_dead(dcc_world):
     mgr = PlayerManager(dcc_world)
     result = mgr.kill_character(cause="the Iron Tangle")
     assert result["success"] and result["status"] == "dead"
-    assert mgr.get_player()["status"]["state"] == "dead"
-
-
-# --- 3. get_xp_status is read-only ---------------------------------------------
-
-def test_get_xp_status_does_not_write(dcc_world):
-    character_file = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "character.json"
-
-    # Legacy plain-integer XP: the shape `_xp_view` expands in memory only, so a
-    # status call that still saved would rewrite the file.
-    char = json.loads(character_file.read_text())
-    char["xp"] = 7315
-    character_file.write_text(json.dumps(char, indent=2))
-    before = hashlib.sha256(character_file.read_bytes()).hexdigest()
-
-    status = PlayerManager(dcc_world).get_xp_status()
-
-    assert status["current_xp"] == 7315
-    assert hashlib.sha256(character_file.read_bytes()).hexdigest() == before
+    assert mgr._sheet()["status"]["state"] == "dead"

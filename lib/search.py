@@ -225,17 +225,6 @@ class WorldSearcher:
         key = resolve_entity_name(name, locations)
         return locations.get(key) if key else None
 
-    def get_pending_consequences(self, trigger: str | None = None) -> list[dict]:
-        """Get pending consequences, optionally filtered by trigger"""
-        consequences = self.json_ops.load_json('consequences.json')
-        active = consequences.get('active', [])
-
-        if trigger:
-            from consequence_manager import when_words
-            return [c for c in active
-                    if trigger.lower() in when_words(c, self.json_ops).lower()]
-        return active
-
     def _format_text(self, text: str, full: bool = False, limit: int = 220) -> str:
         """Optionally truncate long text for token-efficient output."""
         if full or not text:

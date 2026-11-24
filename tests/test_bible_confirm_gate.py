@@ -10,10 +10,9 @@ def _bible_path(dcc_world):
     return Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "world-bible.json"
 
 
-def test_legacy_bible_without_flag_is_playable(dcc_world):
+def test_a_bible_without_the_flag_counts_as_confirmed(dcc_world):
     # The hand-authored DCC bible has no `confirmed` flag -> treated as confirmed.
-    wb = WorldBible(dcc_world)
-    assert wb.is_confirmed() is True and wb.is_playable() is True
+    assert WorldBible(dcc_world).is_confirmed() is True
 
 
 def test_freshly_drafted_world_is_gated(dcc_world):
@@ -23,10 +22,9 @@ def test_freshly_drafted_world_is_gated(dcc_world):
     p.write_text(json.dumps(data), encoding="utf-8")
     wb = WorldBible(dcc_world)
     assert wb.is_confirmed() is False
-    assert wb.is_playable() is False
 
 
-def test_confirm_makes_it_playable(dcc_world):
+def test_confirm_makes_it_confirmed(dcc_world):
     p = _bible_path(dcc_world)
     data = json.loads(p.read_text(encoding="utf-8"))
     data["confirmed"] = False
@@ -34,7 +32,7 @@ def test_confirm_makes_it_playable(dcc_world):
 
     wb = WorldBible(dcc_world)
     assert wb.confirm() is True
-    assert WorldBible(dcc_world).is_playable() is True  # reload -> confirmed persisted
+    assert WorldBible(dcc_world).is_confirmed() is True  # reload -> confirmed persisted
 
 
 def test_review_summary_presents_the_draft(dcc_world):
@@ -47,13 +45,3 @@ def test_review_summary_presents_the_draft(dcc_world):
     world_rules.define(ops, [{"name": "Viewers", "block": "counter", "held_by": "player",
                               "range": [0, 10], "summary": "The audience.", "when": "Spectacle."}])
     assert WorldBible(dcc_world).review_summary()["rules"] == ["Viewers"]
-
-
-def test_no_bible_is_playable(tmp_path):
-    # A campaign with no world-bible (e.g. /new-game) has nothing to confirm.
-    import shutil
-    src = Path(__file__).resolve().parent / "fixtures" / "world-state"
-    dest = tmp_path / "world-state"
-    shutil.copytree(src, dest)
-    (dest / "campaigns" / "dungeon-crawler-carl" / "world-bible.json").unlink()
-    assert WorldBible(str(dest)).is_playable() is True

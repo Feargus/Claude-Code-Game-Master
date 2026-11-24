@@ -75,13 +75,6 @@ class Brief:
             return text
         return text[:limit - 3].rstrip() + "..."
 
-    @staticmethod
-    def _remainder(hidden: int, noun: str, hint: str) -> str | None:
-        """Disclosure line for a truncated list: '+N more <noun> — <hint>'."""
-        if hidden <= 0:
-            return None
-        return f"+{hidden} more {noun} — {hint}"
-
     def get_full_context(self) -> str:
         """The whole brief: each section in turn. Some sections leave what they
         loaded or showed for later ones (the location, the character, the facts

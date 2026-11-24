@@ -125,7 +125,7 @@ def test_without_vectors_the_place_and_its_people_come_first(dcc_world):
                       about=[f"location:{place}"], nowhere=True)
     newer = n.add_fact("Something happened far away.", holders=["player"], nowhere=True)
     ranker = SceneRanker(n.json_ops, place)
-    assert not ranker.by_meaning
+    assert ranker.query is None                                  # no vectors: no meaning
     order = [f["id"] for f in ranker.rank([n._entry(n.json_ops.load_json("facts.json"), x)
                                            for x in (newer, mine)])]
     assert order == [mine, newer]
@@ -214,7 +214,8 @@ def test_a_new_fact_names_the_consequence_it_may_trigger_and_the_log_keeps_it(
     printed = capsys.readouterr().out
     assert f"{fid} may trigger {cid} " in printed
     assert f"gm-consequence.sh fire {cid} --by {fid}" in printed
-    assert not any(c["id"] == cid and c.get("fired") for c in cm.waiting_on_fact())   # not fired
+    stored = cm.json_ops.load_json("consequences.json")["active"]
+    assert not any(c["id"] == cid and c.get("fired") for c in stored)               # not fired
     from lib.embedder import FakeEmbedder
     assert f"trigger:{cid}" in EmbeddingStore(camp).vectors(FakeEmbedder.name)
     log = (camp / "recall-check.log").read_text(encoding="utf-8")

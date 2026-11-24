@@ -25,7 +25,6 @@ is named in `world-state/active-campaign.txt`.
 ├── facts.json               # World facts, one list
 ├── removed-facts.json       # Facts the GM removed (gm-note.sh remove), with when
 ├── plots.json               # Plots: goal, owner, where they stand
-├── items.json               # Items (from imports)
 ├── consequences.json        # Pending/resolved events + firing provenance
 ├── ruleset.json             # The world's own rules (gm-rule.sh define)
 ├── rule-state.json          # Where the world's own rules stand, per holder (world_rules.py)
@@ -134,9 +133,6 @@ Notes:
   and of `gm-plot.sh threads`, which discloses how many it held back. It does **not**
   gate an NPC's presence in a scene — that is decided by `tags.locations` against the
   party's location, for background and active NPCs alike.
-
-`attitude` values above are the `VALID_ATTITUDES` set in `lib/schemas.py`; an invalid
-attitude is coerced to `neutral` on batch import rather than rejected.
 
 ### Party Member Character Sheet
 
@@ -431,29 +427,6 @@ changes (`lib/plot_manager.py`, whose docstring is the reference).
 - `outcome`: what came of it, written when it ends (`gm-plot.sh complete|fail`).
 - Its facts, clocks and consequences point at it (their `plots`); recall compares a plot by
   its goal, where it stands and its outcome (`embedding_store.plot_text`).
-
----
-
-## items.json
-
-A dictionary keyed by item name. Typically populated by `/import`.
-
-```json
-{
-  "ITEM_NAME": {
-    "name": "string",
-    "description": "string",
-    "type": "weapon|armor|potion|scroll|wondrous|treasure|equipment|prop|artifact",
-    "rarity": "common|uncommon|rare|very rare|legendary|artifact",
-    "mechanics": "optional string",
-    "value": "optional string",
-    "location": "optional string",
-    "attunement": false,
-    "cursed": false,
-    "source": "optional string"
-  }
-}
-```
 
 ---
 

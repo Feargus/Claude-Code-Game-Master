@@ -23,17 +23,6 @@ def _clear_consequences(world):
         json.dumps({"active": [], "resolved": []}))
 
 
-def test_waiting_lists_on_event_and_untyped_only(dcc_world):
-    _clear_consequences(dcc_world)
-    cm = ConsequenceManager(dcc_world)
-    ev = cm.add_consequence("The Fork bargains", "free text",
-                            trigger_type="on_fact", match="someone is alone with the chip")
-    old = cm.add_consequence("The Palimpsest learn of it", "when the body is found")
-    cm.add_consequence("Priests at the Junction", "x", trigger_type="on_location", match="Floor 2 Junction")
-    waiting = {c["id"]: c["awaits"] for c in cm.waiting_on_fact()}
-    assert waiting == {ev: "someone is alone with the chip", old: "when the body is found"}
-
-
 def test_on_fact_never_fires_on_the_scene_check(dcc_world):
     cm = ConsequenceManager(dcc_world)
     c = {"id": "x", "consequence": "c", "trigger": "t",

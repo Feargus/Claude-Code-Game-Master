@@ -19,7 +19,7 @@ show_usage() {
     echo "  scene <location>         Get scene context for gameplay (quick RAG)"
     echo ""
     echo "Options:"
-    echo "  --type <type>            Entity type: npc, location, site, item, plot"
+    echo "  --type <type>            Entity type: npc, location, site, plot"
     echo "  --context <text>         Context passage to add (can be repeated)"
     echo "  --description <text>     New description to set"
     echo "  -n, --num <count>        Max results (default: 10)"

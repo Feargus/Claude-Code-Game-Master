@@ -140,7 +140,7 @@ def test_a_person_can_start_as_a_sketch(world):
     assert not manager.create_npc("Ruth Okonedo")              # who is she?
     assert manager.create_npc("Ruth Okonedo", fields={"goal": "pass the ones others would fail"},
                               aliases=["Ruth"])
-    sheet = manager.get_sheet("Ruth")
+    sheet = manager._npcs()["Ruth Okonedo"]
     assert "personality" not in sheet and "look" not in sheet
     assert sheet["status"] == {"goal": "pass the ones others would fail"}
     assert "only a sketch" in manager.show("Ruth Okonedo")

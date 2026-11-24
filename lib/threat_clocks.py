@@ -329,17 +329,9 @@ class ThreatClockManager(EntityManager):
     def get_clocks(self) -> dict[str, Any]:
         return self._load()
 
-    def is_full(self, name: str) -> bool:
-        data = self._load()
-        c = data.get(self._find(data, name) or "")
-        return bool(c and c.get("current", 0) >= c.get("max", 1))
-
     def full_clocks(self) -> dict[str, Any]:
+        """The full clocks: dramatic beats that are due."""
         return {n: c for n, c in self._load().items() if c.get("current", 0) >= c.get("max", 1)}
-
-    def pending_beats(self) -> dict[str, Any]:
-        """Filled clocks = dramatic beats that are due (an inflection point)."""
-        return self.full_clocks()
 
     @staticmethod
     def due_text(clock: dict[str, Any]) -> str:
@@ -473,7 +465,7 @@ def main():
             out = {"removed": key}
             text = [f"[SUCCESS] Removed clock {key}"]
         elif args.action == "beats":
-            out = m.pending_beats()
+            out = m.full_clocks()
             text = [m.render(out) if out else "No clock is full."]
         else:
             out = m.get_clocks()

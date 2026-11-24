@@ -2,7 +2,7 @@
 """
 Entity Enhancer Module for GM Tools
 
-Provides RAG-based enhancement for campaign entities (NPCs, locations, items, plots).
+Provides RAG-based enhancement for campaign entities (NPCs, locations, sites, plots).
 Queries the campaign's vector store for passages mentioning an entity and returns
 context that can be used to enrich the entity with additional details.
 """
@@ -44,12 +44,6 @@ ENTITY_QUERIES = {
         "{name} owner who runs it leader",
         "{name} history origin built purpose",
         "{name} description atmosphere feel",
-    ],
-    "item": [
-        "{name} properties abilities",
-        "{name} history origin",
-        "{name} appearance description",
-        "{name} powers effects",
     ],
     "plot": [
         "{name} objectives goals",
@@ -142,7 +136,6 @@ class EntityEnhancer:
         entity_files = [
             ("npc", "npcs.json"),
             ("location", "locations.json"),
-            ("item", "items.json"),
             ("plot", "plots.json"),
         ]
 
@@ -279,7 +272,7 @@ class EntityEnhancer:
 
         Args:
             name: Entity name to search for
-            entity_type: Type of entity (npc, location, item, plot)
+            entity_type: Type of entity (npc, location, site, plot)
             n_results: Max results per query
 
         Returns:
@@ -422,7 +415,7 @@ class EntityEnhancer:
         Existing user-added data is preserved.
 
         Args:
-            entity_type: Type of entity (npc, location, item, plot)
+            entity_type: Type of entity (npc, location, site, plot)
             entity_name: Name of the entity to update
             new_context: List of new context passages to add
             new_description: Optional new/enhanced description
@@ -435,7 +428,6 @@ class EntityEnhancer:
             "npc": "npcs.json",
             "location": "locations.json",
             "site": "locations.json",  # Sites are stored in locations
-            "item": "items.json",
             "plot": "plots.json",
         }
 
@@ -595,7 +587,7 @@ class EntityEnhancer:
         enhanced when they are promoted into play, not up front.
 
         Args:
-            entity_type: Optional filter by type (npc, location, site, item, plot)
+            entity_type: Optional filter by type (npc, location, site, plot)
 
         Returns:
             List of entity dicts with type, name, has_context
@@ -603,7 +595,6 @@ class EntityEnhancer:
         entity_files = {
             "npc": "npcs.json",
             "location": "locations.json",
-            "item": "items.json",
             "plot": "plots.json",
         }
 
@@ -809,7 +800,7 @@ def main():
     # Query passages
     query_parser = subparsers.add_parser('query', help='Query passages for entity')
     query_parser.add_argument('name', help='Entity name')
-    query_parser.add_argument('--type', help='Entity type (npc, location, item, plot)')
+    query_parser.add_argument('--type', help='Entity type (npc, location, site, plot)')
     query_parser.add_argument('-n', '--num', type=int, default=10, help='Max results per query')
 
     # Apply enhancements

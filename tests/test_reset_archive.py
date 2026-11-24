@@ -33,7 +33,6 @@ FIXTURE_FILES = {
     "character.json": '{"name": "Testarossa", "hp": {"current": 9, "max": 12}}\n',
     "fallen/Dead Guy.json": '{"name": "Dead Guy"}\n',
     "plots.json": '{"The Heist": {"status": "active"}}\n',
-    "items.json": '{"Rope": {"name": "Rope"}}\n',
     "campaign-memory.json": '{"entries": [{"summary": "we fought"}]}\n',
     "combat_state.json":
         '{"active": true, "round": 3, "turn_index": 0,'
@@ -56,7 +55,7 @@ FIXTURE_FILES = {
 # What reset must clear, and what it must keep — "keeps the SOURCE, the WORLD
 # and the RULES, clears the STORY".
 CLEARED_FILES = [
-    "character.json", "plots.json", "items.json", "campaign-memory.json",
+    "character.json", "plots.json", "campaign-memory.json",
     "combat_state.json", "threat-clocks.json", "world-tick-log.json",
     "loremaster-cache.json",
 ]

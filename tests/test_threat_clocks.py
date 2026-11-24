@@ -19,21 +19,21 @@ def _active(dcc_world):
 def test_filled_clock_is_a_pending_beat(dcc_world):
     m = ThreatClockManager(dcc_world)
     m.add_clock("Doom", 2, advance_on="event")
-    assert m.pending_beats() == {}
+    assert m.full_clocks() == {}
     m.advance("Doom", 2)
-    assert "Doom" in m.pending_beats()
+    assert "Doom" in m.full_clocks()
 
 
 def test_add_advance_and_fill(dcc_world):
     m = ThreatClockManager(dcc_world)
     m.add_clock("Floor Collapse", segments=4, advance_on="event")
-    assert not m.is_full("Floor Collapse")
+    assert "Floor Collapse" not in m.full_clocks()
     m.advance("Floor Collapse", 3)
-    assert not m.is_full("Floor Collapse")
+    assert "Floor Collapse" not in m.full_clocks()
     m.advance("Floor Collapse", 5)  # clamps at max
     c = m.get_clocks()["Floor Collapse"]
     assert c["current"] == 4
-    assert m.is_full("Floor Collapse")
+    assert "Floor Collapse" in m.full_clocks()
     assert "Floor Collapse" in m.full_clocks()
 
 
@@ -77,7 +77,7 @@ def test_time_clock_fills_evenly_until_due(dcc_world):
     m.update_time_clocks(now + timedelta(days=2, hours=12))
     assert m.get_clocks()["Siege"]["current"] == 2
     m.update_time_clocks(now + timedelta(days=4))
-    assert m.is_full("Siege")
+    assert "Siege" in m.full_clocks()
 
 
 def test_update_leaves_event_clocks_alone(dcc_world):
@@ -119,7 +119,7 @@ def test_an_old_clock_gets_one_day_per_empty_segment(dcc_world):
     assert (clock["current"], clock["starts_at"], clock["due_at"]) == (
         3, "2187-10-23T04:30", "2187-10-27T04:30")
     m.update_time_clocks(now + timedelta(days=1))
-    assert m.is_full("Old")
+    assert "Old" in m.full_clocks()
 
 
 def test_clocks_never_empty_when_time_goes_back(dcc_world):
@@ -214,7 +214,7 @@ def test_a_clock_is_found_by_its_name_in_any_case_or_by_its_text(dcc_world):
     assert m.advance("tracker")["current"] == 1
     assert m.advance("clock:Tracker")["current"] == 2
     assert m.advance("The tracker closes in")["current"] == 3
-    assert m.is_full("TRACKER")
+    assert "Tracker" in m.full_clocks()
     assert m.advance("Trakcer") is None
 
 

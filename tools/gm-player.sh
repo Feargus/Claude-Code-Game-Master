@@ -23,7 +23,7 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/new_character.py" "$@"
         ;;
 
-    "show"|"get"|"set"|"alias"|"xp"|"award"|"grow"|"level-check"|"raise"|"perk"|"kill"|"credits"|"item"|"loot"|"condition")
+    "show"|"get"|"set"|"alias"|"xp"|"award"|"grow"|"raise"|"perk"|"kill"|"credits"|"item"|"loot"|"condition")
         $PYTHON_CMD "$LIB_DIR/player_manager.py" "$ACTION" "$@"
         ;;
 
@@ -45,7 +45,6 @@ case "$ACTION" in
         echo "  condition add|remove|list [<condition>]  (or gm-condition.sh)"
         echo "  award --size small|medium|large --reason \"...\" - XP for an achievement"
         echo "  grow --attribute A --skill S --skill T --perk \"Name\" \"Effect\" - growth that is due (gm-growth)"
-        echo "  level-check                  - XP, level, growth due"
         echo "  kill [--cause ...]           - the PC dies (then the Death Protocol: gm-death)"
         echo "  xp +N [--reason ...]         - correction: XP by hand (logged)"
         echo "  raise attribute|skill <x>    - correction: +1"

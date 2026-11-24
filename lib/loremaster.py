@@ -115,9 +115,6 @@ class Loremaster(EntityManager):
             return ""
         return self.index.load_chapter(pointers[0].get("index", -1)).get("text", "")
 
-    def has_book_text(self) -> bool:
-        return bool(self.index.chapters)
-
 
 def main():
     import argparse

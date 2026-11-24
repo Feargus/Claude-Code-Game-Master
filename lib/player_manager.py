@@ -50,9 +50,6 @@ class PlayerManager(EntityManager):
 
     # ---------- showing ----------
 
-    def get_player(self) -> dict | None:
-        return self._sheet()
-
     def summary_line(self, char: dict[str, Any]) -> str:
         from body import summary as wound_summary
         from growth import level
@@ -148,19 +145,6 @@ class PlayerManager(EntityManager):
         except ValueError as error:
             return self._refuse(str(error))
         return self.award_xp(amount, f"achievement ({size})", reason)
-
-    def get_xp_status(self) -> dict[str, Any] | None:
-        from growth import growth_due, level, next_level_xp, xp_total
-        char = self._sheet()
-        if not char:
-            return None
-        now, current, due = level(char), xp_total(char), growth_due(char)
-        print(f"{sheet_mod.name(char)} - Level {now}")
-        print(f"XP: {current}/{next_level_xp(char)}")
-        print(f"Growth due: {due} level{'s' if due > 1 else ''} (gm-growth)" if due else
-              f"Next level in: {next_level_xp(char) - current} XP")
-        return {'name': sheet_mod.name(char), 'level': now, 'current_xp': current,
-                'next_level_xp': next_level_xp(char), 'growth_due': due}
 
     def _skill_key(self, skills: dict[str, int], name: str) -> str:
         """The skill's key on the sheet: as the sheet has it, else as the skill
@@ -462,7 +446,6 @@ def main():
     p.add_argument('--attribute', required=True)
     p.add_argument('--skill', action='append', default=[])
     p.add_argument('--perk', nargs=2, required=True, metavar=('NAME', 'EFFECT'))
-    sub.add_parser('level-check', help='XP and level')
     p = sub.add_parser('raise', help='Correction: an attribute or a skill +1')
     p.add_argument('kind', choices=['attribute', 'skill'])
     p.add_argument('target')
@@ -517,8 +500,6 @@ def main():
         result = manager.award(args.size, args.reason)
     elif args.action == 'grow':
         result = manager.grow(args.attribute, args.skill, args.perk[0], args.perk[1])
-    elif args.action == 'level-check':
-        result = {'success': bool(manager.get_xp_status())}
     elif args.action == 'raise':
         result = manager.raise_stat(args.kind, args.target)
     elif args.action == 'perk':

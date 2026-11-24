@@ -60,7 +60,7 @@ class AgentExtractor:
         created manually or from previous imports so they aren't lost.
         """
         backup = {}
-        files_to_backup = ['npcs.json', 'locations.json', 'facts.json', 'items.json', 'plots.json', 'consequences.json']
+        files_to_backup = ['npcs.json', 'locations.json', 'facts.json', 'plots.json', 'consequences.json']
 
         for filename in files_to_backup:
             filepath = self.extraction_dir / filename

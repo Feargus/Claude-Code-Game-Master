@@ -209,12 +209,6 @@ def relations(json_ops, fid: str) -> dict[str, int]:
     return out
 
 
-def relation(json_ops, a: str, b: str) -> int:
-    import world_rules
-    rule = world_rules.find_rule(json_ops, RELATION)
-    return world_rules.entry(json_ops, rule, pair_id(a, b)).get("value")
-
-
 def ties_without_relation(json_ops) -> list[tuple[str, str]]:
     """Pairs of factions with a tie (either side's) but no Relation written: unset
     is not 0 (a value chosen), so the opening names them (opening.py)."""

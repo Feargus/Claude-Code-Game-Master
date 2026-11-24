@@ -44,7 +44,6 @@ STORY_FILES=(
     removed-facts.json
     recall-check.log
     plots.json
-    items.json
     campaign-memory.json
     embeddings.npz
     embeddings.log

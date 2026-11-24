@@ -61,10 +61,6 @@ class NPCManager(EntityManager):
                 keys.append(cid[9:])
         return keys, errors
 
-    def get_sheet(self, name: str) -> dict[str, Any] | None:
-        key = self._npc_key(name)
-        return self._npcs().get(key) if key else None
-
     # ---------- creating ----------
 
     def create_npc(self, name: str, role: str = "", attitude: str | None = None,

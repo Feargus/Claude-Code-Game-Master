@@ -24,7 +24,6 @@ This returns one of:
 - `npc` - Character enhancement
 - `location` - Place enhancement
 - `site` - The target of a run, a job or a dungeon, laid out as locations
-- `item` - A notable object
 - `plot` - Quest or story hook
 
 If no entity found, use **Option A: Exploratory Search** instead.
@@ -132,7 +131,7 @@ Lay a site out when the player commits to the job, not at the door. See `gm-site
 - Requires a populated vector store (run `/import` first)
 - Uses additive merging - existing context is preserved
 - Context passages capped at 20 per entity
-- Works for NPCs, locations, items, plots, sites
+- Works for NPCs, locations, plots, sites
 - **No strict name filtering** - GM judges all passage relevance
 - **RAG Priority**: Use source material for accuracy over improvisation
 - **Sites**: lay out a run's target with `site-architect` when the player commits to the job

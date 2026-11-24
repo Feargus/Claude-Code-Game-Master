@@ -96,12 +96,6 @@ class WorldBible:
         """
         return bool(self.bible.get('confirmed', True))
 
-    def is_playable(self) -> bool:
-        """A world is playable unless it has an unconfirmed auto-drafted bible."""
-        if not self.bible:
-            return True  # no bible (e.g. /new-game) -> nothing to confirm
-        return self.is_confirmed()
-
     def confirm(self) -> bool:
         """Mark the drafted world approved + persist."""
         self.bible['confirmed'] = True

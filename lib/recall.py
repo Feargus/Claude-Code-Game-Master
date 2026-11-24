@@ -360,6 +360,3 @@ class SceneRanker:
         """Best fit first; newest first on a tie."""
         return sorted(facts, key=lambda f: (-self.score(f), -_number(f)))
 
-    @property
-    def by_meaning(self) -> bool:
-        return self.query is not None
