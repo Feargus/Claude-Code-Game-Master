@@ -888,30 +888,21 @@ def then_line(c: dict[str, Any], indent: str = "    ") -> str:
 
 
 def fired_lines(c: dict[str, Any], indent: str = "  ") -> list[str]:
-    """A fired consequence still to be played out, in three lines
-    (docs/conventions/output.md): what happens, what fired it, the command that
-    closes it once played out."""
+    """A fired consequence (docs/conventions/output.md): what happens and what fired
+    it, the command that closes it once played out, then what it did by itself (a
+    fact told, a clock started)."""
     cid = c.get('id', '?')
-    why = (c.get('fired') or {}).get('reason') or "fired by the GM"
-    return [f"{indent}[FIRED] {cid} {sentence(c.get('consequence', '?'))}",
-            f"{indent}  Because: {sentence(why)}",
-            f"{indent}  Once played out: bash tools/gm-consequence.sh resolve {cid}"]
-
-
-AFTER_FIRING = ("it fires once: play it out, then gm-consequence.sh resolve <id>; "
-                "wrong moment: gm-consequence.sh rearm <id>")
+    why = c.get('match_reason') or (c.get('fired') or {}).get('reason') or "fired by the GM"
+    text = str(c.get('consequence', '?')).strip().rstrip('.')
+    return ([f"{indent}[FIRED] {cid} {text} — {str(why).strip().rstrip('.')}",
+             f"{indent}  Once played out: bash tools/gm-consequence.sh resolve {cid}"]
+            + [f"{indent}  {line}" for line in c.get('effects_done') or []])
 
 
 def print_fired(fired: list[dict[str, Any]]) -> None:
-    """Human output for consequences fired by an event or by hand."""
-    if not fired:
-        return
-    print(f"[REACTIVITY] fired these {len(fired)}")
-    for c in fired:
-        print(f"  {c['id']} {c['consequence']}")
-        print(f"      ↳ fired because: {c['match_reason']} ({AFTER_FIRING})")
-        for line in c.get('effects_done', []):
-            print(f"      ↳ {line}")
+    """The consequences that just fired, as fired_lines."""
+    for c in fired or []:
+        print("\n".join(fired_lines(c, indent="")))
 
 
 def main():

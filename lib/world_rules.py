@@ -547,15 +547,8 @@ def done_lines(json_ops, done: list[dict[str, Any]], indent: str) -> list[str]:
 
 
 def _fired_lines(fired, indent: str) -> list[str]:
-    if not fired:
-        return []
-    from consequence_manager import AFTER_FIRING
-    lines = []
-    for c in fired:
-        lines.append(f"{indent}[REACTIVITY] fired {c['id']} {c['consequence']}")
-        lines.append(f"{indent}    ↳ fired because: {c.get('match_reason', '')} ({AFTER_FIRING})")
-        lines += [f"{indent}    ↳ {line}" for line in c.get("effects_done") or []]
-    return lines
+    from consequence_manager import fired_lines
+    return [line for c in fired or [] for line in fired_lines(c, indent)]
 
 
 def rule_lines(json_ops, rule: dict[str, Any], holders=None) -> list[str]:

@@ -187,7 +187,7 @@ def test_move_takes_time_then_moves_and_checks_consequences_once(dcc_world, brid
     overview = _overview(dcc_world)
     assert overview["game_time"] == "2187-10-26T23:30"
     assert overview["player_position"]["current_location"] == "The Old Spine Bridge"
-    assert result.stdout.count("[REACTIVITY] fired these 1") == 1        # on arrival only
+    assert result.stdout.count("[FIRED] ") == 2         # on arrival, and on the place card
 
 
 def test_move_without_takes_lets_no_time_pass(dcc_world, bridge):

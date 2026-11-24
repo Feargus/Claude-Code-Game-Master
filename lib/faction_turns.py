@@ -390,7 +390,7 @@ def _apply_places(json_ops, deltas) -> dict[tuple[str, str], tuple[int, int]]:
 
 def _lines(json_ops, r, powers, places) -> list[str]:
     import factions
-    from consequence_manager import AFTER_FIRING
+    from consequence_manager import fired_lines
     names = factions.known(json_ops)
     name = lambda f: names.get(f, {}).get("name", f)     # noqa: E731
     kind, fid = r["action"], r["faction"]
@@ -417,7 +417,7 @@ def _lines(json_ops, r, powers, places) -> list[str]:
     for (f, p), (before, after, fired) in powers.items():
         if f == fid and p == r.get("power") and kind in COMPLEX + ("build",):
             lines.append(f"  {possessive(name(f))} {p}: {before} → {after}")
-            lines += [f"  {c['id']} {c['consequence']} ({AFTER_FIRING})" for c in fired]
+            lines += [line for c in fired for line in fired_lines(c)]
     return lines
 
 

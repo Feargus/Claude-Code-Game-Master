@@ -167,7 +167,7 @@ def test_the_output_gives_each_moment_its_time(dcc_world, ops):
                          capture_output=True, text=True, env=env, cwd=root).stdout
     assert out.startswith("[SUCCESS] 07:00 (Morning), Friday, 26 October 2187\n")
     assert "TIME STOPPED: 3h 7m of the 10h passed, for what happens at 07:00" in out
-    assert "\nAt 07:00 (Morning), Friday, 26 October 2187:\n[REACTIVITY] fired these 1" in out
+    assert "\nAt 07:00 (Morning), Friday, 26 October 2187:\n[FIRED] c1 The market opens — " in out
     assert '6h 53m left. To go on: bash tools/gm-time.sh advance "6h 53m"' in out
 
 
