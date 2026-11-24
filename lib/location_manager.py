@@ -50,24 +50,24 @@ class LocationManager(EntityManager):
         errors = [e for a in aliases if (e := ids.check_alias(a, f"location:{name}"))]
         if errors:
             for error in errors:
-                print(f"[ERROR] {error}")
+                print(f"[ERROR] {error}", file=sys.stderr)
             return False
         # Validate name: a site, or "<site>#<location>" (sites.py)
         import sites
         errors = sites.name_errors(name, self.json_ops.load_json(self.locations_file) or {})
         if errors:
             for error in errors:
-                print(f"[ERROR] {error}")
+                print(f"[ERROR] {error}", file=sys.stderr)
             return False
 
         # Check if location already exists
         if self._entity_exists(self.locations_file, name):
-            print(f"[ERROR] Location '{name}' already exists")
+            print(f"[ERROR] Location '{name}' already exists", file=sys.stderr)
             return False
 
         refusal = "" if another else self._like_another(ids, name, position, description)
         if refusal:
-            print(f"[ERROR] {refusal}")
+            print(f"[ERROR] {refusal}", file=sys.stderr)
             return False
         # Create location data
         location_data = {
@@ -115,7 +115,7 @@ class LocationManager(EntityManager):
         for loc in [from_loc, to_loc]:
             valid, error = self.validators.validate_name(loc)
             if not valid:
-                print(f"[ERROR] {error}")
+                print(f"[ERROR] {error}", file=sys.stderr)
                 return False
 
         # Load locations
@@ -123,16 +123,16 @@ class LocationManager(EntityManager):
 
         # Check both locations exist
         if from_loc not in locations:
-            print(f"[ERROR] Location '{from_loc}' not found")
+            print(f"[ERROR] Location '{from_loc}' not found", file=sys.stderr)
             return False
         if to_loc not in locations:
-            print(f"[ERROR] Location '{to_loc}' not found")
+            print(f"[ERROR] Location '{to_loc}' not found", file=sys.stderr)
             return False
 
         # Check if connection already exists
         existing_connections = [c['to'] for c in locations[from_loc].get('connections', [])]
         if to_loc in existing_connections:
-            print(f"[ERROR] Connection already exists between '{from_loc}' and '{to_loc}'")
+            print(f"[ERROR] Connection already exists between '{from_loc}' and '{to_loc}'", file=sys.stderr)
             return False
 
         # Add bidirectional connection
@@ -164,11 +164,11 @@ class LocationManager(EntityManager):
         from world_ids import WorldIds
         description = str(description or "").strip()
         if not description:
-            print("[ERROR] An empty description: write what the place is like")
+            print("[ERROR] An empty description: write what the place is like", file=sys.stderr)
             return False
         cid, error = WorldIds(self.json_ops).resolve_as(name, ("location",))
         if error:
-            print(f"[ERROR] {error}")
+            print(f"[ERROR] {error}", file=sys.stderr)
             return False
         key = cid.partition(":")[2]
         old = (self._get_entity(self.locations_file, key) or {}).get('description') or ''
@@ -185,12 +185,12 @@ class LocationManager(EntityManager):
         """
         valid, error = self.validators.validate_name(name)
         if not valid:
-            print(f"[ERROR] {error}")
+            print(f"[ERROR] {error}", file=sys.stderr)
             return None
 
         location = self._get_entity(self.locations_file, name)
         if not location:
-            print(f"[ERROR] Location '{name}' not found")
+            print(f"[ERROR] Location '{name}' not found", file=sys.stderr)
             return None
 
         return location
@@ -376,7 +376,7 @@ def main():
             key, aliases = change_aliases(manager.json_ops, "location", args.name,
                                           args.aliases, args.remove)
         except ValueError as error:
-            print(f"[ERROR] {error}")
+            print(f"[ERROR] {error}", file=sys.stderr)
             sys.exit(1)
         print(f"{key}: also called {', '.join(aliases)}" if aliases else f"{key}: no aliases")
 

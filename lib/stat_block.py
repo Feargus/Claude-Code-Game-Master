@@ -191,7 +191,7 @@ def saved_lines(key: str, entry: dict, warnings, create: bool) -> list[str]:
     """After a mob is added or its stats set: the one line, then what it still
     needs ([NOTE]: a sketch may wait) and what looks wrong ([CHECK])."""
     if create and is_sketch(entry):               # a roll will say what it needs
-        lines = [f"[SUCCESS] Added mob: {key} (sketch)"]
+        lines = [f"[SUCCESS] Added mob {key} (sketch)"]
     else:
         lines = [f"[SUCCESS] {'Added' if create else 'Updated'} mob {key}"]
         lines += [f"[NOTE] {line}" for line in not_ready(key, entry)]

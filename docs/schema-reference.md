@@ -232,9 +232,9 @@ Notes:
 
 A key with `#` is a location in a site: `"The Saffron House#Ilaria's Room"` is in the
 site `"The Saffron House"`, which is recorded first and is a place too (`lib/sites.py`).
-One level only; every key without `#` is a site. What is written for the site holds in
-each of its locations: its `presence`, an NPC's usual place there, an `on_location`
-trigger, `gm-note.sh find --at` and the card's ranking of facts. Connections between the
+One level only; every key without `#` is a site. What is the site's counts in each of its
+locations: its `presence`, an NPC's usual place there, an `on_location` trigger on it;
+`gm-note.sh find --at` and the card's ranking take the facts of all its locations. Connections between the
 locations of one site are its layout (site-architect); a move within a site adds none,
 while a move between sites connects the two sites.
 

@@ -101,7 +101,7 @@ def test_places_get_aliases_too(world, capsys):
                                             aliases=["the Mercy Line"])
     assert "also called the Mercy Line" in capsys.readouterr().out
     assert not LocationManager(ws).add_location("Yard Two", "nearby", "A yard.", aliases=["the Yard"])
-    assert "already names location:Old Iron's Yard" in capsys.readouterr().out
+    assert "already names location:Old Iron's Yard" in capsys.readouterr().err
 
 
 def test_cli_alias_commands(world):
@@ -162,5 +162,5 @@ def test_a_new_name_close_to_an_existing_one_is_refused_unless_another(world, ca
     assert places.add_location("The Lantern noodle stall", "on Lantern Row", "A stall.")
     capsys.readouterr()
     assert not places.add_location("The Lantern", "on Lantern Row", "A stall.")
-    assert "close to location:The Lantern noodle stall" in capsys.readouterr().out
+    assert "close to location:The Lantern noodle stall" in capsys.readouterr().err
     assert places.add_location("The Lantern", "on Lantern Row", "A bar.", another=True)

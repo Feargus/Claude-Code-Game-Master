@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from campaign_manager import CampaignManager
-from entity_manager import is_dead, is_party_member, npcs_present, npcs_usually_at
+from entity_manager import is_dead, is_party_member, npcs_present
 from json_ops import JsonOperations
 
 OVERVIEW = "campaign-overview.json"
@@ -58,11 +58,6 @@ class SceneManager:
     def present(self) -> dict[str, dict]:
         overview = self._overview()
         return npcs_present(self._npcs(), self.location(), overview.get("scene"))
-
-    def usually_here(self) -> list[str]:
-        """NPCs tagged with this place who aren't in the scene."""
-        here = self.present()
-        return [n for n in npcs_usually_at(self._npcs(), self.location()) if n not in here]
 
     def _resolve(self, names) -> tuple[list[str], list[str]]:
         """(NPC keys, errors), through the shared resolver."""

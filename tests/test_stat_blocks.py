@@ -185,4 +185,4 @@ def test_a_mob_without_stats_is_added_as_a_sketch(dcc_world):
     r = subprocess.run([sys.executable, str(root / "lib" / "stat_block.py"), "add", "Hollow",
                         "--note", "a husk"], capture_output=True, text=True, env=env)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert r.stdout.strip() == "[SUCCESS] Added mob: Hollow (sketch)"
+    assert r.stdout.strip() == "[SUCCESS] Added mob Hollow (sketch)"

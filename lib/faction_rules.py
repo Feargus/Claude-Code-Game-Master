@@ -148,10 +148,10 @@ def turn_owed(kind: str, names: dict) -> tuple[str, str]:
                 "bash tools/gm-faction.sh ask")
     fid = job_faction(kind)
     if fid:
-        return (f"{names.get(fid, {}).get('name', fid)} has a job for the character: offer "
-                f"them a complex action for its plot, with a deadline",
-                f"bash tools/gm-faction.sh job offer {fid} (the JSON after it: the action as "
-                f"in a turn, \"due\", \"how\")")
+        return (f"{names.get(fid, {}).get('name', fid)} has a job for the character",
+                f"offer them a complex action for its plot, with a deadline: bash tools/"
+                f"gm-faction.sh job offer {fid} (the JSON after it: the action as in a turn, "
+                f"\"due\", \"how\")")
     return (f"{names.get(kind, {}).get('name', kind)} owes a turn",
             f"bash tools/gm-faction.sh turn --only {kind}")
 

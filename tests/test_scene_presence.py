@@ -92,11 +92,11 @@ def test_tags_are_a_hint_not_presence(dcc_world):
     npcs["Mordecai"]["places"]["usual"].append(sm.location())
     npcs_file.write_text(json.dumps(npcs))
     assert "Mordecai" not in sm.present()
-    assert sm.usually_here() == ["Mordecai"]
     ctx = SessionManager(dcc_world).get_full_context()
     assert "Usually found here, not in the scene: Mordecai" in ctx
     sm.enter(["Mordecai"])
-    assert sm.usually_here() == []
+    assert "Usually found here, not in the scene: Mordecai" not in \
+        SessionManager(dcc_world).get_full_context()
 
 
 def test_on_npc_fires_when_someone_enters(dcc_world):

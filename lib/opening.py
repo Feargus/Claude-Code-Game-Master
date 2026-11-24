@@ -148,13 +148,14 @@ class Opening:
         self.check(spec)
         self.refuse_if_started()
         snapshot = self._snapshot()
-        out = io.StringIO()
+        out, err = io.StringIO(), io.StringIO()
         try:
-            with contextlib.redirect_stdout(out):
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
                 result = self._apply(spec)
         except Exception as error:
             self._restore(snapshot)
-            said = [ln.strip() for ln in out.getvalue().splitlines() if "[ERROR]" in ln]
+            said = [ln.strip() for ln in (out.getvalue() + err.getvalue()).splitlines()
+                    if "[ERROR]" in ln]
             detail = f" ({'; '.join(said)})" if said else ""
             if isinstance(error, ValueError):
                 # The refusals give the command line's flag; here it is the entry's key.

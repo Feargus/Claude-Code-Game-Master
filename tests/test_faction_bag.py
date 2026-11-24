@@ -131,5 +131,6 @@ def test_each_turn_drawn_is_a_do_line_with_its_command(ops):
                                 {"kind": "people", "owed": True}]}
     lines = owed_lines(ops, [{"at": at, "rules": [jobs]}])
     assert lines[0].startswith("[DO] Meridian Group has a job for the character")
-    assert "notice of it: bash tools/gm-faction.sh job offer meridian-group" in lines[0]
+    assert "(drawn Fri 26 Oct 05:40): offer them a complex action" in lines[0]
+    assert "notice" not in lines[0] and "bash tools/gm-faction.sh job offer meridian-group" in lines[0]
     assert lines[1].endswith(": bash tools/gm-faction.sh ask")

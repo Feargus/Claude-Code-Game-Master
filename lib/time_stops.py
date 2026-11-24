@@ -204,7 +204,9 @@ def brief(json_ops, report: dict[str, Any]) -> str:
 
 def owed_lines(json_ops, moments: list[dict[str, Any]]) -> list[str]:
     """[DO] for each turn the faction bag drew in `moments`, with its time and the
-    command that plays it."""
+    command that plays it; a faction's turn (or a joker's) with the reminder to
+    narrate what the character would notice of it, a job or an ask being for the
+    character already."""
     import faction_rules
     import factions
     names = factions.known(json_ops)
@@ -216,8 +218,10 @@ def owed_lines(json_ops, moments: list[dict[str, Any]]) -> list[str]:
             for d in report.get("draws") or []:
                 if d.get("owed"):
                     what, command = faction_rules.turn_owed(d["kind"], names)
-                    lines.append(f"[DO] {what[0].upper()}{what[1:]} (drawn {stamp(m['at'])}); "
-                                 f"narrate what the character would notice of it: {command}")
+                    aimed = d["kind"] == faction_rules.PEOPLE or faction_rules.job_faction(d["kind"])
+                    notice = "" if aimed else "; narrate what the character would notice of it"
+                    lines.append(f"[DO] {what[0].upper()}{what[1:]} (drawn {stamp(m['at'])})"
+                                 f"{notice}: {command}")
     return lines
 
 

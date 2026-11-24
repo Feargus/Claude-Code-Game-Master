@@ -48,10 +48,10 @@ def test_the_names():
 def test_a_location_needs_its_site_and_one_level(dcc_world, capsys):
     lm = LocationManager(dcc_world)
     assert not lm.add_location("Nowhere#Room", "x", "y")
-    assert "No site 'Nowhere'" in capsys.readouterr().out
+    assert "No site 'Nowhere'" in capsys.readouterr().err
     _house(dcc_world)
     assert not lm.add_location(f"{KITCHENS}#Pantry", "x", "y")
-    assert 'one "#" at most' in capsys.readouterr().out
+    assert 'one "#" at most' in capsys.readouterr().err
     assert lm.add_location("The Iron House", "x", "A forge.")
     assert lm.add_location("The Iron House#The Kitchens", "x", "Soot and stew.")  # every House may
 

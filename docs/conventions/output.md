@@ -134,7 +134,7 @@ files. A new idea gets its word here before it is used.
 | **scene** | Who is **present** where the character is; NPCs **enter** and **leave** | |
 | **NPC** | Anyone in the world but the character (`gm-npc.sh`, `npc:<name>`) | person |
 | **location** | A place in the world (`gm-location.sh`, `location:<name>`) | place, spot |
-| **site** | A location that holds others (`<site>#<location>`, `lib/sites.py`); the one-level kind of place | area, zone, building |
+| **site** | A location that holds others (`<site>#<location>`, `lib/sites.py`); one level only | area, zone, building |
 | **link**, **suggest** | Recall *links* a fact to a plot or NPC by itself, or *suggests* it | tag, offer |
 | **world rule** | A rule of the campaign's own (`gm-rule.sh`); **Standing**, **Relation**, the **powers** are the repo's | signature system, mechanic |
 | **the character** | The player's character, in text | the player, the PC |
