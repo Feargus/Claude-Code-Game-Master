@@ -18,7 +18,6 @@ case "${1:-show}" in
     enter)
         $PYTHON_CMD "$LIB_DIR/scene_manager.py" "$@" || exit $?
         # Reactivity: an NPC walking in can fire on_npc consequences.
-        echo ""
         bash "$TOOLS_DIR/gm-consequence.sh" tick
         ;;
     leave)

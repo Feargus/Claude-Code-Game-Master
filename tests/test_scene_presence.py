@@ -107,8 +107,19 @@ def test_on_npc_fires_when_someone_enters(dcc_world):
     r = subprocess.run(["bash", str(ROOT / "tools" / "gm-scene.sh"), "enter", "Mordecai"],
                        cwd=str(ROOT), capture_output=True, text=True, env=env, timeout=60)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "Entered: Mordecai" in r.stdout
+    assert r.stdout.startswith("[SUCCESS] Mordecai is here\nMordecai (")       # then the card
     assert cid in r.stdout and "Mordecai hands over the key" in r.stdout
+
+
+def test_enter_and_leave_say_who_in_one_line(dcc_world):
+    env = {**os.environ, "GM_WORLD_STATE_BASE": str(dcc_world)}
+    run = lambda *a: subprocess.run(  # noqa: E731
+        ["bash", str(ROOT / "tools" / "gm-scene.sh"), *a],
+        cwd=str(ROOT), capture_output=True, text=True, env=env, timeout=60).stdout
+    assert run("enter", "Mordecai").startswith("[SUCCESS] Mordecai is here\n")
+    assert run("enter", "Mordecai") == "[SUCCESS] Nothing to do: Mordecai was here already\n"
+    assert run("leave", "Mordecai") == "[SUCCESS] Mordecai left\n"
+    assert run("leave", "Mordecai") == "[SUCCESS] Nothing to do: Mordecai wasn't in the scene\n"
 
 
 def test_cli_refusal_and_show(dcc_world):

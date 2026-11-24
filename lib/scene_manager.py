@@ -116,17 +116,9 @@ class SceneManager:
         """A move: the new scene starts with only the party."""
         self._save(self._overview(), [])
 
-    def describe(self) -> str:
-        here = self.present()
-        import sheet as sheet_mod
-        character = sheet_mod.name(self.json_ops.load_json("character.json") or {}) or "the character"
-        lines = [f"Scene: {self.location() or '(no location)'}",
-                 f"Present: {', '.join(here) if here else f'nobody but {character}'}"]
-        usual = self.usually_here()
-        if usual:
-            lines.append(f"Usually found here, not in the scene: {', '.join(usual)} "
-                         f"(if one is actually here: gm-scene.sh enter <name>)")
-        return "\n".join(lines)
+
+def _names(keys) -> str:
+    return " and ".join([", ".join(keys[:-1]), keys[-1]] if len(keys) > 1 else keys)
 
 
 def main() -> int:
@@ -139,18 +131,26 @@ def main() -> int:
             print("\n".join(Cards(sm.json_ops).scene()))
         elif action == "enter" and args[1:]:
             result = sm.enter(args[1:])
-            if result["already"]:
-                print(f"Already here: {', '.join(result['already'])}")
-            print(sm.describe())
-            if result["entered"]:
+            entered, already = result["entered"], result["already"]
+            print(f"[SUCCESS] {_names(entered)} {'is' if len(entered) == 1 else 'are'} here"
+                  if entered else f"[SUCCESS] Nothing to do: {_names(already)} "
+                                  f"{'was' if len(already) == 1 else 'were'} here already")
+            if entered and already:
+                print(f"[NOTE] {_names(already)} {'was' if len(already) == 1 else 'were'} "
+                      f"here already")
+            if entered:
                 from cards import Cards
                 cards = Cards(sm.json_ops)
-                for name in result["entered"]:
-                    print("\nEntered: " + "\n".join(cards.npc_card(name)))
+                print("\n\n".join("\n".join(cards.npc_card(name)) for name in entered))
         elif action == "leave" and args[1:]:
+            keys, _ = sm._resolve(args[1:])
             gone = sm.leave(args[1:])
-            print(f"Left: {', '.join(gone)}" if gone else "Nobody left: they weren't in the scene.")
-            print(sm.describe())
+            away = [k for k in keys if k not in gone]
+            print(f"[SUCCESS] {_names(gone)} left" if gone else
+                  f"[SUCCESS] Nothing to do: {_names(away)} "
+                  f"{'was' if len(away) == 1 else 'were'}n't in the scene")
+            if gone and away:
+                print(f"[NOTE] {_names(away)} {'was' if len(away) == 1 else 'were'}n't in the scene")
         else:
             print("Usage: scene_manager.py [show] | enter <npc>... | leave <npc>...", file=sys.stderr)
             return 1
