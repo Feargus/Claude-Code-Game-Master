@@ -41,7 +41,7 @@ def _edit_npcs(world, change):
 def test_default_is_the_player_and_who_is_present(dcc_world, capsys):
     fid = NoteManager(dcc_world).add_fact("The crate was empty")
     assert _fact(dcc_world, fid)["holders"] == PARTY
-    assert "known to: player, npc:Carl" in capsys.readouterr().out
+    assert "[CHECK] holders: player, npc:Carl" in capsys.readouterr().out
 
 
 def test_npcs_in_the_scene_count_and_the_dead_do_not(dcc_world):
@@ -70,7 +70,7 @@ def test_secret_means_nobody(dcc_world, capsys):
     nm = NoteManager(dcc_world)
     fid = nm.add_fact("The vault code is 0451", secret=True)
     assert _fact(dcc_world, fid)["holders"] == []
-    assert "known to: nobody (a secret)" in capsys.readouterr().out
+    assert "[CHECK] holders: nobody (secret)" in capsys.readouterr().out
     assert nm.add_fact("x", holders=["Carl"], secret=True) == ""
 
 
@@ -122,13 +122,13 @@ def test_cli(dcc_world):
         capture_output=True, text=True, cwd=str(Path(dcc_world).parent))
     r = run("add", "The code is 0451", "--secret")
     assert r.returncode == 0, r.stderr
-    fid = r.stdout.split("Recorded fact ")[1].split()[0].rstrip(":")
+    fid = r.stdout.split("[SUCCESS] Recorded ")[1].split()[0]
     r = run("tell", fid, "Mordecai", "street")
     assert r.returncode == 0 and f"[SUCCESS] Told {fid} to npc:Mordecai, street" in r.stdout
     r = run("tell", fid, "Mordecai")
     assert f"they knew {fid} already" in r.stdout
     r = run("add", "Carl saw it", "--holders", "Carl", "--holders", "player")
-    assert r.returncode == 0 and "known to: npc:Carl, player" in r.stdout
+    assert r.returncode == 0 and "[CHECK] holders: npc:Carl, player" in r.stdout
 
 
 def test_a_named_npc_outside_the_scene_is_pointed_out(dcc_world, capsys):

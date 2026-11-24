@@ -7,6 +7,7 @@ front, must be refused rather than recorded: "gm-note.sh get f1" once recorded
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -27,8 +28,8 @@ def _facts(world):
 def test_a_fact_is_recorded_and_subcommands_are_not(dcc_world):
     r = _run(dcc_world, "The drop is at dawn", "--secret")
     assert r.returncode == 0, r.stderr
-    assert "[SUCCESS] Recorded fact " in r.stdout and " in " not in r.stdout.splitlines()[0]
-    fid = r.stdout.split("Recorded fact ")[1].split()[0].rstrip(":")
+    assert re.fullmatch(r"\[SUCCESS\] Recorded f\d+", r.stdout.splitlines()[0])
+    fid = r.stdout.split("[SUCCESS] Recorded ")[1].split()[0]
     assert _facts(dcc_world)[-1]["id"] == fid and "category" not in _facts(dcc_world)[-1]
     before = _facts(dcc_world)
     r = _run(dcc_world, "truth", fid, "partial")

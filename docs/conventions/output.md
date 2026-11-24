@@ -31,9 +31,9 @@ Lines that only add detail to the line above are indented two spaces and carry n
 
 | Marker | Meaning | The GM … |
 |---|---|---|
-| `[SUCCESS]` | The command did what it was asked. The first line, naming what it made or changed, with its id: `[SUCCESS] Recorded fact f83` | nothing |
+| `[SUCCESS]` | The command did what it was asked. The first line, naming what it made or changed, with its id: `[SUCCESS] Recorded f83` | nothing |
 | `[ERROR]` | It didn't (below). On standard error | fixes it |
-| `[CHECK]` | Something to judge now, with the command if the answer is yes: `[CHECK] f43 may trigger c12: "Pell bids …"`, `[CHECK] Tied but no Relation set: …` | judges it |
+| `[CHECK]` | Something to judge now, with the command if the answer is yes: `[CHECK] f43 may trigger c12: "Pell bids …"`, `[CHECK] holders: player, npc:Tod; about: …; at: …` | judges it |
 | `[DO]` | Something to play now, no judgment needed: faction turns owed, a growth due, a rule result's "Do now" | acts |
 | `[FIRED]` | Something happened by itself: a consequence fired, a clock filled | plays it out |
 | `[STOPPED]` | Time stopped partway through a step: what happened then, and the command to go on | decides: play it or go on |
@@ -49,7 +49,8 @@ A new marker is added here first, with its meaning, and only when none of these 
 - **An action ends with the full command**, ready to run: `bash tools/gm-note.sh plot f52 --add "The Sold Contract"`.
 - **Nothing to report: no line.** Not `(nothing triggered)`, not `No facts match.` after a
   command whose job was something else. A lookup that finds nothing says so in one line.
-- **One thing per line.** A list of several is several lines, not one line with semicolons.
+- **One thing per line.** A list of several is several lines, not one line with semicolons;
+  one record's fields to check together (a new fact's holders, about and place) are one thing.
 - **Numbers the player must not see** are never in text meant for narration (the GM's
   instructions keep them out of the story); output for the GM may show them.
 
@@ -138,7 +139,7 @@ files. A new idea gets its word here before it is used.
 | **the character** | The player's character, in text | the player, the PC |
 | **currency** | What amounts are shown in (the world bible's word) | credits (only the data's name) |
 
-## Where we are (2026-11-22)
+## Where we are (2026-11-24)
 
 - Markers still in the code that this retires: `[WARNING]` and `[INFO]` (become `[CHECK]`
   or `[NOTE]`), `[REACTIVITY]` and `[WORLD TICK]` (become `[FIRED]`, or nothing when
@@ -146,7 +147,6 @@ files. A new idea gets its word here before it is used.
   (`[DO]`), upstream's capitals `ITEM_ADDED`, `ITEM_MOVED`, `ITEM_REMOVED`, `CREDITS_GAINED`,
   `CREDITS_SPENT`, `LOOT`, `DEATH`, `GROWTH_DUE`, `XP_GAIN`, `GROWN`, `RAISED`, `PERK`
   (become `[SUCCESS]` sentences).
-- The fact's output reads its own text back (`[SUCCESS] Recorded fact f83: <the text>`).
 - Semantic recall's lines after a fact carry no marker yet, but for an earlier fact it may
   repeat (they become `[CHECK]` for a consequence it may trigger, `[NOTE]` for a link it
   made, `[CHECK]` for a suggestion).

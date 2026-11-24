@@ -427,20 +427,6 @@ def test_a_present_faction_gets_a_card_and_zero_means_not_here(borant, ops):
     assert "FACTION The System" not in scene
 
 
-def test_a_faction_with_eyes_here_is_a_hint_when_a_fact_is_recorded(borant, ops, dcc_world, capsys):
-    borant.set_presence(_here(ops), ["Meridian=4", "system=3"])
-    notes = NoteManager(dcc_world)
-    fid = notes.add_fact("Carl kicks the vending machine open.")
-    out = capsys.readouterr().out
-    assert (f"Meridian Group has eyes here (presence 4): if they'd see it, "
-            f"bash tools/gm-note.sh tell {fid} faction:meridian-group") in out
-    assert "The System" not in out.split("eyes here")[0].splitlines()[-1]    # 3 is no eyes
-    notes.add_fact("Carl hides the key in his boot.", secret=True)
-    assert "eyes here" not in capsys.readouterr().out                       # a secret: nobody saw
-    held = load(ops)                                                        # nothing automatic
-    assert fid not in borant.show("Meridian") and held
-
-
 def test_the_presence_command(borant, ops, dcc_world):
     env = dict(os.environ, GM_WORLD_STATE_BASE=dcc_world)
 

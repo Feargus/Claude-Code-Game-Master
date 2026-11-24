@@ -157,7 +157,10 @@ def test_cli(world):
                         "truth": "wrong", "version_of": "#1"}])
     r = run("beat", beat)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "[SUCCESS] Recorded f1, f2" in r.stdout
+    lines = r.stdout.splitlines()
+    assert lines[0] == "[SUCCESS] Recorded f1, f2"               # the first line, for the beat
+    assert lines[1].startswith("[CHECK] f1 holders: ")
+    assert lines[2].startswith("[CHECK] f2 holders: npc:Benno")
     r = run("witness", "Tod", "--dry-run")
     assert "npc:Tod would learn 0 fact(s)" in r.stdout and "f2" in r.stdout  # Tod knew f1
     r = run("add", "It rained there", "--at", "The Sanguine Ring", "--nowhere")

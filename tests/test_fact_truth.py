@@ -49,8 +49,8 @@ def test_recording_a_wrong_version(message, capsys):
     entry = _fact(nm.world_state_dir, wrong)
     assert entry["truth"] == "wrong" and entry["version_of"] == true
     assert "truth" not in _fact(nm.world_state_dir, true)
-    nm.add_fact("Another misreading", truth="wrong", version_of=true)
-    assert f"[WRONG; the truth is {true}]" in capsys.readouterr().out
+    another = nm.add_fact("Another misreading", truth="wrong", version_of=true)
+    assert capsys.readouterr().out.splitlines()[0] == f"[SUCCESS] Recorded {another}"
 
 
 def test_a_version_of_a_version_points_at_the_root(message, capsys):
@@ -140,11 +140,11 @@ def test_cli(dcc_world):
         [sys.executable, str(root / "lib" / "note_manager.py"), *a],
         capture_output=True, text=True, cwd=str(Path(dcc_world).parent))
     r = run("add", "The drop is at dawn", "--secret")
-    true = r.stdout.split("Recorded fact ")[1].split()[0].rstrip(":")
+    true = r.stdout.split("[SUCCESS] Recorded ")[1].split()[0]
     r = run("add", "The drop is at midnight", "--holders", "player",
             "--truth", "wrong", "--version-of", true)
     assert r.returncode == 0, r.stderr
-    wrong = r.stdout.split("Recorded fact ")[1].split()[0].rstrip(":")
+    wrong = r.stdout.split("[SUCCESS] Recorded ")[1].split()[0]
     r = run("truth", wrong, "partial")
     assert r.returncode == 0 and f"{wrong}: [PARTIAL; fuller: {true}]" in r.stdout
     r = run("truth", true, "wrong")

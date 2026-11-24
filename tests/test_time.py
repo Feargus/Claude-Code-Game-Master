@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from lib.consequence_manager import ConsequenceManager
 from lib.location_manager import LocationManager
 from lib.threat_clocks import ThreatClockManager
 from lib.time_manager import (
@@ -178,12 +179,15 @@ def bridge(dcc_world):
 
 def test_move_takes_time_then_moves_and_checks_consequences_once(dcc_world, bridge):
     _gm_time(dcc_world, "set", "2187-10-26 22:00")
+    ConsequenceManager(dcc_world).add_consequence("A drone circles the bridge",
+                                                  trigger_type="on_location",
+                                                  match="The Old Spine Bridge")
     result = _move(dcc_world, "The Old Spine Bridge", "--takes", "1h 30m")
     assert result.returncode == 0, result.stdout + result.stderr
     overview = _overview(dcc_world)
     assert overview["game_time"] == "2187-10-26T23:30"
     assert overview["player_position"]["current_location"] == "The Old Spine Bridge"
-    assert result.stdout.count("[REACTIVITY]") == 1
+    assert result.stdout.count("[REACTIVITY] fired these 1") == 1        # on arrival only
 
 
 def test_move_without_takes_lets_no_time_pass(dcc_world, bridge):

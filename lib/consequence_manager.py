@@ -914,15 +914,6 @@ def print_fired(fired: list[dict[str, Any]]) -> None:
             print(f"      ↳ {line}")
 
 
-def _print_tick_report(result: dict[str, list[dict[str, Any]]]) -> None:
-    """Human CLI for tick(): what fired."""
-    fired = result.get('fired') or []
-    if not fired:
-        print("[REACTIVITY] (nothing triggered here)")
-        return
-    print_fired(fired)
-
-
 def main():
     """CLI interface for consequence management"""
     import argparse
@@ -1050,7 +1041,7 @@ def main():
                       + (f"; when it fires, {then}" if then else ""))
 
     elif args.action == 'tick':
-        _print_tick_report(manager.tick_from_session())
+        print_fired(manager.tick_from_session()['fired'])
 
     elif args.action == 'log':
         prov = manager.get_provenance()

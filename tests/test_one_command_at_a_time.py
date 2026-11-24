@@ -46,8 +46,8 @@ def test_commands_started_together_all_record_their_fact(dcc_world, flock):
                       "--secret", "--nowhere", GM_FLOCK=flock) for n in range(COMMANDS)]
     results = [(p.communicate(timeout=120), p.returncode) for p in started]
     for (out, err), code in results:
-        assert code == 0 and "Recorded fact" in out, out + err
-    ids = [out.split("Recorded fact ")[1].split()[0].rstrip(":") for (out, _), _ in results]
+        assert code == 0 and "[SUCCESS] Recorded f" in out, out + err
+    ids = [out.split("[SUCCESS] Recorded ")[1].split()[0] for (out, _), _ in results]
     assert len(set(ids)) == COMMANDS                            # no id given twice
     texts = _fact_texts(dcc_world)
     assert all(f"At once, fact {n}." in texts for n in range(COMMANDS))
@@ -56,7 +56,7 @@ def test_commands_started_together_all_record_their_fact(dcc_world, flock):
 def test_a_wrapper_that_calls_wrappers_does_not_wait_for_itself(dcc_world):
     # gm-time.sh runs gm-consequence.sh afterwards, inside its own turn.
     code, out, err = _run(dcc_world, "gm-time.sh", "set", "2187-10-26 04:30", GM_LOCK_WAIT="3")
-    assert code == 0 and "Time set" in out and "REACTIVITY" in out, out + err
+    assert code == 0 and "Time set" in out, out + err
 
 
 def test_a_command_gives_up_after_waiting_and_changes_nothing(dcc_world):

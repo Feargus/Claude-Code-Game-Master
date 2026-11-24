@@ -263,8 +263,7 @@ def print_moments(manager: "TimeManager", on_the_way: bool = False, going_to: st
     """What happened as time passed. The moments with something to play now are
     printed in full, each under its time; the rest is the timeline, identical lines
     grouped with their times (time_stops.py). When time stopped before the end, how
-    much passed and how much is left, and the command to go on. On the way (a
-    journey), "nothing triggered" is left to the check at the destination."""
+    much passed and how much is left, and the command to go on."""
     import time_stops
     import world_rules
     from consequence_manager import print_fired
@@ -292,10 +291,6 @@ def print_moments(manager: "TimeManager", on_the_way: bool = False, going_to: st
         for report in m["rules"]:
             print("\n".join(world_rules.report_lines(manager.json_ops, report)))
         print_fired(m["fired"])
-    if not any(m["fired"] or any(c.get("fired") for c in m["clocks"].values())
-               or any(time_stops.fired(r) for r in m["rules"]) for m in manager.moments) \
-            and not on_the_way:
-        print("[REACTIVITY] (nothing triggered)")
     import faction_rules
     owed = faction_rules.owed_lines(manager.json_ops)
     if owed:
@@ -362,12 +357,10 @@ def main(argv) -> int:
         manager = TimeManager()
         if action == "advance" and value:
             duration, flags = _advance_args(argv[1:])
-            start = manager.get_game_time()
             manager.advance(parse_duration(duration), on_the_way=flags["on_the_way"],
                             through=flags["through"], through_all=flags["through_all"],
                             resting=flags["rest"])
-            print(f"Time: {describe(manager.get_game_time())}"
-                  + (f" (from {describe(start)})" if start else ""))
+            print(f"[SUCCESS] {describe(manager.get_game_time())}")
             print_moments(manager, flags["on_the_way"], flags["to"])
             if manager.stopped and flags["on_the_way"]:
                 return 3                    # stopped on the way: gm-session.sh doesn't move
@@ -376,10 +369,10 @@ def main(argv) -> int:
             print(f"Time set: {describe(manager.get_game_time())}")
             print_clocks(moved)
             print_rule_changes(manager)
-            from consequence_manager import ConsequenceManager, _print_tick_report
+            from consequence_manager import ConsequenceManager, print_fired
             with contextlib.redirect_stdout(sys.stderr):
                 result = ConsequenceManager(manager.world_state_dir).tick_from_session()
-            _print_tick_report(result)
+            print_fired(result['fired'])
         elif action == "show" and not value:
             moment = manager.get_game_time()
             print(f"Time: {describe(moment)}" if moment else

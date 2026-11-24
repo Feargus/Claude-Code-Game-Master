@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Note/fact management module for GM tools."""
 
+import contextlib
+import io
 import re
 import sys
 from datetime import UTC, datetime
@@ -164,7 +166,7 @@ class NoteManager:
                  about=None, not_about=None, holders=None, secret: bool = False,
                  also=None, truth=None, version_of=None, at=None, nowhere: bool = False,
                  auto_at: bool = True, plots=None,
-                 when=None, by=None) -> str:
+                 when=None, by=None, in_beat: bool = False) -> str:
         """Record a fact. Returns its id, or "" on failure. Everything but the
         text is given by name (a fact has no category any more: facts.py).
 
@@ -185,7 +187,8 @@ class NoteManager:
         time it happened ("YYYY-MM-DD HH:MM"), if earlier than now (a faction turn
         owed since it was drawn, something recorded after the fact). `by`: who said
         it (`--from`): they hold it too, and a version they tell needs them to hold
-        a version of its truth; the fact keeps the telling under `told`.
+        a version of its truth; the fact keeps the telling under `told`. `in_beat`:
+        one of a beat's facts, whose first line beat() prints for them all.
         """
         from embedder import EmbedderError, require_embedder
         try:
@@ -193,7 +196,7 @@ class NoteManager:
         except EmbedderError as error:
             print(f"[ERROR] {error}", file=sys.stderr)
             return ""
-        about_ids, found, errors = self._about(fact, about, not_about)
+        about_ids, _, errors = self._about(fact, about, not_about)
         where, more = self._where(at, nowhere, auto_at)
         errors += more
         holder_ids, more = self._holders(holders, secret, also)
@@ -253,23 +256,18 @@ class NoteManager:
         facts.append(entry)
         fact_file.save(self.json_ops, facts)
 
-        print(f"[SUCCESS] Recorded fact {fact_id}: {fact}")
+        if not in_beat:
+            print(f"[SUCCESS] Recorded {fact_id}")
+        check_line = [f"holders: {', '.join(holder_ids) if holder_ids else 'nobody (secret)'}"]
         if about_ids:
-            which = "all" if found == about_ids else ", ".join(found)
-            note = (f" ({which} found in the text; drop a wrong one with "
-                    f"gm-note.sh about {fact_id} --remove <id>)") if found else ""
-            print(f"  about: {', '.join(about_ids)}{note}")
-        print(f"  known to: {', '.join(holder_ids) if holder_ids else 'nobody (a secret)'}")
+            check_line.append(f"about: {', '.join(about_ids)}")
         if where:
-            print(f"  at: {where}")
-            self._eyes(fact_id, where, holder_ids if not secret else None)
-        if plot_keys:
-            print(f"  plot: {', '.join(plot_keys)}"
-                  + (f" (as its truth, {version_of})" if inherited else ""))
+            check_line.append(f"at: {where}")
+        if inherited:
+            check_line.append(f"plot: {', '.join(plot_keys)} (as its truth, {version_of})")
+        print(f"[CHECK] {fact_id + ' ' if in_beat else ''}{'; '.join(check_line)}")
         for note in version_notes:
-            print(f"  {note}")
-        if truth:
-            print(f"  {fact_text({'truth': truth, 'version_of': entry.get('version_of')}).strip()}")
+            print(f"[NOTE] {note}")
         if holders is None and not secret:
             self._named_but_absent(fact_id, about_ids, holder_ids)
         from consequence_manager import print_fired
@@ -277,18 +275,6 @@ class NoteManager:
         if check:
             self.check([fact_id])
         return fact_id
-
-    def _eyes(self, fact_id: str, where: str, holders) -> None:
-        """A faction with eyes where it happened (presence 4 or 5) may have seen it:
-        a hint, never automatic (a faction learns only through someone, design-notes.md)."""
-        if holders is None:                       # a secret: a GM-only truth nobody saw
-            return
-        from factions import eyes, known
-        names = known(self.json_ops)
-        for fid, n in eyes(self.json_ops, where):
-            if f"faction:{fid}" not in holders:
-                print(f"  {names.get(fid, {}).get('name', fid)} has eyes here (presence {n}): if "
-                      f"they'd see it, bash tools/gm-note.sh tell {fact_id} faction:{fid}")
 
     def set_attitude(self, owner: str, adjectives: str, towards: str = "player") -> str:
         """Record how `owner` (an NPC) regards `towards` (the player or another
@@ -378,7 +364,7 @@ class NoteManager:
                   and ((npcs.get(i[4:]) or {}).get("status") or {}).get("state") != "dead"]
         if absent:
             names = " ".join(f'"{n}"' for n in absent)
-            print(f"  Named but not in the scene: {', '.join(absent)}. If they're here: "
+            print(f"[CHECK] Named but not in the scene: {', '.join(absent)}. If they're here: "
                   f"bash tools/gm-scene.sh enter {names}, then "
                   f"gm-note.sh tell {fact_id} {' '.join('npc:' + n for n in absent)}")
 
@@ -836,22 +822,26 @@ class NoteManager:
         if errors:
             raise ValueError(" ".join(errors))
         written = []
+        report = io.StringIO()        # each fact's lines, printed after the beat's first line
         for item in items:
             ref = str(item.get("version_of") or "")
             if ref.startswith("#"):
                 ref = written[int(ref[1:]) - 1]
-            fid = self.add_fact(item["fact"], check=False, about=as_list(item.get("about")),
-                                not_about=as_list(item.get("not_about")),
-                                holders=as_list(item.get("holders")),
-                                secret=bool(item.get("secret")), also=as_list(item.get("also")),
-                                truth=item.get("truth"), version_of=ref or None,
-                                at=item.get("at"), nowhere=bool(item.get("nowhere")),
-                                plots=as_list(item.get("plot")), when=item.get("when"),
-                                by=item.get("from"))
+            with contextlib.redirect_stdout(report):
+                fid = self.add_fact(item["fact"], check=False, about=as_list(item.get("about")),
+                                    not_about=as_list(item.get("not_about")),
+                                    holders=as_list(item.get("holders")),
+                                    secret=bool(item.get("secret")), also=as_list(item.get("also")),
+                                    truth=item.get("truth"), version_of=ref or None,
+                                    at=item.get("at"), nowhere=bool(item.get("nowhere")),
+                                    plots=as_list(item.get("plot")), when=item.get("when"),
+                                    by=item.get("from"), in_beat=True)
             if not fid:
                 self.remove_facts(written)
                 raise ValueError("A fact was refused (see above); none of this beat was kept.")
             written.append(fid)
+        print(f"[SUCCESS] Recorded {', '.join(written)}")
+        print(report.getvalue(), end="")
         self.check(written)
         return written
 
@@ -1061,8 +1051,7 @@ def main():
             print(f"{args.fact_id} about: {', '.join(about) or '(nothing)'}")
         elif args.action == 'beat':
             from cli_output import json_input
-            written = manager.beat(json_input(args.facts, "the beat"))
-            print(f"[SUCCESS] Recorded {', '.join(written)}")
+            manager.beat(json_input(args.facts, "the beat"))
         elif args.action == 'witness':
             result = manager.witness(args.who, args.at, args.since, args.until,
                                      args.include, args.dry_run)

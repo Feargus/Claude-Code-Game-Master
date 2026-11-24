@@ -17,7 +17,8 @@ def test_a_beat_after_the_command_keeps_its_apostrophes(isolated_world_state):
     assert _run("gm-campaign.sh", "create", "t").returncode == 0
     assert _run("gm-campaign.sh", "switch", "t").returncode == 0
     r = _run("gm-note.sh", "beat", stdin="[{\"fact\": \"Dolph's thermos rolled under Hex's counter.\"}]")
-    assert r.returncode == 0 and "Dolph's thermos" in r.stdout, r.stdout + r.stderr
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "Dolph's thermos" in _run("gm-note.sh", "recent", "1").stdout
     assert _run("gm-note.sh", "beat", '[{"fact": "The argument still works."}]').returncode == 0
 
 

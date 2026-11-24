@@ -72,9 +72,10 @@ def test_names_in_the_text_are_added_and_reported(dcc_world, capsys):
                                           about=["location:bone garden"])
     assert _fact(dcc_world, fid)["about"] == ["location:Bone Garden", "npc:Mordecai"]
     out = capsys.readouterr().out
-    assert "about: location:Bone Garden, npc:Mordecai" in out
-    assert "npc:Mordecai found in the text" in out
-    assert f"gm-note.sh about {fid} --remove" in out
+    assert out.splitlines()[:2] == [f"[SUCCESS] Recorded {fid}",
+                                    f"[CHECK] holders: {', '.join(_fact(dcc_world, fid)['holders'])}; "
+                                    "about: location:Bone Garden, npc:Mordecai; "
+                                    f"at: {_fact(dcc_world, fid)['at']}"]
 
 
 def test_not_about_drops_a_found_name(dcc_world):
@@ -139,7 +140,7 @@ def test_cli(dcc_world):
     r = run("add", "Carl hums", "--about", "Bone Garden", "--not-about", "Carl")
     assert r.returncode == 0, r.stderr
     assert "about: location:Bone Garden" in r.stdout
-    fid = r.stdout.split("Recorded fact ")[1].split()[0].rstrip(":")
+    fid = r.stdout.split("[SUCCESS] Recorded ")[1].split()[0]
     r = run("about", fid, "--add", "player")
     assert r.returncode == 0 and "location:Bone Garden, player" in r.stdout
     r = run("add", "Somebody hums", "--about", "npc:Nobody")
