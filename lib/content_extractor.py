@@ -6,6 +6,7 @@ Extract plain text from PDFs, Word documents, Markdown, and text files.
 
 import os
 import re
+import sys
 from pathlib import Path
 
 
@@ -32,7 +33,7 @@ class PDFExtractor:
             pass
 
         if not self.pypdf_available and not self.pdfplumber_available:
-            print("Warning: No PDF libraries available. Install pypdf or pdfplumber.")
+            print("[ERROR] No PDF library: uv sync installs pypdf and pdfplumber.", file=sys.stderr)
 
     def extract(self, filepath: str) -> str:
         """
@@ -138,7 +139,7 @@ class DocxExtractor:
             self.docx_available = True
             self.docx = docx
         except ImportError:
-            print("Warning: python-docx not available. Install python-docx to process Word documents.")
+            print("[ERROR] No python-docx for Word documents: uv sync installs it.", file=sys.stderr)
 
     def extract(self, filepath: str) -> str:
         """
@@ -268,7 +269,6 @@ class ContentExtractor:
 
 def main():
     """Test the extractors."""
-    import sys
 
     if len(sys.argv) < 2:
         print("Usage: content_extractor.py <file>")

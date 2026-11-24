@@ -89,9 +89,8 @@ class AgentExtractor:
         # Check RAG availability - required, no fallback
         if not check_rag_available():
             missing = get_missing_deps()
-            print("ERROR: the book search needs semantic recall.")
-            print(f"Missing: {', '.join(missing)}")
-            print("Install with: uv sync, then bash tools/gm-recall.sh setup")
+            print(f"[ERROR] The book search needs semantic recall (missing: {', '.join(missing)}): "
+                  f"uv sync, then bash tools/gm-recall.sh setup.", file=sys.stderr)
             sys.exit(1)
 
         # Import RAG components (safe now that we checked availability)
