@@ -230,10 +230,8 @@ class NoteManager:
                 print(f"[ERROR] {error}", file=sys.stderr)
             print("[ERROR] Fact not recorded.", file=sys.stderr)
             return ""
-        inherited = False
         if version_of and not plot_keys:          # a version belongs where its truth does
             plot_keys = list(self._entry(facts, version_of).get('plots') or [])
-            inherited = bool(plot_keys)
         fact_id = fact_file.next_id(facts, fact_file.load_removed(self.json_ops))
         entry = {'id': fact_id, 'fact': fact}
         if about_ids:
@@ -263,13 +261,9 @@ class NoteManager:
             check_line.append(f"about: {', '.join(about_ids)}")
         if where:
             check_line.append(f"at: {where}")
-        if inherited:
-            check_line.append(f"plot: {', '.join(plot_keys)} (as its truth, {version_of})")
         print(f"[CHECK] {fact_id + ' ' if in_beat else ''}{'; '.join(check_line)}")
         for note in version_notes:
             print(f"[NOTE] {note}")
-        if holders is None and not secret:
-            self._named_but_absent(fact_id, about_ids, holder_ids)
         from consequence_manager import print_fired
         print_fired(self._learned(fact_id, entry, holder_ids))
         if check:
@@ -354,19 +348,6 @@ class NoteManager:
             entry.pop('about', None)
         fact_file.save(self.json_ops, facts)
         return about
-
-    def _named_but_absent(self, fact_id: str, about_ids, holder_ids) -> None:
-        """The scene cross-check: living NPCs a scene fact names who aren't in the
-        scene. Either they're here and the GM forgot `gm-scene.sh enter`, or the
-        fact is only about them, which is fine."""
-        npcs = self.json_ops.load_json("npcs.json") or {}
-        absent = [i[4:] for i in about_ids if i.startswith("npc:") and i not in holder_ids
-                  and ((npcs.get(i[4:]) or {}).get("status") or {}).get("state") != "dead"]
-        if absent:
-            names = " ".join(f'"{n}"' for n in absent)
-            print(f"[CHECK] Named but not in the scene: {', '.join(absent)}. If they're here: "
-                  f"bash tools/gm-scene.sh enter {names}, then "
-                  f"gm-note.sh tell {fact_id} {' '.join('npc:' + n for n in absent)}")
 
     def _learned(self, fact_id: str, entry: dict, new_holders) -> list:
         """Fire the on_learn consequences for holders who just learned a fact. A fact
@@ -458,7 +439,6 @@ class NoteManager:
                 entry.pop(key, None)
         if version_of and not entry.get('plots') and self._entry(facts, version_of).get('plots'):
             entry['plots'] = list(self._entry(facts, version_of)['plots'])    # as its truth
-            notes.append(f"plot: {', '.join(entry['plots'])} (as its truth, {version_of})")
         fact_file.save(self.json_ops, facts)
         for note in notes:
             print(f"  {note}")

@@ -167,7 +167,7 @@ def test_cli(world):
     assert r.returncode == 1 and "not both" in r.stderr
 
 
-def test_a_version_belongs_to_its_truths_plot(world, capsys):
+def test_a_version_belongs_to_its_truths_plot(world):
     """The fooled one's wrong version was offered the plot its truth already had
     (todo.md): now it inherits it, in a beat, with --version-of and with `truth`."""
     ws, camp = world
@@ -179,7 +179,6 @@ def test_a_version_belongs_to_its_truths_plot(world, capsys):
          "truth": "wrong", "version_of": "#1"}])
     facts = {f["id"]: f for f in json.loads((camp / "facts.json").read_text())}
     assert facts[lie_id]["plots"] == ["The Ring"]
-    assert f"plot: The Ring (as its truth, {truth_id})" in capsys.readouterr().out
     own = notes.add_fact("Benno half-saw it.", holders=["npc:Benno Rusk"], truth="partial",
                          version_of=truth_id, plots=[])
     assert json.loads((camp / "facts.json").read_text())[-1]["plots"] == ["The Ring"]
