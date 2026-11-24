@@ -48,13 +48,11 @@ def test_an_id_comes_from_the_name():
     assert make_id("The") == "the"
 
 
-def test_the_first_faction_copies_the_bibles_in(ops, dcc_world):
-    assert not (Path(ops.world_state_dir) / "factions.json").exists()
-    assert set(known(ops)) == {"crawlers", "system", "showrunners", "npcs"}   # from the bible
+def test_a_new_faction_joins_the_campaigns(ops, dcc_world):
+    assert set(known(ops)) == {"crawlers", "system", "showrunners", "npcs"}
     m = FactionManager(ops)
     fid = m.create("Meridian Group", "A security firm.", aliases=["Meridian"])
     assert fid == "meridian-group"
-    assert "started from the world bible's factions" in m.notes[0]
     table = load(ops)
     assert set(table) == {"crawlers", "system", "showrunners", "npcs", "meridian-group"}
     assert table["system"]["name"] == "The System / Borant Corp"
@@ -189,7 +187,6 @@ def test_the_command_line(dcc_world):
     made = run("create", "Grey Hands", "--description", "Pickpockets of the third floor.",
                "--impulse", "Take what isn't nailed down.", "--tag", "gang", "--id", "grey")
     assert made.returncode == 0 and "[SUCCESS] Faction faction:grey" in made.stdout, made.stderr
-    assert "[NOTE]" in made.stdout                                 # the bible's copied in
     assert run("alias", "grey", "the Hands").returncode == 0
     listed = run("list").stdout
     assert "faction:grey — Grey Hands: Pickpockets" in listed and "faction:system" in listed
@@ -199,15 +196,12 @@ def test_the_command_line(dcc_world):
     assert bad.returncode == 1 and bad.stderr.startswith("[ERROR]") and not bad.stdout
 
 
-def test_an_older_campaign_lists_and_shows_the_bibles_factions(ops):
+def test_the_factions_are_listed_shown_and_set(ops):
     m = FactionManager(ops)
     assert "faction:system — The System / Borant Corp" in "\n".join(m.list_lines())
-    assert "From the world bible" in m.list_lines()[-1]
     assert m.show("The Crawlers").startswith("The Crawlers (faction:crawlers)")
-    assert not (Path(ops.world_state_dir) / "factions.json").exists()     # reading writes nothing
-    m.set_field("crawlers", "kind", ["the contestants"])                  # a change copies them in
+    m.set_field("crawlers", "kind", ["the contestants"])
     assert load(ops)["crawlers"]["kind"] == "the contestants" and "system" in load(ops)
-    assert "started from the world bible's factions" in m.notes[0]
 
 
 # ---------- step 2: members ----------
@@ -334,17 +328,6 @@ def test_npc_create_joins_factions(borant, dcc_world):
     assert "joined faction:system (secret" in made.stdout
 
 
-def test_an_older_campaigns_factions_are_copied_in_on_demand(ops):
-    cid, error = WorldIds(ops).resolve("faction:crawlers")
-    assert cid == "" and "gm-faction.sh from-bible" in error
-    from lib.factions import _from_bible
-    m = FactionManager(ops)
-    _from_bible(m)
-    assert WorldIds(ops).resolve("faction:crawlers") == ("faction:crawlers", "")
-    with pytest.raises(FactionError, match="copied in"):
-        _from_bible(m)
-
-
 # ---------- step 3: plots and the brief ----------
 
 def _plots(dcc_world):
@@ -456,12 +439,13 @@ def test_a_dead_leader_is_marked_and_the_successor_named(borant, ops, dcc_world)
     assert "name another successor" in succession(ops, "npc:Carl")[0]
 
 
-def test_a_bible_only_campaign_is_told_to_copy_its_factions(ops):
+def test_a_campaign_without_factions_is_told_to_make_them(ops):
     from lib import faction_turns as ft
     from lib import world_rules as wr
-    with pytest.raises(ft.TurnError, match="from-bible"):
+    (Path(ops.world_state_dir) / "factions.json").unlink()
+    with pytest.raises(ft.TurnError, match="no factions yet"):
         ft.check(ops, [{"faction": "crawlers", "action": "build", "power": "Military"}])
-    with pytest.raises(wr.RulesError, match="comes with the factions.*from-bible"):
+    with pytest.raises(wr.RulesError, match="comes with the factions.*none yet"):
         wr.find_rule(ops, "Military")
 
 

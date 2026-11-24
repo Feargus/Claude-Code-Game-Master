@@ -21,7 +21,6 @@
 #   gm-faction.sh leave <faction> <npc>  no longer knows what only the faction knew
 #   gm-faction.sh show <faction>       the faction, its world-rule values, the facts it knows
 #   gm-faction.sh list                 every faction, one line each
-#   gm-faction.sh from-bible           an older campaign: copy the world bible's factions in
 #   gm-faction.sh turn [--only <faction>] <<'EOF'
 #                                      a faction turn (/gm world): one action per faction
 #                                      (--only: that faction alone takes its turn),

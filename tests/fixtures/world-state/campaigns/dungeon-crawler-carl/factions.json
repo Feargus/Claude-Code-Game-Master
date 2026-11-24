@@ -1,0 +1,26 @@
+{
+  "crawlers": {
+    "name": "The Crawlers",
+    "ties": {
+      "system": "rebels against"
+    }
+  },
+  "system": {
+    "name": "The System / Borant Corp",
+    "ties": {
+      "crawlers": "exploits / broadcasts"
+    }
+  },
+  "showrunners": {
+    "name": "The Showrunners",
+    "ties": {
+      "crawlers": "manipulates for ratings"
+    }
+  },
+  "npcs": {
+    "name": "Dungeon NPCs",
+    "ties": {
+      "crawlers": "ally or obstacle"
+    }
+  }
+}

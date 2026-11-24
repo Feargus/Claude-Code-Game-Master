@@ -93,13 +93,17 @@ def block(which):
 
 # ---------- the rules ----------
 
-def rules(json_ops) -> list[dict[str, Any]]:
-    """The campaign's rules, in the order they were defined, then the repo's faction
-    rules when it has factions (faction_rules.py: power, Relation)."""
-    import faction_rules
+def own_rules(json_ops) -> list[dict[str, Any]]:
+    """The campaign's own rules, in the order they were defined (ruleset.json)."""
     value = (json_ops.load_json(RULESET) or {}).get("rules") or []
-    own = [r for r in value if isinstance(r, dict)] if isinstance(value, list) else []
-    return own + faction_rules.built_ins(json_ops)
+    return [r for r in value if isinstance(r, dict)] if isinstance(value, list) else []
+
+
+def rules(json_ops) -> list[dict[str, Any]]:
+    """The campaign's own rules, then the repo's faction rules when it has factions
+    (faction_rules.py: power, Relation, the faction bag)."""
+    import faction_rules
+    return own_rules(json_ops) + faction_rules.built_ins(json_ops)
 
 
 def plain_rules(json_ops) -> list[str]:
@@ -117,10 +121,8 @@ def find_rule(json_ops, raw) -> dict[str, Any]:
     names = [r["name"] for r in found]
     import faction_rules
     if faction_rules.is_built_in(wanted):
-        import factions
-        how = ("its factions are still in the world bible: bash tools/gm-faction.sh from-bible"
-               if factions.from_bible(json_ops) else "it has no factions yet (gm-faction.sh create)")
-        raise RulesError(f"No rule '{raw}' here: it comes with the factions, and {how}.")
+        raise RulesError(f"No rule '{raw}' here: it comes with the factions, and this "
+                         f"campaign has none yet (gm-faction.sh create).")
     if not names:
         raise RulesError(f"No rule '{raw}': this campaign has no rules of its own yet "
                          f"(gm-rule.sh define).")

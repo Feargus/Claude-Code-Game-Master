@@ -93,19 +93,6 @@ def test_draft_bible_without_source_text_fails_loudly(tmp_path):
         book_bible.draft_bible(tmp_path)
 
 
-def test_review_survives_string_faction_nodes(dcc_world):
-    # The review screen is what the player approves the draft from, and faction
-    # nodes are model-authored: conan's live bible lists them as bare strings.
-    from lib.world_bible import WorldBible
-
-    path = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "world-bible.json"
-    bible = json.loads(path.read_text(encoding="utf-8"))
-    bible["factions"] = {"nodes": ["The System", "The Borant Corporation"], "edges": []}
-    path.write_text(json.dumps(bible), encoding="utf-8")
-
-    assert WorldBible(dcc_world).review_summary()["factions"] == [
-        "The System", "The Borant Corporation"]
-
 
 def test_cli_drives_the_whole_chain(campaign):
     def run(*args):

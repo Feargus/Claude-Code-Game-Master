@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from lib import world_rules as wr
+from lib.faction_rules import is_built_in
 from lib.json_ops import JsonOperations
 from lib.time_manager import TimeManager
 
@@ -56,7 +57,7 @@ def _value(ops, rule, holder):
 def _days(dcc_world, n):
     manager = TimeManager(dcc_world)
     manager.advance(n * 24 * 60, through_all=True)          # the rules, not the stops
-    return manager.rule_changes
+    return [r for r in manager.rule_changes if not is_built_in(r["rule"])]   # not the factions
 
 
 # ---------- rates ----------

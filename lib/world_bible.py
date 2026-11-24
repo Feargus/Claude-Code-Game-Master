@@ -80,10 +80,6 @@ class WorldBible:
     def voice(self) -> dict[str, Any]:
         return self.bible.get('voice', {})
 
-    def factions(self) -> dict[str, Any]:
-        """The links between factions (an older bible's faction nodes too)."""
-        return self.bible.get('factions', {'edges': []})
-
     def geography(self) -> dict[str, Any]:
         return self.bible.get('geography', {'nodes': [], 'edges': []})
 
@@ -102,13 +98,9 @@ class WorldBible:
         return self.json_ops.save_json("world-bible.json", self.bible)
 
     def _faction_names(self) -> list[str]:
-        """factions.json's, or an older bible's nodes (conan's live bible lists them as
-        bare strings, not {name: ...}: a review screen shows what is there)."""
+        """The names of the campaign's factions (factions.json)."""
         import factions
-        if factions.has_file(self.json_ops):
-            return [f.get('name', fid) for fid, f in factions.load(self.json_ops).items()]
-        return [n.get('name') if isinstance(n, dict) else n
-                for n in self.factions().get('nodes', [])]
+        return [f.get('name', fid) for fid, f in factions.load(self.json_ops).items()]
 
     def review_summary(self) -> dict[str, Any]:
         """The human-facing draft to review before play (voice, factions, the world's
@@ -119,7 +111,7 @@ class WorldBible:
             'voice_style': self.voice().get('style'),
             'themes': self.bible.get('themes', []),
             'factions': self._faction_names(),
-            'rules': [r['name'] for r in world_rules.rules(self.json_ops)],
+            'rules': [r['name'] for r in world_rules.own_rules(self.json_ops)],
             'confirmed': self.is_confirmed(),
         }
 

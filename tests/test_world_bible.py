@@ -11,12 +11,8 @@ def test_dcc_bible_loads_and_validates(dcc_world):
     assert wb.bible["name"] == "Dungeon Crawler Carl"
 
 
-def test_factions_and_geography_parse_as_graphs(dcc_world):
-    wb = WorldBible(dcc_world)
-    fac = wb.factions()
-    geo = wb.geography()
-    assert {n["id"] for n in fac["nodes"]} >= {"crawlers", "system"}
-    assert any(e["relation"] for e in fac["edges"])
+def test_geography_parses_as_a_graph(dcc_world):
+    geo = WorldBible(dcc_world).geography()
     assert {n["id"] for n in geo["nodes"]} >= {"floor1", "floor4"}
     assert any("stairwell" in e["adjacency"] for e in geo["edges"])
 

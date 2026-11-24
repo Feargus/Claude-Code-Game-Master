@@ -11,6 +11,7 @@ import pytest
 from lib import rule_states
 from lib import world_rules as wr
 from lib.consequence_manager import ConsequenceManager
+from lib.faction_rules import is_built_in
 from lib.json_ops import JsonOperations
 from lib.time_manager import TimeManager
 
@@ -89,7 +90,7 @@ def test_time_in_a_state_moves_it_on(dcc_world, ops):
     rule_states.move(ops, "Addiction", "Carl", "hooked")
     manager = TimeManager(dcc_world)
     manager.advance(9 * 24 * 60, through_all=True)                           # hooked 1d → withdrawal 7d → recovering
-    moves = [(r["before"], r["after"]) for r in manager.rule_changes]
+    moves = [(r["before"], r["after"]) for r in manager.rule_changes if not is_built_in(r["rule"])]
     assert moves == [("hooked", "withdrawal"), ("withdrawal", "recovering")]
     stored = wr.load_state(ops)["npc:Carl"]["Addiction"]
     assert stored["state"] == "recovering" and stored["entered"] == "2187-11-03T04:30"  # day 1 + 7

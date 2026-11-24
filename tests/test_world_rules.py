@@ -46,7 +46,7 @@ def ops(dcc_world):
 # ---------- defining ----------
 
 def test_rules_are_defined_once_and_checked(ops):
-    assert [r["name"] for r in wr.rules(ops)] == ["Bleed", "Patience", "Heat", "Sea level"]
+    assert [r["name"] for r in wr.own_rules(ops)] == ["Bleed", "Patience", "Heat", "Sea level"]
     bleed = wr.find_rule(ops, " bleed ")
     assert bleed["held_by"] == ["player"] and bleed["start"] == 0 and bleed["known"] is True
     ruleset = ops.load_json("ruleset.json")
@@ -81,7 +81,7 @@ def test_define_is_all_or_nothing(dcc_world):
     ops = _ops(dcc_world)
     with pytest.raises(wr.RulesError, match="Nothing was saved"):
         wr.define(ops, [BLEED, {**SEA, "start": 99}])
-    assert wr.rules(ops) == []
+    assert wr.own_rules(ops) == []
     with pytest.raises(wr.RulesError, match="given twice"):
         wr.define(ops, [BLEED, {**BLEED, "name": "BLEED"}])
 
@@ -99,7 +99,7 @@ def test_remove_takes_the_values_with_it(ops):
     wr.change(ops, "Patience", "faction:crawlers", by=-1)
     assert wr.remove(ops, "patience") == 1
     assert "faction:crawlers" not in wr.load_state(ops)
-    assert [r["name"] for r in wr.rules(ops)] == ["Bleed", "Heat", "Sea level"]
+    assert [r["name"] for r in wr.own_rules(ops)] == ["Bleed", "Heat", "Sea level"]
 
 
 def test_plain_rule_lines(ops):

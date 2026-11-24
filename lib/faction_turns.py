@@ -84,12 +84,9 @@ def check(json_ops, actions: Any) -> list[dict[str, Any]]:
     if not isinstance(actions, list) or not actions:
         raise TurnError('A turn is a list of actions: [{"faction": "<id>", "action": "build", '
                         '"power": "Military"}, ...], one per faction.')
-    from factions import FactionManager, from_bible, has_file
+    from factions import FactionManager, has_file
     if not has_file(json_ops):
-        raise TurnError("This campaign's factions are still in its world bible: bash tools/"
-                        "gm-faction.sh from-bible copies them into factions.json, which brings "
-                        "their power and the faction bag." if from_bible(json_ops) else
-                        "This campaign has no factions yet (gm-faction.sh create).")
+        raise TurnError("This campaign has no factions yet (gm-faction.sh create).")
     m = FactionManager(json_ops)
     problems, out, seen = [], [], set()
     for i, raw in enumerate(actions, 1):

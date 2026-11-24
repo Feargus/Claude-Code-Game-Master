@@ -12,6 +12,7 @@ import pytest
 
 from lib import rule_budget
 from lib import world_rules as wr
+from lib.faction_rules import is_built_in
 from lib.json_ops import JsonOperations
 from lib.time_manager import TimeManager
 
@@ -74,9 +75,10 @@ def test_a_budget_with_a_period_refills_by_itself(dcc_world, ops):
     rule_budget.split(ops, "Soldiers", "faction:crawlers", ["turf=6", "raids=4"])
     manager = TimeManager(dcc_world)
     manager.advance(6 * 24 * 60, through_all=True)
-    assert manager.rule_changes == []
+    own = lambda: [r for r in manager.rule_changes if not is_built_in(r["rule"])]  # noqa: E731
+    assert own() == []
     manager.advance(2 * 24 * 60, through_all=True)
-    assert [(r["rule"], r["holder"]) for r in manager.rule_changes] == [("Soldiers", "faction:crawlers")]
+    assert [(r["rule"], r["holder"]) for r in own()] == [("Soldiers", "faction:crawlers")]
     assert not wr.load_state(ops)["faction:crawlers"]["Soldiers"]["spent"]
 
 

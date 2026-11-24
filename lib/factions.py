@@ -25,10 +25,6 @@ fact they hold, or one held by a faction they belong to (`knows`). Joining is
 learning (the member's on_learn consequences fire), leaving loses the faction's
 knowledge. A secret membership is known only to the faction's members: the GM sees
 it marked; anyone else finding out is a fact ("Jax is in the Coven").
-
-Campaigns made before factions.json list their factions in the world bible's
-factions graph. Where there is no factions.json, world rules still find them there
-(`known`); the first `create` copies them in, so the values held by them carry over.
 """
 
 import re
@@ -39,7 +35,6 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 FILE = "factions.json"
-BIBLE = "world-bible.json"
 TEXT_FIELDS = ("name", "kind", "description")
 PEOPLE_FIELDS = ("leader", "successor")
 LIST_FIELDS = ("impulses", "values", "tags")
@@ -65,24 +60,9 @@ def load(json_ops) -> dict[str, dict[str, Any]]:
     return {k: v for k, v in data.items() if isinstance(v, dict)}
 
 
-def from_bible(json_ops) -> dict[str, dict[str, Any]]:
-    """The world bible's faction nodes, as records (an older campaign's factions)."""
-    graph = (json_ops.load_json(BIBLE) or {}).get("factions") or {}
-    nodes = graph.get("nodes") if isinstance(graph, dict) else []
-    out = {}
-    for node in nodes or []:
-        if isinstance(node, dict) and str(node.get("id") or "").strip():
-            fid = str(node["id"]).strip()
-            out[fid] = {"name": str(node.get("name") or fid).strip()}
-            if str(node.get("description") or "").strip():
-                out[fid]["description"] = str(node["description"]).strip()
-    return out
-
-
 def known(json_ops) -> dict[str, dict[str, Any]]:
-    """The campaign's factions: factions.json, or for an older campaign without it,
-    the world bible's."""
-    return load(json_ops) if has_file(json_ops) else from_bible(json_ops)
+    """The campaign's factions (factions.json)."""
+    return load(json_ops)
 
 
 def make_id(name: str) -> str:
@@ -177,16 +157,8 @@ class FactionManager:
         self.json_ops.save_json(FILE, table)
 
     def key(self, raw) -> str:
-        """The id of the faction `raw` names (id, name or alias), or FactionError. In an
-        older campaign without factions.json, a faction of the world bible's."""
+        """The id of the faction `raw` names (id, name or alias), or FactionError."""
         text = " ".join(str(raw or "").split())
-        if not has_file(self.json_ops):
-            bare = text.partition(":")[2] if text.lower().startswith("faction:") else text
-            found = [fid for fid, f in from_bible(self.json_ops).items()
-                     if bare.lower() in (fid.lower(), f["name"].lower())]
-            if found:
-                return found[0]
-            raise FactionError(f"No faction '{bare}' (bash tools/gm-faction.sh list).")
         cid, error = self._ids().resolve_as(text if text.lower().startswith("faction:")
                                             else f"faction:{text}", ("faction",))
         if error:
@@ -215,17 +187,6 @@ class FactionManager:
         if refusal:
             raise FactionError(refusal)
 
-    def _seed(self) -> dict[str, Any]:
-        """factions.json as it is, or started from the world bible's factions."""
-        if has_file(self.json_ops):
-            return load(self.json_ops)
-        table = from_bible(self.json_ops)
-        if table:
-            self._save(table)
-            listed = ", ".join(f"{k} ({v['name']})" for k, v in table.items())
-            self.notes.append(f"{FILE} started from the world bible's factions: {listed}.")
-        return table
-
     def create(self, name: str, description: str, fid: str = "", kind: str = "",
                impulses=(), values=(), aliases=(), tags=(), leader: str = "",
                successor: str = "", another: bool = False) -> str:
@@ -238,7 +199,7 @@ class FactionManager:
         if not description:
             raise FactionError(f"{name} needs a description: what it is, in a sentence or two.")
         fid = _check_id((fid or make_id(name)).strip().lower())
-        table = self._seed()
+        table = load(self.json_ops)
         if fid in table:
             raise FactionError(f"There is a faction '{fid}' already ({table[fid].get('name')}). "
                                f"Give another id with --id.")
@@ -298,7 +259,6 @@ class FactionManager:
             raise FactionError(f"A faction's fields are {', '.join(FIELDS)} (aliases: "
                                f"gm-faction.sh alias; assets: gm-faction.sh asset); "
                                f"not '{field}'.")
-        self._seed()
         fid = self.key(raw)
         table = load(self.json_ops)
         row = table[fid]
@@ -326,7 +286,6 @@ class FactionManager:
 
     def asset(self, raw, name: str, note: str = "", remove: bool = False) -> tuple[str, list]:
         """Add a named asset (or replace its note), or remove it. Returns (id, assets)."""
-        self._seed()
         fid = self.key(raw)
         table = load(self.json_ops)
         row = table[fid]
@@ -356,7 +315,6 @@ class FactionManager:
     def tie(self, raw, raw_other, text: str = "") -> tuple[str, str, str]:
         """How faction `raw` sees `raw_other`, one line; an empty text removes it.
         Returns (id, other id, the text before)."""
-        self._seed()
         fid, other = self.key(raw), self.key(raw_other)
         if fid == other:
             raise FactionError("A tie is between two factions.")
@@ -397,7 +355,6 @@ class FactionManager:
         already, `secret` True or False changes only the flag. Returns {"faction",
         "npc", "learned": fact ids, "fired": consequences, "changed": flag only}."""
         from entity_manager import is_dead
-        self._seed()
         fid = self.key(raw_faction)
         cid, key = self._npc(raw_npc)
         npcs = self.json_ops.load_json("npcs.json") or {}
@@ -446,7 +403,6 @@ class FactionManager:
         """An NPC leaves a faction and no longer knows what only it knew. Returns
         {"faction", "npc", "lost": fact ids}."""
         import facts as fact_file
-        self._seed()
         fid = self.key(raw_faction)
         cid, key = self._npc(raw_npc)
         npcs = self.json_ops.load_json("npcs.json") or {}
@@ -466,7 +422,6 @@ class FactionManager:
     def set_presence(self, raw_place, given: list[str], remove=()) -> tuple[str, dict[str, int]]:
         """Presence at a place: "<faction>=N" each (0–5), `remove` forgets one. Returns
         (place key, presence)."""
-        self._seed()
         cid, error = self._ids().resolve_as(raw_place, ("location",))
         if error:
             raise FactionError(error)
@@ -554,12 +509,7 @@ class FactionManager:
         return lines
 
     def list_lines(self) -> list[str]:
-        lines = [self.line(fid, row) for fid, row in known(self.json_ops).items()]
-        if lines and not has_file(self.json_ops):
-            lines.append("(From the world bible: gm-faction.sh from-bible copies them into "
-                         "factions.json, as does the first create, set, alias, asset or join; "
-                         "until then facts can't name them.)")
-        return lines
+        return [self.line(fid, row) for fid, row in known(self.json_ops).items()]
 
 
 def _cmd_create(m, args):
@@ -578,7 +528,6 @@ def _cmd_alias(m, args):
     from world_ids import change_aliases
     if not args.aliases and not args.remove:
         raise FactionError("Give the aliases to add, or --remove <alias>.")
-    m._seed()
     key, aliases = change_aliases(m.json_ops, "faction", args.faction, args.aliases, args.remove)
     print(f"faction:{key} is also called: {', '.join(aliases) or 'nothing else'}")
 
@@ -632,13 +581,6 @@ def _cmd_ask(m, args):
     except faction_jobs.JobError as error:
         raise FactionError(str(error)) from error
     print("\n".join(lines))
-
-
-def _from_bible(m) -> None:
-    if has_file(m.json_ops):
-        raise FactionError(f"There is a {FILE} already: the factions are copied in.")
-    if not m._seed():
-        raise FactionError("The world bible lists no factions.")
 
 
 def _cmd_list(m, args):
@@ -769,7 +711,6 @@ def main() -> int:
     p.add_argument("npc")
     sub.add_parser("show", help="a faction in full").add_argument("faction")
     sub.add_parser("list", help="every faction, one line each")
-    sub.add_parser("from-bible", help="an older campaign: copy the bible's factions in")
     p = sub.add_parser("turn", help="a faction turn: the JSON list of actions after the command")
     p.add_argument("actions", nargs="?", default="-")
     p.add_argument("--only", help="this one faction takes its turn, nobody else (without it, "
@@ -802,7 +743,7 @@ def main() -> int:
 COMMANDS = {
     "create": _cmd_create, "set": _cmd_set, "alias": _cmd_alias, "asset": _cmd_asset,
     "join": lambda m, args: _print_join(m.join(args.faction, args.npc, args.secret), args.secret),
-    "leave": _cmd_leave, "tie": _cmd_tie, "from-bible": lambda m, args: _from_bible(m), "turn": _cmd_turn, "show": lambda m, args: print(m.show(args.faction)), "list": _cmd_list,
+    "leave": _cmd_leave, "tie": _cmd_tie, "turn": _cmd_turn, "show": lambda m, args: print(m.show(args.faction)), "list": _cmd_list,
     "job": _cmd_job, "ask": _cmd_ask,
 }
 

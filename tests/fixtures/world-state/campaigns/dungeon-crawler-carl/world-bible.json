@@ -23,48 +23,6 @@
     "defiance of an uncaring System",
     "humanity vs commodification"
   ],
-  "factions": {
-    "nodes": [
-      {
-        "id": "crawlers",
-        "name": "The Crawlers"
-      },
-      {
-        "id": "system",
-        "name": "The System / Borant Corp"
-      },
-      {
-        "id": "showrunners",
-        "name": "The Showrunners"
-      },
-      {
-        "id": "npcs",
-        "name": "Dungeon NPCs"
-      }
-    ],
-    "edges": [
-      {
-        "from": "system",
-        "to": "crawlers",
-        "relation": "exploits / broadcasts"
-      },
-      {
-        "from": "showrunners",
-        "to": "crawlers",
-        "relation": "manipulates for ratings"
-      },
-      {
-        "from": "crawlers",
-        "to": "system",
-        "relation": "rebels against"
-      },
-      {
-        "from": "npcs",
-        "to": "crawlers",
-        "relation": "ally or obstacle"
-      }
-    ]
-  },
   "geography": {
     "nodes": [
       {

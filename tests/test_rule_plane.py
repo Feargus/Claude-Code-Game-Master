@@ -42,6 +42,7 @@ IMPLANT = {"name": "Implants", "block": "counter", "held_by": "player", "range":
 @pytest.fixture
 def ops(dcc_world):
     ops = JsonOperations(str(Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"))
+    (Path(ops.world_state_dir) / "factions.json").unlink()   # no faction bag drawing too
     wr.define(ops, [HUMANITY, ALIGNMENT, IMPLANT])
     overview = ops.load_json("campaign-overview.json")
     overview["game_time"] = "2187-10-26T04:30"

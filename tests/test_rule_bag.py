@@ -54,6 +54,7 @@ class Fixed:
 @pytest.fixture
 def ops(dcc_world):
     ops = JsonOperations(str(Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"))
+    (Path(ops.world_state_dir) / "factions.json").unlink()   # no faction bag drawing too
     wr.define(ops, [JOB, SEA, MELT, MISTAKES])
     overview = ops.load_json("campaign-overview.json")
     overview["game_time"] = "2187-10-26T04:30"

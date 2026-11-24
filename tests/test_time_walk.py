@@ -75,6 +75,7 @@ def test_the_moment_is_when_the_time_step_first_changes_it(ops):
 
 
 def test_walking_from_moment_to_moment_ends_where_one_jump_does(dcc_world, ops):
+    (Path(ops.world_state_dir) / "factions.json").unlink()    # no faction bag drawing too
     wr.define(ops, [_counter("Rust", start=0, rate={"by": 1, "every": "5h"})])
     end, moment, steps = START + timedelta(days=2), START, 0
     while True:
@@ -109,6 +110,7 @@ def test_a_time_clock_says_when_it_reaches_its_next_segment(dcc_world, ops):
 
 
 def test_the_time_of_day_counts_only_when_a_consequence_waits_on_it(dcc_world, ops):
+    (Path(ops.world_state_dir) / "factions.json").unlink()    # nothing else waits on time
     assert next_time_of_day(START, []) is None
     assert next_time_of_day(START, ["Morning"]) == (datetime(2187, 10, 26, 7, 0), "Morning")
     assert next_time_of_day(START, ["dusk", "dawn"]) == (datetime(2187, 10, 26, 5, 0), "Dawn")
