@@ -165,10 +165,9 @@ def test_the_output_gives_each_moment_its_time(dcc_world, ops):
     root = Path(__file__).resolve().parent.parent
     out = subprocess.run(["bash", str(root / "tools/gm-time.sh"), "advance", "10h"],
                          capture_output=True, text=True, env=env, cwd=root).stdout
-    assert out.startswith("[SUCCESS] 07:00 (Morning), Friday, 26 October 2187\n")
-    assert "TIME STOPPED: 3h 7m of the 10h passed, for what happens at 07:00" in out
-    assert "\nAt 07:00 (Morning), Friday, 26 October 2187:\n[FIRED] c1 The market opens — " in out
-    assert '6h 53m left. To go on: bash tools/gm-time.sh advance "6h 53m"' in out
+    assert out.startswith("[STOPPED] 07:00 (Morning), Friday, 26 October 2187: 6h 53m of the 10h left\n"
+                          '  To go on: bash tools/gm-time.sh advance "6h 53m"')
+    assert "\n[FIRED] c1 The market opens — " in out and "\nAt 07:00" not in out    # said once
 
 
 # ---------- step 3: the stops ----------
@@ -258,7 +257,7 @@ def test_the_output_when_time_stops(dcc_world, quiet):
     env = dict(os.environ, GM_WORLD_STATE_BASE=str(dcc_world))
     out = subprocess.run(["bash", str(root / "tools/gm-time.sh"), "advance", "1d"],
                          capture_output=True, text=True, env=env).stdout
-    assert "TIME STOPPED: 4h of the 1d passed, for what happens at 08:30" in out
+    assert out.startswith("[STOPPED] 08:30 ")
     assert "Do now: Anyone outside: Exposure +1." in out
     assert 'To go on: bash tools/gm-time.sh advance "20h"' in out
 
@@ -278,13 +277,16 @@ def test_a_journey_stops_on_the_way_and_does_not_arrive(dcc_world, quiet):
     out = subprocess.run(["bash", str(root / "tools/gm-session.sh"), "move", "The Old Spine Bridge",
                           "--takes", "6h"], capture_output=True, text=True, env=env)
     assert out.returncode == 0, out.stderr
-    assert "passed on the way" in out.stdout
-    assert ('2h of the journey left; the character has not arrived. To go on: '
-            'bash tools/gm-session.sh move "The Old Spine Bridge" --takes "2h"') in out.stdout
+    assert out.stdout.startswith("[STOPPED] On the way to The Old Spine Bridge, at ")
+    assert out.stdout.splitlines()[0].endswith(": 2h of the journey left")
+    assert out.stdout.splitlines()[1] == \
+        '  To go on: bash tools/gm-session.sh move "The Old Spine Bridge" --takes "2h"'
+    assert "[SUCCESS]" not in out.stdout
     overview = quiet.load_json("campaign-overview.json")
     assert overview["player_position"]["current_location"] == before
     went = subprocess.run(["bash", str(root / "tools/gm-session.sh"), "move", "The Old Spine Bridge",
                            "--takes", "2h"], capture_output=True, text=True, env=env)
     assert went.returncode == 0, went.stderr
+    assert went.stdout.startswith("[SUCCESS] Moved to The Old Spine Bridge, ")
     assert quiet.load_json("campaign-overview.json")["player_position"]["current_location"] \
         == "The Old Spine Bridge"

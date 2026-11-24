@@ -151,10 +151,11 @@ class SessionManager(EntityManager):
         if changed:
             self.json_ops.save_json("locations.json", locations)
 
-    def move_party(self, location: str) -> dict[str, str]:
+    def move_party(self, location: str, with_time: bool = False) -> dict[str, str]:
         """
         Move party to new location (a recorded place with a description, by its
         name or an alias). Returns dict with previous and current location.
+        `with_time`: the journey took time, and the line says the time of arrival.
         Raises ValueError (check_destination).
         """
         location = self.check_destination(location)
@@ -183,7 +184,13 @@ class SessionManager(EntityManager):
             "current_location": location
         }
 
-        print(f"[SUCCESS] Party moved from {old_location} to {location}")
+        arrival = ""
+        if with_time:
+            from game_time import current_time
+            from time_manager import describe
+            moment = current_time(self.json_ops)
+            arrival = f", {describe(moment)}" if moment else ""
+        print(f"[SUCCESS] Moved to {location}{arrival}")
         return result
 
     def get_full_context(self) -> str:
@@ -208,6 +215,8 @@ def main():
     # Move party
     move_parser = subparsers.add_parser('move', help='Move party to location')
     move_parser.add_argument('location', nargs='+', help='Location name')
+    move_parser.add_argument('--with-time', action='store_true',
+                             help='The journey took time: the line gives the time of arrival')
     move_parser.add_argument('--check', action='store_true',
                              help='Only check that the place can be moved to (before travel time passes)')
 
@@ -241,7 +250,7 @@ def main():
             if args.check:
                 manager.check_destination(location)
                 return
-            manager.move_party(location)
+            manager.move_party(location, with_time=args.with_time)
         except ValueError as error:
             print(f"[ERROR] {error}", file=sys.stderr)
             sys.exit(1)

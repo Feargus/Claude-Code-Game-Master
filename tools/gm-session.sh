@@ -121,18 +121,24 @@ case "$ACTION" in
         # so only the time fires consequences there; the check below runs at the
         # destination. Time stops on the way for what has to be played now (exit 3):
         # then the party doesn't move, and the output says how to go on.
+        # What happened on the way is printed after the move's one line.
+        JOURNEY=""
+        WITH_TIME=()
         if [ -n "$TAKES" ]; then
-            $PYTHON_CMD "$LIB_DIR/time_manager.py" advance "$TAKES" --on-the-way --to "$*" "${THROUGH[@]}"
+            JOURNEY=$($PYTHON_CMD "$LIB_DIR/time_manager.py" advance "$TAKES" --on-the-way --to "$*" "${THROUGH[@]}")
             RESULT=$?
-            if [ $RESULT -eq 3 ]; then exit 0; fi
-            if [ $RESULT -ne 0 ]; then exit $RESULT; fi
-            echo ""
+            if [ $RESULT -ne 0 ]; then
+                [ -n "$JOURNEY" ] && printf '%s\n' "$JOURNEY"
+                if [ $RESULT -eq 3 ]; then exit 0; fi     # stopped on the way: not moved
+                exit $RESULT
+            fi
+            WITH_TIME=(--with-time)
         fi
-        $PYTHON_CMD "$LIB_DIR/session_manager.py" move "$@"
+        $PYTHON_CMD "$LIB_DIR/session_manager.py" move "$@" "${WITH_TIME[@]}"
         RESULT=$?
         if [ $RESULT -ne 0 ]; then exit $RESULT; fi
+        [ -n "$JOURNEY" ] && printf '%s\n' "$JOURNEY"
 
-        echo ""
         # Reactivity: fire any consequences whose triggers match the new scene.
         bash "$TOOLS_DIR/gm-consequence.sh" tick
 

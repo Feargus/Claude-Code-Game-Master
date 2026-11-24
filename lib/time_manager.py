@@ -262,23 +262,36 @@ def format_duration(minutes: int) -> str:
     return " ".join(parts) or "0m"
 
 
-def print_moments(manager: "TimeManager", on_the_way: bool = False, going_to: str = "") -> None:
-    """What happened as time passed. The moments with something to play now are
-    printed in full, each under its time; the rest is the timeline, identical lines
-    grouped with their times (time_stops.py). When time stopped before the end, how
-    much passed and how much is left, and the command to go on."""
+def first_line(manager: "TimeManager", going_to: str = "") -> list[str]:
+    """The step's first line: the new time; on a journey (`going_to`) nothing, the
+    move says it; where time stopped before the end, [STOPPED] with what is left
+    and the command to go on."""
+    if not manager.stopped:
+        return [] if going_to else [f"[SUCCESS] {describe(manager.get_game_time())}"]
+    passed = int((manager.get_game_time() - manager.start).total_seconds() // 60)
+    whole = int((manager.end - manager.start).total_seconds() // 60)
+    left = format_duration(whole - passed)
+    flags = manager.through.args() + (" --rest" if manager.resting else "")
+    if going_to:
+        return [f"[STOPPED] On the way to {going_to}, at {describe(manager.stopped)}: "
+                f"{left} of the journey left",
+                f"  To go on: bash tools/gm-session.sh move \"{going_to}\" --takes \"{left}\"{flags}"]
+    return [f"[STOPPED] {describe(manager.stopped)}: {left} of the {format_duration(whole)} left",
+            f"  To go on: bash tools/gm-time.sh advance \"{left}\"{flags} "
+            f"(add --through \"<name>\" for what shouldn't stop it again)"]
+
+
+def print_moments(manager: "TimeManager") -> None:
+    """What happened as time passed, after first_line. The moments with something
+    to play now are printed in full, each under its time; the rest is the timeline,
+    identical lines grouped with their times (time_stops.py); then the consequences
+    that fired earlier and still aren't resolved."""
     import time_stops
     import world_rules
     from consequence_manager import print_fired
     place, present = manager.here
     full = [m for m in manager.moments if m["stops"]]
     routine = [m for m in manager.moments if not m["stops"]]
-    passed = int((manager.get_game_time() - manager.start).total_seconds() // 60)
-    whole = int((manager.end - manager.start).total_seconds() // 60)
-    if manager.stopped:
-        print(f"TIME STOPPED: {format_duration(passed)} of the {format_duration(whole)} passed"
-              + (" on the way" if on_the_way else "") + ", for what happens at "
-              + f"{describe(manager.stopped)}. Narrate it, or go on (below).")
     lines = time_stops.timeline_lines(manager.json_ops, routine, place, present, manager.through)
     if lines:
         print("\nMeanwhile (routine; narrate later what the character would notice):")
@@ -289,7 +302,8 @@ def print_moments(manager: "TimeManager", on_the_way: bool = False, going_to: st
               "a stiff arm working again):")
         print("\n".join(healed))
     for m in full:
-        print(f"\nAt {describe(m['at'])}:")
+        # the first line gave the time it stopped
+        print("" if m["at"] == manager.stopped else f"\nAt {describe(m['at'])}:")
         print_clocks(m["clocks"])
         for report in m["rules"]:
             print("\n".join(world_rules.report_lines(manager.json_ops, report)))
@@ -298,19 +312,6 @@ def print_moments(manager: "TimeManager", on_the_way: bool = False, going_to: st
     left = unresolved_lines(manager.json_ops, manager.fired_before)
     if left:
         print("\n" + "\n".join(left))
-    import faction_rules
-    owed = faction_rules.owed_lines(manager.json_ops)
-    if owed:
-        print("\n" + "\n".join(owed))
-    if manager.stopped:
-        left = format_duration(whole - passed)
-        flags = manager.through.args() + (" --rest" if manager.resting else "")
-        if going_to:
-            print(f"\n{left} of the journey left; the character has not arrived. To go on: "
-                  f"bash tools/gm-session.sh move \"{going_to}\" --takes \"{left}\"{flags}")
-        else:
-            print(f"\n{left} left. To go on: bash tools/gm-time.sh advance \"{left}\"{flags} "
-                  f"(add --through \"<name>\" for what shouldn't stop it again)")
 
 
 def print_clocks(moved: dict[str, dict]) -> None:
@@ -367,8 +368,9 @@ def main(argv) -> int:
             manager.advance(parse_duration(duration), on_the_way=flags["on_the_way"],
                             through=flags["through"], through_all=flags["through_all"],
                             resting=flags["rest"])
-            print(f"[SUCCESS] {describe(manager.get_game_time())}")
-            print_moments(manager, flags["on_the_way"], flags["to"])
+            for line in first_line(manager, flags["to"]):
+                print(line)
+            print_moments(manager)
             if manager.stopped and flags["on_the_way"]:
                 return 3                    # stopped on the way: gm-session.sh doesn't move
         elif action == "set" and value:
