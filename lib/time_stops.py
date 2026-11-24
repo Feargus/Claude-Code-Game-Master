@@ -237,8 +237,8 @@ def stamp(moment) -> str:
 def timeline_lines(json_ops, moments: list[dict[str, Any]], place: str, present: set[str],
                    through: Through) -> list[str]:
     """The routine events of `moments`, identical lines grouped with all their times,
-    in the order they first happened. Off-screen Do-now lines and off-screen
-    consequences are kept in full, each under its time."""
+    in the order they first happened. Off-screen Do-now lines are kept in full, each
+    under its time; the consequences that fired are routine_fired's."""
     grouped: dict[str, list[str]] = {}
     full: list[str] = []
     for m in moments:
@@ -252,11 +252,19 @@ def timeline_lines(json_ops, moments: list[dict[str, Any]], place: str, present:
             for rule, holder, label, line in do_now(report):
                 if not holder_here(holder, place, present):
                     full.append(f"  {when}: Do now (off-screen, {rule} {label}): {line}")
+    lines = [f"  {text} — {', '.join(times)}" for text, times in grouped.items()]
+    return lines + full
+
+
+def routine_fired(moments: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The consequences that fired at the routine moments (off-screen, or gone
+    through), each with its time (and "off-screen") added to why it fired."""
+    out = []
+    for m in moments:
         cons = list(m["fired"]) + [c for clock in m["clocks"].values() for c in clock.get("fired") or []]
         cons += [c for report in m["rules"] for c in fired(report)]
         for c in cons:
-            tag = "off-screen" if c.get("offscreen") else "fired"
-            full.append(f"  {when}: {c['id']} {c['consequence']} ({tag})")
-            full += [f"      ↳ {line}" for line in c.get("effects_done", [])]
-    lines = [f"  {text} — {', '.join(times)}" for text, times in grouped.items()]
-    return lines + full
+            why = str(c.get("match_reason") or "").strip().rstrip(".")
+            where = ", off-screen" if c.get("offscreen") else ""
+            out.append(dict(c, match_reason=f"{why} ({stamp(m['at'])}{where})".lstrip()))
+    return out

@@ -296,6 +296,9 @@ def print_moments(manager: "TimeManager") -> None:
     if lines:
         print("\nMeanwhile (routine; narrate later what the character would notice):")
         print("\n".join(lines))
+    for c in time_stops.routine_fired(routine):
+        print()
+        print_fired([c])
     healed = [f"  {describe(m['at'])}: {line}" for m in manager.moments for line in m.get("healed") or []]
     if healed:
         print("\nThe character's body and luck (narrate it when they'd notice: a bruise faded, "

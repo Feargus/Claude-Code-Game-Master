@@ -411,6 +411,9 @@ def _lines(json_ops, r, powers, places) -> list[str]:
     if kind in COMPLEX:
         more = _plan_lines(r) + more
     lines += [f"  → {line}" for line in more]
+    if kind in COMPLEX:
+        lines += [line for c in (r.get("clock_after") or {}).get("fired") or []
+                  for line in fired_lines(c)]
     if r.get("at") and r["at"] == _here(json_ops):
         lines.append(f"  HERE: {_character(json_ops)} is at {r['at']} and sees it happen: narrate "
                      f"what shows (patrols arriving, a shop shut, smoke, a fight in the street).")
@@ -488,7 +491,7 @@ def _advance(json_ops, r) -> dict[str, Any] | None:
 
 
 def _plan_lines(r) -> list[str]:
-    """What a complex action did to its plot's plan clock."""
+    """What a complex action did to its plot's plan clock (what it fired: fired_lines)."""
     if not r.get("plot"):
         return []
     if not r.get("clock"):
@@ -501,7 +504,6 @@ def _plan_lines(r) -> list[str]:
     if clock is None:
         return ["plan clock: not moved, not the active campaign"]
     out = [f"plan clock {r['clock']} ({r['plot']}): {clock['current']}/{clock['max']}"]
-    out += [f"{c['id']} {c['consequence']} (fired)" for c in clock.get("fired") or []]
     if clock["current"] >= clock["max"]:
         out.append(f"the plan succeeds: play out its consequence, then gm-plot.sh complete "
                    f"\"{r['plot']}\" \"<what came of it>\" --next \"<the bigger plot that "
