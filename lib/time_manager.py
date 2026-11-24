@@ -308,6 +308,9 @@ def print_moments(manager: "TimeManager") -> None:
         for report in m["rules"]:
             print("\n".join(world_rules.report_lines(manager.json_ops, report)))
         print_fired(m["fired"])
+    owed = time_stops.owed_lines(manager.json_ops, manager.moments)
+    if owed:
+        print("\n" + "\n".join(owed))
     from consequence_manager import unresolved_lines
     left = unresolved_lines(manager.json_ops, manager.fired_before)
     if left:

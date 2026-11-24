@@ -114,13 +114,22 @@ def test_a_new_faction_gets_its_full_share_at_once(ops):
     assert "grey gets its share of the bag" in m.notes[-1]
 
 
-def test_the_timeline_names_who_owes_a_turn_and_leaves_out_blanks(ops):
-    from lib.time_stops import brief
+def test_each_turn_drawn_is_a_do_line_with_its_command(ops):
+    from datetime import datetime
+
+    from lib.time_stops import brief, owed_lines
+    at = datetime(2187, 10, 26, 5, 40)
     report = {"rule": fr.BAG, "holder": "world", "known": False,
               "draws": [{"kind": "blank"}, {"kind": "meridian-group", "owed": True}]}
-    assert brief(ops, report) == "Faction turns: Meridian Group owes a turn"
-    assert brief(ops, {**report, "draws": [{"kind": "blank"}]}) == ""
+    assert brief(ops, report) == ""                        # not in the routine timeline
+    assert owed_lines(ops, [{"at": at, "rules": [report]}]) == [
+        "[DO] Meridian Group owes a turn (drawn Fri 26 Oct 05:40); narrate what the character "
+        "would notice of it: bash tools/gm-faction.sh turn --only meridian-group"]
+    blanks = {**report, "draws": [{"kind": "blank"}]}
+    assert owed_lines(ops, [{"at": at, "rules": [blanks]}]) == []
     jobs = {**report, "draws": [{"kind": "job:meridian-group", "owed": True},
                                 {"kind": "people", "owed": True}]}
-    assert brief(ops, jobs) == ("Faction turns: Meridian Group has a job for the character; "
-                                "someone the character knows wants something (an ask)")
+    lines = owed_lines(ops, [{"at": at, "rules": [jobs]}])
+    assert lines[0].startswith("[DO] Meridian Group has a job for the character")
+    assert "notice of it: bash tools/gm-faction.sh job offer meridian-group" in lines[0]
+    assert lines[1].endswith(": bash tools/gm-faction.sh ask")

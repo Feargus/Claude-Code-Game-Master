@@ -171,13 +171,13 @@ def judge(json_ops, moment: dict[str, Any], through: Through, place: str,
 # ---------- the timeline ----------
 
 def brief(json_ops, report: dict[str, Any]) -> str:
-    """One short line for a rule's report; '' for nothing worth a line (a faction bag
-    that drew only blanks). The repo's own rules carry no hidden mark: the player
+    """One short line for a rule's report; '' for nothing worth a line (the faction
+    bag: what it drew is owed_lines). The repo's own rules carry no hidden mark: the player
     never sees any of them."""
     import faction_rules
     import world_rules
     if report["rule"] == faction_rules.BAG:
-        return _bag_line(json_ops, report)
+        return ""                                  # its turns owed are [DO] lines (owed_lines)
     who = world_rules.holder_name(json_ops, report["holder"])
     head = f"{report['rule']} ({who})"
     hidden = "" if report.get("known", True) or faction_rules.is_built_in(report["rule"]) \
@@ -200,25 +200,23 @@ def brief(json_ops, report: dict[str, Any]) -> str:
     return f"{head}: {what}{hidden}"
 
 
-def _bag_line(json_ops, report: dict[str, Any]) -> str:
-    """'Faction turns: Hardtop Holdings owes a turn', or '' if only blanks were drawn."""
+def owed_lines(json_ops, moments: list[dict[str, Any]]) -> list[str]:
+    """[DO] for each turn the faction bag drew in `moments`, with its time and the
+    command that plays it."""
     import faction_rules
     import factions
     names = factions.known(json_ops)
-    name = lambda fid: names.get(fid, {}).get("name", fid)     # noqa: E731
-    owed = []
-    for d in report["draws"]:
-        if not d.get("owed"):
-            continue
-        if d["kind"] == faction_rules.JOKER:
-            owed.append("every faction owes a turn (a joker)")
-        elif d["kind"] == faction_rules.PEOPLE:
-            owed.append("someone the character knows wants something (an ask)")
-        elif faction_rules.job_faction(d["kind"]):
-            owed.append(f"{name(faction_rules.job_faction(d['kind']))} has a job for the character")
-        else:
-            owed.append(f"{name(d['kind'])} owes a turn")
-    return f"{faction_rules.BAG}: {'; '.join(owed)}" if owed else ""
+    lines = []
+    for m in moments:
+        for report in m["rules"]:
+            if report["rule"] != faction_rules.BAG:
+                continue
+            for d in report.get("draws") or []:
+                if d.get("owed"):
+                    what, command = faction_rules.turn_owed(d["kind"], names)
+                    lines.append(f"[DO] {what[0].upper()}{what[1:]} (drawn {stamp(m['at'])}); "
+                                 f"narrate what the character would notice of it: {command}")
+    return lines
 
 
 def _texts(json_ops, name: str) -> dict[str, str]:

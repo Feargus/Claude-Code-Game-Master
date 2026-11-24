@@ -175,8 +175,8 @@ def test_the_bag_owes_jobs_and_asks(ops):
     import lib.rule_bag as rule_bag
     rule_bag.draw(ops, fr.BAG, "world", count=60, rng=random.Random(3))
     lines = "\n".join(fr.owed_lines(ops))
-    assert "job, drawn" in lines and "gm-faction.sh job offer" in lines
-    assert "an ask, drawn" in lines and "gm-faction.sh ask" in lines
+    assert "has a job for the character" in lines and "gm-faction.sh job offer" in lines
+    assert "(an ask), drawn" in lines and "gm-faction.sh ask" in lines
 
 
 # ---------- asks ----------

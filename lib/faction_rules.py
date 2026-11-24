@@ -138,8 +138,26 @@ def settle(json_ops, kind: str) -> dict[str, str] | None:
         return None
 
 
+def turn_owed(kind: str, names: dict) -> tuple[str, str]:
+    """(who owes what, the command that plays it) for a drawn token of the bag.
+    `names`: factions.known()."""
+    if kind == JOKER:
+        return "every faction owes a turn (a joker)", "bash tools/gm-faction.sh turn"
+    if kind == PEOPLE:
+        return ("someone the character knows wants something (an ask)",
+                "bash tools/gm-faction.sh ask")
+    fid = job_faction(kind)
+    if fid:
+        return (f"{names.get(fid, {}).get('name', fid)} has a job for the character: offer "
+                f"them a complex action for its plot, with a deadline",
+                f"bash tools/gm-faction.sh job offer {fid} (the JSON after it: the action as "
+                f"in a turn, \"due\", \"how\")")
+    return (f"{names.get(kind, {}).get('name', kind)} owes a turn",
+            f"bash tools/gm-faction.sh turn --only {kind}")
+
+
 def owed_lines(json_ops) -> list[str]:
-    """For the pauses: who owes a turn, and how to play it."""
+    """For the brief: who owes a turn, and how to play it."""
     import factions
     queue = owed(json_ops)
     if not queue:
@@ -148,20 +166,8 @@ def owed_lines(json_ops) -> list[str]:
     when = lambda o: o["at"].replace("T", " ") if o.get("at") else "?"    # noqa: E731
     lines = [f"FACTION TURNS OWED ({len(queue)}; the world goes on: play them now, oldest first):"]
     for o in queue:
-        if o["kind"] == JOKER:
-            lines.append(f"  joker, drawn {when(o)}: every faction acts: bash tools/gm-faction.sh turn")
-        elif o["kind"] == PEOPLE:
-            lines.append(f"  an ask, drawn {when(o)}: someone the character knows wants "
-                         f"something: bash tools/gm-faction.sh ask")
-        elif job_faction(o["kind"]):
-            fid = job_faction(o["kind"])
-            name = names.get(fid, {}).get("name", fid)
-            lines.append(f"  {name}'s job, drawn {when(o)}: offer the character a complex action "
-                         f"for its plot, with a deadline: bash tools/gm-faction.sh job offer {fid} "
-                         f"(the JSON after it: the action as in a turn, \"due\", \"how\")")
-        else:
-            name = names.get(o["kind"], {}).get("name", o["kind"])
-            lines.append(f"  {name}, drawn {when(o)}: bash tools/gm-faction.sh turn --only {o['kind']}")
+        what, command = turn_owed(o["kind"], names)
+        lines.append(f"  {what}, drawn {when(o)}: {command}")
     return lines
 
 
