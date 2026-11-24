@@ -187,7 +187,6 @@ class Cards:
         it or one of its locations; then the facts that fit the scene best, those the
         character knows and those they don't, a fact anywhere in the site counting
         as the site's (sites.py)."""
-        import sites
         from session_manager import SessionManager
         place = self.locations.get(site)
         lines = []
@@ -215,12 +214,7 @@ class Cards:
         for f in self.facts:
             if f.get("attitude") or fact_file.unheard(f):
                 continue
-            holders = f.get("holders")
-            if holders is None:                   # an old fact: only if it is the site's
-                if sites.at(f.get("at") or "", site) or any(
-                        sites.at(a, site) for a in f.get("about") or [] if a.startswith("location:")):
-                    known.append(f)
-            elif {"player", "public"} & set(holders):
+            if {"player", "public"} & set(f.get("holders") or []):
                 known.append(f)
             else:
                 hidden.append(f)
@@ -266,11 +260,7 @@ class Cards:
         for f in self.facts:
             if f.get("attitude") or fact_file.unheard(f):
                 continue
-            holders = f.get("holders")
-            if holders is None:                       # before holders were recorded
-                if nid in (f.get("about") or self._world_ids().mentioned(str(f["fact"]))):
-                    about.append(f)
-                continue
+            holders = f.get("holders") or []
             if mine & set(holders) or "public" in holders:  # public: known to everyone, them too
                 if f.get("truth") in ("wrong", "partial"):
                     wrong.append(f)                   # play them from the belief
@@ -286,8 +276,7 @@ class Cards:
         lines += self._fact_list("believes, wrongly or in part", wrong,
                                  f"gm-note.sh find --held-by \"{nid}\" --truth wrong")
         lines += self._fact_list(
-            "about them, they don't know", about, f"gm-note.sh find --about \"{nid}\"",
-            tag=lambda f: " (old fact: who knows it isn't recorded)" if "holders" not in f else "")
+            "about them, they don't know", about, f"gm-note.sh find --about \"{nid}\"")
         if shared:
             lines.append(f"  + {shared} fact{'s' if shared != 1 else ''} they share with "
                          f"{self.player} (gm-note.sh find --held-by \"{nid}\" --held-by player)")

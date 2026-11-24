@@ -118,8 +118,8 @@ def draft_bible(campaign_dir, name: str = None, voice: dict[str, Any] = None,
     cdir = Path(campaign_dir)
     path = _bible_path(cdir)
     existing = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
-    # Absent flag == confirmed (the WorldBible rule): hand-authored and legacy
-    # bibles are never overwritten by a draft pass.
+    # Absent flag == confirmed (the WorldBible rule): a bible written by /new-game
+    # or by hand is never overwritten by a draft pass.
     if existing and existing.get("confirmed", True):
         raise ConfirmedBibleError(
             f"world-bible.json in {campaign_dir} is confirmed — refusing to redraft it")

@@ -1,10 +1,9 @@
 """What a present NPC knows, and what is known about them, in the brief.
 
 Under each present NPC: "they know" lists facts with them among the holders;
-"about them, they don't know" lists facts about them they don't hold. Facts
-from before holders existed can't say who knows them: they go under "about
-them (old fact ...)" when the same name check gm-note.sh uses finds the NPC.
-Being named in a fact is never knowing it (the old `remembers:` lines were).
+"about them, they don't know" lists facts about them they don't hold, `about`
+being what the name check found when the fact was recorded. Being named in a
+fact is never knowing it.
 
 These tests mutate only the hermetic `dcc_world` copy: they add a present NPC
 (in the current scene) plus facts, then read get_full_context().
@@ -41,14 +40,28 @@ def _add_npc(world, name, location, aliases=None):
 
 
 def _add_facts(world, texts, **fields):
-    """Old-style facts (no holders) unless fields like holders=[...] are given."""
+    """Facts as stored, with the fields given (holders, about)."""
     facts = _load(world, "facts.json")
     for t in texts:
         facts.append({"fact": t, "timestamp": "2026-08-15T00:00:00Z", **fields})
     _save(world, "facts.json", facts)
 
 
-OLD = "about them, they don't know (old fact: who knows it isn't recorded): "
+def _record(world, texts):
+    """Facts recorded as gm-note.sh does, known to the player only: the names in
+    the text are what they are about. Returns their ids."""
+    from lib.note_manager import NoteManager
+    ids = [NoteManager(world).add_fact(t, holders=["player"], nowhere=True) for t in texts]
+    assert all(ids)
+    return ids
+
+
+ABOUT = "about them, they don't know: "
+
+
+def _about_them(block, fid):
+    """The fact listed under them as about them, in full or named as shown above."""
+    return f"{ABOUT}{fid} " in block or f"{ABOUT}also {fid} (above)" in block
 
 
 def _npc_block(ctx, npc_name):
@@ -72,18 +85,18 @@ def test_fact_naming_present_npc_surfaces_under_that_npc(dcc_world):
     loc = _current_location(dcc_world)
     fact = "Griselda's eyes flicked to the back door — she knows more than she lets on."
     _add_npc(dcc_world, "Griselda", loc)
-    _add_facts(dcc_world, [fact])
+    fid, = _record(dcc_world, [fact])
 
     ctx = SessionManager(dcc_world).get_full_context()
     block = _npc_block(ctx, "Griselda")
-    assert OLD + fact in block, "an old fact naming the NPC is about them, not known by them"
+    assert _about_them(block, fid), "a fact naming the NPC is about them, not known by them"
 
 
 def test_fact_naming_no_present_npc_is_not_attached(dcc_world):
     loc = _current_location(dcc_world)
     unrelated = "Zoltar the Unseen brooded in a tower far from any living soul."
     _add_npc(dcc_world, "Griselda", loc)
-    _add_facts(dcc_world, [unrelated])
+    _record(dcc_world, [unrelated])
 
     ctx = SessionManager(dcc_world).get_full_context()
     block = _npc_block(ctx, "Griselda")
@@ -94,7 +107,7 @@ def test_word_boundary_substring_is_not_a_false_positive(dcc_world):
     loc = _current_location(dcc_world)
     banana = "The crawlers found a crate of Banana rations near the vending machine."
     _add_npc(dcc_world, "Ana", loc)
-    _add_facts(dcc_world, [banana])
+    _record(dcc_world, [banana])
 
     ctx = SessionManager(dcc_world).get_full_context()
     # "Ana" must not match inside "Banana".
@@ -109,7 +122,7 @@ def test_common_leading_token_is_not_a_false_positive(dcc_world):
     door = "The red door creaked open on rusted hinges."
     _add_npc(dcc_world, "Old Man Withers", loc)
     _add_npc(dcc_world, "Red Sonja", loc)
-    _add_facts(dcc_world, [rope, door])
+    _record(dcc_world, [rope, door])
 
     ctx = SessionManager(dcc_world).get_full_context()
     # Neither fact names a real NPC, so it attaches under no one.
@@ -124,10 +137,10 @@ def test_full_multiword_key_still_attaches(dcc_world):
     loc = _current_location(dcc_world)
     fact = "Old Man Withers cursed the merchant who shorted him."
     _add_npc(dcc_world, "Old Man Withers", loc)
-    _add_facts(dcc_world, [fact])
+    fid, = _record(dcc_world, [fact])
 
     ctx = SessionManager(dcc_world).get_full_context()
-    assert OLD + fact in _npc_block(ctx, "Old Man Withers")
+    assert _about_them(_npc_block(ctx, "Old Man Withers"), fid)
 
 
 def test_alias_path_attaches(dcc_world):
@@ -135,10 +148,10 @@ def test_alias_path_attaches(dcc_world):
     loc = _current_location(dcc_world)
     fact = "Aratus the Kothian bargained hard for the caravan's silk."
     _add_npc(dcc_world, "Aratus", loc, aliases=["Aratus the Kothian"])
-    _add_facts(dcc_world, [fact])
+    fid, = _record(dcc_world, [fact])
 
     ctx = SessionManager(dcc_world).get_full_context()
-    assert OLD + fact in _npc_block(ctx, "Aratus")
+    assert _about_them(_npc_block(ctx, "Aratus"), fid)
 
 
 # ---------- facts with holders ----------

@@ -87,8 +87,8 @@ class WorldBible:
     def is_confirmed(self) -> bool:
         """A newly-drafted bible is `confirmed: false` until a human approves it.
 
-        Legacy campaigns / hand-authored bibles (no flag) count as confirmed so the
-        gate only blocks freshly auto-drafted worlds.
+        A bible without the flag (written by /new-game, or by hand) counts as
+        confirmed, so the gate only blocks a world drafted from a book.
         """
         return bool(self.bible.get('confirmed', True))
 

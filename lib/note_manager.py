@@ -667,10 +667,9 @@ class NoteManager:
         mine = {h: knowers(h, npcs) for h in holders}     # an NPC and their factions
         out = []
         for f in self._all():
-            known = f.get('holders')
+            known = f.get('holders') or []
             if holders:
-                if known is None or not all(mine[h] & set(known) or 'public' in known
-                                            for h in holders):
+                if not all(mine[h] & set(known) or 'public' in known for h in holders):
                     continue
                 if any(not mine[h] & set(known) for h in holders):
                     f = dict(f, public=True)
@@ -678,7 +677,7 @@ class NoteManager:
                 continue
             if secret and known != []:
                 continue
-            if hidden and (known is None or {'player', 'public'} & set(known)):
+            if hidden and {'player', 'public'} & set(known):
                 continue
             if truth and f.get('truth') != truth:
                 continue
@@ -833,9 +832,7 @@ def fact_line(f: dict) -> str:
     short can drop its turn), who it's about and who knows it."""
     text = fact_text(f)
     when = str(f.get('game_time', '')).replace('T', ' ')
-    known = f.get('holders')
-    who = ("who knows it isn't recorded" if known is None else
-           f"known to: {', '.join(known) or 'nobody'}")
+    who = f"known to: {', '.join(f.get('holders') or []) or 'nobody'}"
     if f.get('public'):
         who += " (public: everyone)"
     about = f"about: {', '.join(f['about'])}; " if f.get('about') else ""
@@ -851,9 +848,7 @@ def fact_details(f: dict) -> str:
         lines.append(f"  at: {f['at']}")
     if f.get('about'):
         lines.append(f"  about: {', '.join(f['about'])}")
-    known = f.get('holders')
-    lines.append("  known to: " + ("not recorded (an old fact)" if known is None else
-                                   ', '.join(known) or "nobody (a secret)"))
+    lines.append("  known to: " + (', '.join(f.get('holders') or []) or "nobody (a secret)"))
     if f.get('truth'):
         lines.append(f"  truth: {f['truth']}" + (f", a version of {f['version_of']}"
                                                   if f.get('version_of') else ""))
