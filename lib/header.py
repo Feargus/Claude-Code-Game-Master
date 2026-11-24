@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The header: one line at the top of a reply, printed from the records, never
-written from memory (decided 2026-11-21; it used to be written by the GM, and went
-stale: "XP 0/100" for a whole session at 40 XP).
+written from memory (one written by the GM goes stale: "XP 0/100" for a whole
+session at 40 XP).
 
     Bleach Alley · 14:52
     The Back Lanes · 16:55 · right arm critical

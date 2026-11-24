@@ -1,5 +1,5 @@
-"""The one sheet format (lib/sheet.py), shared by the player, NPCs and mobs, as
-decided with the user on 2026-11-11: sections one level deep, look in three prose
+"""The one sheet format (lib/sheet.py), shared by the player, NPCs and mobs:
+sections one level deep, look in three prose
 fields, personality with the Big Five as signed numbers, items as gear (seen) and
 inventory (hidden); what a person knows, feels or hides is facts, not fields."""
 

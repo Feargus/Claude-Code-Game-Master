@@ -1,4 +1,4 @@
-"""The book search on our own embedder and store (2026-11-16): a book is cut into
+"""The book search on our own embedder and store: a book is cut into
 pieces, embedded (here with the fake embedder) and searched by closeness to a
 question; the indexing resumes where it stopped."""
 

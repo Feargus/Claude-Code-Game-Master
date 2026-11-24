@@ -334,7 +334,7 @@ class NPCManager(EntityManager):
             return False
         status = sheet_mod.section(npcs[key], "status")
         if bool(status.get("party_member")) == member:
-            print(f"[INFO] {key} is {'already' if member else 'not'} a party member")
+            print(f"[SUCCESS] Nothing to do: {key} is {'already' if member else 'not'} a party member")
             return True
         if member:
             status["party_member"] = True

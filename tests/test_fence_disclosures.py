@@ -43,7 +43,7 @@ def test_tick_four_matches_fires_all_four(tmp_path):
     assert {c["id"] for c in stamped} == fired_ids
 
 
-def test_world_tick_applies_five_and_warns_on_overflow(dcc_world, capsys):
+def test_world_tick_applies_five_and_keeps_the_overflow(dcc_world):
     devs = [
         {"fact": "A rival crew claims Floor 3 territory"},
         {"fact": "Mordecai sends word of a new threat"},
@@ -57,17 +57,28 @@ def test_world_tick_applies_five_and_warns_on_overflow(dcc_world, capsys):
     facts = json.loads((Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "facts.json"
                         ).read_text(encoding="utf-8"))
     assert any("fifth development" in f["fact"] for f in facts)
-    out = capsys.readouterr().out                 # a note on stdout (output.md)
-    assert "fifth development" in out
-    assert "[NOTE] More than the cap of 3" in out
     assert len(wt.last_overflow) == 2
     assert "fifth development" in wt.last_overflow[-1]["text"]
+
+
+def test_the_world_tick_says_what_it_made_in_one_line(dcc_world):
+    import os
+    import subprocess
+    root = Path(__file__).resolve().parent.parent
+    devs = [{"fact": f"Development number {n}."} for n in range(1, 5)]
+    r = subprocess.run(["bash", str(root / "tools" / "gm-session.sh"), "world-tick", json.dumps(devs)],
+                       capture_output=True, text=True,
+                       env=dict(os.environ, GM_WORLD_STATE_BASE=dcc_world))
+    assert r.returncode == 0, r.stderr
+    lines = r.stdout.splitlines()
+    assert lines[0].startswith("[SUCCESS] Applied f") and lines[0].count("; ") == 3
+    assert lines[1].startswith("[NOTE] More than the cap of 3: f") and lines[1].endswith(" too")
 
 
 def test_context_remainder_counts_on_every_truncated_section(tmp_path):
     """The brief cuts one list: what the character doesn't know of a plot, at
     five, with the command for the rest. Plots, terms and consequences are all
-    listed; there is no --full (2026-11-15)."""
+    listed; there is no --full."""
     plots = {f"Thread {i}": {"description": f"thread {i}", "kind": "main", "status": "open"}
              for i in range(8)}
     facts = [{"id": f"f{i}", "fact": f"secret fact {i}", "holders": [],

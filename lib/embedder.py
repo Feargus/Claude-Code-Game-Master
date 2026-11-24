@@ -6,7 +6,7 @@ things get vectors that point the same way, so "the clown" finds "Pagliacci took
 off his makeup and wept". Chosen by a benchmark on a Raspberry Pi 4 (2026-11-15):
 0.5 GB of RAM, about 6 s to load, about 0.8 s per text.
 
-Part of the game (since 2026-11-22): recording a fact needs it (`require_embedder`).
+Part of the game: recording a fact needs it (`require_embedder`).
 It needs numpy, onnxruntime and tokenizers (installed by `uv sync`) and the model
 files (`gm-recall.sh setup`, 217 MB, into GM_MODELS_DIR, default `models/` beside
 `lib/`).

@@ -1,4 +1,4 @@
-"""The bag (lib/rule_bag.py, 2026-11-17, step 8): tokens drawn, kept out or put back,
+"""The bag (lib/rule_bag.py): tokens drawn, kept out or put back,
 added and taken; drawn by itself as time passes; a drawn token's result acts."""
 
 import os

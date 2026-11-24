@@ -88,7 +88,7 @@ def plot_name(json_ops, key: str, plot: dict[str, Any], status: bool = False) ->
 
 def moved_by(json_ops, key: str) -> list[str]:
     """What will move a plot by itself: its clocks and waiting consequences, by name
-    or id (an owner's goal goes nowhere without one, 2026-11-18)."""
+    or id (an owner's goal goes nowhere without one)."""
     clocks = json_ops.load_json("threat-clocks.json") or {}
     store = json_ops.load_json("consequences.json") or {}
     found = [f"clock {n}" for n, c in clocks.items()

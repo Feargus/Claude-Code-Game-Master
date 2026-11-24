@@ -169,7 +169,7 @@ class NoteManager:
                  auto_at: bool = True, plots=None,
                  when=None, by=None, first_line: bool = True) -> str:
         """Record a fact. Returns its id, or "" on failure. Everything but the
-        text is given by name (a fact has no category any more: facts.py).
+        text is given by name (a fact has no category: facts.py).
 
         Each fact carries an id, the in-game time it was recorded (`game_time`,
         copied from campaign-overview.json; left out if the campaign has none)
@@ -354,7 +354,7 @@ class NoteManager:
     def _learned(self, fact_id: str, entry: dict, new_holders) -> list:
         """Fire the on_learn consequences for holders who just learned a fact. A fact
         that becomes public is learned by everyone who didn't know it: the player,
-        the street, every living NPC and every faction (todo.md, 2026-11-18). What a
+        the street, every living NPC and every faction. What a
         faction learns, its living members learn (factions.py). Returns the fired
         consequences (also kept in `last_fired`)."""
         from consequence_manager import ConsequenceManager
@@ -771,7 +771,7 @@ class NoteManager:
                 continue
             extra = set(item) - allowed
             if "category" in extra:
-                errors.append(f"{where}: facts have no category any more; leave \"category\" out.")
+                errors.append(f"{where}: a fact has no category; leave \"category\" out.")
                 extra.discard("category")
             if "plots" in extra:
                 errors.append(f"{where}: the field is \"plot\" (one name, or a list), "
@@ -982,7 +982,7 @@ def main():
         if args.action == 'add':
             if args.more:
                 raise ValueError(
-                    f"A fact has no category any more: gm-note.sh \"<the fact>\" [--about ...]. "
+                    f"A fact has no category: gm-note.sh \"<the fact>\" [--about ...]. "
                     f"Got {1 + len(args.more)} texts, the first \"{args.fact}\"; nothing was recorded.")
             if len(args.fact.split()) < 2:
                 raise ValueError(

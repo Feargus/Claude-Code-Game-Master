@@ -1,4 +1,4 @@
-"""Results that act (lib/rule_effects.py, 2026-11-17, step 3): a result's effects run
+"""Results that act (lib/rule_effects.py): a result's effects run
 when it comes on (when_off when it goes off), a change they make turns its own
 results on in a chain, a rule changes once per chain, and a consequence can wait on
 a value (on_rule)."""
@@ -127,7 +127,7 @@ def test_an_effect_that_cant_be_done_says_why(ops):
 
 def test_conditions_and_credits_are_the_characters_only(ops):
     """A rule held by NPCs too: when an NPC reaches the result, its condition and
-    credits are not given to the character (hard-country trial, 2026-11-18)."""
+    credits are not given to the character (hard-country trial)."""
     wr.define(ops, [_counter("Lungs", held_by=["player", "npc"], results=[
         {"from": 4, "text": "Short of breath.",
          "effects": [{"condition": "Short of breath"}, {"credits": -5}]}])])

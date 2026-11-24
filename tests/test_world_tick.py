@@ -84,14 +84,12 @@ def test_a_refused_trigger_undoes_the_whole_tick(dcc_world):
     assert "Tracker" not in _load(dcc_world, "threat-clocks.json")
 
 
-def test_cap_is_advisory(dcc_world, capsys):
+def test_cap_is_advisory(dcc_world):
     devs = [{"fact": f"development {i}"} for i in range(5)]
     wt = WorldTick(dcc_world)
     applied = wt.apply(devs, cap=3)
     assert len(applied) == 5
-    out = capsys.readouterr().out                 # a note on stdout (output.md: stderr is errors)
-    assert "[NOTE] More than the cap of 3" in out and "development 4" in out
-    assert len(wt.last_overflow) == 2
+    assert [a["text"] for a in wt.last_overflow] == ["development 3", "development 4"]
 
 
 def test_disabled_is_a_noop(dcc_world):
@@ -133,9 +131,9 @@ def _cli(world, *args):
 def test_cli_apply_and_rollback(dcc_world):
     r = _cli(dcc_world, "apply", json.dumps([{"fact": "a rumor spreads"}]))
     assert r.returncode == 0, r.stderr
-    assert sum(line.startswith("[WORLD TICK] f") for line in r.stdout.splitlines()) == 1
+    assert r.stdout.splitlines()[0].startswith("[SUCCESS] Applied f")
     r = _cli(dcc_world, "rollback")
-    assert "rolled back last tick" in r.stdout
+    assert r.stdout == "[SUCCESS] Rolled back the last world tick\n"
 
 
 def test_cli_refusal_says_nothing_was_kept(dcc_world):

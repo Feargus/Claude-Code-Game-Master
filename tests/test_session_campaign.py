@@ -1,5 +1,4 @@
-"""Two Claude Code sessions playing two campaigns don't switch each other's
-(2026-11-15: Salt Roads' /gm end found Idle Cycles active)."""
+"""Two Claude Code sessions playing two campaigns don't switch each other's."""
 
 import subprocess
 from pathlib import Path

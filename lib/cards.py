@@ -41,8 +41,8 @@ from game_time import current_time
 from note_manager import current_attitudes, fact_text
 
 PER_LIST = 3          # facts per list on a card; revisit once semantic recall ranks them
-# Nothing on a card is cut (2026-11-15): a fact shortened can drop its turn, and the
-# GM can't tell. A fact is printed in full or named by id. To revisit (todo.md).
+# Nothing on a card is cut: a fact shortened can drop its turn, and the GM can't
+# tell. A fact is printed in full or named by id.
 
 
 def _norm(text: str) -> str:

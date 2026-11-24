@@ -38,7 +38,7 @@ class Brief:
 
     # The sections in the order they are printed: each is a method
     # `_section_<name>` returning its lines ([] when it has nothing to show).
-    # Ordered by plot (2026-11-15): each open plot with its clocks, the
+    # Ordered by plot: each open plot with its clocks, the
     # consequences waiting in it and what the character doesn't know of it; then
     # what belongs to no plot; the character; the world; the scene; then the
     # newest facts not shown above, so the cards don't repeat them.

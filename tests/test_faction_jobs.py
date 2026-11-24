@@ -1,4 +1,4 @@
-"""Relations that move by themselves, faction jobs and asks (decided 2026-11-21):
+"""Relations that move by themselves, faction jobs and asks:
 lib/faction_rules.py (the bag, the decimal Relation and its drift), lib/faction_turns.py
 (what a turn does to Relations) and lib/faction_jobs.py (jobs and asks)."""
 

@@ -5,7 +5,7 @@
 e.g. "2187-10-26T04:30" (STORED_FORMAT). Changing it is time_manager.py's job;
 this module only reads it, and imports nothing of the game's, so every script
 can import it at the top (time_manager.py and threat_clocks.py import each
-other, which is why each script used to read the time by itself).
+other, so neither can be the place every script reads the time from).
 """
 
 from datetime import datetime

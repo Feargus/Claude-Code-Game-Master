@@ -136,8 +136,8 @@ def test_cli_refusal_and_show(dcc_world):
 # ---------- a usual place is optional ----------
 
 def test_create_without_a_usual_place(dcc_world, capsys):
-    """A usual place was required (2026-11-07); since 2026-11-14 a person can be
-    a sketch named in the story, with no place yet. A place given must exist."""
+    """A person can be a sketch named in the story, with no usual place yet. A place
+    given must exist."""
     from lib.npc_manager import NPCManager
     nm = NPCManager(dcc_world)
     assert not nm.create_npc("Vex", "a fixer", "neutral", locations=["Bone Gardn"])

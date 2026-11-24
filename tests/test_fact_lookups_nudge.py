@@ -1,5 +1,5 @@
 """Fact lookups stay short: 10 by default, and a longer list ends with how to
-narrow it (2026-11-15)."""
+narrow it."""
 
 import subprocess
 from pathlib import Path

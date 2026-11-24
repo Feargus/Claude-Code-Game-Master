@@ -1,6 +1,5 @@
 """The Claude Code settings: the status line is configured, and nothing runs on
-its own. The Stop hook that autosaved after every turn went with the save system
-(2026-11-13); recall reads the facts directly, so nothing needs refreshing."""
+its own (recall reads the facts directly, so nothing needs refreshing)."""
 
 import json
 from pathlib import Path

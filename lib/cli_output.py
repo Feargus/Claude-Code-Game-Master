@@ -1,8 +1,8 @@
 """Shared command-line helpers: an error, and JSON given as input.
 
 What the commands print is in docs/conventions/output.md. There is no JSON output
-(`--json` was removed on 2026-11-22: the GM reads text, and the tests call the
-functions); JSON is only ever input (`json_input`: the opening, a beat, a character).
+(the GM reads text, and the tests call the functions); JSON is only ever input
+(`json_input`: the opening, a beat, a character).
 """
 
 import json

@@ -240,7 +240,7 @@ def card_lines(json_ops, fid: str) -> list[str]:
     return lines
 
 
-# ---------- relations: a decimal value, and the drift (decided 2026-11-21) ----------
+# ---------- relations: a decimal value, and the drift ----------
 #
 # A Relation is a whole number like every counter (results, the log, gm-rule.sh), but
 # moves in fractions: a faction turn adds 0.8, the drift a little at every time step.

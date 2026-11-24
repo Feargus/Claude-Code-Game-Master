@@ -58,7 +58,7 @@ def test_the_interview_has_its_steps_and_saves_with_create():
 
 
 def test_the_interview_suggests_defaults_but_never_forces_them():
-    """The user's defaults (2026-11-11): the GM knows the numbers and improvises
+    """The user's defaults: the GM knows the numbers and improvises
     within ±20%; fast is the default, slow goes entry by entry."""
     text = _cmd()
     assert "d12" in text and "d18" not in text
@@ -114,7 +114,7 @@ def test_a_sheet_without_race_or_class_saves_and_validates(tmp_path):
 
 
 def test_a_new_campaign_asks_how_to_make_the_world():
-    """The user's flow (2026-11-11): the world together, from one sentence (setting
+    """The user's flow: the world together, from one sentence (setting
     and lore only, the repo's rules) or from a book; then the character fast or
     slow. The one-shot (which saved the character before its campaign existed) and
     the import's "no one yet" are gone."""
@@ -125,14 +125,14 @@ def test_a_new_campaign_asks_how_to_make_the_world():
     assert "no one yet" not in (commands / "import.md").read_text(encoding="utf-8")
     new_game = (commands / "new-game.md").read_text(encoding="utf-8")
     quick = new_game[new_game.index("## QUICK WORLD"):]
-    assert "no rules of its own but `Standing`" in quick          # 2026-11-20: and the factions
+    assert "no rules of its own but `Standing`" in quick          # and the factions
     assert "Phase C steps 2–3" in quick and "Phase E" in quick     # frame, then the cast
     assert quick.index("**The character:** Phase D") < quick.index("**The character's world:** Phase E")
     assert "gm-session.sh opening" in quick and "/create-character" in quick
 
 
 def test_the_character_comes_before_the_cast_and_brings_the_main_plot():
-    """The order decided 2026-11-21: the world's frame, then the character, then
+    """The order: the world's frame, then the character, then
     the people and plots around them. "Someone from this world" is a role, never a
     named person (the cast doesn't exist yet and would be spoiled); the interview
     asks the character's trouble, which becomes the main plot; a faction's plot

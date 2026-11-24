@@ -1,5 +1,5 @@
 """The shared command-line helpers (lib/cli_output.py): an error on standard error,
-and no JSON output (`--json` removed 2026-11-22: docs/conventions/output.md)."""
+and no JSON output (docs/conventions/output.md)."""
 
 import subprocess
 import sys
@@ -17,9 +17,9 @@ def test_an_error_goes_to_standard_error_with_exit_code_1(capsys):
     assert out.err.strip() == "[ERROR] boom" and out.out == ""
 
 
-def test_json_is_no_option_any_more(dcc_world):
-    """It used to be accepted by every command and honoured by some: recording a
-    fact took it and printed text, and a helper built on it broke (the Long Hull)."""
+def test_json_is_no_option(dcc_world):
+    """--json is refused, not taken and ignored: a helper built on a command that
+    took it and printed text broke (the Long Hull)."""
     r = subprocess.run([sys.executable, str(ROOT / "lib" / "note_manager.py"), "recent", "--json"],
                        capture_output=True, text=True, cwd=str(Path(dcc_world).parent))
     assert r.returncode != 0 and "--json" in r.stderr

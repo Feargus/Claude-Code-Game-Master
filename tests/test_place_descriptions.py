@@ -1,4 +1,4 @@
-"""A place is on disk before it is narrated (2026-11-13).
+"""A place is on disk before it is narrated.
 
 In the Tidewater playtest the Kettle was added with a position only, while Mama
 Seo described it in the story ("coffins they rent by the week, stacked eight

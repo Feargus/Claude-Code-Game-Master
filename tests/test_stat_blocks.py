@@ -47,7 +47,7 @@ def test_canon_skills_come_from_the_gm_skills_index():
 
 
 def test_a_skill_not_listed_counts_default_then_common_then_untrained():
-    """The lookup for NPCs and mobs (2026-11-11): what is listed counts; otherwise the
+    """The lookup for NPCs and mobs: what is listed counts; otherwise the
     block's skill default; otherwise 0 for a common skill and −3 for the rest. The
     player's common skills live on the sheet, so one missing there is untrained."""
     from lib.skill_contest import untrained_value

@@ -14,7 +14,7 @@ Two ways, as the player chose in `/gm`:
 - **From one sentence:** QUICK WORLD at the end. The same phases and files, built by
   you without questions, and setting and lore only.
 
-**The order (decided 2026-11-21):** the world's frame first (A–C), then the character
+**The order:** the world's frame first (A–C), then the character
 (D), then the people, places and plots around the character (E). The character needs
 the world to make sense; the cast needs the character, so the people in the first scene
 are the character's own, and none are shown to the player before play.

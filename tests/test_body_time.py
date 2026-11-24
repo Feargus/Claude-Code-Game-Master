@@ -1,5 +1,5 @@
 """Wounds and luck that come back as time passes (lib/body_time.py), and the care that
-speeds it up (lib/body.py treat). Decided 2026-11-21: half-lives of 2, 4 and 8 days for
+speeds it up (lib/body.py treat): half-lives of 2, 4 and 8 days for
 a bruise, an injury and a critical wound, luck 1 week a point; lying still, first aid
 and a doctor's treatment each count the time double; a critical wound needs a doctor
 or a medpack."""

@@ -203,7 +203,7 @@ def test_the_plot_starts_with_its_hook_and_consequences_say_when(world):
 
 
 def test_a_consequence_may_wait_on_a_clock_given_later(world):
-    """Both playtest openings (2026-11-14) were refused because a consequence on
+    """Both playtest openings were refused because a consequence on
     "<clock>:1" came before the development that makes the clock. The clocks
     are made first now, whatever the order."""
     from lib.world_tick import WorldTick
@@ -220,11 +220,10 @@ def test_a_consequence_may_wait_on_a_clock_given_later(world):
 
 
 def test_a_place_named_after_another_and_a_needless_alias(world):
-    """The playtests' first openings failed on these (2026-11-09 to 11-19): "the
-    Underpass" as an alias of The Underpass threw everything away, and a refused
-    close name ("Orchid Room service alley" beside The Orchid Room) gave the command
-    line's --another, not the entry's key. The alias is left out with a note now, and
-    the refusal names "another": true."""
+    """An alias the name already covers ("the Underpass" for The Underpass) is left
+    out with a note, and a refused close name ("Orchid Room service alley" beside The
+    Orchid Room) names the entry's key, "another": true, not the command line's
+    --another."""
     ws, camp = world
     spec = json.loads(json.dumps(SPEC))
     spec["place"]["aliases"] = ["lanternside"]

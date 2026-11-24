@@ -40,7 +40,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-IDLE_SECONDS = 30 * 60          # decided 2026-11-15
+IDLE_SECONDS = 30 * 60          # how long the helper stays loaded without a request
 READY_SECONDS = 20              # how long a command waits for a new helper to load the model
 ANSWER_SECONDS = 15             # how long a command waits for an answer
 

@@ -1,8 +1,5 @@
-"""What is recorded reaches the GM's brief, and the prompts name no removed thing.
-
-(The first of these began as checks that every fact category had a reader. Facts
-have no category since 2026-11-16: lib/facts.py.)
-"""
+"""What is recorded reaches the GM's brief, and the prompts name nothing that
+doesn't exist."""
 
 from pathlib import Path
 
@@ -39,9 +36,8 @@ def test_the_prompts_record_facts_without_a_category():
 
 
 def test_gm_md_says_the_brief_is_the_truth_and_no_session_log_exists():
-    """/gm once told the GM to move the character to where the log's last session
-    ended. Since 2026-11-14 there is no session log: the plots and facts are the
-    record, and /gm end rewrites the plots that moved."""
+    """There is no session log: the plots and facts are the record, and /gm end
+    rewrites the plots that moved; /gm never sends the GM to a log."""
     text = (ROOT / ".claude" / "commands" / "gm.md").read_text(encoding="utf-8")
     assert "Session log is truth" not in text and "gm-session.sh end" not in text
     assert "session-log" not in text and "gm-recall.sh arc" not in text

@@ -311,10 +311,11 @@ def main():
                         print(f"  {filename}: OK")
                 sys.exit(0 if all_valid else 1)
             else:
-                print("No active campaign")
+                print("[ERROR] No active campaign: bash tools/gm-campaign.sh switch <name>",
+                      file=sys.stderr)
                 sys.exit(1)
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"[ERROR] {e}", file=sys.stderr)
             parser.print_help()
             sys.exit(1)
 

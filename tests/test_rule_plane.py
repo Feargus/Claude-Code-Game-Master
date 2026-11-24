@@ -1,4 +1,4 @@
-"""The plane (lib/rule_plane.py, 2026-11-17, step 7): two values read together, with
+"""The plane (lib/rule_plane.py): two values read together, with
 results by region; a change moves one axis; an axis can have a rate."""
 
 import os

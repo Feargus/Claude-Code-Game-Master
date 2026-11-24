@@ -1,4 +1,4 @@
-"""NPCs on the new sheet (2026-11-11): created with only what play needs, filled in
+"""NPCs on the new sheet: created with only what play needs, filled in
 later with `set`; how they regard the player is a fact they hold, not an
 attitude field; the brief's PEOPLE HERE block plays them from their sheet."""
 
@@ -188,7 +188,7 @@ def test_an_attitude_is_a_flagged_fact_and_the_newest_counts(world, capsys):
 
 
 def test_nothing_on_a_card_or_in_a_fact_list_is_cut(world):
-    """A fact cut short can drop its turn, and the GM can't tell (2026-11-15)."""
+    """A fact cut short can drop its turn, and the GM can't tell."""
     from lib.cards import Cards
     from lib.note_manager import NoteManager, fact_line
     ws, camp = world

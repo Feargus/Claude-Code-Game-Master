@@ -116,7 +116,7 @@ def test_given_values_are_kept_whatever_they_are(campaign):
 
 
 def test_common_skills_start_at_zero_unless_raised_or_left_out(campaign):
-    """The user's rule (2026-11-11): everyday skills are on every sheet, at 0 or more;
+    """The user's rule: everyday skills are on every sheet, at 0 or more;
     the rest stays off it (untrained, −3). No negative value ever lands on the sheet."""
     sheet = _ok(_create(data=dict(_named("Mara", stats={"skills": {"brawling": 4, "long guns": 2}}),
                                   untrained=["deception"])))
@@ -214,7 +214,7 @@ def test_canon_unknown_npc_is_refused(campaign):
 
 def test_creating_a_character_moves_nothing(isolated_world_state):
     """The opening (gm-session.sh opening) comes after the character, so creating
-    one leaves the position as it is (it used to re-seed an import's opening)."""
+    one leaves the position as it is."""
     cm = CampaignManager()
     cdir = cm.create("Hyboria", "Hyboria")
     assert cm.set_active("Hyboria")

@@ -1,4 +1,4 @@
-"""States (lib/rule_states.py, 2026-11-17, step 6): a value that is a named state,
+"""States (lib/rule_states.py): a value that is a named state,
 moved only along its allowed moves, on by time spent in a state, with effects on
 entering and leaving, and consequences that wait on a state."""
 

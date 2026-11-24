@@ -1,6 +1,6 @@
 """The JSON of beat, opening, world-tick and create can follow the command
 (<<'EOF' ... EOF), where apostrophes need no escaping. In a '...' argument the
-GM couldn't write them and dropped them ("Dolph s stockroom", 2026-11-15)."""
+GM couldn't write them and dropped them ("Dolph s stockroom")."""
 
 import subprocess
 from pathlib import Path

@@ -1,8 +1,8 @@
 """The import chain: source text -> world-bible (the world's own rules go into
 ruleset.json with gm-rule.sh define).
 
-Import Step 6.7 used to read a world-bible.json that no step wrote. These cover the wired chain — every fixture is a
-throwaway tmp campaign, never a live one.
+Each step reads what the one before wrote. Every fixture is a throwaway tmp
+campaign, never a live one.
 """
 
 import json
@@ -56,8 +56,7 @@ def test_draft_bible_writes_an_unconfirmed_grounded_draft(campaign):
     # Verbatim filter: the real excerpt survives, the invented one does not.
     assert bible["voice"]["sample_passages"] == [VERBATIM]
     # Chapters are not persisted to the bible; segment_into_chapters feeds the RAG
-    # coarse index only. The WORLD INDEX is gone too (2026-11-14): the book's names
-    # become sketch records.
+    # coarse index only. The book's names become sketch records, not a bible index.
     assert "chapters" not in bible and "index" not in bible
     # Skeleton keys are present, so the bible validates before the model fills them.
     assert validate_bible(bible) == (True, [])

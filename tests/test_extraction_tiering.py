@@ -1,5 +1,5 @@
-"""Location tags are a hint for search, not presence. (Import's background tier of
-plots is gone: since 2026-11-14 "background" is a plot kind, sorted last.)"""
+"""Location tags are a hint for search, not presence. ("background" is a plot kind,
+sorted last.)"""
 
 import json
 

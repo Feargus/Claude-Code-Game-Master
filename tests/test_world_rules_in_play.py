@@ -1,4 +1,4 @@
-"""The world's own rules in play (2026-11-17, step 2): the brief shows them in full,
+"""The world's own rules in play: the brief shows them in full,
 the cards show a person's or a place's values, the HUD and `gm-player.sh show` the
 character's. The old surfaces (campaign_rules, signature_systems, the kit's systems,
 vitals) are gone."""
@@ -153,8 +153,8 @@ def test_every_example_in_the_skill_is_a_rule_define_accepts(dcc_world):
 
 def test_an_error_from_any_block_is_a_clean_error_line(dcc_world):
     """gm-rule.sh runs world_rules.py as a script, and the block modules raise the same
-    RulesError (rule_errors.py): every refusal is one [ERROR] line, never a traceback
-    (it was one before 2026-11-17 for every block but the counter)."""
+    RulesError (rule_errors.py): every refusal is one [ERROR] line, never a traceback,
+    for every block."""
     blocks = [
         {"name": "The Job", "block": "bag", "held_by": "world", "summary": "s.", "when": "w.",
          "tokens": {"clean": 1}, "results": {"clean": {"text": "x"}}},

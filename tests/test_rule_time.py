@@ -1,4 +1,4 @@
-"""A counter's options (2026-11-17, step 5): a rate that moves it as game time passes
+"""A counter's options: a rate that moves it as game time passes
 (lib/rule_time.py), hysteresis (a result's off_at), overflow with lasting marks, and
 streaks."""
 
@@ -82,8 +82,7 @@ def test_toward_stops_there_and_only_holders_with_a_value_move(dcc_world, ops):
 
 def test_toward_pulls_or_pushes_from_either_side(dcc_world, ops):
     """With `toward`, + pulls and - pushes, whichever side the value is on (the
-    hard-country trial's Exposure, "by 1 toward 0", climbed away from 0; decided
-    2026-11-18)."""
+    hard-country trial's Exposure, "by 1 toward 0", must come back to 0)."""
     from lib import rule_time
 
     def step(value, by, toward, periods, low=0, high=20):

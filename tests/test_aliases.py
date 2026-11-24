@@ -121,10 +121,9 @@ def test_cli_alias_commands(world):
 
 
 def test_an_alias_the_name_check_already_finds_is_left_out(world, capsys):
-    """In play the GM gave 'Saint Ayo's' the alias "Ayo's" (titles are ignored, so
-    the name check finds it already), and "the Underpass" to The Underpass; each
-    refusal threw away a whole opening. Since 2026-11-20 the record is made without
-    it, with a note."""
+    """An alias the name check finds already ("Ayo's" for Saint Ayo's: titles are
+    ignored; "the Underpass" for The Underpass) is left out with a note, and the
+    record is made: a refusal would throw away a whole opening."""
     ws, camp = world
     assert LocationManager(ws).add_location("Saint Ayo's", "a clinic", "A clinic.",
                                             aliases=["Ayo's", "the clinic"])

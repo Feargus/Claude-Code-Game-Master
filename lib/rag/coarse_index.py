@@ -3,7 +3,7 @@
 Coarse chapter index — points INTO the retained book text, it is not the fidelity.
 
 Its only job is to find the right CHAPTER, which the long-context reader then
-loads in full. By meaning when it can (2026-11-16): the book's indexed pieces
+loads in full. By meaning when it can: the book's indexed pieces
 (vector_store.py) closest to the question vote for the chapters they come from, so
 no extra index is needed and a chapter longer than the model reads is no problem.
 By keywords (word overlap, no model) when the campaign's book has no index or

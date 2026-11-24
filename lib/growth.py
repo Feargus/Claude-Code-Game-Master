@@ -7,8 +7,8 @@ The rules (gm-growth has the GM's side):
   You learn at the edge of your ability; a walkover or a hopeless attempt teaches
   nothing. Reaching skill N costs 3 × N learnings and grants 10 × N XP. An
   untrained skill (not on the sheet, rolled at −3) is learned first: reaching 0
-  costs 3 learnings and grants 10 XP, the same as reaching 1 (decided 2026-11-18:
-  simple, if too easy for brain surgery). So an untrained skill never holds 3
+  costs 3 learnings and grants 10 XP, the same as reaching 1 (simple, if too easy
+  for brain surgery). So an untrained skill never holds 3
   learnings, and a level-up that makes it 0 (`gm-player.sh grow`) leaves fewer
   than 1 needs.
 - XP: from skill gains, defeated enemies (wounds² × 10) and achievements

@@ -442,7 +442,7 @@ def test_the_presence_command(borant, ops, dcc_world):
     assert bad.returncode == 1 and bad.stderr.startswith("[ERROR]")
 
 
-# ---------- found in the review (2026-11-19) ----------
+# ---------- found in the review ----------
 
 def test_a_dead_leader_is_marked_and_the_successor_named(borant, ops, dcc_world):
     from lib.factions import succession

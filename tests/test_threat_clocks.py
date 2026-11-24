@@ -167,8 +167,8 @@ def test_a_time_clock_is_not_advanced_by_hand(dcc_world):
 
 
 def test_clocks_are_listed_most_urgent_first():
-    """Full first, then time clocks by due time, then event clocks, fullest first;
-    the brief and gm-clock.sh used to list them in the order they were made."""
+    """Full first, then time clocks by due time, then event clocks, fullest first,
+    in the brief and gm-clock.sh alike (not in the order they were made)."""
     from lib.threat_clocks import ThreatClockManager
     clocks = {
         "Foreclosure": {"current": 3, "max": 4, "advance_on": "time", "due_at": "2187-10-27T04:30"},
@@ -232,7 +232,7 @@ def test_rewording_a_clock_keeps_its_name_and_its_progress(dcc_world):
 
 
 def test_an_event_clock_refuses_a_due_time(dcc_world):
-    """An event clock silently dropped --due/--due-in (2026-11-22): the GM would
+    """An event clock silently dropped --due/--due-in: the GM would
     believe in a deadline that never comes."""
     tcm = ThreatClockManager(dcc_world)
     with pytest.raises(ValueError, match="Only a time clock has a due time"):

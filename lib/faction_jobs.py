@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Jobs and asks: what the faction bag gives the character to do (decided 2026-11-21).
+"""Jobs and asks: what the faction bag gives the character to do.
 
 A **job** is a faction's: one of each faction's 4 bag tokens is a job token
 (`job:<id>`). Drawn, it is owed like a turn; the GM plays it by offering the

@@ -1,4 +1,4 @@
-"""The budget (lib/rule_budget.py, 2026-11-17, step 9): a fixed amount split among
+"""The budget (lib/rule_budget.py): a fixed amount split among
 named parts, all of it at once; each part's effects run once per `per` units; spent
 until refilled, by hand or each period."""
 

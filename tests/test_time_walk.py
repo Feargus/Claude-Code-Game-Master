@@ -1,5 +1,5 @@
-"""When things next change by themselves (lib/time_walk.py, 2026-11-18, step 1 of
-"Time stops at the first event"): each source says when it next changes, and that
+"""When things next change by themselves (lib/time_walk.py): each source says when
+it next changes, and that
 is the moment the time step first changes it."""
 
 from datetime import datetime, timedelta

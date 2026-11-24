@@ -58,7 +58,7 @@ class WorldTick:
         if not str(d.get("fact") or d.get("text") or "").strip():
             raise WorldTickError(f"{where} needs a \"fact\": what happened off-screen")
         if "category" in d:
-            raise WorldTickError(f"{where}: facts have no category any more; leave "
+            raise WorldTickError(f"{where}: a fact has no category; leave "
                                  f"\"category\" out.")
         if "plots" in d:
             raise WorldTickError(f"{where}: the field is \"plot\" (one name, or a list), "
@@ -115,7 +115,7 @@ class WorldTick:
         Returns one entry per development: {"text", "fact", and "consequence" /
         "clock" when it set one up}. Raises WorldTickError and keeps nothing if
         any part is malformed or refused. `cap` is advisory: all apply, and
-        anything past it is named in a note (and `last_overflow`).
+        anything past it is kept in `last_overflow` (the CLI names it).
         """
         self.last_overflow = []
         if not enabled or not developments:
@@ -124,8 +124,6 @@ class WorldTick:
 
         if len(applied) > cap:
             self.last_overflow = applied[cap:]
-            names = ", ".join(a["text"] for a in self.last_overflow)
-            print(f"[NOTE] More than the cap of {cap}; also applied: {names}")
 
         log = self.json_ops.load_json(self.log_file) or {"ticks": []}
         log["ticks"].append({
@@ -188,7 +186,7 @@ class WorldTick:
                                      plots=plots,
                                      holders=as_list(d.get("holders")),
                                      truth=d.get("truth"), version_of=d.get("version_of"),
-                                     at=d.get("at"), auto_at=False)
+                                     at=d.get("at"), auto_at=False, first_line=False)
                 if not fid:
                     raise WorldTickError(f"development {i + 1}: the fact could not be saved")
                 written["facts"].append(fid)
@@ -263,6 +261,8 @@ def main():
     history          show all ticks
     """
     import argparse
+    import contextlib
+    import io
     import json
 
     from cli_output import emit_error
@@ -290,19 +290,24 @@ def main():
             sys.exit(emit_error(str(error)))
         if not isinstance(devs, list):
             sys.exit(emit_error("developments must be a JSON list"))
+        report = io.StringIO()                    # each fact's lines, after the first line
         try:
-            applied = wt.apply(devs, cap=args.cap)
+            with contextlib.redirect_stdout(report):
+                applied = wt.apply(devs, cap=args.cap)
         except WorldTickError as error:
             sys.exit(emit_error(f"{str(error).rstrip('.')}. Nothing from this tick was kept."))
-        if not applied:
-            print("[WORLD TICK] nothing applied")
-        for a in applied:
-            extra = "".join(f", {k} {a[k]}" for k in ("consequence", "clock") if a.get(k))
-            print(f"[WORLD TICK] {a['fact']}{extra}: {a['text']}")
+        made = ["".join([a["fact"]] + [f" and {k} {a[k]}" for k in ("consequence", "clock")
+                                         if a.get(k)]) for a in applied]
+        print(f"[SUCCESS] Applied {'; '.join(made)}" if made else "[SUCCESS] Nothing to apply")
+        if wt.last_overflow:
+            print(f"[NOTE] More than the cap of {args.cap}: "
+                  f"{', '.join(a['fact'] for a in wt.last_overflow)} too")
+        print(report.getvalue(), end="")
         wt.check(applied)
     elif args.action == "rollback":
         ok = wt.rollback_last()
-        print("[WORLD TICK] rolled back last tick" if ok else "[WORLD TICK] nothing to roll back")
+        print("[SUCCESS] Rolled back the last world tick" if ok
+              else "[SUCCESS] Nothing to do: there is no world tick to roll back")
         if not ok:
             sys.exit(1)
     else:

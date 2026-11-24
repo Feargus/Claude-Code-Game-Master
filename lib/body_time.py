@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The character's body and luck recover as game time passes (decided 2026-11-21).
+"""The character's body and luck recover as game time passes.
 
 Every missing point comes back on a half-life: within a time Δt it does with
 probability 1 − 2^(−Δt/T). That is memoryless, so one long time step and many short

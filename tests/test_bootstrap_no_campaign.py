@@ -174,7 +174,7 @@ def test_a_broken_resolver_that_still_prints_cannot_produce_a_path(tmp_path):
     )
     output = result.stdout + result.stderr
     assert result.returncode != 0, output
-    assert "could not derive a campaign slug" in output, output
+    assert "Could not derive a campaign slug" in output, output
     assert (tmp_path / "world-state" / "campaigns" / "keeper").is_dir(), output
 
 

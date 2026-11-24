@@ -1,4 +1,4 @@
-"""The roll (lib/rule_roll.py, 2026-11-17, step 4): dice plus named amounts, and
+"""The roll (lib/rule_roll.py): dice plus named amounts, and
 optionally a holder's value of a counter, read from a list of results; its effects
 run every time it is rolled. It keeps nothing."""
 

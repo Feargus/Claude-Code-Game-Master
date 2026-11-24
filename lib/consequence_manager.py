@@ -31,8 +31,8 @@ class ConsequenceManager(EntityManager):
     A consequence is in one of three states:
       waiting    in `active`, no `fired`: its triggers are checked;
       fired      in `active`, with `fired` (why, and when in the game): it happened
-                 and is to be played out. It matches no trigger any more, so it
-                 fires once, whatever its triggers and however long it stays;
+                 and is to be played out. It matches no trigger, so it fires
+                 once, whatever its triggers and however long it stays;
       resolved   moved to `resolved`: played out.
     `rearm` puts a fired one back to waiting (the moment was wrong).
     """
@@ -693,7 +693,7 @@ class ConsequenceManager(EntityManager):
         data = self.json_ops.load_json(self.consequences_file)
         target, error = self._find_active(data, consequence_id)
         if not target:
-            print(f"[ERROR] {error}")
+            print(f"[ERROR] {error}", file=sys.stderr)
             return False
 
         resolved = None
@@ -715,7 +715,7 @@ class ConsequenceManager(EntityManager):
                 print(f"[SUCCESS] Resolved: {resolved['consequence']}")
                 return True
         else:
-            print(f"[ERROR] Consequence '{consequence_id}' not found")
+            print(f"[ERROR] Consequence '{consequence_id}' not found", file=sys.stderr)
 
         return False
 

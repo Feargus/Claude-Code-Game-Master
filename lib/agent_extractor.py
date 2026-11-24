@@ -5,9 +5,8 @@ document's text kept in source/, the RAG index (vectors/) that gm-search.sh and
 gm-enhance.sh read, and chunk files the extractor agents read for the World
 Index (/import, Step 5.5).
 
-Upstream also merged the agents' full records into the campaign (merge, save,
-review: the "census"). That is gone (2026-11-11): records are made when play
-walks toward someone, with gm-npc.sh create.
+No records are made from the book here: they are made when play walks toward
+someone, with gm-npc.sh create.
 """
 
 import json

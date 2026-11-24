@@ -131,7 +131,7 @@ def test_gm_extract_fails_loudly_when_the_slug_helper_cannot_run(tmp_path):
 
     result = run_clean(script, "Keeper")
     assert result.returncode != 0
-    assert "could not derive a campaign slug" in result.stderr
+    assert "Could not derive a campaign slug" in result.stderr
     assert (tmp_path / "world-state" / "campaigns" / "keeper").is_dir()
 
 

@@ -4,7 +4,7 @@
 One JSON object, applied all-or-nothing through the same functions play uses, so
 everything it makes is an ordinary record afterwards: places, NPCs, the scene
 list, a plot, facts, clocks, consequences. Nothing is kept as a separate "pack"
-that could go stale (it replaced upstream's play pack, 2026-11-08). Run it once,
+that could go stale. Run it once,
 after the character exists and the player has said where and when to start.
 
   {"time": "2187-10-25 19:00",                       optional: the start, as gm-time.sh set

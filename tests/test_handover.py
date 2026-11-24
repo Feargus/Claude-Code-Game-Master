@@ -1,7 +1,7 @@
 """Handing the story to another character (handover.py): what a person knows
 stays theirs. The outgoing character becomes an NPC with their facts; a canon
-character takes the NPC's facts as the player's (2026-11-11: a canon start used
-to leave everything the NPC knew with the NPC record)."""
+character takes the NPC's facts as the player's, so nothing they knew stays with
+the NPC record."""
 
 import json
 import re
@@ -118,7 +118,7 @@ def test_the_interview_example_saves(camp):
 
 def test_the_plots_follow_the_people(camp):
     """A takeover moved facts and consequences but left the plots on the old NPC, who
-    then showed among the plot's sketches (todo.md, 2026-11-18)."""
+    then showed among the plot's sketches (todo.md)."""
     ws, directory = camp
     assert CharacterCreator().create({"identity": {"name": "Lullaby"}})["success"]
     (directory / "plots.json").write_text(json.dumps({

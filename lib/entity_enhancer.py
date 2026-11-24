@@ -112,7 +112,7 @@ class EntityEnhancer:
                 self._embedder = get_embedder()
                 return self._embedder is not None
             except ImportError as e:
-                print(f"[ERROR] RAG components not available: {e}")
+                print(f"[ERROR] RAG components not available: {e}", file=sys.stderr)
                 return False
             except ValueError:
                 # No active campaign to point the store at — RAG simply off.
@@ -221,7 +221,8 @@ class EntityEnhancer:
 
         # Check if vector store has data
         if self._vector_store.count() == 0:
-            print("[INFO] Vector store is empty - import a document first")
+            print("[ERROR] The book search has nothing to search: import a book first (/import).",
+                  file=sys.stderr)
             return []
 
         results = self._vector_store.query_by_text(
@@ -285,7 +286,8 @@ class EntityEnhancer:
 
         # Check if vector store has data
         if self._vector_store.count() == 0:
-            print("[INFO] Vector store is empty - import a document first")
+            print("[ERROR] The book search has nothing to search: import a book first (/import).",
+                  file=sys.stderr)
             return []
 
         passages = []
@@ -433,13 +435,13 @@ class EntityEnhancer:
 
         filename = filename_map.get(entity_type)
         if not filename:
-            print(f"[ERROR] Unknown entity type: {entity_type}")
+            print(f"[ERROR] Unknown entity type: {entity_type}", file=sys.stderr)
             return False
 
         # Load current data
         data = self.json_ops.load_json(filename)
         if entity_name not in data:
-            print(f"[ERROR] Entity '{entity_name}' not found in {filename}")
+            print(f"[ERROR] Entity '{entity_name}' not found in {filename}", file=sys.stderr)
             return False
 
         entity = data[entity_name]

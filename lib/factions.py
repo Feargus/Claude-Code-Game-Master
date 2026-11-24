@@ -265,7 +265,7 @@ class FactionManager:
 
     def _into_bag(self, fid: str) -> None:
         """A new faction gets its full share of the faction bag at once, as if it had
-        been there from the start (decided 2026-11-19): 3 tokens of its own, 1 job token
+        been there from the start: 3 tokens of its own, 1 job token
         and 2 blanks. A bag never drawn yet holds them already (its start is built from
         the factions)."""
         import faction_rules

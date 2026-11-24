@@ -1,4 +1,4 @@
-"""The world's rules (lib/world_rules.py, 2026-11-17): rules defined once in
+"""The world's rules (lib/world_rules.py): rules defined once in
 ruleset.json, values per holder in rule-state.json. Step 1: counters, holders,
 known and hidden, the command."""
 

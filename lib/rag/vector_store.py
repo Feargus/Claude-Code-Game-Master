@@ -13,9 +13,8 @@ Pi 4: some 15 minutes for a novel. A search before it is done uses the pieces
 embedded so far, and says how far it is.
 
 A search compares the question with every piece directly; a few thousand pieces
-take milliseconds, so no database is needed (this replaced chromadb, 2026-11-16).
-Distances are cosine distances (1 - similarity), as chromadb's were, so the
-thresholds that read them (entity_enhancer.py) stay as they were.
+take milliseconds, so no database is needed. Distances are cosine distances
+(1 - similarity), the scale the thresholds that read them use (entity_enhancer.py).
 
     vector_store.py index <campaign folder>     the background job
     vector_store.py wait <campaign folder>      wait (up to 9 minutes) until it is done

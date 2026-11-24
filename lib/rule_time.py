@@ -12,7 +12,7 @@
                                                             tipping point)
 
 With `toward`, the sign of `by` belongs to the point, not to up or down: + pulls,
-- pushes, 0 holds (decided 2026-11-18). So an effect `rate_of` that adds -2 to a
+- pushes, 0 holds. So an effect `rate_of` that adds -2 to a
 pull of 1 turns it into a push: the crowd has tipped over.
     "rate": {"share": 0.5, "every": "1d", "toward": 0}      half the way to 0 a day,
                                                             at least 1 (8 → 4 → 2 → 1 → 0)

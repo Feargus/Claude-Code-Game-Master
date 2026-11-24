@@ -23,10 +23,9 @@ class SessionManager(EntityManager):
     # under overview.preferences; surfaced in get_full_context so the GM honors it.
     # `beat_length` picks the pacing line. Same storage + surfacing.
     # `rag_inspiration` makes the GM pull source passages every beat or so for
-    # grounded narration detail rather than improvising from memory. Currently
-    # disabled by default (2026-11-08: the campaigns have no book text, so each
-    # search was wasted); re-enable with "rag_inspiration": true here or in a
-    # campaign's overview.preferences.
+    # grounded narration detail rather than improvising from memory. Off by default
+    # (a campaign without a book has nothing to search); on with
+    # "rag_inspiration": true here or in a campaign's overview.preferences.
     DEFAULT_PREFERENCES = {"action_menu": True,
                            "beat_length": "adaptive", "rag_inspiration": False}
 

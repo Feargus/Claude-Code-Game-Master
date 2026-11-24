@@ -1,16 +1,13 @@
-"""Tests for persist-path-hotfixes.
+"""The persist path:
 
-Unrelated leaks on the persist path, fixed together:
-
-1. `gm-note.sh` / `gm-time.sh` resolved both their Python module and `world-state`
-   against the caller's working directory, so they blew up (and dropped a stray
-   `world-state/` behind them) whenever the GM ran them from anywhere but the
-   project root.
-2. `kill` still marks a character dead (the corpse guard went with `modify_hp`).
+1. `gm-note.sh` / `gm-time.sh` find their Python module and `world-state` from the
+   project, whatever the caller's working directory, and leave no stray
+   `world-state/` behind.
+2. `kill` marks a character dead.
 
 The wrapper tests run the real scripts against a fixture campaign built under
 tmp_path, with GM_WORLD_STATE_BASE pointing the whole tool layer at it, so an
-interrupted run can no longer leave the player pointing at a deleted fixture.
+interrupted run can't leave the player pointing at a deleted fixture.
 The single exception is the unpinned foreign-cwd test, which needs the default
 resolution to be under test and so reads (only reads) the live tree.
 """

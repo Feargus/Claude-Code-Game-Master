@@ -1,5 +1,5 @@
-"""Semantic recall's groundwork: the embedder and the store kept up to date
-(step 12a and 12b, 2026-11-15). The fake embedder stands in for the model, so
+"""Semantic recall's groundwork: the embedder and the store kept up to date.
+The fake embedder stands in for the model, so
 the suite needs neither the packages nor the model; one test uses the real
 model when it is installed."""
 

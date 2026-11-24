@@ -1,5 +1,5 @@
-"""The header (lib/header.py, gm-session.sh header): one line printed from the records,
-decided 2026-11-21. Always the place and the time; the date and credits when they
+"""The header (lib/header.py, gm-session.sh header): one line printed from the records.
+Always the place and the time; the date and credits when they
 changed since it was last shown (or --full); the worst wound still healing; a
 level-up due."""
 

@@ -1,8 +1,7 @@
 """The player's commands take no name: a campaign has one player character.
 
-The name used to be an optional first argument that was ignored, so
-`gm-player.sh credits +50` read "+50" as the name, showed the balance and
-exited 0: the GM believed the money had moved.
+So `gm-player.sh credits +50` moves the money, rather than reading "+50" as a
+name and showing the balance with exit 0 (the GM would believe the money had moved).
 """
 
 import json

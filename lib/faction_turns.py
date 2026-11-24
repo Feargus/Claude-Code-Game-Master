@@ -21,8 +21,8 @@ Simple actions (numbers only, never a cost):
     push       a rival's presence there: margin -3 or worse nothing, -2..+2 -1, +3 -2
 Complex actions (the GM records their facts and narrates what leaves a trace; they
 cost 2 of the power used, 3 if they fail; a margin below 0 fails). One that succeeds
-for the faction's plot moves its plan clock one segment (decided 2026-11-20, in place
-of Prepare and Enact): it counts for the faction's own open plot, or the one named in
+for the faction's plot moves its plan clock one segment: it counts for the faction's
+own open plot, or the one named in
 "plot", and for none with "plot": "none". A full plan clock fires its consequence,
 the plan's success, like any clock's.
     strike     a rival's presence there: 0..+1 -1, +2..+3 -2, +4 or better -3
@@ -276,7 +276,7 @@ def apply(json_ops, results: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-# ---------- relations (decided 2026-11-21) ----------
+# ---------- relations ----------
 #
 # A hostile action that succeeds costs the Relation of the two factions 1 (a push,
 # strike or seizure against the rival, a kidnapping of someone it protects, an

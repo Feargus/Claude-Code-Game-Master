@@ -77,7 +77,7 @@ class PDFExtractor:
                         text.append(page_text)
                         text.append("\n\n")
                 except Exception as e:
-                    print(f"Error extracting page {page_num}: {e}")
+                    print(f"[NOTE] Page {page_num} can't be read and is left out: {e}")
 
         return ''.join(text)
 
@@ -97,7 +97,7 @@ class PDFExtractor:
                         text.append(page_text)
                         text.append("\n\n")
                 except Exception as e:
-                    print(f"Error extracting page {page_num + 1}: {e}")
+                    print(f"[NOTE] Page {page_num + 1} can't be read and is left out: {e}")
 
         return ''.join(text)
 
@@ -181,7 +181,7 @@ class DocxExtractor:
             return ''.join(text)
 
         except Exception as e:
-            print(f"Error extracting Word document: {e}")
+            print(f"[NOTE] The Word document can't be read as one ({e}); read as plain text")
             return self._basic_extract(filepath)
 
     def _basic_extract(self, filepath: str) -> str:
@@ -284,7 +284,7 @@ def main():
         print(content[:500])
         print("-" * 50)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)
 
 

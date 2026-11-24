@@ -16,9 +16,8 @@ from lib.consequence_manager import ConsequenceManager
 
 
 def test_a_consequence_fires_once(dcc_world):
-    """Fired is a state: it matches no trigger any more. It used to fire again
-    whenever the time of day changed at the same place, and to be reported as
-    "already fired here" at every time step until it was resolved."""
+    """Fired is a state: it matches no trigger, so it doesn't fire again when the
+    time of day changes at the same place, nor is it reported at every time step."""
     cm = ConsequenceManager(dcc_world)
     scene = {"location": "Floor 3 - The Over City", "time": "day", "present_npcs": [], "events": []}
     first = cm.tick(scene)
@@ -36,7 +35,7 @@ def test_a_consequence_fires_once(dcc_world):
 
 def test_one_of_several_triggers_fires_it_for_good(dcc_world):
     """"At the junction, or when the clock runs out": after the junction, the
-    clock no longer fires it a second time."""
+    clock doesn't fire it a second time."""
     from lib.threat_clocks import ThreatClockManager
     tcm = ThreatClockManager(dcc_world)
     tcm.add_clock("Patience", 1, advance_on="event")

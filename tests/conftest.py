@@ -35,7 +35,7 @@ def isolated_world_state(tmp_path, monkeypatch):
     resolve to, so wrappers run via subprocess (which inherit the environment)
     and managers constructed without a directory both land here. Tests that
     exercise the real wrappers use this instead of mutating the live
-    world-state — a killed or parallel run can no longer de-select the player's
+    world-state, so a killed or parallel run can't de-select the player's
     campaign or leave fixture campaigns behind.
     """
     base = tmp_path / "world-state"

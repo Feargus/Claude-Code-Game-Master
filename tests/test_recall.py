@@ -1,4 +1,4 @@
-"""Recall by meaning: gm-note.sh find --like (step 12c, 2026-11-15). The fake
+"""Recall by meaning: gm-note.sh find --like. The fake
 embedder stands in for the model: texts that share words count as close."""
 
 import subprocess
@@ -177,7 +177,7 @@ def test_before_the_opening_nothing_is_checked(dcc_world, monkeypatch):
     assert npcs.create_npc("The Fence", "a one-eyed fence who buys stolen crawler loot", nowhere=True)
 
 
-# ---------- the check as a fact is recorded (recall_notes.py, 2026-11-22) ----------
+# ---------- the check as a fact is recorded (recall_notes.py) ----------
 
 def test_a_new_fact_names_the_plot_and_the_person_it_looks_like(dcc_world, monkeypatch, capsys):
     import recall_notes
@@ -247,7 +247,7 @@ def test_without_the_model_a_fact_is_refused(dcc_world, monkeypatch, capsys):
 
 
 def test_a_confident_plot_and_person_are_linked_at_once_with_the_undo(dcc_world, monkeypatch, capsys):
-    """From CONFIDENT a plot or a person is linked, not suggested (2026-11-22)."""
+    """From CONFIDENT a plot or a person is linked, not suggested."""
     import recall_notes                       # as note_manager imports it
     from lib.npc_manager import NPCManager
     from lib.plot_manager import PlotManager

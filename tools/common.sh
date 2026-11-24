@@ -12,7 +12,7 @@ find_python() {
     elif command -v python >/dev/null 2>&1; then
         echo "python"
     else
-        echo "Error: No Python interpreter found. Please install Python 3.11+" >&2
+        echo "[ERROR] No Python interpreter found: install Python 3.11+." >&2
         exit 1
     fi
 }
@@ -162,21 +162,9 @@ else
     NC=''
 fi
 
-# Status output functions
-success() {
-    echo -e "${GREEN}[SUCCESS] $1${NC}"
-}
-
+# An error, on standard error (docs/conventions/output.md)
 error() {
     echo -e "${RED}[ERROR] $1${NC}" >&2
-}
-
-warning() {
-    echo -e "${YELLOW}[WARNING] $1${NC}" >&2
-}
-
-info() {
-    echo -e "${BLUE}[INFO] $1${NC}"
 }
 
 # Approximate token count from character count (rule of thumb: ~4 chars/token)
@@ -210,24 +198,6 @@ log_token_usage() {
         "$command_name" \
         "$*" >> "$usage_log"
 }
-
-# Check if required environment variables are set
-check_env() {
-    local var_name="$1"
-    local var_value="${!var_name}"
-    if [ -z "$var_value" ]; then
-        warning "$var_name not set in environment"
-        return 1
-    fi
-    return 0
-}
-
-# Load .env file if it exists
-if [ -f "$PROJECT_ROOT/.env" ]; then
-    set -a
-    source "$PROJECT_ROOT/.env"
-    set +a
-fi
 
 # One command at a time per campaign. Every command reads the campaign's files,
 # changes them and writes them back, so two running at once would both start

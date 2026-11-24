@@ -306,8 +306,7 @@ class PlayerManager(EntityManager):
             return {'success': True, 'name': char_name, 'credits': current}
         new = current + amount
         if new < 0:
-            # Refused: this used to set the credits to 0 and report the whole sum
-            # as spent, so the GM narrated a purchase the character couldn't pay.
+            # Refused, so the GM never narrates a purchase the character can't pay.
             return self._refuse(f"{char_name} has {current} {self._money()}, not the {abs(amount)} "
                                 f"this would spend. Nothing was spent.")
         possessions['credits'] = new

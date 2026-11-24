@@ -101,8 +101,8 @@ def test_firing_keeps_stdout_parseable(dcc_world, capsys):
 
 
 def test_the_clocks_consequence_fires_at_once_and_does_not_wait(dcc_world):
-    """It used to be saved with a free-text trigger, i.e. waiting on an event that
-    had already happened; every fact recorded afterwards asked about it."""
+    """Not saved to wait for a fact: the event has happened, and every fact recorded
+    afterwards would ask about it."""
     m = ThreatClockManager(dcc_world)
     m.add_clock("Doom", 2, advance_on="event", consequence=DOOM)
     m.advance("Doom")

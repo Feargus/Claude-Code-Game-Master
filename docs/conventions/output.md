@@ -142,12 +142,9 @@ files. A new idea gets its word here before it is used.
 
 ## Where we are (2026-11-24)
 
-- Markers still in the code that this retires: `[WARNING]` and `[INFO]` (become `[CHECK]`
-  or `[NOTE]`), `[WORLD TICK]` (becomes `[FIRED]`, or nothing when
-  nothing happened), `FACTION TURNS OWED` (the brief) and `Do now:`
-  (`[DO]`).
+- Markers still in the code that this retires: `FACTION TURNS OWED` (the brief) and
+  `Do now:` (`[DO]`).
 - Semantic recall's lines after a fact carry no marker yet, but for an earlier fact it may
   repeat (they become `[CHECK]` for a consequence it may trigger, `[NOTE]` for a link it
   made, `[CHECK]` for a suggestion).
 - The hiding marks are today's (the table above).
-- `Error:` instead of `[ERROR]`, and `[ERROR]` on standard output: `todo.md` → Review.

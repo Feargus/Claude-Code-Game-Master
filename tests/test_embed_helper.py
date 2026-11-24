@@ -1,4 +1,4 @@
-"""The helper process that keeps the model loaded (embed_helper.py, 2026-11-15).
+"""The helper process that keeps the model loaded (embed_helper.py).
 It serves the fake embedder here, on a socket of the test's own."""
 
 import time

@@ -389,7 +389,7 @@ def main() -> int:
     try:
         print(run(args))
     except BodyError as error:
-        print(f"Error: {error}", file=sys.stderr)
+        print(f"[ERROR] {error}", file=sys.stderr)
         return 1
     return 0
 

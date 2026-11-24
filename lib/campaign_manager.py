@@ -149,7 +149,7 @@ class CampaignManager:
                         "level": (char.get("progress") or {}).get("level", 0)
                     }
                 except (OSError, json.JSONDecodeError) as e:
-                    print(f"[WARNING] Could not read character for {campaign_dir.name}: {e}", file=sys.stderr)
+                    print(f"[ERROR] Can't read character.json of {campaign_dir.name}: {e}", file=sys.stderr)
 
             campaigns.append(campaign_info)
 
@@ -159,11 +159,10 @@ class CampaignManager:
         """Where this Claude Code session keeps the campaign it switched to.
 
         Two sessions playing different campaigns would otherwise switch the one
-        shared active campaign under each other (2026-11-15: Salt Roads' /gm end
-        found Idle Cycles active). Claude Code gives each session an id
+        shared active campaign under each other. Claude Code gives each session an id
         (CLAUDE_CODE_SESSION_ID); `switch` records the campaign under it, and
         this session reads its own. Without an id, or before a switch, the
-        shared active-campaign.txt counts, as before."""
+        shared active-campaign.txt counts."""
         sid = os.environ.get("CLAUDE_CODE_SESSION_ID", "").strip()
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", sid):
             return None
@@ -201,7 +200,7 @@ class CampaignManager:
         name = self._resolve_name(name)
         campaign_path = self.campaigns_dir / name
         if not campaign_path.is_dir():
-            print(f"[ERROR] Campaign '{name}' does not exist")
+            print(f"[ERROR] Campaign '{name}' does not exist", file=sys.stderr)
             return False
 
         try:
@@ -214,7 +213,7 @@ class CampaignManager:
             print(f"[SUCCESS] Active campaign set to: {name}")
             return True
         except OSError as e:
-            print(f"[ERROR] Failed to set active campaign: {e}")
+            print(f"[ERROR] Failed to set active campaign: {e}", file=sys.stderr)
             return False
 
     @staticmethod
@@ -239,7 +238,7 @@ class CampaignManager:
         campaign_path = self.campaigns_dir / safe_name
 
         if campaign_path.exists():
-            print(f"[ERROR] Campaign '{safe_name}' already exists")
+            print(f"[ERROR] Campaign '{safe_name}' already exists", file=sys.stderr)
             return None
 
         try:
@@ -253,7 +252,7 @@ class CampaignManager:
             print(f"[SUCCESS] Created campaign: {safe_name}")
             return campaign_path
         except OSError as e:
-            print(f"[ERROR] Failed to create campaign: {e}")
+            print(f"[ERROR] Failed to create campaign: {e}", file=sys.stderr)
             # Clean up on failure
             if campaign_path.exists():
                 shutil.rmtree(campaign_path)
@@ -269,13 +268,12 @@ class CampaignManager:
         campaign_path = self.campaigns_dir / name
 
         if not campaign_path.is_dir():
-            print(f"[ERROR] Campaign '{name}' does not exist")
+            print(f"[ERROR] Campaign '{name}' does not exist", file=sys.stderr)
             return False
 
         if not confirm:
-            print(f"[WARNING] This will permanently delete campaign '{name}'")
-            print(f"  Path: {campaign_path}")
-            print("  Use confirm=True to proceed")
+            print(f"[ERROR] Deleting {name} ({campaign_path}) can't be undone: add --confirm. "
+                  f"Nothing was deleted.", file=sys.stderr)
             return False
 
         try:
@@ -287,7 +285,7 @@ class CampaignManager:
             print(f"[SUCCESS] Deleted campaign: {name}")
             return True
         except OSError as e:
-            print(f"[ERROR] Failed to delete campaign: {e}")
+            print(f"[ERROR] Failed to delete campaign: {e}", file=sys.stderr)
             return False
 
     def get_campaign_path(self, name: str = None) -> Path | None:
@@ -326,14 +324,14 @@ class CampaignManager:
         if name is None:
             name = self.get_active()
             if name is None:
-                print("[ERROR] No active campaign set")
+                print("[ERROR] No active campaign set", file=sys.stderr)
                 return None
         else:
             name = self._resolve_name(name)
 
         campaign_path = self.campaigns_dir / name
         if not campaign_path.is_dir():
-            print(f"[ERROR] Campaign '{name}' does not exist")
+            print(f"[ERROR] Campaign '{name}' does not exist", file=sys.stderr)
             return None
 
         info = {
@@ -349,7 +347,7 @@ class CampaignManager:
                 with open(overview_file, encoding='utf-8') as f:
                     info["overview"] = json.load(f)
             except (OSError, json.JSONDecodeError) as e:
-                print(f"[WARNING] Could not read campaign overview for {name}: {e}", file=sys.stderr)
+                print(f"[ERROR] Can't read campaign-overview.json of {name}: {e}", file=sys.stderr)
 
         # Read character
         char_file = campaign_path / "character.json"
@@ -358,7 +356,7 @@ class CampaignManager:
                 with open(char_file, encoding='utf-8') as f:
                     info["character"] = json.load(f)
             except (OSError, json.JSONDecodeError) as e:
-                print(f"[WARNING] Could not read character for {name}: {e}", file=sys.stderr)
+                print(f"[ERROR] Can't read character.json of {name}: {e}", file=sys.stderr)
 
         # Count NPCs, locations, etc.
         for filename in ["npcs.json", "locations.json", "facts.json"]:
@@ -370,7 +368,7 @@ class CampaignManager:
                     if isinstance(data, (dict, list)):
                         info[filename.replace('.json', '_count')] = len(data)
                 except (OSError, json.JSONDecodeError) as e:
-                    print(f"[WARNING] Could not read {filename} for {name}: {e}", file=sys.stderr)
+                    print(f"[ERROR] Can't read {filename} of {name}: {e}", file=sys.stderr)
 
         return info
 

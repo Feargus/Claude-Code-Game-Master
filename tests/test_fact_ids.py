@@ -82,8 +82,8 @@ def test_everything_but_the_text_is_given_by_name(dcc_world):
 
 
 def test_a_file_by_category_is_refused_with_the_reason(dcc_world):
-    """The form used until 2026-11-16. Those campaigns were retired, not converted;
-    the command says so instead of failing somewhere inside."""
+    """Facts kept by category don't load, and the command says so instead of
+    failing somewhere inside."""
     old = {"lore": [{"id": "f1", "fact": "The moon is a ship."}], "session_events": []}
     _save(dcc_world, "facts.json", old)
     with pytest.raises(fact_file.FactsError, match="by category"):

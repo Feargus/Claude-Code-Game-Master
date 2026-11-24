@@ -83,8 +83,7 @@ def test_the_ladder_climbs_by_itself(dcc_world):
 
 def test_a_consequence_that_tells_does_not_set_itself_off_again(dcc_world):
     """`anyone learns f` with an effect that tells f on: it has fired when its own
-    telling is learned, so the chain ends there (it used to fire a second time
-    and find everyone knowing already)."""
+    telling is learned, so the chain ends there."""
     fid = _secret(dcc_world)
     cm = ConsequenceManager(dcc_world)
     gossip = cm.add_consequence("Gossip spreads", "y", trigger_type="on_learn",

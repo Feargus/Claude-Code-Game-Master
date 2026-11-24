@@ -23,7 +23,7 @@ require_campaign() {
         campaign_name=$(get_active_campaign)
     fi
     if [ -z "$campaign_name" ]; then
-        echo "Error: No campaign specified and no active campaign found." >&2
+        echo "[ERROR] No campaign specified and no active campaign found." >&2
         echo "  Name one: bash tools/gm-extract.sh $verb <campaign-name>" >&2
         echo "  Or activate one: bash tools/gm-campaign.sh switch <campaign-name> (or run /gm)" >&2
         return 1
@@ -44,7 +44,7 @@ campaign_dir() {
     # a caller mistake, not "no such campaign".
     case "$1" in
         */*|.|..)
-            echo "Error: a campaign is a folder name, not a path: $1" >&2
+            echo "[ERROR] A campaign is a folder name, not a path: $1" >&2
             return 1
             ;;
     esac
@@ -60,7 +60,7 @@ campaign_dir() {
             echo "  See what exists: bash tools/gm-campaign.sh list" >&2
             return 3
         fi
-        echo "Error: could not derive a campaign slug from: $1" >&2
+        echo "[ERROR] Could not derive a campaign slug from: $1" >&2
         echo "  ($PYTHON_CMD could not run lib/campaign_manager.py — run /setup if the venv is missing)" >&2
         return 1
     fi
@@ -101,7 +101,7 @@ prepare_document() {
     local campaign_name="$2"
 
     if [ -z "$document" ]; then
-        echo "Error: Document path required"
+        echo "[ERROR] Document path required" >&2
         show_usage
         exit 1
     fi
@@ -120,7 +120,7 @@ prepare_document() {
             elif [ -f "$PROJECT_ROOT/$document" ]; then
                 document="$PROJECT_ROOT/$document"
             else
-                echo "Error: File not found: $document"
+                echo "[ERROR] File not found: $document" >&2
                 echo "  Looked in: $CALLER_PWD/$document"
                 echo "  Looked in: $PROJECT_ROOT/$document"
                 exit 1
@@ -129,16 +129,13 @@ prepare_document() {
     esac
 
     if [ ! -f "$document" ]; then
-        echo "Error: File not found: $document"
+        echo "[ERROR] File not found: $document" >&2
         exit 1
     fi
 
     # The book search embeds with semantic recall's model (lib/embedder.py)
     if ! $PYTHON_CMD "$LIB_DIR/embedder.py" status 2>/dev/null | grep -q "Semantic recall: ready"; then
-        echo "Error: the book search needs semantic recall."
-        echo ""
-        echo "Install with: uv sync"
-        echo "  then:       bash tools/gm-recall.sh setup   (the model, 217 MB)"
+        echo "[ERROR] The book search needs semantic recall: uv sync, then bash tools/gm-recall.sh setup (the model, 217 MB)." >&2
         exit 1
     fi
 
@@ -185,7 +182,7 @@ clean_temp() {
         real_target=$(cd "$CAMPAIGN_DIR" 2>/dev/null && pwd -P) || real_target=""
         real_campaigns=$(cd "$CAMPAIGNS_DIR" && pwd -P)
         if [ -z "$real_target" ] || [ "$(dirname "$real_target")" != "$real_campaigns" ]; then
-            echo "Error: refusing to clean a path outside $CAMPAIGNS_DIR: $CAMPAIGN_DIR" >&2
+            echo "[ERROR] Refusing to clean a path outside $CAMPAIGNS_DIR: $CAMPAIGN_DIR" >&2
             exit 1
         fi
 
