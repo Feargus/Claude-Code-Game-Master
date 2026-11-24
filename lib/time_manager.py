@@ -186,7 +186,8 @@ class TimeManager:
         next (time_walk.py): at each, the time is set, the time clocks move, the
         world's rules move, and the consequences are checked, so that each sees the
         time at which it happens. What each moment did is kept in `self.moments`
-        ({"at", "clocks", "rules", "fired", "stops"}).
+        ({"at", "clocks", "rules", "fired", "stops"}); `self.fired_before` holds the
+        ids of the consequences that had fired already and weren't resolved.
 
         Time stops at the first moment with something to play now (time_stops.py),
         before the end: `self.stopped` is that moment, `self.end` where the step
@@ -208,6 +209,8 @@ class TimeManager:
         self.start, self.end, self.stopped = before, end, None
         self.resting = resting and not on_the_way
         self.moments, self.rule_changes, moved = [], [], {}
+        from consequence_manager import unresolved
+        self.fired_before = {c.get("id") for c in unresolved(self.json_ops)}
         moment = before
         for _ in range(MAX_MOMENTS):
             nxt = time_walk.next_moment(self.world_state_dir, self.json_ops, moment)
@@ -291,6 +294,10 @@ def print_moments(manager: "TimeManager", on_the_way: bool = False, going_to: st
         for report in m["rules"]:
             print("\n".join(world_rules.report_lines(manager.json_ops, report)))
         print_fired(m["fired"])
+    from consequence_manager import unresolved_lines
+    left = unresolved_lines(manager.json_ops, manager.fired_before)
+    if left:
+        print("\n" + "\n".join(left))
     import faction_rules
     owed = faction_rules.owed_lines(manager.json_ops)
     if owed:
@@ -365,6 +372,8 @@ def main(argv) -> int:
             if manager.stopped and flags["on_the_way"]:
                 return 3                    # stopped on the way: gm-session.sh doesn't move
         elif action == "set" and value:
+            from consequence_manager import unresolved
+            before = {c.get("id") for c in unresolved(manager.json_ops)}
             moved = manager.set_time(parse_time(value))
             print(f"Time set: {describe(manager.get_game_time())}")
             print_clocks(moved)
@@ -373,6 +382,9 @@ def main(argv) -> int:
             with contextlib.redirect_stdout(sys.stderr):
                 result = ConsequenceManager(manager.world_state_dir).tick_from_session()
             print_fired(result['fired'])
+            from consequence_manager import unresolved_lines
+            for line in unresolved_lines(manager.json_ops, before):
+                print(line)
         elif action == "show" and not value:
             moment = manager.get_game_time()
             print(f"Time: {describe(moment)}" if moment else

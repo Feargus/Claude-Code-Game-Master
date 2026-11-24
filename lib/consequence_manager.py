@@ -899,6 +899,26 @@ def fired_lines(c: dict[str, Any], indent: str = "  ") -> list[str]:
             + [f"{indent}  {line}" for line in c.get('effects_done') or []])
 
 
+def unresolved(json_ops) -> list[dict[str, Any]]:
+    """The consequences that fired and aren't resolved yet."""
+    store = json_ops.load_json("consequences.json") or {}
+    return [c for c in (store.get('active', []) if isinstance(store, dict) else [])
+            if c.get('fired')]
+
+
+def unresolved_lines(json_ops, before) -> list[str]:
+    """After time passes: each consequence that had fired before it passed (the ids
+    in `before`) and still isn't resolved. Played out and not resolved, or not
+    played at all: the GM judges which."""
+    lines = []
+    for c in unresolved(json_ops):
+        if c.get('id') in before:
+            text = str(c.get('consequence', '?')).strip().rstrip('.')
+            lines += [f"[CHECK] {c['id']} fired and isn't resolved: {text}",
+                      f"  Play it out; once it is: bash tools/gm-consequence.sh resolve {c['id']}"]
+    return lines
+
+
 def print_fired(fired: list[dict[str, Any]]) -> None:
     """The consequences that just fired, as fired_lines."""
     for c in fired or []:

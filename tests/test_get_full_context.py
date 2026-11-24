@@ -89,13 +89,12 @@ def test_pending_consequences_render_real_text_not_unknown(dcc_world):
     assert "Unknown -> triggers" not in ctx
 
 
-def test_only_consequences_a_fact_triggers_or_that_fired_are_listed(dcc_world):
-    """The scripts fire the rest themselves and print them then (decided 2026-11-22):
-    listing every waiting one, nine clock warnings in the Long Hull, said nothing to
-    play. A fired one is to be played out, with the command that closes it."""
+def test_the_brief_lists_only_consequences_a_fact_triggers(dcc_world):
+    """The scripts fire the rest themselves and print them then; one that fired and
+    isn't resolved comes back when time passes (test_time.py), not in the brief."""
     from lib.consequence_manager import ConsequenceManager
     cm = ConsequenceManager(dcc_world)
-    waits = cm.add_consequence(
+    cm.add_consequence(
         "The bouncer remembers", "when Carl is back at the club",
         triggers=[{"type": "on_location", "match": "Floor 2 Junction"},
                   {"type": "on_npc", "match": "Mordecai"}])
@@ -103,13 +102,12 @@ def test_only_consequences_a_fact_triggers_or_that_fired_are_listed(dcc_world):
                                trigger_type="on_fact", match="someone trips the wire")
     cm.fire(fired, reason="Carl did")
     ctx = _context(dcc_world)
-    assert "The bouncer remembers" not in ctx and waits[:4] not in ctx
-    assert (f"  [FIRED] {fired} The alarm wakes the floor — Carl did\n"
-            f"    Once played out: bash tools/gm-consequence.sh resolve {fired}") in ctx
+    assert "The bouncer remembers" not in ctx and "The alarm wakes the floor" not in ctx
 
 
-def test_the_location_card_lists_only_what_fired_here(dcc_world):
-    """A consequence still waiting here isn't listed: the move fires it by itself."""
+def test_the_location_card_lists_no_consequences(dcc_world):
+    """One waiting here fires by itself on a move; one that fired comes back when
+    time passes."""
     from pathlib import Path
 
     from lib.cards import Cards
@@ -119,9 +117,6 @@ def test_the_location_card_lists_only_what_fired_here(dcc_world):
     cm = ConsequenceManager(dcc_world)
     cid = cm.add_consequence("Hekla's patrol arrives", "Carl comes back here",
                              triggers=[{"type": "on_location", "match": "Warehouse Street Level"}])
-    card = "\n".join(Cards(ops).location_card("Warehouse Street Level"))
-    assert "Hekla's patrol arrives" not in card
+    assert "Hekla's patrol arrives" not in "\n".join(Cards(ops).location_card("Warehouse Street Level"))
     cm.fire(cid, reason="Carl came back")
-    card = "\n".join(Cards(ops).location_card("Warehouse Street Level"))
-    assert (f"[FIRED] {cid} Hekla's patrol arrives — Carl came back\n"
-            f"  Once played out: bash tools/gm-consequence.sh resolve {cid}") in card
+    assert "Hekla's patrol arrives" not in "\n".join(Cards(ops).location_card("Warehouse Street Level"))

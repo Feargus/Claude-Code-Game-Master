@@ -187,7 +187,7 @@ def test_move_takes_time_then_moves_and_checks_consequences_once(dcc_world, brid
     overview = _overview(dcc_world)
     assert overview["game_time"] == "2187-10-26T23:30"
     assert overview["player_position"]["current_location"] == "The Old Spine Bridge"
-    assert result.stdout.count("[FIRED] ") == 2         # on arrival, and on the place card
+    assert result.stdout.count("[FIRED] ") == 1                    # on arrival only
 
 
 def test_move_without_takes_lets_no_time_pass(dcc_world, bridge):
@@ -236,3 +236,18 @@ def test_reading_the_game_time(dcc_world):
     TimeManager(dcc_world).set_time(parse_time("2187-10-26 04:30"))
     assert stored_time(ops) == "2187-10-26T04:30"
     assert current_time(ops) == datetime(2187, 10, 26, 4, 30)
+
+
+def test_a_fired_consequence_comes_back_each_time_time_passes(dcc_world):
+    _gm_time(dcc_world, "set", "2187-10-26 22:00")
+    cm = ConsequenceManager(dcc_world)
+    old = cm.add_consequence("Mordecai calls Carl over", "x", trigger_type="on_fact", match="x")
+    cm.fire(old, reason="the GM")
+    new = cm.add_consequence("The lights go out", trigger_type="on_time", match="midnight")
+    out = _gm_time(dcc_world, "advance", "2h", "--through").stdout
+    assert (f"[CHECK] {old} fired and isn't resolved: Mordecai calls Carl over\n"
+            f"  Play it out; once it is: bash tools/gm-consequence.sh resolve {old}") in out
+    assert f"[FIRED] {new} The lights go out" in out and f"[CHECK] {new}" not in out
+    assert f"[CHECK] {new} fired and isn't resolved" in _gm_time(dcc_world, "advance", "1m").stdout
+    cm.resolve(old)
+    assert f"[CHECK] {old}" not in _gm_time(dcc_world, "advance", "1m").stdout

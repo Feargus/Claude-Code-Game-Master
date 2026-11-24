@@ -125,10 +125,10 @@ class Cards:
 
     # ---------- the location card ----------
 
-    def location_card(self, location: str, waiting: bool = True) -> list[str]:
+    def location_card(self, location: str, plots: bool = True) -> list[str]:
         """The place as recorded: description, exits, who is usually here, and
-        (with `waiting`) what fired here and is still to be played out; then the
-        facts that fit the scene best, those the character knows and those they don't."""
+        (with `plots`) the open plots that involve it; then the facts that fit the
+        scene best, those the character knows and those they don't."""
         from session_manager import SessionManager
         place = self.locations.get(location)
         moment = current_time(self.json_ops)
@@ -152,8 +152,8 @@ class Cards:
         if usual:
             lines.append(f"Usually found here, not in the scene: {', '.join(usual)} "
                          f"(if one is actually here: bash tools/gm-scene.sh enter \"<name>\")")
-        if waiting:
-            lines += self._waiting_here(location)
+        if plots:
+            lines += self._plots_of(f"location:{location}", "Plots here")
         import world_rules
         lines += [f"Rule here: {line}" for line in world_rules.holder_lines(self.json_ops, f"location:{location}")]
         # Not only the facts of the place: whatever fits the scene best, the place's
@@ -179,22 +179,6 @@ class Cards:
         lines += self._fact_list(f"fits here, {self.player} doesn't know", hidden,
                                  f'{like} --hidden --at "{location}"', hidden_is_given=True,
                                  location=location, name_shown=False)
-        return lines
-
-    def _waiting_here(self, location: str) -> list[str]:
-        """The consequences that fired at this place and are still to be played
-        out, and the open plots that involve it. Those still waiting here aren't
-        listed: the move fires them by itself (decided 2026-11-22)."""
-        from consequence_manager import fired_lines
-        lines = []
-        lid = f"location:{location}".lower()
-        store = self.json_ops.load_json("consequences.json") or {}
-        for c in store.get("active", []) if isinstance(store, dict) else []:
-            if c.get("fired") and any(
-                    isinstance(t, dict) and t.get("type") == "on_location"
-                    and str(t.get("match", "")).lower() == lid for t in c.get("triggers") or []):
-                lines += fired_lines(c, indent="")
-        lines += self._plots_of(f"location:{location}", "Plots here")
         return lines
 
     def _plots_of(self, cid: str, label: str) -> list[str]:
@@ -300,11 +284,11 @@ class Cards:
 
     # ---------- the whole scene ----------
 
-    def scene(self, waiting: bool = True) -> list[str]:
+    def scene(self, plots: bool = True) -> list[str]:
         """The location card, then a card for everyone present."""
         pos = self.overview.get("player_position") or {}
         location = pos.get("current_location", "") if isinstance(pos, dict) else ""
-        lines = self.location_card(location, waiting=waiting)
+        lines = self.location_card(location, plots=plots)
         present = npcs_present(self.npcs, location, self.overview.get("scene"))
         for name in present:
             lines += [""] + self.npc_card(name)

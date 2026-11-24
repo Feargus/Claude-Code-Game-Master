@@ -13,7 +13,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 import facts as fact_file
-from consequence_manager import fact_trigger, fired_lines, sentence, then_line
+from consequence_manager import fact_trigger, sentence, then_line
 from entity_manager import is_party_member
 from note_manager import fact_text
 from threat_clocks import ThreatClockManager
@@ -206,22 +206,20 @@ class Brief:
         return ["", "--- IN NO PLOT ---"] + body if body else []
 
     def _belongings(self, belongs, more_hint: str, unplotted: bool = False) -> list[str]:
-        """The lines under one plot: its clocks, its waiting consequences, and
-        what the character doesn't know of it, what fits the scene first.
+        """The lines under one plot: its clocks, the consequences waiting for a
+        recorded fact, and what the character doesn't know of it, what fits the scene first.
         `belongs(plots)` says whether a record with that `plots` list is in it."""
         lines = []
         clocks = {n: c for n, c in (self.json_ops.load_json("threat-clocks.json") or {}).items()
                   if isinstance(c, dict) and belongs(c.get("plots") or [])}
         lines += _clock_lines(clocks)
-        # Fired ones are to be played out; of the waiting ones only those a recorded
-        # fact triggers, which the GM must recognise (the scripts fire the others
-        # themselves, and print them then). Decided 2026-11-22.
+        # Only those a recorded fact triggers, which the GM must recognise: the
+        # scripts fire the others themselves and print them then; one that fired
+        # and isn't resolved comes back each time time passes (time_manager.py).
         for c in self._open_consequences():
-            if not belongs(c.get("plots") or []):
+            if not belongs(c.get("plots") or []) or c.get("fired"):
                 continue
-            if c.get("fired"):
-                lines += fired_lines(c)
-            elif fact_trigger(c):
+            if fact_trigger(c):
                 lines += [f"  {c['id']} waits for: {sentence(fact_trigger(c))}",
                           then_line(c)]
         unknown = self._scene().rank([f for f in self._facts_newest_first()
@@ -370,11 +368,11 @@ class Brief:
 
     def _section_scene(self) -> list[str]:
         """The scene as cards (lib/cards.py): the place, then everyone present.
-        Facts printed in an earlier section are named by id. What waits at the
-        place is under its plot above."""
+        Facts printed in an earlier section are named by id. The place's plots
+        are in PLOTS above."""
         from cards import Cards
         cards = Cards(self.json_ops, shown_ids=self.shown_ids, shown_texts=self.shown_texts)
-        lines = cards.scene(waiting=False)
+        lines = cards.scene(plots=False)
         self.shown_ids |= cards.shown                  # LATEST leaves out what the cards printed
         return (["", "--- THE SCENE (play the people as their cards say; they know only "
                      f"what is on their card or shared with {self._character_name()}) ---"]

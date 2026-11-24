@@ -55,13 +55,11 @@ structurally incapable of carrying the payload.
 
 A consequence fires **once**. Firing writes `fired` (the reason, the real time, the game
 time, the fact that set it off) onto it and leaves it in `active`; from then on it matches
-no trigger, whatever its triggers and however long it stays. The brief lists it as `FIRED`
-until `gm-consequence.sh resolve` moves it to `resolved`. `gm-consequence.sh rearm` removes
+no trigger, whatever its triggers and however long it stays. Each time time passes
+(`gm-time.sh advance` and `set`, `gm-session.sh move --takes`) it is listed again as a
+`[CHECK]`, until `gm-consequence.sh resolve` moves it to `resolved`. `gm-consequence.sh rearm` removes
 `fired`, so it waits again (the moment was wrong, or it should happen once more); what its
 effects did stays done.
-
-Until 2026-11-16 firing only stamped the scene (`last_fired_key`), so an unresolved
-consequence fired again when the time of day changed, or when a second trigger matched.
 
 ## The log of firings
 
