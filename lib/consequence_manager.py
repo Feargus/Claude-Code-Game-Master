@@ -186,11 +186,7 @@ class ConsequenceManager(EntityManager):
         data['active'].append(consequence)
 
         if self.json_ops.save_json(self.consequences_file, data):
-            then = describe_effects(effects)
-            print(f"[SUCCESS] Added consequence {consequence_id}: {description} "
-                  f"(waits for: {when_words(consequence, self.json_ops)}"
-                  f"{'; when it fires, ' + then if then else ''})"
-                  + (" (off-screen: it doesn't stop time)" if offscreen else ""))
+            print(f"[SUCCESS] Added consequence {consequence_id}")
             if ignored:
                 kinds = ", ".join(dict.fromkeys(t['type'] for t in triggers))
                 print(f"[NOTE] Trigger text ignored: {kinds} needs none.")

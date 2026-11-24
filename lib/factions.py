@@ -589,9 +589,9 @@ def _cmd_asset(m, args):
 
 
 def _cmd_tie(m, args):
-    fid, other, before = m.tie(args.faction, args.other, args.text)
-    what = f"sees {other}: {' '.join(args.text.split())}" if args.text.strip() else f"has no tie to {other} now"
-    print(f"[SUCCESS] faction:{fid} {what}" + (f" (was: {before})" if before else ""))
+    fid, other, _ = m.tie(args.faction, args.other, args.text)
+    print(f"[SUCCESS] How faction:{fid} sees {other} is updated" if args.text.strip()
+          else f"[SUCCESS] faction:{fid} has no tie to {other} now")
 
 
 def _cmd_leave(m, args):

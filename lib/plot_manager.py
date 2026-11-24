@@ -377,16 +377,15 @@ class PlotManager(EntityManager):
 
 def _suggest_facts(key: str) -> None:
     """After gm-plot.sh add: the recorded facts that look part of the new plot."""
-    from note_manager import NoteManager, fact_line
+    from note_manager import NoteManager, fact_text
     from recall import suggest_for_plot
     result = suggest_for_plot(NoteManager(), key)
     if not result["facts"]:
         return
-    how = "by meaning" if result["method"] == "meaning" else "by shared words"
-    print(f"Facts that may be part of it ({how}, best first); link one with "
-          f'bash tools/gm-note.sh plot <id> --add "{key}":')
     for f in result["facts"]:
-        print("  " + fact_line(f) + (f"  [in: {', '.join(f['plots'])}]" if f.get("plots") else ""))
+        print(f"[CHECK] {f['id']} may be part of it: {fact_text(f)}"
+              + (f" (in {', '.join(f['plots'])})" if f.get("plots") else ""))
+        print(f'  If it is: bash tools/gm-note.sh plot {f["id"]} --add "{key}"')
 
 
 def main() -> int:
@@ -437,8 +436,8 @@ def main() -> int:
                       f"consequence with --plot \"{key}\".")
             _suggest_facts(key)
         elif args.action == "stands":
-            key, before = m.set_stands(args.key, args.stands)
-            print(f"[SUCCESS] {key} stands: {args.stands}" + (f" (was: {before})" if before else ""))
+            key, _ = m.set_stands(args.key, args.stands)
+            print(f"[SUCCESS] Where {key} stands is updated")
         elif args.action == "involve":
             have = m.involve(args.key, args.ids, args.remove)
             print(f"{m.key(args.key)} involves: {', '.join(have) or 'nobody yet'}")

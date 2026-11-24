@@ -134,6 +134,6 @@ def test_wrapper_raise_and_perk(campaign):
     def run(*words):
         return subprocess.run(["bash", str(REPO / "tools" / "gm-player.sh"), *words],
                               capture_output=True, text=True, env=os.environ)
-    assert "RAISED Fearghas AGI: d11 -> d12" in run("raise", "attribute", "AGI").stdout
+    assert run("raise", "attribute", "AGI").stdout == "[SUCCESS] AGI is d12 now\n"
     assert run("raise", "power", "AGI").returncode != 0
-    assert "PERK Fearghas gained" in run("perk", "Grip", "+1 Athletics when climbing").stdout
+    assert run("perk", "Grip", "+1 Athletics when climbing").stdout == "[SUCCESS] Added perk Grip\n"

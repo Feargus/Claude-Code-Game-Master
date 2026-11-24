@@ -439,11 +439,8 @@ def main():
                               consequence=args.consequence, plots=args.plots,
                               text=args.text, due_at=due_at, due_in_minutes=due_in)
             key = m._find(m.get_clocks(), args.name)
-            text = [f"[SUCCESS] Clock {line(key, out)}"]
-            if out.get("plots"):
-                text.append(f"  plot: {', '.join(out['plots'])}")
-            if out.get("consequence"):
-                text.append(f"  When full: {out['consequence']}")
+            due = ThreatClockManager.due_text(out)        # computed: news to the GM
+            text = [f"[SUCCESS] Added clock {key}" + (f" ({due[2:]})" if due else "")]
         elif args.action == "advance":
             out = m.advance(args.name, args.ticks)
             if out is None:

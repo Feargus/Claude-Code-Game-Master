@@ -8,6 +8,8 @@ A campaign has one player character, so no command takes a name: they all work
 on the active one.
 """
 
+import contextlib
+import io
 import json
 import sys
 from pathlib import Path
@@ -38,12 +40,12 @@ class PlayerManager(EntityManager):
     def _sheet(self) -> dict[str, Any] | None:
         char = self._load_character()
         if not char:
-            print("[ERROR] No character yet. Create one: gm-player.sh create")
+            print("[ERROR] No character yet. Create one: gm-player.sh create", file=sys.stderr)
         return char
 
     @staticmethod
     def _refuse(message: str) -> dict[str, Any]:
-        print(f"[ERROR] {message}")
+        print(f"[ERROR] {message}", file=sys.stderr)
         return {'success': False, 'error': message}
 
     # ---------- showing ----------
@@ -116,7 +118,7 @@ class PlayerManager(EntityManager):
                  reason: str = "") -> dict[str, Any]:
         """Book XP (growth.add_xp: logged in xp.log). XP only makes growth due;
         the level rises when it is applied (`grow`) at a quiet moment. Prints
-        XP_GAIN, and GROWTH_DUE for the GM when a level has become due."""
+        the XP in all, and a [DO] when a level has become due."""
         from growth import add_xp
         char = self._sheet()
         if not char:
@@ -125,10 +127,10 @@ class PlayerManager(EntityManager):
         if not self._save_character(char):
             return {'success': False}
         char_name = sheet_mod.name(char)
-        print(f"XP_GAIN {char_name} gained {amount} XP ({result['total']} in all)")
+        print(f"[SUCCESS] {result['total']} XP in all")
         if result['due']:
-            print(f"GROWTH_DUE {result['due']} level(s): at the next quiet moment (rest, sleep, "
-                  f"time alone), see gm-growth. Don't tell the player.")
+            print(f"[DO] Growth due ({result['due']} level{'s' if result['due'] > 1 else ''}): at "
+                  f"the next quiet moment (rest, sleep, time alone), gm-growth. Don't tell the player.")
         return {'success': True, 'name': char_name, 'xp_gained': int(amount),
                 'current_xp': result['total'], 'growth_due': result['due']}
 
@@ -155,7 +157,7 @@ class PlayerManager(EntityManager):
         now, current, due = level(char), xp_total(char), growth_due(char)
         print(f"{sheet_mod.name(char)} - Level {now}")
         print(f"XP: {current}/{next_level_xp(char)}")
-        print(f"GROWTH_DUE {due} level(s)" if due else
+        print(f"Growth due: {due} level{'s' if due > 1 else ''} (gm-growth)" if due else
               f"Next level in: {next_level_xp(char) - current} XP")
         return {'name': sheet_mod.name(char), 'level': now, 'current_xp': current,
                 'next_level_xp': next_level_xp(char), 'growth_due': due}
@@ -197,9 +199,8 @@ class PlayerManager(EntityManager):
             table[key] = new = 0 if old is None else max(old, 0) + 1
         if not self._save_character(char):
             return {'success': False}
-        shown = f"d{old} -> d{new}" if kind == 'attribute' else (
-            f"{old} -> {new}" if old is not None else f"new, {new}")
-        print(f"RAISED {sheet_mod.name(char)} {key}: {shown}")
+        print(f"[SUCCESS] {key} is d{new} now" if kind == 'attribute' else
+              f"[SUCCESS] {key} is {new} now")
         return {'success': True, 'kind': kind, 'name': key, 'previous': old, 'current': new}
 
     def set_perk(self, perk: str, function: str) -> dict[str, Any]:
@@ -213,7 +214,7 @@ class PlayerManager(EntityManager):
         perks[key] = function
         if not self._save_character(char):
             return {'success': False}
-        print(f"PERK {sheet_mod.name(char)} {'updated' if replaced else 'gained'} {key}: {function}")
+        print(f"[SUCCESS] {'Rewrote' if replaced else 'Added'} perk {key}")
         return {'success': True, 'perk': key, 'function': function, 'replaced': replaced}
 
     def grow(self, attribute: str, skills: list[str], perk: str, effect: str) -> dict[str, Any]:
@@ -263,9 +264,9 @@ class PlayerManager(EntityManager):
         if not self._save_character(char):
             return {'success': False}
         log_growth(self.campaign_dir, char, "; ".join(changes))
-        print(f"GROWN {sheet_mod.name(char)} to level {level(char)}: " + "; ".join(changes))
+        print(f"[SUCCESS] {sheet_mod.name(char)} is level {level(char)} now")
         if growth_due(char):
-            print(f"GROWTH_DUE {growth_due(char)} more level(s): run grow again with new choices.")
+            print(f"[DO] Growth due ({growth_due(char)} more): run grow again with new choices.")
         return {'success': True, 'level': level(char), 'changes': changes}
 
     # ---------- death ----------
@@ -288,14 +289,14 @@ class PlayerManager(EntityManager):
             status['cause'] = cause
         if not self._save_character(char):
             return {'success': False}
-        print(f"DEATH {char_name} has died.")
-        if cause:
-            print(f"Cause: {cause}")
-        print("STATUS: DEAD")
-
         from note_manager import NoteManager
-        fact_id = NoteManager(self.base_dir).add_fact(
-            f"{char_name} (the player character) died" + (f": {cause}" if cause else "."))
+        report = io.StringIO()                    # the fact's lines, after the first line
+        with contextlib.redirect_stdout(report):
+            fact_id = NoteManager(self.base_dir).add_fact(
+                f"{char_name} (the player character) died" + (f": {cause}" if cause else "."),
+                first_line=False)
+        print(f"[SUCCESS] {char_name} is dead" + (f" ({fact_id})" if fact_id else ""))
+        print(report.getvalue(), end="")
         from consequence_manager import ConsequenceManager
         fired = ConsequenceManager(self.base_dir).fire_event(
             'on_death', 'player', f"{char_name} died" + (f" ({cause})" if cause else ""))
@@ -328,22 +329,17 @@ class PlayerManager(EntityManager):
         possessions['credits'] = new
         if not self._save_character(char):
             return {'success': False}
-        if amount > 0:
-            print(f"CREDITS_GAINED {char_name} gained {amount} {self._money()}!")
-        elif amount < 0:
-            print(f"CREDITS_SPENT {char_name} spent {abs(amount)} {self._money()}!")
-        print(f"{self._money().capitalize()}: {new}")
+        print(f"[SUCCESS] {new} {self._money()} now")
         return {'success': True, 'name': char_name, 'credits_change': amount,
                 'current_credits': new}
 
     def item(self, action: str, place: str | None = None, name: str | None = None,
              concealed: bool = False, note: str = "") -> dict[str, Any]:
-        """add (to gear or inventory), remove (by name, either place), move (to the
-        other place), list."""
+        """add (to gear or inventory), remove (by name, from `place` or either), move
+        (to the other place), list."""
         char = self._sheet()
         if not char:
             return {'success': False}
-        char_name = sheet_mod.name(char)
         try:
             if action == 'list':
                 for where in sheet_mod.ITEM_PLACES:
@@ -353,10 +349,10 @@ class PlayerManager(EntityManager):
                 return {'success': True, 'items': char.get('items', {})}
             if action == 'add':
                 entry = sheet_mod.add_item(char, place, name, concealed, note)
-                message = f"ITEM_ADDED {char_name} {place}: {sheet_mod._item_text(entry)}"
+                message = f"[SUCCESS] Added \"{entry['name']}\" to {place}"
             elif action == 'remove':
-                entry = sheet_mod.remove_item(char, name)
-                message = f"ITEM_REMOVED {char_name} {entry['place']}: {entry['name']}"
+                entry = sheet_mod.remove_item(char, name, place)
+                message = f"[SUCCESS] Removed \"{entry['name']}\" from {entry['place']}"
             elif action == 'move':
                 entry = sheet_mod.remove_item(char, name)
                 target = place or ('inventory' if entry['place'] == 'gear' else 'gear')
@@ -365,7 +361,7 @@ class PlayerManager(EntityManager):
                     moved['concealed'] = True
                 sheet_mod.add_item(char, target, moved['name'], moved.get('concealed', False),
                                    moved.get('note', ''))
-                message = f"ITEM_MOVED {char_name} {entry['name']}: {entry['place']} -> {target}"
+                message = f"[SUCCESS] Moved \"{entry['name']}\" to {target}"
             else:
                 return self._refuse(f"Unknown item action '{action}': add, remove, move or list.")
         except sheet_mod.SheetError as error:
@@ -391,12 +387,8 @@ class PlayerManager(EntityManager):
             possessions['credits'] = before + credit_amount
         if not self._save_character(char):
             return {'success': False}
-        print(f"LOOT {sheet_mod.name(char)} received (into the inventory):")
-        if credit_amount > 0:
-            print(f"  + {credit_amount} {self._money()}")
-        for entry in items:
-            print(f"  + {entry}")
-        print(f"{self._money().capitalize()}: {before} -> {possessions.get('credits', before)}")
+        print("[SUCCESS] Loot into the inventory"
+              + (f"; {possessions['credits']} {self._money()} now" if credit_amount else ""))
         return {'success': True, 'items_added': items, 'credits_added': credit_amount,
                 'total_credits': possessions.get('credits', before)}
 
@@ -439,7 +431,7 @@ def _int(text: str, what: str) -> int:
     try:
         return int(str(text).replace('+', ''))
     except ValueError:
-        print(f"[ERROR] Invalid {what}: {text}")
+        print(f"[ERROR] Invalid {what}: {text}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -544,17 +536,23 @@ def main():
         place = None
         if args.item_action == 'add':
             if len(words) != 2 or words[0] not in sheet_mod.ITEM_PLACES:
-                print('[ERROR] item add gear|inventory "<item>" [--concealed] [--note "..."]')
+                print('[ERROR] Usage: gm-player.sh item add gear|inventory "<item>" '
+                      '[--concealed] [--note "..."]', file=sys.stderr)
                 sys.exit(1)
             place, words = words[0], words[1:]
+        elif args.item_action == 'remove' and len(words) == 2 and words[0] in sheet_mod.ITEM_PLACES:
+            place, words = words[0], words[1:]
         elif args.item_action in ('remove', 'move') and len(words) != 1:
-            print(f'[ERROR] item {args.item_action} "<item>"')
+            form = ('remove [gear|inventory] "<item>"' if args.item_action == 'remove'
+                    else 'move "<item>" [--to gear|inventory]')
+            print(f'[ERROR] Usage: gm-player.sh item {form} (the item\'s name in quotes)',
+                  file=sys.stderr)
             sys.exit(1)
         result = manager.item(args.item_action, place or args.to, words[0] if words else None,
                               args.concealed, args.note)
     elif args.action == 'loot':
         if not args.items and args.credits == 0:
-            print("[ERROR] Provide --items and/or --credits")
+            print("[ERROR] Provide --items and/or --credits", file=sys.stderr)
             sys.exit(1)
         result = manager.apply_loot(args.items, args.credits)
     elif args.action == 'condition':

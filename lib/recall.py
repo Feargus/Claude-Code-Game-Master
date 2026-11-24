@@ -206,10 +206,12 @@ def print_found(result: dict, fact_line) -> None:
 
 # ---------- a new plot: which recorded facts look part of it ----------
 
-def suggest_for_plot(notes, plot_key: str, limit: int = 5) -> dict:
-    """The facts not in the plot that are closest to what it is about, best first,
-    for the GM to link. Facts about the people and
-    places it involves get the --about bonus. {"facts": [...], "method": ...}."""
+def suggest_for_plot(notes, plot_key: str, limit: int = 3) -> dict:
+    """The facts not in the plot that are closest in meaning to what it is about,
+    best first, for the GM to link: those that reach recall_notes.PLOT_NOTE (the
+    score a recorded fact needs to be offered a plot), at most `limit`. Facts about
+    the people and places it involves get the --about bonus. Without the model,
+    by shared words. {"facts": [...], "method": ...}."""
     plot = (notes.json_ops.load_json("plots.json") or {}).get(plot_key) or {}
     from embedding_store import plot_text
     text = plot_text(plot_key, plot)
@@ -228,6 +230,9 @@ def suggest_for_plot(notes, plot_key: str, limit: int = 5) -> dict:
     involved = set(plot.get("involves") or [])
     def score(f):
         return scores.get(f["id"], 0.0) + (ABOUT_BONUS if involved & set(f.get("about") or []) else 0)
+    if method == "meaning":
+        from recall_notes import PLOT_NOTE
+        facts = [f for f in facts if score(f) >= PLOT_NOTE]
     return {"facts": sorted(facts, key=score, reverse=True)[:limit], "method": method}
 
 

@@ -26,8 +26,7 @@ def test_add_with_structured_trigger(dcc_world, capsys):
     # the free text next to a structured trigger is not kept, and the GM is told
     assert "trigger" not in new
     out = capsys.readouterr().out.splitlines()
-    assert out[0].startswith("[SUCCESS] Added consequence")
-    assert "waits for: at Floor 2 Junction" in out[0]
+    assert out[0] == f"[SUCCESS] Added consequence {cid}"
     assert out[1] == "[NOTE] Trigger text ignored: on_location needs none."
     assert new["consequence"] == "Guards search the market"
 

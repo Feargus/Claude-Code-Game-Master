@@ -60,19 +60,19 @@ def test_a_clashing_alias_refuses_the_npc(world, capsys):
                        ("Lanternside", "already names location:Lanternside"),
                        ("street", "a word ids use")]:
         assert not manager.create_npc("Ishbel Rue", "x", "neutral", nowhere=True, aliases=[alias])
-        assert why in capsys.readouterr().out
+        assert why in capsys.readouterr().err
     assert "Ishbel Rue" not in json.loads((camp / "npcs.json").read_text())
 
 
 def test_creating_prints_one_line_with_the_aliases(world, capsys):
     """Creating says what was made, in one line, "(sketch)" while no look or
-    personality is given; hints wait until the record is first used (2026-11-15)."""
+    personality is given; nothing given is read back, and hints wait until the
+    record is first used."""
     ws, _ = world
     manager = NPCManager(ws)
     manager.create_npc("Sister Lacuna", "a scrub-priest", nowhere=True, aliases=["Lacuna"])
     out = capsys.readouterr().out.strip().splitlines()
-    assert out == ["[SUCCESS] Created NPC: Sister Lacuna - a scrub-priest; usually found: "
-                   "no usual place; also called Lacuna (sketch)"]
+    assert out == ["[SUCCESS] Created NPC Sister Lacuna (sketch)"]
     manager.create_npc("Tally", "a sentry", nowhere=True, fields={"physique": "small"})
     assert "(sketch)" not in capsys.readouterr().out
 
@@ -117,7 +117,7 @@ def test_cli_alias_commands(world):
     r = run("location_manager.py", "alias", "Old Iron's Yard", "the Yard")
     assert "Old Iron's Yard: also called the Yard" in r.stdout
     r = run("npc_manager.py", "alias", "Old Iron", "the Yard")
-    assert r.returncode == 1 and "already names location:Old Iron's Yard" in r.stdout
+    assert r.returncode == 1 and "already names location:Old Iron's Yard" in r.stderr
 
 
 def test_an_alias_the_name_check_already_finds_is_left_out(world, capsys):
@@ -152,7 +152,7 @@ def test_a_new_name_close_to_an_existing_one_is_refused_unless_another(world, ca
     assert ids.close_names("Grandma Seo", "npc") == ["npc:Mama Seo"]       # through the alias
     assert ids.close_names("Juniper", "npc") == [] and ids.close_names("Ilse", "location") == []
     assert not manager.create_npc("Ilse Varga", "a Hesper director")
-    out = capsys.readouterr().out
+    out = capsys.readouterr().err
     assert "close to npc:Director Ilse Varga" in out and "--another" in out
     assert 'gm-npc.sh show "Director Ilse Varga"' in out
     assert "Ilse Varga" not in json.loads((camp / "npcs.json").read_text())

@@ -129,4 +129,6 @@ def test_the_command_line_takes_a_rule_effect(ops, dcc_world):
          "--rule-effect", '{"rate_of": "Standing", "of": "Meridian", "shift": 1}'],
         capture_output=True, text=True, env=env)
     assert done.returncode == 0, done.stderr
-    assert "Standing of faction:meridian-group: point +1" in done.stdout
+    assert done.stdout.startswith("[SUCCESS] Added consequence c")
+    stored = ops.load_json("consequences.json")["active"][-1]
+    assert "Standing of faction:meridian-group: point +1" in describe_effects(stored["effects"])

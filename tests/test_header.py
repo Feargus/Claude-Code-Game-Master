@@ -66,7 +66,7 @@ def test_amounts_are_in_the_worlds_money(dcc_world, capsys):
     assert header.line(ops, full=True).endswith(" · 28 tallies")
     PlayerManager(dcc_world).modify_credits(9)
     out = capsys.readouterr().out
-    assert "gained 9 tallies" in out and "Tallies: 37" in out
+    assert out == "[SUCCESS] 37 tallies now\n"
     assert ops.load_json("character.json")["possessions"]["credits"] == 37
     bible = ops.load_json("world-bible.json")
     assert validate_bible({**bible, "currency": " "})[1][-1].startswith("currency is the word")

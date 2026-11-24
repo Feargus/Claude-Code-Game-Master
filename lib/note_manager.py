@@ -167,7 +167,7 @@ class NoteManager:
                  about=None, not_about=None, holders=None, secret: bool = False,
                  also=None, truth=None, version_of=None, at=None, nowhere: bool = False,
                  auto_at: bool = True, plots=None,
-                 when=None, by=None, in_beat: bool = False) -> str:
+                 when=None, by=None, first_line: bool = True) -> str:
         """Record a fact. Returns its id, or "" on failure. Everything but the
         text is given by name (a fact has no category any more: facts.py).
 
@@ -188,8 +188,9 @@ class NoteManager:
         time it happened ("YYYY-MM-DD HH:MM"), if earlier than now (a faction turn
         owed since it was drawn, something recorded after the fact). `by`: who said
         it (`--from`): they hold it too, and a version they tell needs them to hold
-        a version of its truth; the fact keeps the telling under `told`. `in_beat`:
-        one of a beat's facts, whose first line beat() prints for them all.
+        a version of its truth; the fact keeps the telling under `told`. `first_line`:
+        False when the caller prints the first line (a beat for all its facts, a
+        death); the [CHECK] line then names the fact.
         """
         from embedder import EmbedderError, require_embedder
         try:
@@ -255,14 +256,14 @@ class NoteManager:
         facts.append(entry)
         fact_file.save(self.json_ops, facts)
 
-        if not in_beat:
+        if first_line:
             print(f"[SUCCESS] Recorded {fact_id}")
         check_line = [f"holders: {', '.join(holder_ids) if holder_ids else 'nobody (secret)'}"]
         if about_ids:
             check_line.append(f"about: {', '.join(about_ids)}")
         if where:
             check_line.append(f"at: {where}")
-        print(f"[CHECK] {fact_id + ' ' if in_beat else ''}{'; '.join(check_line)}")
+        print(f"[CHECK] {'' if first_line else fact_id + ' '}{'; '.join(check_line)}")
         for note in version_notes:
             print(f"[NOTE] {note}")
         from consequence_manager import print_fired
@@ -816,7 +817,7 @@ class NoteManager:
                                     truth=item.get("truth"), version_of=ref or None,
                                     at=item.get("at"), nowhere=bool(item.get("nowhere")),
                                     plots=as_list(item.get("plot")), when=item.get("when"),
-                                    by=item.get("from"), in_beat=True)
+                                    by=item.get("from"), first_line=False)
             if not fid:
                 self.remove_facts(written)
                 raise ValueError("A fact was refused (see above); none of this beat was kept.")

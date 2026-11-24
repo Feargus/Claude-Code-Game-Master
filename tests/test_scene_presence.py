@@ -141,11 +141,11 @@ def test_create_without_a_usual_place(dcc_world, capsys):
     from lib.npc_manager import NPCManager
     nm = NPCManager(dcc_world)
     assert not nm.create_npc("Vex", "a fixer", "neutral", locations=["Bone Gardn"])
-    assert "did you mean: location:Bone Garden" in capsys.readouterr().out
+    assert "did you mean: location:Bone Garden" in capsys.readouterr().err
     assert not nm.create_npc("Vex", "a fixer", "neutral", locations=["Bone Garden"], nowhere=True)
     assert "Vex" not in json.loads((_cdir(dcc_world) / "npcs.json").read_text(encoding="utf-8"))
     assert nm.create_npc("Vex", "a fixer", "neutral")
-    assert "usually found: no usual place" in capsys.readouterr().out
+    assert "[SUCCESS] Created NPC Vex" in capsys.readouterr().out
     assert json.loads((_cdir(dcc_world) / "npcs.json").read_text(encoding="utf-8"))["Vex"][
         "places"] == {"usual": []}
 
@@ -154,7 +154,7 @@ def test_create_with_places_or_nowhere(dcc_world, capsys):
     from lib.npc_manager import NPCManager
     nm = NPCManager(dcc_world)
     assert nm.create_npc("Vex", "a fixer", "neutral", locations=["bone garden", "Floor 1 Stairs"])
-    assert "Created NPC: Vex" in capsys.readouterr().out
+    assert "Created NPC Vex" in capsys.readouterr().out
     assert nm.create_npc("The Voice", "lives on a chip", "neutral", nowhere=True)
     npcs = json.loads((_cdir(dcc_world) / "npcs.json").read_text(encoding="utf-8"))
     assert npcs["Vex"]["places"]["usual"] == ["Bone Garden", "Floor 1 Stairs"]
@@ -178,9 +178,9 @@ def test_tag_location_checks_names_and_keeps_order(dcc_world, capsys):
     assert nm.tag_location("Mordecai", "Bone Garden")              # already there
     assert "(no change)" in capsys.readouterr().out
     assert not nm.tag_location("Mordecai", "Bone Gardn")
-    assert "did you mean: location:Bone Garden" in capsys.readouterr().out
+    assert "did you mean: location:Bone Garden" in capsys.readouterr().err
     assert not nm.tag_location("Mordekai", "Bone Garden")
-    assert "did you mean: npc:Mordecai" in capsys.readouterr().out
+    assert "did you mean: npc:Mordecai" in capsys.readouterr().err
 
 
 def test_a_usual_place_after_nowhere(dcc_world):
@@ -199,4 +199,4 @@ def test_untag_location_matches_old_tags_loosely(dcc_world, capsys):
     assert nm.untag_location("Mordecai", "Tutorial Guild Hall")    # both spellings go
     assert _tags(dcc_world, "Mordecai") == []
     assert not nm.untag_location("Mordecai", "Bone Garden")
-    assert "has no usual place 'Bone Garden'" in capsys.readouterr().out
+    assert "has no usual place 'Bone Garden'" in capsys.readouterr().err

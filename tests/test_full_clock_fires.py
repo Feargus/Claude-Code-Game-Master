@@ -97,7 +97,7 @@ def test_firing_keeps_stdout_parseable(dcc_world, capsys):
     m.advance("Doom")
     out = capsys.readouterr()
     assert out.out.strip() == "", f"fire leaked onto stdout: {out.out!r}"
-    assert DOOM in out.err
+    assert "[SUCCESS] Added consequence" in out.err
 
 
 def test_the_clocks_consequence_fires_at_once_and_does_not_wait(dcc_world):

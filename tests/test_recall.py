@@ -161,7 +161,7 @@ def test_a_person_like_an_existing_one_is_refused_in_play(dcc_world, monkeypatch
     _open(dcc_world)
     assert not npcs.create_npc("The Fence", "a one-eyed fence who buys stolen crawler loot",
                                nowhere=True)
-    assert "reads like Vex Marrow" in capsys.readouterr().out
+    assert "reads like Vex Marrow" in capsys.readouterr().err
     assert npcs.create_npc("The Fence", "a one-eyed fence who buys stolen crawler loot",
                            nowhere=True, another=True)
     assert npcs.create_npc("Pell", "a baker of glowing bread", nowhere=True)     # nothing like it

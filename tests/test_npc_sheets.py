@@ -56,12 +56,14 @@ def test_create_needs_little_and_the_attitude_becomes_a_fact(world, capsys):
     assert NPCManager(ws).create_npc("Benno", "a handler", locations=["The Pens"])  # no attitude
     assert not NPCManager(ws).create_npc(
         "Seo", "a cook", "fond of him; feeds him for free and tells him so", locations=["The Pens"])
-    assert "one or more adjectives" in capsys.readouterr().out
+    assert "one or more adjectives" in capsys.readouterr().err
     assert NPCManager(ws).create_npc("Seo", "a cook", "Fond,  exasperated.", locations=["The Pens"])
-    assert "Seo regards Lullaby: Fond, exasperated" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    fid = out.split("; attitude ")[1].split()[0]
+    assert [f["fact"] for f in NoteManager(ws).show([fid])] == ["Fond, exasperated"]
     assert NoteManager(ws).find(held_by=["npc:Benno"]) == []
     assert not NPCManager(ws).create_npc("Bad", "x", nowhere=True, fields={"big-five": "ENTJ"})
-    assert "Big Five" in capsys.readouterr().out
+    assert "Big Five" in capsys.readouterr().err
 
 
 def test_set_items_party_and_show(world, capsys):
@@ -116,9 +118,11 @@ def test_player_set_and_item_commands(world):
     r = run("set", "--style", "a pink ribbon in a chest seam", "--big-five", "O0 C1 E-2 A2 N1")
     assert r.returncode == 0, r.stdout + r.stderr
     r = run("item", "add", "gear", "the ribbon", "--concealed")
-    assert "ITEM_ADDED Lullaby gear: the ribbon (concealed)" in r.stdout
+    assert r.stdout == '[SUCCESS] Added "the ribbon" to gear\n'
     r = run("item", "move", "ribbon")
-    assert "gear -> inventory" in r.stdout
+    assert r.stdout == '[SUCCESS] Moved "the ribbon" to inventory\n'
+    r = run("item", "remove", "gear", "ribbon")
+    assert r.returncode == 1 and r.stderr.startswith("[ERROR] No item 'ribbon' in gear.")
     r = run("loot", "--credits", "3", "--items", "scrap")
     sheet = json.loads((camp / "character.json").read_text())
     assert sheet["look"] == {"style": "a pink ribbon in a chest seam"}

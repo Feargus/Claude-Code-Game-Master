@@ -23,7 +23,7 @@ skill. The player's skills learn from close contests in the dice script, a skill
 point gained pays 10 × its value in XP, a defeated enemy wounds² × 10 (in
 `gm-combat.sh end`), an achievement 20/50/100 % of the current level
 (`gm-player.sh award --size`). Level N needs 100 × N² XP. XP only makes growth due
-(`GROWTH_DUE`, and "Growth due" in the brief); `gm-player.sh grow` applies one level at
+(a `[DO] Growth due` after the award, and "Growth due" in the brief); `gm-player.sh grow` applies one level at
 a quiet moment and checks the choice (one attribute, two skills, one perk). Every award
 goes into the campaign's `xp.log`. The progression models (milestone, resource-axis) and
 the spectacle tiers are gone.

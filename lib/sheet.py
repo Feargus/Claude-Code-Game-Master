@@ -360,12 +360,15 @@ def add_item(sheet: dict[str, Any], place: str, name: str, concealed: bool = Fal
     return entry
 
 
-def remove_item(sheet: dict[str, Any], name: str) -> dict[str, Any]:
+def remove_item(sheet: dict[str, Any], name: str, only: str | None = None) -> dict[str, Any]:
     """Remove the first item whose name matches (exactly, then as part of the name),
-    gear before inventory. Returns it with its place; SheetError if none."""
+    gear before inventory, or only in the place `only`. Returns it with its
+    place; SheetError if none."""
     wanted = str(name).strip().lower()
+    if only is not None and only not in ITEM_PLACES:
+        raise SheetError(f"An item is in {' or '.join(ITEM_PLACES)}, not '{only}'.")
     for exact in (True, False):
-        for place in ITEM_PLACES:
+        for place in [only] if only else ITEM_PLACES:
             stored = get(sheet, "items", place) or []
             for index, value in enumerate(stored):
                 entry = item(value)
@@ -374,7 +377,8 @@ def remove_item(sheet: dict[str, Any], name: str) -> dict[str, Any]:
                     del stored[index]
                     return dict(entry, place=place)
     held = [i["name"] for p in ITEM_PLACES for i in items(sheet, p)]
-    raise SheetError(f"No item '{name}'. Carried: {', '.join(held) or 'nothing'}.")
+    where = f" in {only}" if only else ""
+    raise SheetError(f"No item '{name}'{where}. Carried: {', '.join(held) or 'nothing'}.")
 
 
 # ---------- showing ----------

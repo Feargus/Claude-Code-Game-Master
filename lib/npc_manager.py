@@ -7,6 +7,8 @@ about the player, remembers or hides is not on the sheet: it is facts they hold
 (`gm-note.sh ... --holders npc:<name>`), and `show` lists them.
 """
 
+import contextlib
+import io
 import sys
 from pathlib import Path
 from typing import Any
@@ -41,7 +43,7 @@ class NPCManager(EntityManager):
         cid, error = WorldIds(self.json_ops).resolve(
             raw if raw.lower().startswith("npc:") else f"npc:{raw}")
         if error:
-            print(f"[ERROR] {error}")
+            print(f"[ERROR] {error}", file=sys.stderr)
             return ""
         return cid[4:]
 
@@ -125,33 +127,26 @@ class NPCManager(EntityManager):
                 errors.append(meaning_refusal("npc", name, hit))
         if errors:
             for error in errors:
-                print(f"[ERROR] {error}")
+                print(f"[ERROR] {error}", file=sys.stderr)
             return False
         if not self._add_entity(self.npcs_file, name, sheet):
             return False
 
         # One line. What is still missing is said where it is first needed: the
-        # NPC card when they enter, the roll that needs stats, the fact that names
-        # them while they're not in the scene.
-        where = ', '.join(places) if places else 'no usual place'
-        called = f"; also called {', '.join(sheet['identity']['aliases'])}" if aliases else ""
+        # NPC card when they enter, the roll that needs stats.
         sketch = "" if sheet.get("look") or sheet.get("personality") else " (sketch)"
-        print(f"[SUCCESS] Created NPC: {name}" + (f" - {role}" if role else "")
-              + f"; usually found: {where}{called}{sketch}")
+        feeling = f"; attitude {self._first_feeling(name, attitude)}" if attitude else ""
+        print(f"[SUCCESS] Created NPC {name}{sketch}{feeling}")
         for note in dropped:
-            print(f"  [NOTE] {note}")
-        if attitude:
-            self._first_feeling(name, attitude)
+            print(f"[NOTE] {note}")
         self._witness_hint(name)
         return True
 
-    def _first_feeling(self, name: str, attitude: str) -> None:
-        """How the NPC regards the player at first: an attitude (a flagged fact)."""
-        from note_manager import NoteManager, fact_text
-        notes = NoteManager(self.base_dir)
-        fid = notes.set_attitude(name, attitude, "player")
-        player = sheet_mod.name(self.json_ops.load_json("character.json") or {}) or "the player"
-        print(f"  Attitude {fid}: {fact_text(notes.show([fid])[0], player)}")
+    def _first_feeling(self, name: str, attitude: str) -> str:
+        """How the NPC regards the player at first: an attitude (a flagged fact).
+        Returns its id."""
+        from note_manager import NoteManager
+        return NoteManager(self.base_dir).set_attitude(name, attitude, "player")
 
     def _witness_hint(self, name: str) -> None:
         """A new NPC may have seen what happened here before they had a name (Lord
@@ -165,7 +160,7 @@ class NPCManager(EntityManager):
         except (RuntimeError, ValueError):
             return
         if here:
-            print(f"  Was {name} here for what happened before ({len(here)} fact(s) at "
+            print(f"[CHECK] Was {name} here for what happened before ({len(here)} fact(s) at "
                   f"{place[9:]})? bash tools/gm-note.sh witness \"{name}\" [--from \"YYYY-MM-DD HH:MM\"] "
                   f"(--dry-run to see what they would learn)")
 
@@ -176,14 +171,14 @@ class NPCManager(EntityManager):
         if not key:
             return False
         if not values:
-            print(f"[ERROR] Give at least one field (fields: {', '.join(sheet_mod.TEXT_FIELDS)}).")
+            print(f"[ERROR] Give at least one field (fields: {', '.join(sheet_mod.TEXT_FIELDS)}).", file=sys.stderr)
             return False
         npcs = self._npcs()
         try:
             changed = sheet_mod.set_fields(npcs[key], values)
             sheet_mod.check(npcs[key], "npc")
         except sheet_mod.SheetError as error:
-            print(f"[ERROR] {error}")
+            print(f"[ERROR] {error}", file=sys.stderr)
             return False
         if not self._save(npcs):
             return False
@@ -215,7 +210,7 @@ class NPCManager(EntityManager):
         places, errors = self._usual_places(locations)
         if errors or not places:
             for error in errors or ["Give at least one place."]:
-                print(f"[ERROR] {error}")
+                print(f"[ERROR] {error}", file=sys.stderr)
             return False
         npcs = self._npcs()
         usual = sheet_mod.section(npcs[key], "places").setdefault("usual", [])
@@ -242,7 +237,7 @@ class NPCManager(EntityManager):
         missing = [raw for raw in locations if not any(same(raw, t) for t in usual)]
         if missing:
             print(f"[ERROR] {key} has no usual place {', '.join(repr(m) for m in missing)}; "
-                  f"usually found: {', '.join(usual) or 'nowhere yet'}")
+                  f"usually found: {', '.join(usual) or 'nowhere yet'}", file=sys.stderr)
             return False
         npcs[key]["places"]["usual"] = [t for t in usual if not any(same(r, t) for r in locations)]
         if not self._save(npcs):
@@ -260,15 +255,15 @@ class NPCManager(EntityManager):
         try:
             if action == "add":
                 entry = sheet_mod.add_item(npcs[key], place, item_name, concealed, note)
-                message = f"[SUCCESS] {key} {place}: {sheet_mod._item_text(entry)}"
+                message = f"[SUCCESS] Added \"{entry['name']}\" to {key}'s {place}"
             elif action == "remove":
-                entry = sheet_mod.remove_item(npcs[key], item_name)
-                message = f"[SUCCESS] {key} no longer has {entry['name']}"
+                entry = sheet_mod.remove_item(npcs[key], item_name, place)
+                message = f"[SUCCESS] Removed \"{entry['name']}\" from {key}'s {entry['place']}"
             else:
-                print(f"[ERROR] item add|remove, not {action}")
+                print(f"[ERROR] item add|remove, not {action}", file=sys.stderr)
                 return False
         except sheet_mod.SheetError as error:
-            print(f"[ERROR] {error}")
+            print(f"[ERROR] {error}", file=sys.stderr)
             return False
         if not self._save(npcs):
             return False
@@ -301,7 +296,11 @@ class NPCManager(EntityManager):
             holders, errors = notes._holders(None, False, fact.pop("also", None))
             if not errors:                         # the dead don't hold their own death
                 fact["holders"] = [h for h in holders if h != f"npc:{key}"]
-        fact_id = notes.add_fact(f"{key} died" + (f": {cause}" if cause else "."), **fact)
+        report = io.StringIO()                    # the fact's lines, after the first line
+        with contextlib.redirect_stdout(report):
+            fact_id = notes.add_fact(f"{key} died" + (f": {cause}" if cause else "."),
+                                     first_line=False, **fact)
+        self.death_lines = report.getvalue()
         if not fact_id:
             return {'success': False, 'error': f"the death of {key} was not recorded"}
         entry = fact_file.by_id(fact_file.load(notes.json_ops), fact_id) or {}
@@ -335,7 +334,7 @@ class NPCManager(EntityManager):
             return False
         npcs = self._npcs()
         if member and is_dead(npcs[key]):
-            print(f"[ERROR] {key} is dead")
+            print(f"[ERROR] {key} is dead", file=sys.stderr)
             return False
         status = sheet_mod.section(npcs[key], "status")
         if bool(status.get("party_member")) == member:
@@ -549,7 +548,7 @@ def main():
                                        parse_pairs(args.skill, 'skill'), args.remove_skill,
                                        args.wounds)
         except (StatError, ValueError) as error:
-            print(f"[ERROR] {error}")
+            print(f"[ERROR] {error}", file=sys.stderr)
             sys.exit(1)
         print("\n".join([f"[SUCCESS] Stats of {result['name']} set"]
                         + [f"[NOTE] {line}" for line in
@@ -561,7 +560,7 @@ def main():
             key, aliases = change_aliases(manager.json_ops, "npc", args.name,
                                           args.aliases, args.remove)
         except ValueError as error:
-            print(f"[ERROR] {error}")
+            print(f"[ERROR] {error}", file=sys.stderr)
             sys.exit(1)
         print(f"{key}: also called {', '.join(aliases)}" if aliases else f"{key}: no aliases")
     elif args.action == 'tag-location':
@@ -574,9 +573,11 @@ def main():
         words = args.words
         if args.item_action == 'add':
             if len(words) != 2 or words[0] not in sheet_mod.ITEM_PLACES:
-                print('[ERROR] item "<npc>" add gear|inventory "<item>" [--concealed]')
+                print('[ERROR] item "<npc>" add gear|inventory "<item>" [--concealed]', file=sys.stderr)
                 sys.exit(1)
             ok = manager.item(args.name, 'add', words[0], words[1], args.concealed, args.note)
+        elif len(words) == 2 and words[0] in sheet_mod.ITEM_PLACES:
+            ok = manager.item(args.name, 'remove', words[0], words[1])
         else:
             ok = manager.item(args.name, 'remove', None, " ".join(words))
         if not ok:
@@ -585,10 +586,11 @@ def main():
         result = manager.kill_npc(args.name, args.cause, **death_fact(args))
         if not result.get('success'):
             sys.exit(1)
+        print(f"[SUCCESS] {result['name']} is dead ({result.get('fact')})")
+        print(manager.death_lines, end="")
         from factions import succession
         for note in succession(manager.json_ops, f"npc:{result['name']}"):
             print(f"[NOTE] {note}")
-        print(f"DEATH {result['name']} has died." + (f" Cause: {args.cause}" if args.cause else ""))
         from consequence_manager import print_fired
         print_fired(result.get('fired'))
     elif args.action == 'list':

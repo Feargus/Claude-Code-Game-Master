@@ -108,4 +108,7 @@ def test_cli_tells_flags(dcc_world):
     assert r.returncode != 0 and "go together" in (r.stdout + r.stderr)
     r = run("add", "The witness talks", "y", "--tells", fid, "--to", "Mordecai", "--to", "public")
     assert r.returncode == 0, r.stderr
-    assert f"when it fires, tells {fid} to npc:Mordecai, public" in r.stdout
+    from lib.consequence_manager import describe_effects
+    stored = json.loads((Path(dcc_world) / "campaigns" / "dungeon-crawler-carl"
+                         / "consequences.json").read_text())["active"][-1]
+    assert f"tells {fid} to npc:Mordecai, public" in describe_effects(stored["effects"])
