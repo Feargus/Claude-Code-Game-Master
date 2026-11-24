@@ -183,13 +183,32 @@ def describe(name: str, entry: dict[str, Any]) -> str:
     else:
         lines.append(f"  not listed: common skills {COMMON_VALUE}, the rest untrained −3")
     lines.append(f"  wounds: {(entry.get('body') or {}).get('wounds', '(not set)')}")
+    lines += [f"  {line}" for line in not_ready(name, entry)]
+    return "\n".join(lines)
+
+
+def saved_lines(key: str, entry: dict, warnings, create: bool) -> list[str]:
+    """After a mob is added or its stats set: the one line, then what it still
+    needs ([NOTE]: a sketch may wait) and what looks wrong ([CHECK])."""
+    if create and is_sketch(entry):               # a roll will say what it needs
+        lines = [f"[SUCCESS] Added mob: {key} (sketch)"]
+    else:
+        lines = [f"[SUCCESS] {'Added' if create else 'Updated'} mob {key}"]
+        lines += [f"[NOTE] {line}" for line in not_ready(key, entry)]
+    return lines + [f"[CHECK] {w}" for w in warnings]
+
+
+def not_ready(name: str, entry: dict, tool: str = "gm-mob.sh") -> list[str]:
+    """What a sheet still needs before it is rolled or fought (attributes, wounds),
+    as one line with the command; [] if nothing. A sketch may lack them on purpose."""
+    attrs = (entry.get("stats") or {}).get("attributes") or {}
     missing = [what for what, have in (("attributes", attrs),
                                        ("wounds", "wounds" in (entry.get("body") or {})))
                if not have]
-    if missing:
-        lines.append(f"  not ready: give it {' and '.join(missing)} before it is rolled or "
-                     f"fought (gm-mob.sh stats \"{name}\" --attr ... --wounds N)")
-    return "\n".join(lines)
+    if not missing:
+        return []
+    return [f"not ready: give it {' and '.join(missing)} before it is rolled or fought "
+            f"({tool} stats \"{name}\" --attr ... --wounds N)"]
 
 
 # ---------- mobs ----------
@@ -298,13 +317,7 @@ def main() -> int:
                            args.remove_skill, args.wounds, args.note)
             warnings = mobs.save(args.name, entry, create)
             key = mobs._key(mobs.campaign(), args.name)
-            if create and is_sketch(entry):       # a roll will say what it needs
-                print(f"[SUCCESS] Added mob: {key} (sketch)")
-            else:
-                print(f"[SUCCESS] {'Added' if create else 'Updated'} mob:")
-                print(describe(key, entry))
-            for w in warnings:
-                print(f"  [WARNING] {w}")
+            print("\n".join(saved_lines(key, entry, warnings, create)))
         else:
             parser.print_help()
             return 1

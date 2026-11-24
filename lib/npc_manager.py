@@ -535,7 +535,7 @@ def main():
                     print("No attitude recorded.")
             else:
                 fid = notes.set_attitude(args.name, args.adjectives, args.towards)
-                print(f"[SUCCESS] Attitude {fid}: {fact_text(notes.show([fid])[0], player)}")
+                print(f"[SUCCESS] Recorded attitude {fid}")
         except ValueError as error:
             print(f"[ERROR] {error}", file=sys.stderr)
             sys.exit(1)
@@ -543,7 +543,7 @@ def main():
         if not manager.set_fields(args.name, sheet_mod.fields_from_args(args)):
             sys.exit(1)
     elif args.action == 'stats':
-        from stat_block import StatError, describe, parse_pairs
+        from stat_block import StatError, not_ready, parse_pairs
         try:
             result = manager.set_stats(args.name, parse_pairs(args.attr, 'attr'),
                                        parse_pairs(args.skill, 'skill'), args.remove_skill,
@@ -551,9 +551,10 @@ def main():
         except (StatError, ValueError) as error:
             print(f"[ERROR] {error}")
             sys.exit(1)
-        print(describe(result['name'], result['entry']))
-        for warning in result['warnings']:
-            print(f"  [WARNING] {warning}")
+        print("\n".join([f"[SUCCESS] Stats of {result['name']} set"]
+                        + [f"[NOTE] {line}" for line in
+                           not_ready(result['name'], result['entry'], "gm-npc.sh")]
+                        + [f"[CHECK] {w}" for w in result['warnings']]))
     elif args.action == 'alias':
         from world_ids import change_aliases
         try:

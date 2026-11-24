@@ -160,11 +160,19 @@ def test_cli(world):
     r = run("npc_manager.py", "stats", "Rook", "--attr", "STR=12", "--skill", "Handguns=4",
             "--wounds", "3")
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "attributes: STR d12" in r.stdout and "wounds: 3" in r.stdout
+    assert r.stdout == "[SUCCESS] Stats of Rook set\n"                  # nothing read back
+    r = run("npc_manager.py", "stats", "Rook", "--skill", "Cooking=2")
+    assert r.stdout.splitlines()[1].startswith("[CHECK] 'Cooking' is not a canon skill.")
     assert run("npc_manager.py", "stats", "Rook", "--attr", "STR").returncode == 1
     r = run("stat_block.py", "add", "Mastiff", "--note", "a war-dog", "--attr", "default=12",
             "--wounds", "6")
     assert r.returncode == 0, r.stderr
+    assert r.stdout == "[SUCCESS] Added mob Mastiff\n"
+    assert run("stat_block.py", "add", "Hound", "--note", "a hound").returncode == 0  # a sketch
+    r = run("stat_block.py", "stats", "Hound", "--attr", "default=8")
+    assert r.stdout.splitlines() == ["[SUCCESS] Updated mob Hound", '[NOTE] not ready: give it '
+                                     'wounds before it is rolled or fought '
+                                     '(gm-mob.sh stats "Hound" --attr ... --wounds N)']
     assert "street thug" in run("stat_block.py", "list").stdout
     r = run("combat_manager.py", "add-enemy", "Mastiff", "--as", "Mastiff")
     assert r.returncode == 0 and "Mastiff: ○○○○○○" in r.stdout
