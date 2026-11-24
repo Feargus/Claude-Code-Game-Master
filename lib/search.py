@@ -27,7 +27,7 @@ class WorldSearcher:
         base_dir = world_state_dir or "world-state"
         campaign_mgr = CampaignManager(base_dir)
 
-        # Get the active campaign directory (falls back to legacy root)
+        # The active campaign's directory
         active_dir = campaign_mgr.get_active_campaign_dir()
         self.json_ops = JsonOperations(str(active_dir))
 

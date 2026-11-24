@@ -55,7 +55,7 @@ STORY_FILES=(
     rule-state.json
     rules.log
 )
-STORY_DIRS=(fallen characters)
+STORY_DIRS=(fallen)
 
 show_usage() {
     echo "Usage: gm-reset.sh <action> [--yes]"
@@ -126,7 +126,6 @@ preview_world() {
     echo "  • $WORLD_STATE_DIR/facts.json"
     echo "  • $WORLD_STATE_DIR/consequences.json"
     echo "  • $WORLD_STATE_DIR/campaign-overview.json"
-    # New format (character.json); the legacy characters/ dir is in STORY_DIRS.
     if [ -f "$WORLD_STATE_DIR/character.json" ]; then
         echo "  • $WORLD_STATE_DIR/character.json"
     fi

@@ -2,7 +2,15 @@
   "name": "Dungeon Crawler Carl",
   "voice": {
     "style": "Wry, profane, deadpan first-person; gallows humor over cosmic horror; absurd corporate-dungeon bureaucracy played straight.",
-    "vocab": ["crawler", "the System", "loot box", "Floor", "Borant", "achievement", "the Showrunners"],
+    "vocab": [
+      "crawler",
+      "the System",
+      "loot box",
+      "Floor",
+      "Borant",
+      "achievement",
+      "the Showrunners"
+    ],
     "sample_passages": [
       "The System helpfully informed me I'd earned an achievement for dying in a new and interesting way.",
       "Princess Donut, a talking cat with a tiara and an ego the size of a moon, was not impressed."
@@ -17,41 +25,81 @@
   ],
   "factions": {
     "nodes": [
-      {"id": "crawlers", "name": "The Crawlers"},
-      {"id": "system", "name": "The System / Borant Corp"},
-      {"id": "showrunners", "name": "The Showrunners"},
-      {"id": "npcs", "name": "Dungeon NPCs"}
+      {
+        "id": "crawlers",
+        "name": "The Crawlers"
+      },
+      {
+        "id": "system",
+        "name": "The System / Borant Corp"
+      },
+      {
+        "id": "showrunners",
+        "name": "The Showrunners"
+      },
+      {
+        "id": "npcs",
+        "name": "Dungeon NPCs"
+      }
     ],
     "edges": [
-      {"from": "system", "to": "crawlers", "relation": "exploits / broadcasts"},
-      {"from": "showrunners", "to": "crawlers", "relation": "manipulates for ratings"},
-      {"from": "crawlers", "to": "system", "relation": "rebels against"},
-      {"from": "npcs", "to": "crawlers", "relation": "ally or obstacle"}
+      {
+        "from": "system",
+        "to": "crawlers",
+        "relation": "exploits / broadcasts"
+      },
+      {
+        "from": "showrunners",
+        "to": "crawlers",
+        "relation": "manipulates for ratings"
+      },
+      {
+        "from": "crawlers",
+        "to": "system",
+        "relation": "rebels against"
+      },
+      {
+        "from": "npcs",
+        "to": "crawlers",
+        "relation": "ally or obstacle"
+      }
     ]
   },
   "geography": {
     "nodes": [
-      {"id": "floor1", "name": "Floor 1 - Tutorial"},
-      {"id": "floor2", "name": "Floor 2 - The Warrens"},
-      {"id": "floor3", "name": "Floor 3 - The Over City"},
-      {"id": "floor4", "name": "Floor 4"}
+      {
+        "id": "floor1",
+        "name": "Floor 1 - Tutorial"
+      },
+      {
+        "id": "floor2",
+        "name": "Floor 2 - The Warrens"
+      },
+      {
+        "id": "floor3",
+        "name": "Floor 3 - The Over City"
+      },
+      {
+        "id": "floor4",
+        "name": "Floor 4"
+      }
     ],
     "edges": [
-      {"from": "floor1", "to": "floor2", "adjacency": "stairwell down"},
-      {"from": "floor2", "to": "floor3", "adjacency": "stairwell down"},
-      {"from": "floor3", "to": "floor4", "adjacency": "stairwell down (collapsing)"}
+      {
+        "from": "floor1",
+        "to": "floor2",
+        "adjacency": "stairwell down"
+      },
+      {
+        "from": "floor2",
+        "to": "floor3",
+        "adjacency": "stairwell down"
+      },
+      {
+        "from": "floor3",
+        "to": "floor4",
+        "adjacency": "stairwell down (collapsing)"
+      }
     ]
-  },
-  "timeline": [
-    "Earth's surface collapses; humans become crawlers",
-    "Floor-by-floor descent under a countdown",
-    "Each floor collapse forces the next descent"
-  ],
-  "signature_systems": [
-    "Loot boxes awarded by achievement (Johnny Quest / Hadji / Bandit upgrades)",
-    "Live audience with viewer counts that react to spectacle",
-    "Odette interviews at floor transitions",
-    "Class/race re-selection at milestones",
-    "Floor-collapse countdown as the central pressure clock"
-  ]
+  }
 }

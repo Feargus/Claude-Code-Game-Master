@@ -31,10 +31,8 @@ require_campaign() {
     printf '%s' "$campaign_name"
 }
 
-# Directory of an EXISTING campaign. Display names, current slugs and folders
-# written under the older slug rule (curse_of_strahd) all resolve through
-# lib/campaign_manager.py, which looks at what is actually on disk; re-slugifying
-# here would miss the legacy ones and report a real campaign as not found.
+# Directory of an EXISTING campaign. Display names and folder names resolve through
+# lib/campaign_manager.py, which looks at what is actually on disk.
 # Returns 3 for "no such campaign" and 1 for "the helper could not run at all",
 # so `clean` can stay idempotent about the first without swallowing the second.
 campaign_dir() {

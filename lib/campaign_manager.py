@@ -92,13 +92,6 @@ class CampaignManager:
         slug = cls._slugify(name)
         if slug in listing:
             return slug
-        # Folders created under the OLD slug rule kept apostrophes, dots and
-        # underscores ("baldur's-gate"), so the current rule no longer points at
-        # them and a real campaign reads as "does not exist". Match by comparing
-        # slugified folder names — resolves legacy dirs without renaming on disk.
-        for existing in listing:
-            if cls._slugify(existing) == slug:
-                return existing
         return slug
 
     def _resolve_name(self, name: str) -> str:
@@ -477,7 +470,7 @@ def main():
     resolve_parser = subparsers.add_parser(
         'resolve',
         help='Print the existing campaign folder for a name (exit 3, no output, if none matches)')
-    resolve_parser.add_argument('name', help='Campaign display name, slug, or legacy folder name')
+    resolve_parser.add_argument('name', help='Campaign display name or folder name')
     resolve_parser.add_argument('--world-state', default='world-state',
                                 help='World state directory (default: world-state)')
 

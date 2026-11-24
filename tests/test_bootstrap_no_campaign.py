@@ -222,44 +222,10 @@ def test_resolve_refuses_names_that_leave_the_campaigns_directory(tmp_path):
         assert result.returncode == 3, f"{name!r} resolved to {result.stdout!r}"
         assert not result.stdout.strip(), f"{name!r} printed {result.stdout!r}"
 
-    # The refusal must not cost the normal paths: exact, display name, legacy folder.
-    (world_state / "campaigns" / "curse_of_strahd").mkdir()
-    for name, expected in [("keeper", "keeper"), ("Curse of Strahd", "curse_of_strahd"),
-                           ("curse_of_strahd", "curse_of_strahd")]:
+    # The refusal must not cost the normal paths: the folder name and the display name.
+    (world_state / "campaigns" / "curse-of-strahd").mkdir()
+    for name, expected in [("keeper", "keeper"), ("Curse of Strahd", "curse-of-strahd"),
+                           ("curse-of-strahd", "curse-of-strahd")]:
         result = resolve(name)
         assert result.returncode == 0, result.stdout + result.stderr
         assert result.stdout.strip() == expected
-
-
-def test_legacy_campaign_directory_is_reachable_from_extract_verbs(tmp_path):
-    """A folder named under the older slug rule (curse_of_strahd) is what
-    `gm-campaign.sh switch` writes to active-campaign.txt. gm-extract.sh used to
-    re-slugify that name to curse-of-strahd and report a real campaign as missing;
-    it now resolves against what is on disk.
-
-    Runs in a throwaway PROJECT_ROOT so the live world-state is never touched.
-    """
-    script = _isolated_extract(tmp_path)
-    legacy = tmp_path / "world-state" / "campaigns" / "curse_of_strahd"
-    legacy.mkdir(parents=True)
-    (legacy / "world-bible.json").write_text('{"name": "Curse of Strahd", "confirmed": false}')
-    (legacy / "source").mkdir()
-    (legacy / "source" / "current-document.txt").write_text("Chapter One\nThe mists close in.\n")
-    env = _isolated_env(tmp_path)
-
-    switched = subprocess.run(
-        [sys.executable, str(PROJECT_ROOT / "lib" / "campaign_manager.py"), "switch", "Curse of Strahd"],
-        cwd=tmp_path, env=env, capture_output=True, text=True, timeout=120,
-    )
-    assert switched.returncode == 0, switched.stdout + switched.stderr
-    assert (tmp_path / "world-state" / "active-campaign.txt").read_text() == "curse_of_strahd"
-
-    result = subprocess.run(
-        ["bash", str(script), "draft-bible"],
-        cwd=PROJECT_ROOT,  # so `uv run python` resolves this project's environment
-        env=env, capture_output=True, text=True, timeout=120,
-    )
-    output = result.stdout + result.stderr
-    assert result.returncode == 0, output
-    assert "curse_of_strahd" in output, output
-    assert "not found" not in output, output

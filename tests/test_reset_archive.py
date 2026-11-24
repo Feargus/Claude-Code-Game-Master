@@ -59,7 +59,7 @@ CLEARED_FILES = [
     "combat_state.json", "threat-clocks.json", "world-tick-log.json",
     "loremaster-cache.json",
 ]
-CLEARED_DIRS = ["fallen", "characters"]
+CLEARED_DIRS = ["fallen"]
 KEPT = [
     "world-bible.json", "world-seed.json",
     "ruleset.json", "rules.md", "metadata.json",

@@ -34,7 +34,6 @@ class SessionManager(EntityManager):
 
         # Additional paths specific to session management
         self._wsd = world_state_dir  # passed through to sibling managers
-        self.world_state_dir = self.campaign_dir  # Alias for compatibility
 
         # Core files
         self.campaign_file = "campaign-overview.json"

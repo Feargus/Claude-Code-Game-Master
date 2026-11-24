@@ -135,34 +135,6 @@ def test_gm_extract_fails_loudly_when_the_slug_helper_cannot_run(tmp_path):
     assert (tmp_path / "world-state" / "campaigns" / "keeper").is_dir()
 
 
-@pytest.mark.parametrize("legacy_dir,display_name", [
-    ("baldur's-gate", "Baldur's Gate"),
-    ("curse_of_strahd", "Curse of Strahd"),
-])
-def test_legacy_slug_directories_still_resolve(legacy_dir, display_name, tmp_path):
-    """Folders created by the older, looser slug rule must stay reachable — the
-    fix resolves them in place rather than renaming anything on disk."""
-    world_state = tmp_path / "world-state"
-    manager = CampaignManager(str(world_state))
-    (world_state / "campaigns" / legacy_dir).mkdir(parents=True)
-
-    assert manager.set_active(display_name) is True
-    assert manager.get_active() == legacy_dir
-    assert manager.get_campaign_path(display_name) == world_state / "campaigns" / legacy_dir
-    # Resolution must not create or rename directories.
-    assert sorted(p.name for p in (world_state / "campaigns").iterdir()) == [legacy_dir]
-
-
-def test_new_slug_directory_wins_over_a_legacy_sibling(tmp_path):
-    """When both spellings exist, the current rule's directory is authoritative."""
-    world_state = tmp_path / "world-state"
-    manager = CampaignManager(str(world_state))
-    (world_state / "campaigns" / "baldur's-gate").mkdir(parents=True)
-    (world_state / "campaigns" / "baldur-s-gate").mkdir(parents=True)
-
-    assert manager._resolve_name("Baldur's Gate") == "baldur-s-gate"
-
-
 @pytest.mark.parametrize("lookup", ["Keeper", "KEEPER", "keeper/"])
 def test_resolution_returns_the_canonical_on_disk_spelling(lookup, tmp_path):
     """macOS matches case variants on the filesystem, so a plain is_dir() check

@@ -1,7 +1,6 @@
 """The world's own rules in play: the brief shows them in full,
 the cards show a person's or a place's values, the HUD and `gm-player.sh show` the
-character's. The old surfaces (campaign_rules, signature_systems, the kit's systems,
-vitals) are gone."""
+character's."""
 
 import json
 import os
@@ -66,14 +65,6 @@ def test_the_brief_shows_the_rules_in_full_once(dcc_world, ops):
     assert "Now, the world" not in section                  # 2 does nothing: no line (has_effect)
     assert "Carl" not in section                                       # people: on their cards
     assert 'values of people and places are on their cards (all: gm-rule.sh show "Heat")' in section
-
-
-def test_old_rule_surfaces_are_not_shown(dcc_world):
-    """The fixture is an old campaign: campaign_rules, signature_systems and rules.md
-    are still in its files, and nothing reads them."""
-    brief = _brief(dcc_world)
-    assert "loot_box_system" not in brief and "YOUR WORLD'S RULES" not in brief
-    assert "vitals" not in brief
 
 
 def test_the_cards_show_a_holders_values(dcc_world, ops):

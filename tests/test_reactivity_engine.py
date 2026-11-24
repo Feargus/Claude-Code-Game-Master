@@ -3,7 +3,7 @@
 check_pending(world_state) evaluates triggers against the scene and returns
 the consequences that MATCH (annotated with a match_reason, sorted),
 auto-archiving expired ones. Every match is returned; there is no fire limit.
-check_pending() with no args stays the legacy raw-active accessor.
+check_pending() with no args lists every active consequence.
 """
 
 from pathlib import Path

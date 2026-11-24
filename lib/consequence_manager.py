@@ -197,7 +197,7 @@ class ConsequenceManager(EntityManager):
         """
         Pending consequences.
 
-        - No world_state  -> the raw active list (legacy accessor).
+        - No world_state  -> every active consequence (gm-consequence.sh check).
         - With world_state -> every consequence a state trigger MATCHES now, each
           annotated with `match_reason`.
 

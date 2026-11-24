@@ -30,7 +30,7 @@ class WorldStats:
         base_dir = world_state_dir or "world-state"
         self.campaign_mgr = CampaignManager(base_dir)
 
-        # Get the active campaign directory (falls back to legacy root)
+        # The active campaign's directory
         self.world_state_dir = self.campaign_mgr.get_active_campaign_dir()
         self.json_ops = JsonOperations(str(self.world_state_dir))
 
