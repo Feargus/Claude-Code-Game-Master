@@ -164,8 +164,7 @@ class Opening:
                 raise OpeningError(f"{text}. Nothing of the opening was kept.") from error
             raise
         result["notes"] = [ln.strip() for ln in out.getvalue().splitlines()
-                           if "[NOTE]" in ln or (" alias " in ln and "bash tools/" in ln)
-                           or any(k in ln for k in RECALL_LINES)]
+                           if "[NOTE]" in ln or (" alias " in ln and "bash tools/" in ln)]
         result["notes"] += self._unset_relations()
         return result
 
@@ -325,11 +324,6 @@ class Opening:
                 "present": present, "plot": plot, "hook": hook,
                 "horizon": self.horizon(plot), "facts": written["facts"],
                 "clocks": written["clocks"], "consequences": written["consequences"]}
-
-
-# What semantic recall says about a fact (recall_notes.py), kept in the summary.
-RECALL_LINES = (" may trigger [", "If it does: bash tools/gm-consequence.sh", " by recall (",
-                " looks part of ", " reads like it is about ")
 
 
 def summary(result: dict[str, Any]) -> str:
