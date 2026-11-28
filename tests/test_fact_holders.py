@@ -129,3 +129,59 @@ def test_cli(dcc_world):
     assert f"they knew {fid} already" in r.stdout
     r = run("add", "Carl saw it", "--holders", "Carl", "--holders", "player")
     assert r.returncode == 0 and "[CHECK] holders: npc:Carl, player" in r.stdout
+
+
+# --- where it happened: here only if someone here knows it ---------------------
+
+HERE = "location:Warehouse Street Level"     # the fixture's current place
+
+
+def test_a_fact_someone_here_knows_happened_here(dcc_world):
+    nm = NoteManager(dcc_world)
+    assert _fact(dcc_world, nm.add_fact("The crate was empty"))["at"] == HERE
+    assert _fact(dcc_world, nm.add_fact("Carl kept the key", holders=["Carl"]))["at"] == HERE
+    assert _fact(dcc_world, nm.add_fact("The flaw is in the lock", secret=True))["at"] == HERE
+    assert _fact(dcc_world, nm.add_fact("The floor collapses at dawn",
+                                        holders=["public"]))["at"] == HERE
+
+
+def test_a_fact_nobody_here_knows_happened_elsewhere(dcc_world, capsys):
+    """Teo's errand while Ish slept (What Remains, f38-f40) was put in Ish's flat:
+    none of its holders was there. Such a fact gets no place, and the check line
+    says how to give it one."""
+    nm = NoteManager(dcc_world)
+    capsys.readouterr()
+    fid = nm.add_fact("Mordecai sold the map to a stranger", holders=["Mordecai"])
+    assert "at" not in _fact(dcc_world, fid)
+    assert (f"at: nowhere, since none of its holders is here; if it happened at a known "
+            f"place: bash tools/gm-note.sh at {fid} \"<place>\"") in capsys.readouterr().out
+    given = nm.add_fact("Mordecai hid the map", holders=["Mordecai"], at="Bone Garden")
+    assert _fact(dcc_world, given)["at"] == "location:Bone Garden"
+
+
+def test_a_faction_holds_it_through_a_member_here(dcc_world):
+    _edit_npcs(dcc_world, lambda npcs: npcs["Carl"].setdefault("identity", {}).update(
+        factions=[{"id": "crawlers"}]))
+    nm = NoteManager(dcc_world)
+    assert _fact(dcc_world, nm.add_fact("The crawlers chose a leader",
+                                        holders=["faction:crawlers"]))["at"] == HERE
+    assert "at" not in _fact(dcc_world, nm.add_fact("The showrunners chose a theme",
+                                                    holders=["faction:showrunners"]))
+
+
+def test_where_a_fact_happened_can_be_changed(dcc_world):
+    nm = NoteManager(dcc_world)
+    fid = nm.add_fact("Mordecai sold the map to a stranger", holders=["Mordecai"])
+    assert nm.set_at(fid, "Bone Garden") == (None, "location:Bone Garden")
+    assert nm.set_at(fid, nowhere=True) == ("location:Bone Garden", None)
+    assert "at" not in _fact(dcc_world, fid)
+    with pytest.raises(ValueError, match="Give the place, or --nowhere"):
+        nm.set_at(fid)
+    with pytest.raises(ValueError, match="at: "):
+        nm.set_at(fid, "Nowhere Known")
+    env = {"GM_WORLD_STATE_BASE": str(dcc_world), "PATH": "/usr/bin:/bin"}
+    root = Path(__file__).resolve().parent.parent
+    r = subprocess.run([sys.executable, str(root / "lib" / "note_manager.py"), "at", fid,
+                        "Bone Garden"], capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout == f"[SUCCESS] {fid} happened at location:Bone Garden (was: nowhere)\n"

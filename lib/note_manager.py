@@ -234,6 +234,9 @@ class NoteManager:
             return ""
         if version_of and not plot_keys:          # a version belongs where its truth does
             plot_keys = list(self._entry(facts, version_of).get('plots') or [])
+        elsewhere = bool(where and not at and holder_ids and not self._held_here(holder_ids))
+        if elsewhere:                              # nobody here knows it: it happened elsewhere
+            where = None
         fact_id = fact_file.next_id(facts, fact_file.load_removed(self.json_ops))
         entry = {'id': fact_id, 'fact': fact}
         if about_ids:
@@ -263,6 +266,9 @@ class NoteManager:
             check_line.append(f"about: {', '.join(about_ids)}")
         if where:
             check_line.append(f"at: {where}")
+        elif elsewhere:
+            check_line.append(f"at: nowhere, since none of its holders is here; if it happened "
+                              f"at a known place: bash tools/gm-note.sh at {fact_id} \"<place>\"")
         print(f"[CHECK] {'' if first_line else fact_id + ' '}{'; '.join(check_line)}")
         for note in version_notes:
             print(f"[NOTE] {note}")
@@ -312,6 +318,39 @@ class NoteManager:
         return {whom: f for (holder, whom), f in
                 current_attitudes(fact_file.load(self.json_ops)).items()
                 if holder == who}
+
+    def _held_here(self, holder_ids) -> bool:
+        """Whether someone in the scene holds a fact with these holders: the
+        character, an NPC present, a faction one of them belongs to, or everyone
+        (`public`)."""
+        import factions
+        from world_ids import WorldIds
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        return any(factions.knows(h, list(holder_ids), npcs)
+                   for h in WorldIds(self.json_ops).present())
+
+    def set_at(self, fact_id: str, place: str | None = None,
+               nowhere: bool = False) -> tuple[str | None, str | None]:
+        """Where a recorded fact happened: a known place, or none (`nowhere`).
+        Returns (the place before, the place now); raises ValueError."""
+        if bool(place) == bool(nowhere):
+            raise ValueError("Give the place, or --nowhere.")
+        where = None
+        if place:
+            where, errors = self._where(place)
+            if errors:
+                raise ValueError(" ".join(errors))
+        facts = fact_file.load(self.json_ops)
+        entry = self._entry(facts, fact_id)
+        if entry.get('attitude'):
+            raise ValueError(f"{fact_id} is an attitude: it happened nowhere in particular.")
+        before = entry.get('at')
+        if where:
+            entry['at'] = where
+        else:
+            entry.pop('at', None)
+        fact_file.save(self.json_ops, facts)
+        return before, where
 
     def set_plots(self, fact_id: str, add=None, remove=None) -> list:
         """Add plots to a recorded fact, or remove them. Returns the new list."""
@@ -933,6 +972,11 @@ def main():
     p.add_argument("fact_id")
     p.add_argument("holders", nargs="+")
     p.add_argument("--from", dest="by", help="who told them (they must know it)")
+    p = sub.add_parser("at", help="change where a recorded fact happened")
+    p.add_argument("fact_id")
+    p.add_argument("place", nargs="?")
+    p.add_argument("--nowhere", action="store_true",
+                   help="it happened nowhere in particular (a truth, a secret, off-screen)")
     p = sub.add_parser("about", help="change a recorded fact's about")
     p.add_argument("fact_id")
     p.add_argument("--add", action="append", default=[])
@@ -1024,6 +1068,10 @@ def main():
         elif args.action == 'plot':
             keys = manager.set_plots(args.fact_id, args.add, args.remove)
             print(f"{args.fact_id} plots: {', '.join(keys) or '(none)'}")
+        elif args.action == 'at':
+            before, now = manager.set_at(args.fact_id, args.place, args.nowhere)
+            print(f"[SUCCESS] {args.fact_id} happened "
+                  f"{'at ' + now if now else 'nowhere in particular'} (was: {before or 'nowhere'})")
         elif args.action == 'about':
             about = manager.set_about(args.fact_id, args.add, args.remove)
             print(f"{args.fact_id} about: {', '.join(about) or '(nothing)'}")
