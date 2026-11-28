@@ -162,7 +162,11 @@ def test_the_command(dcc_world, ops):
                               capture_output=True, text=True, env=env)
     moved = run("change", "Humanity", "+3", "--axis", "Chrome")
     assert moved.returncode == 0 and moved.stdout.startswith("Humanity (Tandy): Chrome 0 → 3")
+    printed = run("change", "Humanity", "--axis", "Chrome", "-1")     # as the brief prints it
+    assert printed.returncode == 0 and printed.stdout.startswith("Humanity (Tandy): Chrome 3 → 2")
     assert run("set", "Alignment", "Carl", "-2", "--axis", "Good").returncode == 0
-    assert wr.load_state(ops)["npc:Carl"]["Alignment"]["axes"] == {"Law": 0, "Good": -2}
+    assert run("set", "Alignment", "--axis", "Law", "Carl", "1").returncode == 0
+    assert wr.load_state(ops)["npc:Carl"]["Alignment"]["axes"] == {"Law": 1, "Good": -2}
+    assert run("change", "Humanity", "+1", "--axes", "Chrome").returncode == 2   # still refused
     refused = run("change", "Humanity", "+1")
     assert refused.returncode == 1 and "--axis Chrome or --axis Anchor" in refused.stderr

@@ -884,12 +884,25 @@ def _parser():
     return parser
 
 
+def _parse(argv=None):
+    """The command line, with the words on either side of an option: the brief prints
+    `change "<rule>" --axis <axis> +N`, and argparse alone takes only the words before
+    `--axis` and refuses the rest."""
+    parser = _parser()
+    args, rest = parser.parse_known_args(argv)
+    if rest and hasattr(args, "words") and not any(r.startswith("--") for r in rest):
+        args.words += rest
+    elif rest:
+        parser.error(f"unrecognized arguments: {' '.join(rest)}")
+    return args
+
+
 def main() -> int:
     from campaign_manager import CampaignManager
     from cli_output import emit_error
     from json_ops import JsonOperations
 
-    args = _parser().parse_args()
+    args = _parse()
     campaign = CampaignManager().get_active_campaign_dir()
     if campaign is None:
         return emit_error("No active campaign.")
