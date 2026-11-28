@@ -142,6 +142,9 @@ case "$ACTION" in
         # Reactivity: fire any consequences whose triggers match the new scene.
         bash "$TOOLS_DIR/gm-consequence.sh" tick
 
+        # A faction's job or an ask still owed: a new scene is a moment it may fit.
+        $PYTHON_CMD "$LIB_DIR/factions.py" owed --arrival
+
         # The new place's card: what it is like, who is usually here, what waits here.
         echo ""
         $PYTHON_CMD "$LIB_DIR/cards.py" location

@@ -38,6 +38,8 @@
 #   job done|failed|refused <faction>  how it ended (lib/faction_jobs.py)
 #   ask [--again]                      a drawn people token: one of the character's
 #                                      people, drawn at random, wants something
+#   owed [--arrival]                   the turns drawn and not played yet, with their
+#                                      commands (--arrival: only jobs and asks, for a move)
 #
 # Its goal is a plot it owns, its secrets are facts it holds (gm-note.sh --holders
 # faction:<id>), its own numbers are world rules held by factions (gm-rule.sh).

@@ -202,11 +202,22 @@ def brief(json_ops, report: dict[str, Any]) -> str:
     return f"{head}: {what}{hidden}"
 
 
-def owed_lines(json_ops, moments: list[dict[str, Any]]) -> list[str]:
-    """[DO] for each turn the faction bag drew in `moments`, with its time and the
+def do_line(names: dict, kind: str, at, still: bool = False) -> str:
+    """The [DO] line of a faction turn owed: who owes what, when it was drawn, and the
     command that plays it; a faction's turn (or a joker's) with the reminder to
     narrate what the character would notice of it, a job or an ask being for the
-    character already."""
+    character already. `still`: it was owed before, and is still."""
+    import faction_rules
+    what, command = faction_rules.turn_owed(kind, names)
+    notice = "" if faction_rules.aimed(kind) else "; narrate what the character would notice of it"
+    head = f"Still owed: {what}" if still else f"{what[0].upper()}{what[1:]}"
+    return f"[DO] {head} (drawn {stamp(at)}){notice}: {command}"
+
+
+def owed_lines(json_ops, moments: list[dict[str, Any]], journey: bool = False) -> list[str]:
+    """[DO] for each turn the faction bag drew in `moments`. On a journey a job or
+    an ask isn't one: the arrival lists them, for the new scene (gm-faction.sh
+    owed --arrival)."""
     import faction_rules
     import factions
     names = factions.known(json_ops)
@@ -216,13 +227,29 @@ def owed_lines(json_ops, moments: list[dict[str, Any]]) -> list[str]:
             if report["rule"] != faction_rules.BAG:
                 continue
             for d in report.get("draws") or []:
-                if d.get("owed"):
-                    what, command = faction_rules.turn_owed(d["kind"], names)
-                    aimed = d["kind"] == faction_rules.PEOPLE or faction_rules.job_faction(d["kind"])
-                    notice = "" if aimed else "; narrate what the character would notice of it"
-                    lines.append(f"[DO] {what[0].upper()}{what[1:]} (drawn {stamp(m['at'])})"
-                                 f"{notice}: {command}")
+                if d.get("owed") and not (journey and faction_rules.aimed(d["kind"])):
+                    lines.append(do_line(names, d["kind"], m["at"]))
     return lines
+
+
+def still_owed_lines(json_ops, before: list[dict[str, str]]) -> list[str]:
+    """[DO] Still owed: each faction's own turn (or a joker's) that was owed before
+    time passed and still is, until it is played. A job or an ask comes back at a
+    move instead (gm-faction.sh owed --arrival): a moment that doesn't fit now
+    won't soon after."""
+    import faction_rules
+    import factions
+    now = {(o["kind"], o.get("at")) for o in faction_rules.owed(json_ops)}
+    names = factions.known(json_ops)
+    return [do_line(names, o["kind"], _moment(o.get("at")), still=True) for o in before
+            if (o["kind"], o.get("at")) in now and not faction_rules.aimed(o["kind"])]
+
+
+def _moment(at: str | None):
+    from datetime import datetime
+
+    from game_time import STORED_FORMAT
+    return datetime.strptime(at, STORED_FORMAT) if at else None
 
 
 def _texts(json_ops, name: str) -> dict[str, str]:
@@ -237,7 +264,7 @@ def _texts(json_ops, name: str) -> dict[str, str]:
 
 
 def stamp(moment) -> str:
-    return f"{moment:%a %d %b %H:%M}"
+    return f"{moment:%a %d %b %H:%M}" if moment else "?"
 
 
 def timeline_lines(json_ops, moments: list[dict[str, Any]], place: str, present: set[str],

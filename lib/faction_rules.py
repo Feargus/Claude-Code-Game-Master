@@ -138,6 +138,12 @@ def settle(json_ops, kind: str) -> dict[str, str] | None:
         return None
 
 
+def aimed(kind: str) -> bool:
+    """A job or an ask: aimed at the character, so played when a moment fits (it
+    comes back at each move until it is), not at once as a faction's own turn."""
+    return kind == PEOPLE or bool(job_faction(kind))
+
+
 def turn_owed(kind: str, names: dict) -> tuple[str, str]:
     """(who owes what, the command that plays it) for a drawn token of the bag.
     `names`: factions.known()."""
@@ -145,13 +151,13 @@ def turn_owed(kind: str, names: dict) -> tuple[str, str]:
         return "every faction owes a turn (a joker)", "bash tools/gm-faction.sh turn"
     if kind == PEOPLE:
         return ("someone the character knows wants something (an ask)",
-                "bash tools/gm-faction.sh ask")
+                "when a moment fits: bash tools/gm-faction.sh ask")
     fid = job_faction(kind)
     if fid:
         return (f"{names.get(fid, {}).get('name', fid)} has a job for the character",
-                f"offer them a complex action for its plot, with a deadline: bash tools/"
-                f"gm-faction.sh job offer {fid} (the JSON after it: the action as in a turn, "
-                f"\"due\", \"how\")")
+                f"when a moment fits (in person, by message or by call), offer them a complex "
+                f"action for its plot, with a deadline: bash tools/gm-faction.sh job offer "
+                f"{fid} (the JSON after it: the action as in a turn, \"due\", \"how\")")
     return (f"{names.get(kind, {}).get('name', kind)} owes a turn",
             f"bash tools/gm-faction.sh turn --only {kind}")
 

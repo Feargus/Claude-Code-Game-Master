@@ -647,8 +647,9 @@ not in YOUR WORLD'S RULES:
   people, half as many blanks, a joker or a job token that ran out) when fewer than 4 per
   faction and the people remain; a faction created in play gets its share at once. A
   drawn faction owes a turn, its job token a job (`gm-faction.sh job offer`), a people
-  token an ask (`gm-faction.sh ask`), a joker a full turn: they are listed as FACTION
-  TURNS OWED at the end of a time step or journey and in the brief. To make one faction
+  token an ask (`gm-faction.sh ask`), a joker a full turn: each is a `[DO]` line at the
+  end of the time step or journey that drew it, and in the brief. A faction's turn still
+  owed comes back each time time passes; a job or an ask, at each move. To make one faction
   busier for a while: `gm-rule.sh put "Faction turns" hardtop 2`, or a consequence's
   `--rule-effect '{"tokens": "Faction turns", "add": {"hardtop": 2}}'`.
 

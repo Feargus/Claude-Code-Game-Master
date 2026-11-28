@@ -187,7 +187,8 @@ class TimeManager:
         world's rules move, and the consequences are checked, so that each sees the
         time at which it happens. What each moment did is kept in `self.moments`
         ({"at", "clocks", "rules", "fired", "stops"}); `self.fired_before` holds the
-        ids of the consequences that had fired already and weren't resolved.
+        ids of the consequences that had fired already and weren't resolved, and
+        `self.owed_before` the faction turns owed when it began.
 
         Time stops at the first moment with something to play now (time_stops.py),
         before the end: `self.stopped` is that moment, `self.end` where the step
@@ -210,7 +211,9 @@ class TimeManager:
         self.resting = resting and not on_the_way
         self.moments, self.rule_changes, moved = [], [], {}
         from consequence_manager import unresolved
+        from faction_rules import owed
         self.fired_before = {c.get("id") for c in unresolved(self.json_ops)}
+        self.owed_before, self.journey = owed(self.json_ops), on_the_way
         moment = before
         for _ in range(MAX_MOMENTS):
             nxt = time_walk.next_moment(self.world_state_dir, self.json_ops, moment)
@@ -311,7 +314,8 @@ def print_moments(manager: "TimeManager") -> None:
         for report in m["rules"]:
             print("\n".join(world_rules.report_lines(manager.json_ops, report)))
         print_fired(m["fired"])
-    owed = time_stops.owed_lines(manager.json_ops, manager.moments)
+    owed = (time_stops.owed_lines(manager.json_ops, manager.moments, manager.journey)
+            + time_stops.still_owed_lines(manager.json_ops, manager.owed_before))
     if owed:
         print("\n" + "\n".join(owed))
     from consequence_manager import unresolved_lines

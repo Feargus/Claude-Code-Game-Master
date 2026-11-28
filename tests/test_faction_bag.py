@@ -131,6 +131,57 @@ def test_each_turn_drawn_is_a_do_line_with_its_command(ops):
                                 {"kind": "people", "owed": True}]}
     lines = owed_lines(ops, [{"at": at, "rules": [jobs]}])
     assert lines[0].startswith("[DO] Meridian Group has a job for the character")
-    assert "(drawn Fri 26 Oct 05:40): offer them a complex action" in lines[0]
+    assert ("(drawn Fri 26 Oct 05:40): when a moment fits (in person, by message or by call), "
+            "offer them a complex action") in lines[0]
     assert "notice" not in lines[0] and "bash tools/gm-faction.sh job offer meridian-group" in lines[0]
     assert lines[1].endswith(": bash tools/gm-faction.sh ask")
+
+
+def _owe(ops, *kinds):
+    """Faction turns owed, as the bag leaves them: drawn at 05:40."""
+    state = ops.load_json("rule-state.json") or {}
+    bag = state.setdefault("world", {}).setdefault(fr.BAG, {})
+    bag["owed"] = [{"kind": k, "at": "2187-10-26T05:40"} for k in kinds]
+    ops.save_json("rule-state.json", state)
+    return fr.owed(ops)
+
+
+def test_on_a_journey_a_job_or_an_ask_waits_for_the_arrival(ops):
+    from datetime import datetime
+
+    from lib.time_stops import owed_lines
+    report = {"rule": fr.BAG, "holder": "world", "known": False,
+              "draws": [{"kind": "job:meridian-group", "owed": True}, {"kind": "people", "owed": True},
+                        {"kind": "meridian-group", "owed": True}]}
+    lines = owed_lines(ops, [{"at": datetime(2187, 10, 26, 5, 40), "rules": [report]}], journey=True)
+    assert len(lines) == 1 and lines[0].startswith("[DO] Meridian Group owes a turn")
+
+
+def test_a_turn_still_owed_comes_back_a_job_at_a_move(ops):
+    """In the What Remains playtest a job passed over once was forgotten for the rest
+    of the session. A faction's own turn comes back each time time passes; a job or
+    an ask at a move, when a new scene may fit it."""
+    from lib.time_stops import still_owed_lines
+    before = _owe(ops, "meridian-group", "job:meridian-group")
+    assert still_owed_lines(ops, before) == [
+        "[DO] Still owed: Meridian Group owes a turn (drawn Fri 26 Oct 05:40); narrate what "
+        "the character would notice of it: bash tools/gm-faction.sh turn --only meridian-group"]
+    fr.settle(ops, "meridian-group")                           # played: it doesn't come back
+    assert still_owed_lines(ops, before) == []
+
+
+def test_the_owed_command(ops, dcc_world):
+    import os
+    import subprocess
+    env = dict(os.environ, GM_WORLD_STATE_BASE=str(dcc_world))
+    tool = Path(__file__).resolve().parent.parent / "tools" / "gm-faction.sh"
+
+    def run(*words):
+        return subprocess.run(["bash", str(tool), *words], capture_output=True, text=True,
+                              env=env).stdout
+    assert run("owed") == "No faction turn is owed.\n"
+    assert run("owed", "--arrival") == ""                      # a move says nothing then
+    _owe(ops, "meridian-group", "job:meridian-group")
+    assert [ln[:40] for ln in run("owed").splitlines()] == [
+        "[DO] Meridian Group owes a turn (drawn F", "[DO] Meridian Group has a job for the ch"]
+    assert run("owed", "--arrival").startswith("[DO] Meridian Group has a job for the character")

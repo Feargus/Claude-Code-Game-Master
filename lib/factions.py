@@ -574,6 +574,21 @@ def _cmd_job(m, args):
     print("\n".join(lines))
 
 
+def _cmd_owed(m, args):
+    """The faction turns drawn and not played yet, oldest first, each a [DO] line with
+    its command. --arrival (gm-session.sh move): only the jobs and asks, for the new
+    scene, and nothing when there are none."""
+    import faction_rules
+    from time_stops import _moment, do_line
+    names = known(m.json_ops)
+    queue = [o for o in faction_rules.owed(m.json_ops)
+             if not args.arrival or faction_rules.aimed(o["kind"])]
+    if queue:
+        print("\n".join(do_line(names, o["kind"], _moment(o.get("at"))) for o in queue))
+    elif not args.arrival:
+        print("No faction turn is owed.")
+
+
 def _cmd_ask(m, args):
     import faction_jobs
     try:
@@ -720,6 +735,9 @@ def main() -> int:
     p.add_argument("what", choices=("offer", "done", "failed", "refused"))
     p.add_argument("faction")
     p.add_argument("spec", nargs="?", default="-")
+    p = sub.add_parser("owed", help="the faction turns drawn and not played yet, with their commands")
+    p.add_argument("--arrival", action="store_true",
+                   help="only the jobs and asks, for a new scene (gm-session.sh move)")
     p = sub.add_parser("ask", help="an owed ask: one of the character's people, drawn at random")
     p.add_argument("--again", action="store_true", help="draw another person (the first didn't fit)")
     args = parser.parse_args()
@@ -744,7 +762,7 @@ COMMANDS = {
     "create": _cmd_create, "set": _cmd_set, "alias": _cmd_alias, "asset": _cmd_asset,
     "join": lambda m, args: _print_join(m.join(args.faction, args.npc, args.secret), args.secret),
     "leave": _cmd_leave, "tie": _cmd_tie, "turn": _cmd_turn, "show": lambda m, args: print(m.show(args.faction)), "list": _cmd_list,
-    "job": _cmd_job, "ask": _cmd_ask,
+    "job": _cmd_job, "ask": _cmd_ask, "owed": _cmd_owed,
 }
 
 
