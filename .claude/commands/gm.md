@@ -230,11 +230,11 @@ EOF
 1. `gm-plot.sh add "<short name>" --owner faction:<id> --goal "<what they are after, a line>"`;
 2. its plan clock, an event clock, with what happens when the plan succeeds: `gm-clock.sh add "<short name>" <2–6> --on event --text "<the plan>" --consequence "<the plan succeeds: what changes>" --plot "<plot>"`; each segment is one successful action for it;
 3. the true plan as a fact the faction holds (`gm-note.sh "<the plan>" --holders faction:<id> --nowhere --plot "<plot>"`);
-4. its portents: a lie or a half-truth each, recorded as a secret version of the plan (`--secret --truth wrong|partial --version-of <id>`), and an `--offscreen` consequence that tells it to the street or the public when the clock reaches its segment (`--trigger-type on_clock --match "<clock>:<segment>" --tells <id> --to street`). One portent on a clock of 2–3 segments, two on 4–6, spread evenly.
+4. its portents: a lie or a half-truth each, about the plan, which the street or the public will hear when the clock reaches its segment. Each is a consequence whose text is the rumour as it will be believed, and which becomes a fact only then: `gm-consequence.sh add "<the rumour>" --offscreen --trigger-type on_clock --match "<clock>:<segment>" --fact --holders street --truth wrong|partial --version-of <the plan's fact id> --plot "<plot>"`. One portent on a clock of 2–3 segments, two on 4–6, spread evenly.
 
 ### The people
 
-Then propose a few SMALL developments grounded in the plots, clocks, consequences and NPC goals. Each development is something that **has happened** off-screen, so it is always a fact. If it also sets something in motion, add a consequence with a real trigger (who or where it waits for), and/or a clock for a time limit:
+Then propose a few SMALL developments grounded in the plots, clocks, consequences and NPC goals. Each development is something that **has happened** off-screen, so it is always a fact. If it also sets something in motion, add a consequence with a real trigger (who or where it waits for), and/or a clock for a time limit. What is only going to happen, with nothing that has happened behind it yet (the Board raises its toll next week), is no development: add it after the tick with `gm-consequence.sh add`, with `--fact` to commit to the fact it will be:
 
 ```bash
 bash tools/gm-session.sh world-tick <<'EOF'

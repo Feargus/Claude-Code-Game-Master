@@ -253,6 +253,13 @@ play.
      the player engages, due when it would come to a head if nobody interferes
      (`3d`, `2w`). One clock, not a doom gazetteer;
    - **the start time** (`YYYY-MM-DD HH:MM`).
+
+   Every development is a fact: something true or done by the start (the premise, a
+   secret, the antagonist's plan). Never write what is still to come as a fact. A sign
+   on the way (what the character may notice when the clock reaches 2) is a consequence,
+   added right after the opening, once its clock exists: `bash tools/gm-consequence.sh
+   add "<the sign, as the fact it will be>" --trigger-type on_clock --match "<clock>:2"
+   --fact` (who will know it: `--holders`; none given: whoever is there when it happens).
 6. Optional thin binder: a short `authored-canon.md` of *this street only*, then
    `gm-extract.sh prepare` so RAG has something to pull. Do not author the continent.
 
