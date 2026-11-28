@@ -1015,11 +1015,14 @@ def main():
             effects.append(effect)
 
     if args.action == 'add':
-        if not manager.add_consequence(args.description, args.trigger,
-                                       triggers=triggers,
-                                       effects=effects, plots=args.plots,
-                                       offscreen=args.offscreen):
+        cid = manager.add_consequence(args.description, args.trigger, triggers=triggers,
+                                      effects=effects, plots=args.plots,
+                                      offscreen=args.offscreen)
+        if not cid:
             sys.exit(1)
+        from recall_notes import event_lines
+        for line in event_lines(manager.campaign_dir, [f"consequence:{cid}"]):
+            print(line)
 
     elif args.action == 'check':
         pending = manager.check_pending()

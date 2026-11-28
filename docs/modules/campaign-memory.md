@@ -37,10 +37,16 @@ facts, and before that session summaries and arc entries).
 - **The check as a fact is recorded** (`lib/recall_notes.py`): the new fact is compared
   with the `on_fact` triggers (0.65: each consequence it may trigger, with the command to
   fire it; nothing fires by itself), the open plots (0.45, clearly the best), the people
-  (0.55, and closer than the character and everyone it is linked to) and the earlier facts
-  (0.70, versions of one truth aside: a fact it may repeat, with the commands to tell the
-  earlier one and edit the new one down to what is new), and the fact's own output names
-  what fits. A plot or person from 0.65 (`CONFIDENT`) is linked at once, with the
+  (0.55, and closer than the character and everyone it is linked to), the consequences
+  still waiting (0.60: one whose event it may already be, played before its trigger, with
+  the command to resolve it) and the earlier facts (0.80, versions of one truth aside, not
+  after an edit: a fact it may repeat, with the commands to tell the earlier one and edit
+  the new one down to what is new), and the fact's own output names what fits.
+- **The check as a consequence or clock is made** (`check_events`, the same module):
+  `gm-consequence.sh add`, `gm-clock.sh add` with an outcome and `/gm world` compare it
+  with the consequences still waiting and the outcomes of the clocks not yet full (0.60,
+  a sign on its own clock aside): the same event twice, with the commands to move or
+  remove the clock, or to keep one of the two. A plot or person from 0.65 (`CONFIDENT`) is linked at once, with the
   command to undo it; a consequence is only ever named. Every comparison worth a look goes into `recall-check.log`,
   with each consequence the GM fired by a fact, to tune the thresholds.
 - **A fact not embedded yet** (the background job is still running) is embedded by the

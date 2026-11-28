@@ -14,11 +14,21 @@ the model loaded), and each is compared with:
   check: "the clown came back", Pagliacci): ABOUT_NOTE or more, and closer than
   the character and everyone it is linked to already, so a person whose record
   is about the character (a copy of them) isn't suggested for every fact;
+- **a consequence still waiting that it reads like** (EVENT_NOTE or more): what
+  the consequence is to bring may have happened already, played before its
+  trigger, and would then happen twice. The GM resolves it;
 - **an earlier fact it repeats** (TWIN_NOTE or more; versions of one truth
   aside): "Seren told Ilaria she is to marry Strake" after the betrothal is on
   record. The GM then tells the earlier fact to those who don't hold it and
   edits the new one down to what is new, or removes it. Not after an edit: an
   edit is mostly the answer to this note, and the note would come again.
+
+A new consequence, or a new clock's outcome, is compared in the same way with the
+consequences still waiting and the outcomes of the clocks not yet full
+(check_events): one that reads like it may be the same event, which would then
+happen twice (the story sped a clock up, and a consequence now brings what the
+clock still will). A sign on its own clock is meant to resemble the clock's
+outcome and is left out.
 
 A plot or a person from CONFIDENT up is not suggested but linked at once, and the
 output says so with the command to undo it: a wrong link costs less than a missing
@@ -43,6 +53,10 @@ ABOUT_NOTE = 0.55
 TWIN_NOTE = 0.80            # What Remains: a repeat 0.83, the next beat of the same scene
                             # (no repeat) 0.70–0.77; the Long Hull's "X told Y …" facts
                             # and their twins 0.66–0.81, which tell --from records now
+EVENT_NOTE = 0.60           # What Remains: Dessa's report of the man in the lobby and the
+                            # consequence that was to bring him 0.63, any other fact and a
+                            # waiting consequence at most 0.53; a consequence and the clock
+                            # it overtook 0.69, any other pair at most 0.58
 CONFIDENT = 0.65            # a plot or person linked by itself from here
 LOG_FLOOR = 0.40            # triggers logged from here, so the misses show too
 LOG = "recall-check.log"
@@ -80,14 +94,16 @@ def check_facts(campaign_dir, fact_ids, embedder, skip=(),
     target), which the lines already announce. `skip`: consequence ids not to
     name (a faction turn's own). `twins`: look for an earlier fact each repeats
     (not after an edit)."""
-    from embedding_store import EmbeddingStore, trigger_texts
+    from embedding_store import EmbeddingStore, event_texts, trigger_texts
     campaign_dir = Path(campaign_dir)
-    triggers = trigger_texts(_load(campaign_dir / "consequences.json"))
-    keys = [f"fact:{fid}" for fid in fact_ids] + list(triggers)
+    store = _load(campaign_dir / "consequences.json") or {}
+    triggers = trigger_texts(store)
+    events = [k for k in event_texts(store, _load(campaign_dir / "threat-clocks.json"))
+              if k.startswith("consequence:")]
+    keys = [f"fact:{fid}" for fid in fact_ids] + list(triggers) + events
     vectors = EmbeddingStore(campaign_dir).embed(embedder, keys)
     facts = {f["id"]: f for f in _load(campaign_dir / "facts.json") or []
              if isinstance(f, dict) and f.get("id")}
-    store = _load(campaign_dir / "consequences.json") or {}
     effects = {c["id"]: c.get("consequence", "") for c in store.get("active", [])
                if isinstance(c, dict) and c.get("id")}
     plots = {k: p for k, p in (_load(campaign_dir / "plots.json") or {}).items()
@@ -102,14 +118,17 @@ def check_facts(campaign_dir, fact_ids, embedder, skip=(),
             continue
         ranked = sorted(((float(v @ vectors[k]), k[8:]) for k in triggers
                          if k in vectors and k[8:] not in skip), reverse=True)
+        named = set(skip)
         for score, cid in ranked:
             if score < LOG_FLOOR:
                 break
             log.append(f"{fid} trigger {cid} {score:.2f}")
             if score >= TRIGGER_NOTE:
+                named.add(cid)
                 out.append(f"  {fid} may trigger {cid} \"{triggers['trigger:' + cid]}\" "
                            f"({score:.2f}) → {effects.get(cid, '')}")
                 out.append(f"    If it does: bash tools/gm-consequence.sh fire {cid} --by {fid}")
+        out += _happened(campaign_dir, fid, v, vectors, events, named, store, log)
         if not fact.get("plots"):
             ranked = sorted(((float(v @ vectors[f"plot:{k}"]), k) for k in plots
                              if f"plot:{k}" in vectors), reverse=True)
@@ -144,6 +163,109 @@ def check_facts(campaign_dir, fact_ids, embedder, skip=(),
             out += _twins(fid, fact, facts, v, vectors, log, number)
     _log(campaign_dir, log)
     return out, links
+
+
+def _waits(campaign_dir, c) -> str:
+    """What a consequence waits for, in words (consequence_manager.trigger_words)."""
+    from consequence_manager import trigger_words
+    from json_ops import JsonOperations
+    ops = JsonOperations(str(campaign_dir))
+    return " or ".join(trigger_words(t, ops) for t in c.get("triggers") or []) or "nothing"
+
+
+def _happened(campaign_dir, fid, v, vectors, events, named, store, log) -> list[str]:
+    """The consequences still waiting that a new fact reads like: what each is to
+    bring may have happened already, and would then happen again when it fires.
+    `named`: consequences this fact may trigger, named already."""
+    by_id = {c["id"]: c for c in store.get("active", []) if isinstance(c, dict) and c.get("id")}
+    ranked = sorted(((float(v @ vectors[k]), k.partition(":")[2]) for k in events
+                     if k in vectors and k.partition(":")[2] not in named), reverse=True)
+    if ranked and ranked[0][0] >= LOG_FLOOR:
+        log.append(f"{fid} event {ranked[0][1]} {ranked[0][0]:.2f}")
+    out = []
+    for score, cid in [r for r in ranked if r[0] >= EVENT_NOTE][:2]:
+        c = by_id[cid]
+        out.append(f"[CHECK] {fid} may be what {cid} waits to bring ({score:.2f}): "
+                   f"\"{c.get('consequence', '')}\" (waits for {_waits(campaign_dir, c)})")
+        out.append(f"  If it has happened, it won't again: bash tools/gm-consequence.sh "
+                   f"resolve {cid}")
+    return out
+
+
+def _clock_of(trigger) -> str:
+    """The clock an on_clock trigger waits on ("clock:<name>[:<segment>]"), or ''."""
+    if not isinstance(trigger, dict) or trigger.get("type") != "on_clock":
+        return ""
+    rest = str(trigger.get("match", "")).partition(":")[2]
+    name, _, segment = rest.rpartition(":")
+    return name if segment.isdigit() else rest
+
+
+def check_events(campaign_dir, keys, embedder) -> list[str]:
+    """A new consequence or a new clock's outcome (keys "consequence:<id>",
+    "clock:<name>") compared with the consequences still waiting and the outcomes
+    of the clocks not yet full: one that reads like it may be the same event,
+    which would then happen twice. A sign on its own clock is left out: it is meant
+    to resemble the clock's outcome. Returns the lines to print; logs the best."""
+    from embedding_store import EmbeddingStore, event_texts
+    from threat_clocks import ThreatClockManager
+    campaign_dir = Path(campaign_dir)
+    store = _load(campaign_dir / "consequences.json") or {}
+    clocks = _load(campaign_dir / "threat-clocks.json") or {}
+    events = event_texts(store, clocks)
+    vectors = EmbeddingStore(campaign_dir).embed(embedder, list(events))
+    by_id = {c["id"]: c for c in store.get("active", []) if isinstance(c, dict) and c.get("id")}
+
+    def on_clocks(key):
+        kind, _, name = key.partition(":")
+        if kind == "clock":
+            return {name}
+        return {_clock_of(t) for t in (by_id.get(name) or {}).get("triggers") or []} - {""}
+
+    def label(key):
+        kind, _, name = key.partition(":")
+        return f"clock {name}'s outcome" if kind == "clock" else name
+
+    out, log = [], []
+    for key in keys:
+        v = vectors.get(key)
+        if v is None:
+            continue
+        ranked = sorted(((float(v @ vectors[k]), k) for k in events
+                         if k != key and k in vectors
+                         and not (on_clocks(key) & on_clocks(k))), reverse=True)
+        if ranked and ranked[0][0] >= LOG_FLOOR:
+            log.append(f"{key.partition(':')[2]} same event {ranked[0][1]} {ranked[0][0]:.2f}")
+        for score, other in [r for r in ranked if r[0] >= EVENT_NOTE][:2]:
+            kind, _, name = other.partition(":")
+            if kind == "clock":
+                c = clocks[name]
+                out.append(f"[CHECK] {label(key)} reads like what clock {name} brings when full "
+                           f"({score:.2f}): \"{c['consequence']}\" (at {c.get('current', 0)}/"
+                           f"{c.get('max', 1)}{ThreatClockManager.due_text(c)})")
+                out.append(f"  If it speeds that up or replaces it: bash tools/gm-clock.sh due "
+                           f"\"{name}\" --earlier <time>, or bash tools/gm-clock.sh remove \"{name}\"")
+            else:
+                c = by_id[name]
+                mine = key.partition(":")[2]
+                drop_mine = (f"bash tools/gm-clock.sh remove \"{mine}\"" if key.startswith("clock:")
+                             else f"bash tools/gm-consequence.sh resolve {mine}")
+                out.append(f"[CHECK] {label(key)} reads like {name} ({score:.2f}): "
+                           f"\"{c.get('consequence', '')}\" (waits for {_waits(campaign_dir, c)})")
+                out.append(f"  If they are one event, keep one: bash tools/gm-consequence.sh "
+                           f"resolve {name}, or {drop_mine}")
+    _log(campaign_dir, log)
+    return out
+
+
+def event_lines(campaign_dir, keys) -> list[str]:
+    """check_events for the commands that make a consequence or a clock: the lines
+    to print. None without the model (GM_EMBEDDER=off: tests without vectors)."""
+    from embedder import get_embedder
+    embedder = get_embedder()
+    if embedder is None or not keys:
+        return []
+    return check_events(campaign_dir, keys, embedder)
 
 
 def _quoted(holder: str) -> str:

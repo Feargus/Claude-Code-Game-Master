@@ -433,6 +433,9 @@ def main():
             key = m._find(m.get_clocks(), args.name)
             due = ThreatClockManager.due_text(out)        # computed: news to the GM
             text = [f"[SUCCESS] Added clock {key}" + (f" ({due[2:]})" if due else "")]
+            if args.consequence:
+                from recall_notes import event_lines
+                text += event_lines(m.campaign_dir, [f"clock:{key}"])
         elif args.action == "advance":
             out = m.advance(args.name, args.ticks)
             if out is None:

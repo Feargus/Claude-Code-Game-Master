@@ -229,11 +229,19 @@ class WorldTick:
 
     def check(self, applied: list[dict[str, Any]]) -> list[str]:
         """Semantic recall on the tick's facts, printed: the consequences they may
-        trigger (not the ones this tick just created), plots, people."""
+        trigger (not the ones this tick just created), plots, people; and on its new
+        consequences and clocks: the same event waiting already (check_events)."""
         from note_manager import NoteManager
+        from recall_notes import event_lines
         own = {a.get("consequence") for a in applied}
-        return NoteManager(self.world_state_dir or "world-state").check(
-            [a["fact"] for a in applied], skip=own)
+        notes = NoteManager(self.world_state_dir or "world-state")
+        lines = notes.check([a["fact"] for a in applied], skip=own)
+        made = ([f"consequence:{a['consequence']}" for a in applied if a.get("consequence")]
+                + [f"clock:{a['clock']}" for a in applied if a.get("clock")])
+        events = event_lines(notes.campaign_dir, made)
+        for line in events:
+            print(line)
+        return lines + events
 
     def rollback_last(self) -> bool:
         """Undo the most recent world tick: its facts, consequences and clocks."""

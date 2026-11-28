@@ -310,3 +310,54 @@ def test_an_edit_is_not_checked_for_repeats_again(dcc_world, monkeypatch, capsys
     assert edited.returncode == 0, edited.stderr
     assert edited.stdout.startswith(f"[SUCCESS] Edited fact {told}")
     assert "may repeat" not in edited.stdout
+
+
+def test_a_fact_that_reads_like_a_waiting_consequence_names_it(dcc_world, monkeypatch, capsys):
+    """The man in the lobby (What Remains): what a consequence was to bring was
+    played before its trigger, and would have happened twice. A resolved one is
+    no longer named."""
+    from lib.consequence_manager import ConsequenceManager
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    cm = ConsequenceManager(dcc_world)
+    cid = cm.add_consequence("A grey courier asks the porter about the vault keys",
+                             triggers=[{"type": "on_time", "match": "evening"}])
+    nm = NoteManager(dcc_world)
+    capsys.readouterr()
+    fid = nm.add_fact("A grey courier asks the porter about the vault keys, Mordecai says.",
+                      holders=["player"], nowhere=True)
+    printed = capsys.readouterr().out
+    assert (f"[CHECK] {fid} may be what {cid} waits to bring") in printed
+    assert "(waits for it is evening (17:00–18:59))" in printed
+    assert f"If it has happened, it won't again: bash tools/gm-consequence.sh resolve {cid}" in printed
+    cm.resolve(cid)
+    capsys.readouterr()
+    nm.add_fact("A grey courier asks the porter about the vault keys again.",
+                holders=["player"], nowhere=True)
+    assert "waits to bring" not in capsys.readouterr().out
+
+
+def test_a_new_consequence_or_clock_that_reads_like_one_waiting_is_named(dcc_world):
+    """Thale's team summoned to Kettle Yard while the clock still brought it to the
+    flat (What Remains): the same event, twice. A sign on its own clock is meant
+    to resemble the clock's outcome and is not named."""
+    import os
+    env = dict(os.environ, GM_WORLD_STATE_BASE=str(dcc_world), GM_EMBEDDER="fake")
+
+    def run(tool, *words):
+        r = subprocess.run(["bash", str(TOOLS / tool), *words], capture_output=True,
+                           text=True, env=env)
+        assert r.returncode == 0, r.stderr
+        return r.stdout
+
+    run("gm-clock.sh", "add", "Vault Raid", "3", "--on", "event",
+        "--consequence", "The raiders empty the vault under the bridge")
+    sign = run("gm-consequence.sh", "add", "The raiders scout the vault under the bridge",
+               "--trigger-type", "on_clock", "--match", "Vault Raid:2")
+    assert "reads like" not in sign
+    same = run("gm-consequence.sh", "add", "The raiders empty the vault under the bridge tonight",
+               "--trigger-type", "on_time", "--match", "night")
+    assert "reads like what clock Vault Raid brings when full" in same
+    assert 'bash tools/gm-clock.sh due "Vault Raid" --earlier <time>' in same
+    clock = run("gm-clock.sh", "add", "Second Raid", "2", "--on", "event",
+                "--consequence", "The raiders empty the vault under the bridge again")
+    assert "[CHECK] clock Second Raid's outcome reads like" in clock
