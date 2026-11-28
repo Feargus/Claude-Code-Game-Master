@@ -87,6 +87,8 @@ class ConsequenceManager(EntityManager):
         the same thing another way.
 
         `effects` are carried out by the script each time it fires (see EFFECT_TYPES):
+          {"type": "fact", "holders" or "secret", "truth", "version_of", "about", "at"}:
+           the consequence's own text becomes a fact (its future fact), _check_fact
           {"type": "start_clock", "name", "segments", "on" (time|event, default time),
            "due_in" ("3d") or "due" ("YYYY-MM-DD HH:MM"), "consequence" (optional)}
           {"type": "tell", "fact", "holders"}
@@ -223,7 +225,7 @@ class ConsequenceManager(EntityManager):
                 matched.append(hit)
         return matched
 
-    EFFECT_TYPES = ('start_clock', 'tell', 'rule')
+    EFFECT_TYPES = ('fact', 'start_clock', 'tell', 'rule')
     RULE_EFFECTS = ('change', 'rate_of', 'state', 'tokens')    # what a rule effect may be
 
     def _check_effect(self, effect: dict[str, Any]) -> str:
@@ -232,6 +234,8 @@ class ConsequenceManager(EntityManager):
         if effect.get('type') not in self.EFFECT_TYPES:
             return (f"Unknown effect '{effect.get('type')}'. Use one of: "
                     f"{', '.join(self.EFFECT_TYPES)}")
+        if effect['type'] == 'fact':
+            return self._check_fact(effect)
         if effect['type'] == 'tell':
             return self._check_tell(effect)
         if effect['type'] == 'rule':
@@ -276,6 +280,74 @@ class ConsequenceManager(EntityManager):
             lines += world_rules.report_lines(self.json_ops, report)
         for c in done.get('fired') or []:
             lines.append(f"that fired {c['id']}: {c['consequence']}")
+        return lines
+
+    def _check_fact(self, effect: dict[str, Any]) -> str:
+        """fact: the consequence's own text becomes a fact when it fires (its future
+        fact), with a fact's fields: "holders" or "secret" (neither: whoever is in
+        the scene then, nobody when it happens off-screen), "truth" with
+        "version_of" (a lie, half the story), "about", "at". Checked now; the fact
+        itself is recorded only when it fires (_fact)."""
+        from note_manager import TRUTH_VALUES
+        from world_ids import WorldIds
+        ids = WorldIds(self.json_ops)
+        if effect.get('holders') and effect.get('secret'):
+            return "fact: give --holders or --secret, not both."
+        if effect.get('holders'):
+            holders, errors = ids.resolve_all(effect['holders'], holders=True)
+            if errors:
+                return "fact: " + "; ".join(errors)
+            effect['holders'] = holders
+        if effect.get('about'):
+            about, errors = ids.resolve_all(effect['about'])
+            if errors:
+                return "fact: --about: " + "; ".join(errors)
+            effect['about'] = about
+        truth = effect.get('truth')
+        if truth and truth not in TRUTH_VALUES:
+            return f"fact: --truth is partial or wrong, not {truth!r}."
+        if effect.get('version_of'):
+            if not truth:
+                return ("fact: a version of another fact is partial or wrong; give --truth "
+                        "too.")
+            if not self._find_fact(effect['version_of']):
+                return f"fact: no fact '{effect['version_of']}' for --version-of."
+        if effect.get('at'):
+            cid, error = ids.resolve_as(effect['at'], ('location',))
+            if error:
+                return f"fact: --at: {error}"
+            effect['at'] = cid
+        return ''
+
+    def _fact(self, e: dict[str, Any], hit: dict[str, Any]) -> list[str]:
+        """Record the consequence's future fact now that it has fired: its text,
+        with the fields it was given (_check_fact) and its plots."""
+        import contextlib
+        import io
+
+        from note_manager import NoteManager
+        notes = NoteManager(self.base_dir) if self.base_dir else NoteManager()
+        offscreen = bool(hit.get('offscreen'))
+        holders = e.get('holders') or None
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            fid = notes.add_fact(hit.get('consequence', ''), check=False, holders=holders,
+                                 secret=bool(e.get('secret')) or (offscreen and not holders),
+                                 truth=e.get('truth'), version_of=e.get('version_of'),
+                                 about=e.get('about'), at=e.get('at'),
+                                 nowhere=offscreen and not e.get('at'),
+                                 plots=hit.get('plots'), first_line=False)
+        if not fid:
+            why = "; ".join(ln.replace("[ERROR] ", "") for ln in err.getvalue().splitlines()
+                            if ln.strip() and "not recorded" not in ln)
+            return [f"its fact could not be recorded: {why}"]
+        entry = fact_file.by_id(fact_file.load(self.json_ops), fid) or {}
+        known = ", ".join(entry.get('holders') or []) or "nobody (secret)"
+        lines = [f"recorded as {fid}, known to: {known}"
+                 + (f"; at {entry['at']}" if entry.get('at') else "")]
+        for c in notes.last_fired:
+            lines.append(f"that fired {c['id']}: {c['consequence']}")
+            lines += [f"  {line}" for line in c.get('effects_done', [])]
         return lines
 
     def _check_tell(self, effect: dict[str, Any]) -> str:
@@ -337,7 +409,9 @@ class ConsequenceManager(EntityManager):
         for hit in hits:
             done = []
             for e in hit.get('effects') or []:
-                if e.get('type') == 'start_clock':
+                if e.get('type') == 'fact':
+                    done.extend(self._fact(e, hit))
+                elif e.get('type') == 'start_clock':
                     done.append(self._start_clock(e, hit.get('plots')))
                 elif e.get('type') == 'tell':
                     done.extend(self._tell(e))
@@ -737,7 +811,9 @@ def describe_effects(effects) -> str:
     for e in effects or []:
         if not isinstance(e, dict):
             continue
-        if e.get('type') == 'start_clock':
+        if e.get('type') == 'fact':
+            parts.append(_fact_words(e))
+        elif e.get('type') == 'start_clock':
             n = int(e.get('segments', 1))
             size = f"{n} segment{'s' if n != 1 else ''}"
             if e.get('on') == 'event':
@@ -758,6 +834,20 @@ def describe_effects(effects) -> str:
         elif e.get('type') == 'rule':
             parts.append(_rule_words(e))
     return "; ".join(parts)
+
+
+def _fact_words(e: dict[str, Any]) -> str:
+    """'becomes a fact, known to street, wrong (a version of f4)'."""
+    if e.get('holders'):
+        who = f"known to {', '.join(e['holders'])}"
+    elif e.get('secret'):
+        who = "known to nobody"
+    else:
+        who = "known to whoever is there"
+    how = ""
+    if e.get('truth'):
+        how = f", {e['truth']}" + (f" (a version of {e['version_of']})" if e.get('version_of') else "")
+    return f"becomes a fact, {who}{how}"
 
 
 def _rule_words(e: dict[str, Any]) -> str:
@@ -935,6 +1025,22 @@ def main():
                                  "doesn't stop for it (it goes into the timeline)")
     add_parser.add_argument('--plot', action='append', dest='plots', default=[],
                             help='The plot it belongs to (repeatable)')
+    add_parser.add_argument('--fact', action='store_true',
+                            help='When it fires, its text is recorded as a fact (its future '
+                                 'fact), with the fields below')
+    add_parser.add_argument('--holders', action='append', default=[], metavar='HOLDER',
+                            help='With --fact: who will know it (repeatable); none given: '
+                                 'whoever is there when it fires, nobody off-screen')
+    add_parser.add_argument('--secret', action='store_true',
+                            help='With --fact: nobody will know it (a GM-only secret)')
+    add_parser.add_argument('--truth', choices=['wrong', 'partial'],
+                            help='With --fact: a wrong or partial version (a lie, half of it)')
+    add_parser.add_argument('--version-of', dest='version_of', metavar='FACT_ID',
+                            help='With --fact and --truth: the fact it is a version of')
+    add_parser.add_argument('--about', action='append', default=[], metavar='ID',
+                            help='With --fact: who or what it is about, beyond the names in it')
+    add_parser.add_argument('--at', metavar='PLACE',
+                            help='With --fact: where it will happen')
     add_parser.add_argument('--tells', metavar='FACT_ID',
                             help='When it fires, these holders (--to) learn this fact')
     add_parser.add_argument('--to', action='append', default=[], metavar='HOLDER',
@@ -1000,6 +1106,13 @@ def main():
             sys.exit(emit_error("--clock-... options describe the clock that --starts-clock starts; "
                                 "give --starts-clock \"<name>\" too"))
         effects = []
+        fact_fields = {'holders': args.holders, 'secret': args.secret, 'truth': args.truth,
+                       'version_of': args.version_of, 'about': args.about, 'at': args.at}
+        if args.fact:
+            effects.append({'type': 'fact', **{k: v for k, v in fact_fields.items() if v}})
+        elif any(fact_fields.values()):
+            sys.exit(emit_error("--holders, --secret, --truth, --version-of, --about and --at "
+                                "describe the fact it becomes: give --fact too"))
         if bool(args.tells) != bool(args.to):
             sys.exit(emit_error("--tells <fact id> and --to <holder> go together"))
         if args.tells:
