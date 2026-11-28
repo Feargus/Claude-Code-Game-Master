@@ -45,7 +45,7 @@ class LocationManager(EntityManager):
         """
         from world_ids import WorldIds
         description = str(description or "").strip()
-        aliases, dropped = WorldIds.drop_own_names([a.strip() for a in aliases or []], name)
+        aliases, dropped = WorldIds.drop_needless_aliases([a.strip() for a in aliases or []], name)
         ids = WorldIds(self.json_ops)
         errors = [e for a in aliases if (e := ids.check_alias(a, f"location:{name}"))]
         if errors:

@@ -245,7 +245,7 @@ class FactionManager:
     def _checked_aliases(self, name: str, fid: str, aliases) -> list[str]:
         aliases = list(dict.fromkeys(a.strip() for a in aliases if a.strip()))
         from world_ids import WorldIds
-        aliases, dropped = WorldIds.drop_own_names(aliases, name)
+        aliases, dropped = WorldIds.drop_needless_aliases(aliases, name)
         self.notes += dropped
         problems = [p for a in aliases if (p := self._ids().check_alias(a, f"faction:{fid}"))]
         if problems:

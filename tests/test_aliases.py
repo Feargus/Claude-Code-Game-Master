@@ -64,6 +64,25 @@ def test_a_clashing_alias_refuses_the_npc(world, capsys):
     assert "Ishbel Rue" not in json.loads((camp / "npcs.json").read_text())
 
 
+def test_a_common_word_is_no_alias(world, capsys):
+    """'the flat' would make 'Dessa's flat' read as the same place (the What Remains
+    opening); a short proper name, or a number, is fine. Added later, a common word
+    is refused; given when a record is made, it is left out with a note, so the
+    record (a whole opening) isn't thrown away for it."""
+    ws, camp = world
+    ops = JsonOperations(str(camp))
+    for alias in ["the flat", "next door", "a ledge"]:
+        with pytest.raises(ValueError, match=f"'{alias}' is a common word, not a name"):
+            change_aliases(ops, "location", "Lanternside", add=[alias])
+    assert change_aliases(ops, "location", "Lanternside", add=["the Lantern", "4419"]) == (
+        "Lanternside", ["the Lantern", "4419"])
+    assert LocationManager(ws).add_location("Flat 4417", "Level 44", "One room.",
+                                            aliases=["Ish's flat", "the flat"])
+    assert "'the flat' is not kept as an alias: it is a common word" in capsys.readouterr().out
+    assert json.loads((camp / "locations.json").read_text())["Flat 4417"]["aliases"] == ["Ish's flat"]
+    assert LocationManager(ws).add_location("Dessa's flat", "next door", "A bigger flat.")
+
+
 def test_creating_prints_one_line_with_the_aliases(world, capsys):
     """Creating says what was made, in one line, "(sketch)" while no look or
     personality is given; nothing given is read back, and hints wait until the
@@ -126,10 +145,10 @@ def test_an_alias_the_name_check_already_finds_is_left_out(world, capsys):
     record is made: a refusal would throw away a whole opening."""
     ws, camp = world
     assert LocationManager(ws).add_location("Saint Ayo's", "a clinic", "A clinic.",
-                                            aliases=["Ayo's", "the clinic"])
+                                            aliases=["Ayo's", "the Mercy Clinic"])
     out = capsys.readouterr().out
     assert "[NOTE] 'Ayo's' is not kept as an alias: the name check already finds 'Saint Ayo's'" in out
-    assert json.loads((camp / "locations.json").read_text())["Saint Ayo's"]["aliases"] == ["the clinic"]
+    assert json.loads((camp / "locations.json").read_text())["Saint Ayo's"]["aliases"] == ["the Mercy Clinic"]
     assert NPCManager(ws).create_npc("Ishbel Rue", "x", nowhere=True, aliases=["ishbel rue"])
     assert "not kept as an alias" in capsys.readouterr().out
     assert "aliases" not in json.loads((camp / "npcs.json").read_text())["Ishbel Rue"]["identity"]

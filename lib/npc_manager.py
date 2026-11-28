@@ -84,7 +84,7 @@ class NPCManager(EntityManager):
         """
         from world_ids import WorldIds, close_name_refusal
         places, errors = self._usual_places(locations)
-        aliases, dropped = WorldIds.drop_own_names([a.strip() for a in aliases or [] if a.strip()],
+        aliases, dropped = WorldIds.drop_needless_aliases([a.strip() for a in aliases or [] if a.strip()],
                                                    name)
         ids = WorldIds(self.json_ops)
         errors += [e for a in aliases if (e := ids.check_alias(a, f"npc:{name}"))]

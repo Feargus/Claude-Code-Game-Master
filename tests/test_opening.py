@@ -220,19 +220,21 @@ def test_a_consequence_may_wait_on_a_clock_given_later(world):
 
 
 def test_a_place_named_after_another_and_a_needless_alias(world):
-    """An alias the name already covers ("the Underpass" for The Underpass) is left
-    out with a note, and a refused close name ("Orchid Room service alley" beside The
+    """An alias the name already covers ("the Underpass" for The Underpass) or a
+    common word ("the market") is left out with a note, and a refused close name ("Orchid Room service alley" beside The
     Orchid Room) names the entry's key, "another": true, not the command line's
     --another."""
     ws, camp = world
     spec = json.loads(json.dumps(SPEC))
-    spec["place"]["aliases"] = ["lanternside"]
+    spec["place"]["aliases"] = ["lanternside", "the market"]
     spec["exits"][1]["name"] = "Lanternside stairwells"
     with pytest.raises(OpeningError, match='add "another": true to its entry'):
         Opening(ws).apply(json.loads(json.dumps(spec)))
     spec["exits"][1]["another"] = True
     result = Opening(ws).apply(spec)
     assert any("'lanternside' is not kept as an alias" in n for n in result["notes"])
+    assert any("'the market' is not kept as an alias: it is a common word" in n
+               for n in result["notes"])
     assert "aliases" not in _load(camp, "locations.json")["Lanternside"]
 
 

@@ -19,6 +19,7 @@ with close matches, so a typo never becomes a new, empty id.
 """
 
 import difflib
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -283,12 +284,14 @@ class WorldIds:
         return cid, ""
 
     @staticmethod
-    def drop_own_names(aliases, name: str) -> tuple[list[str], list[str]]:
-        """(the aliases worth keeping, a note for each one left out): an alias the
-        name check already finds as `name` (case, punctuation, a leading 'the' or
-        'Saint') adds nothing. A record is made without it rather than refused: in
-        the playtests one such alias ("the Underpass", "Ayo's") threw away a whole
-        opening."""
+    def drop_needless_aliases(aliases, name: str) -> tuple[list[str], list[str]]:
+        """(the aliases worth keeping, a note for each one left out) for a record
+        being made: an alias the name check already finds as `name` (case,
+        punctuation, a leading 'the' or 'Saint') adds nothing, and a common word
+        ("the flat") is no name (check_alias). A record is made without them rather
+        than refused: in the playtests one such alias ("the Underpass", "Ayo's",
+        "the flat") threw away a whole opening. Added later (change_aliases), a
+        common word is refused."""
         own = normalize_entity_name(name)
         kept, notes = [], []
         for a in aliases:
@@ -296,6 +299,10 @@ class WorldIds:
                 notes.append(f"'{a}' is not kept as an alias: the name check already "
                              f"finds '{name}' by it (case, punctuation and a leading title "
                              f"such as 'the' or 'Saint' are ignored).")
+            elif is_common_words(a) and normalize_entity_name(a) not in RESERVED:
+                notes.append(f"'{a}' is not kept as an alias: it is a common word, which "
+                             f"the name check would find wherever the word is written. An "
+                             f"alias is a shorter proper name, with a capital letter.")
             else:
                 kept.append(a)
         return kept, notes
@@ -313,6 +320,12 @@ class WorldIds:
             return f"'{text}' is not a name."
         if text.lower() in RESERVED or norm in RESERVED:
             return f"'{text}' is a word ids use ({', '.join(RESERVED)})."
+        if is_common_words(text):
+            return (f"'{text}' is a common word, not a name: the name check would find it "
+                    f"wherever the word is written, and take other names that contain it "
+                    f"for this one. An alias is a shorter proper name, with a capital letter "
+                    f"('the Yard' for Old Iron's Yard, 'Ish's flat', a number like '4419'), "
+                    f"or there is none.")
         own = self.player_name() if owner == "player" else owner.partition(":")[2]
         if owner.startswith("faction:"):
             names = aliases_of(self._load()["faction"].get(own))
@@ -357,6 +370,17 @@ class WorldIds:
             elif cid not in ids:
                 ids.append(cid)
         return ids, errors
+
+
+_ARTICLES = {"the", "a", "an"}
+
+
+def is_common_words(text: str) -> bool:
+    """Whether `text` is only common words: apart from an article, no word has a
+    capital letter or a digit ("the flat", "next door"; not "the Yard", "Ish's flat",
+    "4419")."""
+    words = [w for w in re.findall(r"[^\W_]+", str(text or "")) if w.lower() not in _ARTICLES]
+    return bool(words) and not any(c.isupper() or c.isdigit() for w in words for c in w)
 
 
 def close_name_refusal(close: list[str], kind: str, name: str) -> str:
