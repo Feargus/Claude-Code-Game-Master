@@ -88,7 +88,9 @@ here; everything else grows from the table.
 
 Write `world-bible.json` to the campaign dir with `confirmed: false` and ALL
 required keys (validated by `lib/world_bible.py`): `name`, `voice`
-(`style`/`sample_passages`), `tone`, `themes`, `factions`
+(`style`/`sample_passages`), `tone`, `themes`, `geography` (a graph of places:
+`{"nodes": [...], "edges": [...]}`, below). The factions are records of their own
+(`gm-faction.sh create`, below), not part of the bible.
 
 **Author the `voice` block from `voice_exemplar`** — this is how the GM narrates
 in the author's voice at play (surfaced every beat by `get_full_context`):

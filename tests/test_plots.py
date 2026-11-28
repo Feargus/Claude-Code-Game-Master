@@ -175,5 +175,6 @@ def test_an_owners_plot_with_nothing_to_move_it_says_so(world):
         return subprocess.run(["bash", str(root / "tools/gm-plot.sh"), "add", *words],
                               capture_output=True, text=True, env=env).stdout
     out = add("The Heist", "--goal", "rob the vault", "--owner", "player")
-    assert "[NOTE] Nothing will move this plot by itself" in out and '--plot "The Heist"' in out
-    assert "[NOTE] Nothing will move" not in add("The Rot", "--goal", "find what spreads the rot")
+    assert "[NOTE] Nothing moves The Heist yet" in out and '--plot "The Heist"' in out
+    assert "--on event for a faction's plan" in out and "--due-in <when> for anyone else's" in out
+    assert "[NOTE] Nothing moves" not in add("The Rot", "--goal", "find what spreads the rot")

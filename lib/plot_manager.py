@@ -430,10 +430,11 @@ def main() -> int:
                         args.involves, args.follows, args.stands, args.another)
             print(f"[SUCCESS] Plot {key} ({args.kind})")
             if args.owner and not moved_by(m.json_ops, key):
-                print(f"[NOTE] Nothing will move this plot by itself: the world moves only on "
-                      f"/gm world. Give {key} a clock (bash tools/gm-clock.sh add \"<short name>\" 4 "
-                      f"--text \"<what it is about>\" --due-in <when> --plot \"{key}\"), or a "
-                      f"consequence with --plot \"{key}\".")
+                print(f"[NOTE] Nothing moves {key} yet: give it a clock, bash tools/gm-clock.sh "
+                      f"add \"<short name>\" 4 --text \"<what it is about>\" --consequence "
+                      f"\"<what happens when it fills>\" --plot \"{key}\", with --on event for a "
+                      f"faction's plan (its successful actions move it) or --due-in <when> for "
+                      f"anyone else's goal; or a consequence with --plot \"{key}\".")
             _suggest_facts(key)
         elif args.action == "stands":
             key, _ = m.set_stands(args.key, args.stands)
