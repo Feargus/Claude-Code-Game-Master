@@ -6,11 +6,21 @@ conversion pass. "Where we are" at the end lists what is still to move.*
 
 ## Who reads it
 
-The GM: a language model reading the output in its context, often only the first line
-(`| head -1`), often with the rest of the output dropped. So output is short, readable
-text that says what happened and what to do next. There is no machine format: the tests
-call the Python functions, not the commands, and no script parses a command's output
-(there is no `--json`: removed 2026-11-22).
+The GM: a language model reading the output in its context. It reads all of it: `CLAUDE.md`
+tells it never to cut or silence the tools' output, and a hook
+(`.claude/hooks/read-output-whole.py`) refuses a command that pipes it into `head` or
+`tail` or sends it to `/dev/null`, before it runs.
+
+That is fair only while **every line is useful to the GM**. A line is useful when it says
+what happened, something the GM doesn't know yet, or what to do next. Everything else is
+noise and goes: what the GM already knows (its own text read back), a check that is
+usually wrong (fix it or drop it, don't leave it to be ignored), a line that asks nothing
+of the GM and changes nothing it will do. Noise teaches the GM to skip lines, and then it
+skips the one that mattered.
+
+So output is short, readable text that says what happened and what to do next. There is
+no machine format: the tests call the Python functions, not the commands, and no script
+parses a command's output (there is no `--json`: removed 2026-11-22).
 
 ## Streams and exit codes
 
@@ -47,6 +57,9 @@ A new marker is added here first, with its meaning, and only when none of these 
 - **Everything after it is something the GM doesn't already know.** Never read back what
   the GM just typed (the fact's own text, every field that was set).
 - **An action ends with the full command**, ready to run: `bash tools/gm-note.sh plot f52 --add "The Sold Contract"`.
+- **No pointer into the code.** Output never sends the GM to `lib/`, `tools/` or the
+  campaign's JSON files ("the fields: `lib/opening.py`"): what it needs to know or write is
+  in the output itself, the command's help or the GM's instructions.
 - **Nothing to report: no line.** Not `(nothing triggered)`, not `No facts match.` after a
   command whose job was something else. A lookup that finds nothing says so in one line.
 - **One thing per line.** A list of several is several lines, not one line with semicolons;

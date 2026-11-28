@@ -9,6 +9,13 @@ on disk as plain JSON under `world-state/campaigns/<name>/`.
 Always invoke as `bash tools/gm-<tool>.sh <command>`, never the Python directly — the
 wrapper is what supplies the campaign resolution below.
 
+**The GM knows the tools only from outside:** their output, their help and its own
+instructions (`CLAUDE.md`, the skills, the command files). It never reads `lib/`, `tools/`
+or the campaign's JSON files, and nothing it reads sends it there. A format the GM has to
+write (an opening, a rule's definition) is given in full in the command's help or in its
+instructions, never as "the fields: `lib/opening.py`". When something the GM needs is
+missing there, the fix is to add it there, not to let the GM read the code.
+
 ## What `common.sh` guarantees before a manager runs
 
 Every wrapper sources it, and inherits:

@@ -2,5 +2,18 @@
   "statusLine": {
     "type": "command",
     "command": "bash tools/gm-statusline.sh"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/read-output-whole.py\""
+          }
+        ]
+      }
+    ]
   }
 }
