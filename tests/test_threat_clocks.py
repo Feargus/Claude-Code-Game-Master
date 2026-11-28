@@ -44,7 +44,7 @@ def test_advance_unknown_clock_returns_none(dcc_world):
 def test_remove_clock(dcc_world):
     m = ThreatClockManager(dcc_world)
     m.add_clock("Doom", 6)
-    assert m.remove_clock("Doom") is True
+    assert m.remove_clock("Doom") == []           # nothing waited on it
     assert "Doom" not in m.get_clocks()
 
 

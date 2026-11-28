@@ -19,9 +19,12 @@ from note_manager import fact_text
 from threat_clocks import ThreatClockManager
 
 
-def _clock_lines(clocks: dict) -> list[str]:
+def _clock_lines(clocks: dict, store: dict) -> list[str]:
     """Clocks, most urgent first: how far and when due, and what happens when one
-    fills. What a clock is about is its plot's; a full one has fired already."""
+    fills: the consequences waiting on its last segment (`store`, consequences.json).
+    What a clock is about is its plot's; a full one has fired already."""
+    from threat_clocks import outcomes
+    full_at = outcomes(store, clocks)
     lines = []
     for name, c in ThreatClockManager.by_urgency(clocks):
         cur, mx = int(c.get('current', 0)), int(c.get('max', 1))
@@ -29,8 +32,8 @@ def _clock_lines(clocks: dict) -> list[str]:
             lines.append(f"  clock {name} at {cur}/{mx}: full")
             continue
         lines.append(f"  clock {name} at {cur}/{mx}{ThreatClockManager.due_text(c)}")
-        if c.get('consequence'):
-            lines.append(f"    When full: {sentence(c['consequence'])}")
+        for outcome in full_at.get(name, []):
+            lines.append(f"    When full ({outcome['id']}): {sentence(outcome['consequence'])}")
     return lines
 
 class Brief:
@@ -205,7 +208,7 @@ class Brief:
         lines = []
         clocks = {n: c for n, c in (self.json_ops.load_json("threat-clocks.json") or {}).items()
                   if isinstance(c, dict) and belongs(c.get("plots") or [])}
-        lines += _clock_lines(clocks)
+        lines += _clock_lines(clocks, self.json_ops.load_json("consequences.json") or {})
         # Only those a recorded fact triggers, which the GM must recognise: the
         # scripts fire the others themselves and print them then; one that fired
         # and isn't resolved comes back each time time passes (time_manager.py).

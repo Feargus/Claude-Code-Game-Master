@@ -329,9 +329,12 @@ Tracks events that will trigger in the future.
                    on_learn: <who> learns <fact id> | <who> learns about:<id>; on_fact: the fact it waits for, in words"}
       ],
       "effects": [   (OPTIONAL, carried out by the script each time it fires)
+        {"type": "fact", "holders": ["street"], "secret": false, "truth": "wrong | partial",
+         "version_of": "f4", "about": ["npc:Wren"], "at": "location:<key>"
+         (all optional: the consequence's own text becomes this fact when it fires)},
         {"type": "start_clock", "name": "clock name", "segments": 3, "on": "time | event",
          "due_in": "3d (counted from the firing)  | or due: YYYY-MM-DD HH:MM",
-         "consequence": "what happens when the clock fills (optional)"},
+         "consequence": "the started clock's outcome (optional): a consequence on its last segment"},
         {"type": "tell", "fact": "f42", "holders": ["npc:Wren", "street"]}
       ]
     }

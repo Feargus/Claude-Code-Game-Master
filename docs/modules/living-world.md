@@ -31,25 +31,19 @@ itself (`⚠ FULL — a dramatic beat is due`) in the tick output and the sessio
 Clocks that must not move on the calendar are declared `advance_on: "event"` and only
 ever move by hand.
 
-## A clock that fills fires
+## A clock only counts
 
-`_fire_if_filled` writes the clock's stored `consequence` into the consequence engine,
-with an `on_clock` trigger on the clock's last segment, so it fires at once with any
-other `on_clock` consequences the fill reaches; its reason is "clock <name> at 3/3". A
-countdown running out is a beat that arrives, not a line the GM might notice. The clock's `consequence` field is authored when the clock is
-created (`gm-clock.sh`), from the pressure the beat is meant to apply.
-
-Firing is the **transition into full**, not a state check: a clock that was already full
-fires nothing, and one reset or extended back below full fires again the next time it
-fills. That is what keeps it to once per countdown without a flag to keep in sync
-(`consequence_fired` is stamped as provenance, never read as a gate). A clock with no
-`consequence` fires nothing.
-
-The write is wrapped in `redirect_stdout(sys.stderr)`: `add_consequence` announces itself
-on stdout, and this fires from inside `advance` and time updates, whose own output should
-not carry it. `gm-clock.sh add` also gained `--consequence` / `--plot`, which `add_clock`
-had always accepted and the parser could never pass — so hand-made clocks were
-structurally incapable of carrying the payload.
+What a clock brings are consequences waiting on its segments (`on_clock`
+`"<name>:<segment>"`): signs on the way, and its outcome on the last segment. The outcome
+is made with the clock from its `consequence` text (`add_clock`, `gm-clock.sh add
+--consequence`, a development's or a `start_clock` effect's clock), so it is shown,
+compared, fired and resolved like any other consequence, and the brief shows it under the
+clock as "When full". Each fires when the clock reaches its segment (`_fire_on_clock`,
+after the clocks file is saved), with the reason "clock <name> at 3/3", and only once,
+since a fired consequence matches nothing and clocks never empty. A clock with no outcome
+fires nothing when it fills. `gm-clock.sh remove` takes the consequences still waiting
+only on the clock with it; one that also waits on something else keeps its other
+triggers, and what has fired stays.
 
 ## Waiting, fired, resolved
 

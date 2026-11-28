@@ -95,24 +95,20 @@ def texts(campaign_dir: Path) -> dict[str, str]:
         if isinstance(plot, dict):
             out[f"plot:{key}"] = plot_text(key, plot)
     out.update(trigger_texts(load("consequences.json")))
-    out.update(event_texts(load("consequences.json"), load("threat-clocks.json")))
+    out.update(event_texts(load("consequences.json")))
     return out
 
 
-def event_texts(store, clocks) -> dict[str, str]:
-    """{"consequence:<id>": what it brings, "clock:<name>": what it brings when
-    full}, for every consequence still waiting and every clock not yet full: a new
-    fact is compared with the consequences (has it happened already?), a new
-    consequence or clock with both (is it the same event?), recall_notes.py."""
+def event_texts(store) -> dict[str, str]:
+    """{"consequence:<id>": what it brings}, for every consequence still waiting (a
+    clock's signs and outcome among them): a new fact is compared with them (has
+    it happened already?), and so is a new consequence (is it the same event?),
+    recall_notes.py."""
     out = {}
     for c in store.get("active", []) if isinstance(store, dict) else []:
         if (isinstance(c, dict) and c.get("id") and not c.get("fired")
                 and str(c.get("consequence") or "").strip()):
             out[f"consequence:{c['id']}"] = str(c["consequence"])
-    for name, c in clocks.items() if isinstance(clocks, dict) else []:
-        if (isinstance(c, dict) and str(c.get("consequence") or "").strip()
-                and int(c.get("current", 0)) < int(c.get("max", 1))):
-            out[f"clock:{name}"] = str(c["consequence"])
     return out
 
 

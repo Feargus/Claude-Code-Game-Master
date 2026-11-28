@@ -6,9 +6,11 @@ Named segmented clocks that advance on time or events, surfaced in the session
 context so stakes are visible and trustworthy. A time clock runs on the in-game
 wall clock: it stores when it started and when it is due, and every time change
 recomputes how many segments are filled. An event clock is advanced by hand.
-A filled clock fires its consequence; consequences with an on_clock trigger
-fire at the segment they name. Tone-respecting: a campaign that wants no
-doom clock simply declares none.
+A clock only counts. What it brings are consequences waiting on its segments:
+signs on the way, and its outcome on the last segment (made with the clock from
+its `consequence` text, add_clock); each fires when the clock reaches its
+segment. Tone-respecting: a campaign that wants no doom clock simply declares
+none.
 """
 
 import sys
@@ -26,6 +28,34 @@ from game_time import STORED_FORMAT, current_time
 # into its `text`, which can be reworded freely.
 MAX_NAME_WORDS = 3
 MAX_NAME_CHARS = 30
+
+
+def clock_of(trigger) -> tuple[str, int | None]:
+    """(clock name, segment or None) of an on_clock trigger ("clock:<name>:<segment>"),
+    ('', None) for any other trigger."""
+    if not isinstance(trigger, dict) or trigger.get("type") != "on_clock":
+        return "", None
+    match = str(trigger.get("match", ""))
+    rest = match[len("clock:"):] if match.lower().startswith("clock:") else match
+    name, _, segment = rest.rpartition(":")
+    return (name, int(segment)) if segment.isdigit() and name else (rest, None)
+
+
+def outcomes(store, clocks) -> dict[str, list[dict[str, Any]]]:
+    """{clock name: the consequences still waiting on its last segment}: what each
+    clock brings when it is full."""
+    out: dict[str, list[dict[str, Any]]] = {}
+    lower = {str(k).lower(): k for k in (clocks or {})}
+    for c in (store or {}).get("active", []) if isinstance(store, dict) else []:
+        if not isinstance(c, dict) or c.get("fired"):
+            continue
+        for t in c.get("triggers") or []:
+            name, segment = clock_of(t)
+            key = lower.get(name.lower())
+            if key is not None and segment == int(clocks[key].get("max", 1)):
+                out.setdefault(key, []).append(c)
+                break
+    return out
 
 
 def check_name(raw) -> str:
@@ -103,8 +133,6 @@ class ThreatClockManager(EntityManager):
         entry = {"current": 0, "max": int(segments), "advance_on": advance_on}
         if str(text or "").strip():
             entry = {"text": str(text).strip(), **entry}
-        if consequence:
-            entry["consequence"] = consequence
         if plots:
             from plot_manager import resolve_plots
             keys, errors = resolve_plots(self.json_ops, plots)
@@ -125,39 +153,28 @@ class ThreatClockManager(EntityManager):
                 self._schedule(entry, now)
         data[name] = entry
         self.json_ops.save_json(self.clocks_file, data)
+        if str(consequence or "").strip():
+            return dict(data[name], outcome=self._add_outcome(name, entry, consequence))
         return data[name]
 
-    def _fire_if_filled(self, name: str, clock: dict[str, Any], was_full: bool) -> str | None:
-        """Write a clock's stored consequence into the world as it FILLS.
-
-        A clock carried its `consequence` text only as a printed FULL flag, so a
-        countdown running out was a line the GM might notice rather than a beat
-        that arrived. This writes a consequence on the clock's last segment, which
-        fires at once; it stays pending until the GM resolves it, like any other.
-
-        Firing is the *transition* into full, which is what keeps it to once per
-        countdown without a flag to keep in sync: a clock that was already full
-        fires nothing, and one reset or extended back below full fires again the
-        next time it fills. Mutates `clock` (stamps `consequence_fired` as
-        provenance); the caller saves.
-        """
-        if was_full or int(clock.get("current", 0)) < int(clock.get("max", 1)):
-            return None
-        text = clock.get("consequence")
-        if not text:
-            return None
+    def _add_outcome(self, name: str, clock: dict[str, Any], text: str) -> str:
+        """The clock's outcome: a consequence waiting on its last segment, made now,
+        so what the clock brings is a consequence like any other (shown, compared,
+        fired and resolved the same way). Returns its id; removes the clock and
+        raises ValueError if it is refused."""
         import contextlib
+        import io
 
         from consequence_manager import ConsequenceManager
-        # add_consequence announces itself on stdout; this one fires from inside
-        # advance and time updates, whose own output should not carry it.
-        # Its trigger is the clock's last segment, so _fire_on_clock fires it right
-        # after the save, with everything else the fill set off.
-        with contextlib.redirect_stdout(sys.stderr):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             cid = ConsequenceManager(self._wsd).add_consequence(
-                text, trigger_type="on_clock", match=f"{name}:{clock.get('max', 1)}",
+                str(text).strip(), trigger_type="on_clock", match=f"{name}:{clock['max']}",
                 plots=clock.get("plots"))
-        clock["consequence_fired"] = cid
+        if not cid:
+            self.remove_clock(name)
+            why = " ".join(ln.replace("[ERROR] ", "") for ln in err.getvalue().splitlines())
+            raise ValueError(f"The clock's outcome was refused, so the clock wasn't added: {why}")
         return cid
 
     def _fire_on_clock(self, name: str, before: int, clock: dict[str, Any]) -> list:
@@ -194,9 +211,7 @@ class ThreatClockManager(EntityManager):
         if int(ticks) < 1:
             raise ValueError(f"--ticks must be at least 1, not {ticks}.")
         before = int(c.get("current", 0))
-        was_full = before >= int(c.get("max", 1))
         c["current"] = min(c["max"], before + int(ticks))
-        self._fire_if_filled(name, c, was_full)
         self.json_ops.save_json(self.clocks_file, data)
         return dict(c, fired=self._fire_on_clock(name, before, c))
 
@@ -297,7 +312,6 @@ class ThreatClockManager(EntityManager):
             if filled <= cur:
                 continue
             c["current"] = filled
-            self._fire_if_filled(name, c, was_full=False)  # full clocks skipped above
             moved[name] = (cur, c)
             changed = True
         if changed:
@@ -317,14 +331,34 @@ class ThreatClockManager(EntityManager):
         self.json_ops.save_json(self.clocks_file, data)
         return data[key]
 
-    def remove_clock(self, name: str) -> bool:
+    def remove_clock(self, name: str) -> list[str] | None:
+        """Remove a clock and what still waits on it: a consequence waiting only on
+        this clock (a sign, its outcome) goes; one that also waits on something else
+        keeps its other triggers. What has fired stays. Returns the ids of the
+        consequences removed, or None if there is no such clock."""
         data = self._load()
         name = self._find(data, name)
-        if name is not None:
-            del data[name]
-            self.json_ops.save_json(self.clocks_file, data)
-            return True
-        return False
+        if name is None:
+            return None
+        del data[name]
+        self.json_ops.save_json(self.clocks_file, data)
+        store = self.json_ops.load_json("consequences.json") or {}
+        removed, kept, changed = [], [], False
+        for c in store.get("active", []):
+            mine = [t for t in c.get("triggers") or [] if clock_of(t)[0].lower() == name.lower()]
+            if c.get("fired") or not mine:
+                kept.append(c)
+                continue
+            rest = [t for t in c["triggers"] if t not in mine]
+            changed = True
+            if rest:
+                kept.append(dict(c, triggers=rest))
+            else:
+                removed.append(c.get("id"))
+        if changed:
+            store["active"] = kept
+            self.json_ops.save_json("consequences.json", store)
+        return removed
 
     def get_clocks(self) -> dict[str, Any]:
         return self._load()
@@ -432,10 +466,11 @@ def main():
                               text=args.text, due_at=due_at, due_in_minutes=due_in)
             key = m._find(m.get_clocks(), args.name)
             due = ThreatClockManager.due_text(out)        # computed: news to the GM
-            text = [f"[SUCCESS] Added clock {key}" + (f" ({due[2:]})" if due else "")]
-            if args.consequence:
+            text = [f"[SUCCESS] Added clock {key}" + (f" ({due[2:]})" if due else "")
+                    + (f", with its outcome {out['outcome']}" if out.get("outcome") else "")]
+            if out.get("outcome"):
                 from recall_notes import event_lines
-                text += event_lines(m.campaign_dir, [f"clock:{key}"])
+                text += event_lines(m.campaign_dir, [f"consequence:{out['outcome']}"])
         elif args.action == "advance":
             out = m.advance(args.name, args.ticks)
             if out is None:
@@ -463,10 +498,12 @@ def main():
             text = [f"[SUCCESS] {line(key, out)}"]
         elif args.action == "remove":
             key = m._find(m.get_clocks(), args.name)
-            if not m.remove_clock(args.name):
+            removed = m.remove_clock(args.name)
+            if removed is None:
                 refuse(m._missing(args.name))
             out = {"removed": key}
-            text = [f"[SUCCESS] Removed clock {key}"]
+            text = [f"[SUCCESS] Removed clock {key}"
+                    + (f", and what waited on it: {', '.join(removed)}" if removed else "")]
         elif args.action == "beats":
             out = m.full_clocks()
             text = [m.render(out) if out else "No clock is full."]

@@ -236,8 +236,12 @@ class WorldTick:
         own = {a.get("consequence") for a in applied}
         notes = NoteManager(self.world_state_dir or "world-state")
         lines = notes.check([a["fact"] for a in applied], skip=own)
+        from threat_clocks import outcomes
+        clocks = notes.json_ops.load_json("threat-clocks.json") or {}
+        full_at = outcomes(notes.json_ops.load_json("consequences.json") or {}, clocks)
         made = ([f"consequence:{a['consequence']}" for a in applied if a.get("consequence")]
-                + [f"clock:{a['clock']}" for a in applied if a.get("clock")])
+                + [f"consequence:{c['id']}" for a in applied if a.get("clock")
+                   for c in full_at.get(a["clock"], [])])
         events = event_lines(notes.campaign_dir, made)
         for line in events:
             print(line)

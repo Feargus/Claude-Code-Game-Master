@@ -360,4 +360,4 @@ def test_a_new_consequence_or_clock_that_reads_like_one_waiting_is_named(dcc_wor
     assert 'bash tools/gm-clock.sh due "Vault Raid" --earlier <time>' in same
     clock = run("gm-clock.sh", "add", "Second Raid", "2", "--on", "event",
                 "--consequence", "The raiders empty the vault under the bridge again")
-    assert "[CHECK] clock Second Raid's outcome reads like" in clock
+    assert "[CHECK] clock Second Raid's outcome (c" in clock and ") reads like" in clock

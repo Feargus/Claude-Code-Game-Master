@@ -48,7 +48,10 @@ def test_firing_by_hand_starts_the_clock(dcc_world, capsys):
     hit = cm.fire(cid, reason="the job went loud")
     clock = _clocks(dcc_world)["Vendetta"]
     assert (clock["current"], clock["max"], clock["advance_on"]) == (0, 3, "event")
-    assert clock["consequence"] == "The brothers come for you"
+    assert "consequence" not in clock                         # its outcome is a consequence
+    outcome = [c for c in cm.json_ops.load_json("consequences.json")["active"]
+               if c["consequence"] == "The brothers come for you"]
+    assert [c["triggers"] for c in outcome] == [[{"type": "on_clock", "match": "clock:Vendetta:3"}]]
     assert hit["effects_done"] == ["started clock Vendetta (0/3, on event)"]
 
 

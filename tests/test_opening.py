@@ -99,8 +99,11 @@ def test_the_opening_makes_ordinary_records(world):
         # an attitude becomes a fact the NPC holds about the player
         "friendly": ["npc:Auntie Ro"],
         "hostile": ["npc:Dekker"]}
-    triggers = _load(camp, "consequences.json")["active"][0]["triggers"]
-    assert triggers == [{"type": "on_location", "match": "location:The Lantern noodle stall"}]
+    active = _load(camp, "consequences.json")["active"]
+    [con] = [c for c in active if c["id"] in result["consequences"]]     # the development's
+    assert con["triggers"] == [{"type": "on_location", "match": "location:The Lantern noodle stall"}]
+    [outcome] = [c for c in active if c["id"] not in result["consequences"]]   # the clock's
+    assert outcome["triggers"] == [{"type": "on_clock", "match": "clock:The Foreclosure:4"}]
 
     assert result["horizon"] == ["Dekker", "Seraphine Halcyon-Vey"]   # no look or personality yet
     text = summary(result)
@@ -194,9 +197,10 @@ def test_the_plot_starts_with_its_hook_and_consequences_say_when(world):
     """Two things play showed: the plot's first beat was the placeholder 'Thread
     seeded', and the opening's consequences read 'triggers: off-screen development'."""
     ws, camp = world
-    Opening(ws).apply(json.loads(json.dumps(SPEC)))
+    result = Opening(ws).apply(json.loads(json.dumps(SPEC)))
     assert _load(camp, "plots.json")["The Writ"]["stands"] == SPEC["plot"]["hook"]
-    con = _load(camp, "consequences.json")["active"][0]
+    [con] = [c for c in _load(camp, "consequences.json")["active"]
+             if c["id"] in result["consequences"]]
     from consequence_manager import when_words
     assert "trigger" not in con
     assert when_words(con) == "at The Lantern noodle stall"   # what it waits for, in words

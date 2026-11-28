@@ -156,7 +156,7 @@ def test_the_brief_is_ordered_by_plot(world):
                             plots=["The Descent"])
     brief = SessionManager(world).get_full_context()
     block = brief.split("The Descent (main): The timer runs.")[1].split("\n---")[0]
-    assert "clock Collapse at 0/3\n    When full: The whole stairwell falls." in block
+    assert "clock Collapse at 0/3\n    When full (c1): The whole stairwell falls." in block
     assert "The stairs wear thin" not in block           # what it is about is the plot's
     assert "The stairs give way" not in block
     assert f"{secret} Mordecai rigged the stairs. (Mordecai knows)" in block

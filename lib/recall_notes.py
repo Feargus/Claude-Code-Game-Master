@@ -23,12 +23,11 @@ the model loaded), and each is compared with:
   edits the new one down to what is new, or removes it. Not after an edit: an
   edit is mostly the answer to this note, and the note would come again.
 
-A new consequence, or a new clock's outcome, is compared in the same way with the
-consequences still waiting and the outcomes of the clocks not yet full
-(check_events): one that reads like it may be the same event, which would then
-happen twice (the story sped a clock up, and a consequence now brings what the
-clock still will). A sign on its own clock is meant to resemble the clock's
-outcome and is left out.
+A new consequence (a new clock's outcome is one) is compared in the same way with
+the consequences still waiting (check_events): one that reads like it may be the
+same event, which would then happen twice (the story sped a clock up, and a
+consequence now brings what the clock's outcome still will). Two that wait on
+the same clock are left out: a sign is meant to resemble the clock's outcome.
 
 A plot or a person from CONFIDENT up is not suggested but linked at once, and the
 output says so with the command to undo it: a wrong link costs less than a missing
@@ -98,8 +97,7 @@ def check_facts(campaign_dir, fact_ids, embedder, skip=(),
     campaign_dir = Path(campaign_dir)
     store = _load(campaign_dir / "consequences.json") or {}
     triggers = trigger_texts(store)
-    events = [k for k in event_texts(store, _load(campaign_dir / "threat-clocks.json"))
-              if k.startswith("consequence:")]
+    events = list(event_texts(store))
     keys = [f"fact:{fid}" for fid in fact_ids] + list(triggers) + events
     vectors = EmbeddingStore(campaign_dir).embed(embedder, keys)
     facts = {f["id"]: f for f in _load(campaign_dir / "facts.json") or []
@@ -192,75 +190,71 @@ def _happened(campaign_dir, fid, v, vectors, events, named, store, log) -> list[
     return out
 
 
-def _clock_of(trigger) -> str:
-    """The clock an on_clock trigger waits on ("clock:<name>[:<segment>]"), or ''."""
-    if not isinstance(trigger, dict) or trigger.get("type") != "on_clock":
-        return ""
-    rest = str(trigger.get("match", "")).partition(":")[2]
-    name, _, segment = rest.rpartition(":")
-    return name if segment.isdigit() else rest
-
-
 def check_events(campaign_dir, keys, embedder) -> list[str]:
-    """A new consequence or a new clock's outcome (keys "consequence:<id>",
-    "clock:<name>") compared with the consequences still waiting and the outcomes
-    of the clocks not yet full: one that reads like it may be the same event,
-    which would then happen twice. A sign on its own clock is left out: it is meant
-    to resemble the clock's outcome. Returns the lines to print; logs the best."""
+    """A new consequence (keys "consequence:<id>"; a new clock's outcome is one)
+    compared with the consequences still waiting: one that reads like it may be
+    the same event, which would then happen twice. Two that wait on the same clock
+    are left out: a sign is meant to resemble the clock's outcome. One that is a
+    clock's outcome (it waits on the clock's last segment) is named as the clock,
+    with the commands to move or remove it. Returns the lines to print; logs the
+    best."""
     from embedding_store import EmbeddingStore, event_texts
-    from threat_clocks import ThreatClockManager
+    from threat_clocks import ThreatClockManager, clock_of
     campaign_dir = Path(campaign_dir)
     store = _load(campaign_dir / "consequences.json") or {}
     clocks = _load(campaign_dir / "threat-clocks.json") or {}
-    events = event_texts(store, clocks)
+    events = event_texts(store)
     vectors = EmbeddingStore(campaign_dir).embed(embedder, list(events))
     by_id = {c["id"]: c for c in store.get("active", []) if isinstance(c, dict) and c.get("id")}
+    lower = {str(k).lower(): k for k in clocks}
 
-    def on_clocks(key):
-        kind, _, name = key.partition(":")
-        if kind == "clock":
-            return {name}
-        return {_clock_of(t) for t in (by_id.get(name) or {}).get("triggers") or []} - {""}
+    def on_clocks(cid):
+        return {clock_of(t)[0].lower() for t in (by_id.get(cid) or {}).get("triggers") or []} - {""}
 
-    def label(key):
-        kind, _, name = key.partition(":")
-        return f"clock {name}'s outcome" if kind == "clock" else name
+    def outcome_of(cid):
+        """The clock whose outcome this consequence is (its last segment), or ''."""
+        for t in (by_id.get(cid) or {}).get("triggers") or []:
+            name, segment = clock_of(t)
+            key = lower.get(name.lower())
+            if key is not None and segment == int(clocks[key].get("max", 1)):
+                return key
+        return ""
+
+    def label(cid):
+        clock = outcome_of(cid)
+        return f"clock {clock}'s outcome ({cid})" if clock else cid
 
     out, log = [], []
     for key in keys:
-        v = vectors.get(key)
+        v, mine = vectors.get(key), key.partition(":")[2]
         if v is None:
             continue
-        ranked = sorted(((float(v @ vectors[k]), k) for k in events
+        ranked = sorted(((float(v @ vectors[k]), k.partition(":")[2]) for k in events
                          if k != key and k in vectors
-                         and not (on_clocks(key) & on_clocks(k))), reverse=True)
+                         and not (on_clocks(mine) & on_clocks(k.partition(":")[2]))), reverse=True)
         if ranked and ranked[0][0] >= LOG_FLOOR:
-            log.append(f"{key.partition(':')[2]} same event {ranked[0][1]} {ranked[0][0]:.2f}")
-        for score, other in [r for r in ranked if r[0] >= EVENT_NOTE][:2]:
-            kind, _, name = other.partition(":")
-            if kind == "clock":
-                c = clocks[name]
-                out.append(f"[CHECK] {label(key)} reads like what clock {name} brings when full "
-                           f"({score:.2f}): \"{c['consequence']}\" (at {c.get('current', 0)}/"
-                           f"{c.get('max', 1)}{ThreatClockManager.due_text(c)})")
+            log.append(f"{mine} same event {ranked[0][1]} {ranked[0][0]:.2f}")
+        for score, cid in [r for r in ranked if r[0] >= EVENT_NOTE][:2]:
+            c, clock = by_id[cid], outcome_of(cid)
+            if clock:
+                cl = clocks[clock]
+                out.append(f"[CHECK] {label(mine)} reads like what clock {clock} brings when full "
+                           f"({score:.2f}): \"{c.get('consequence', '')}\" (at {cl.get('current', 0)}/"
+                           f"{cl.get('max', 1)}{ThreatClockManager.due_text(cl)})")
                 out.append(f"  If it speeds that up or replaces it: bash tools/gm-clock.sh due "
-                           f"\"{name}\" --earlier <time>, or bash tools/gm-clock.sh remove \"{name}\"")
+                           f"\"{clock}\" --earlier <time>, or bash tools/gm-clock.sh remove \"{clock}\"")
             else:
-                c = by_id[name]
-                mine = key.partition(":")[2]
-                drop_mine = (f"bash tools/gm-clock.sh remove \"{mine}\"" if key.startswith("clock:")
-                             else f"bash tools/gm-consequence.sh resolve {mine}")
-                out.append(f"[CHECK] {label(key)} reads like {name} ({score:.2f}): "
+                out.append(f"[CHECK] {label(mine)} reads like {cid} ({score:.2f}): "
                            f"\"{c.get('consequence', '')}\" (waits for {_waits(campaign_dir, c)})")
                 out.append(f"  If they are one event, keep one: bash tools/gm-consequence.sh "
-                           f"resolve {name}, or {drop_mine}")
+                           f"resolve {cid}, or bash tools/gm-consequence.sh resolve {mine}")
     _log(campaign_dir, log)
     return out
 
 
 def event_lines(campaign_dir, keys) -> list[str]:
-    """check_events for the commands that make a consequence or a clock: the lines
-    to print. None without the model (GM_EMBEDDER=off: tests without vectors)."""
+    """check_events for the commands that make a consequence (or a clock with its
+    outcome): the lines to print. None without the model (GM_EMBEDDER=off: tests without vectors)."""
     from embedder import get_embedder
     embedder = get_embedder()
     if embedder is None or not keys:

@@ -326,8 +326,7 @@ def print_clocks(moved: dict[str, dict]) -> None:
         print(f"Clock {name}: {clock['current']}/{clock['max']}"
               + (f" — {clock['text']}" if clock.get("text") else ""))
         if clock["current"] >= clock["max"]:
-            print(f"⚠ {name} is FULL — a dramatic beat is due"
-                  + (f": {clock['consequence']}" if clock.get("consequence") else ""))
+            print(f"⚠ {name} is FULL — a dramatic beat is due")
     print_fired([c for clock in moved.values() for c in clock.get("fired", [])])
 
 

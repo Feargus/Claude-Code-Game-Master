@@ -1,114 +1,106 @@
-"""Tests for full-clock-fires.
+"""A clock's outcome is a consequence, made with the clock and waiting on its last
+segment: shown, compared, fired and resolved like any other, and it fires once,
+when the clock fills. A clock only counts."""
 
-A threat clock stores what happens when the countdown runs out. At runtime that
-text was only ever echoed in a print, so a filled clock was a line the GM might
-notice rather than a beat that arrived. These assert it fires into the
-consequence engine exactly once.
-"""
-
+import os
+import subprocess
 from datetime import datetime
+from pathlib import Path
 
 from lib.consequence_manager import ConsequenceManager
 from lib.threat_clocks import ThreatClockManager
 from lib.time_manager import TimeManager
 
 DOOM = "The floor collapses and the level is lost."
+ROOT = Path(__file__).resolve().parent.parent
 
 
-def _active(world):
-    data = ConsequenceManager(world).json_ops.load_json("consequences.json") or {}
-    return [c.get("consequence", "") for c in data.get("active", [])]
+def _store(world):
+    return ConsequenceManager(world).json_ops.load_json("consequences.json") or {}
 
 
-def _fired(world, needle=DOOM):
-    return [c for c in _active(world) if needle in c]
+def _doom(world):
+    return [c for c in _store(world).get("active", []) if DOOM in c.get("consequence", "")]
 
 
-def test_filling_a_clock_fires_its_consequence(dcc_world):
+def test_the_outcome_is_a_consequence_from_the_start(dcc_world):
+    from lib.plot_manager import PlotManager
+    PlotManager(dcc_world).add("Deep Descent", "Down.", another=True)
+    m = ThreatClockManager(dcc_world)
+    made = m.add_clock("Floor Collapse", 2, advance_on="event", consequence=DOOM,
+                       plots=["Deep Descent"])
+    [outcome] = _doom(dcc_world)
+    assert made["outcome"] == outcome["id"] and not outcome.get("fired")
+    assert outcome["triggers"] == [{"type": "on_clock", "match": "clock:Floor Collapse:2"}]
+    assert outcome["plots"] == ["Deep Descent"]
+    assert "consequence" not in m.get_clocks()["Floor Collapse"]     # a clock only counts
+
+
+def test_filling_the_clock_fires_its_outcome_once(dcc_world):
     m = ThreatClockManager(dcc_world)
     m.add_clock("Floor Collapse", 2, advance_on="event", consequence=DOOM)
-    m.advance("Floor Collapse")
-    assert _fired(dcc_world) == []  # not full yet
-
-    m.advance("Floor Collapse")
-    fired = _fired(dcc_world)
-    assert len(fired) == 1
-    assert fired[0] == DOOM
-
-
-def test_a_full_clock_does_not_fire_twice(dcc_world):
-    m = ThreatClockManager(dcc_world)
-    m.add_clock("Floor Collapse", 1, advance_on="event", consequence=DOOM)
-    m.advance("Floor Collapse")
-    m.advance("Floor Collapse")
-    m.advance("Floor Collapse")
+    assert m.advance("Floor Collapse")["fired"] == []                # not full yet
+    fired = m.advance("Floor Collapse")["fired"]
+    assert [c["consequence"] for c in fired] == [DOOM]
+    assert fired[0]["match_reason"] == "clock Floor Collapse at 2/2"
+    assert m.advance("Floor Collapse")["fired"] == []
     m.update_time_clocks(datetime(2200, 1, 1))
-    assert len(_fired(dcc_world)) == 1
+    [outcome] = _doom(dcc_world)
+    assert outcome["fired"]
 
 
 def test_time_passing_fires_the_clock_it_fills(dcc_world):
     TimeManager(dcc_world).set_time(datetime(2187, 10, 26, 10, 0))
     m = ThreatClockManager(dcc_world)
     m.add_clock("Pulse", 1, advance_on="time", consequence=DOOM)
-    m.update_time_clocks(datetime(2187, 10, 27, 10, 0))
-    assert len(_fired(dcc_world)) == 1
-    m.update_time_clocks(datetime(2187, 10, 28, 10, 0))
-    assert len(_fired(dcc_world)) == 1
+    moved = m.update_time_clocks(datetime(2187, 10, 27, 10, 0))
+    assert [c["consequence"] for c in moved["Pulse"]["fired"]] == [DOOM]
+    assert m.update_time_clocks(datetime(2187, 10, 28, 10, 0)) == {}
 
 
-def test_clock_without_a_consequence_fires_nothing(dcc_world):
+def test_a_clock_without_an_outcome_makes_none(dcc_world):
+    before = len(_store(dcc_world).get("active", []))
     m = ThreatClockManager(dcc_world)
-    before = len(_active(dcc_world))
-    m.add_clock("Quiet Countdown", 1, advance_on="event")
+    assert "outcome" not in m.add_clock("Quiet Countdown", 1, advance_on="event")
     m.advance("Quiet Countdown")
-    assert len(_active(dcc_world)) == before
+    assert len(_store(dcc_world).get("active", [])) == before
 
 
-def test_reset_below_full_lets_it_fire_again(dcc_world):
-    """A recurring countdown must be able to run out more than once."""
-    m = ThreatClockManager(dcc_world)
-    m.add_clock("Pulse", 1, advance_on="event", consequence=DOOM)
-    m.advance("Pulse")
-    assert len(_fired(dcc_world)) == 1
-
-    clocks = m._load()
-    clocks["Pulse"]["current"] = 0
-    m.json_ops.save_json(m.clocks_file, clocks)
-    m.advance("Pulse")
-    assert len(_fired(dcc_world)) == 2
-
-
-def test_cli_add_accepts_a_consequence(dcc_world):
-    """add_clock always took one; the parser could not pass it."""
-    m = ThreatClockManager(dcc_world)
-    from lib.plot_manager import PlotManager
-    PlotManager(dcc_world).add("Deep Descent", "Down.", another=True)
-    m.add_clock("Seeded", 3, consequence=DOOM, plots=["Deep Descent"])
-    stored = m.get_clocks()["Seeded"]
-    assert stored["consequence"] == DOOM
-    assert stored["plots"] == ["Deep Descent"]
-
-
-def test_firing_keeps_stdout_parseable(dcc_world, capsys):
-    """The fire happens inside advance/a time update, whose own output shouldn't carry it."""
+def test_making_and_filling_keep_stdout_to_the_command(dcc_world, capsys):
+    """The outcome's own "Added consequence" line doesn't leak into gm-clock.sh's
+    output, and a fill prints nothing by itself: the command prints the [FIRED]."""
     m = ThreatClockManager(dcc_world)
     m.add_clock("Doom", 1, advance_on="event", consequence=DOOM)
-    capsys.readouterr()
     m.advance("Doom")
-    out = capsys.readouterr()
-    assert out.out.strip() == "", f"fire leaked onto stdout: {out.out!r}"
-    assert "[SUCCESS] Added consequence" in out.err
+    assert capsys.readouterr().out.strip() == ""
 
 
-def test_the_clocks_consequence_fires_at_once_and_does_not_wait(dcc_world):
-    """Not saved to wait for a fact: the event has happened, and every fact recorded
-    afterwards would ask about it."""
+def test_removing_a_clock_removes_what_waits_on_it(dcc_world):
     m = ThreatClockManager(dcc_world)
-    m.add_clock("Doom", 2, advance_on="event", consequence=DOOM)
-    m.advance("Doom")
-    fired = m.advance("Doom")["fired"]
-    assert len(fired) == 1 and DOOM in fired[0]["consequence"]
-    assert fired[0]["match_reason"] == "clock Doom at 2/2"
     cm = ConsequenceManager(dcc_world)
-    stored = cm.json_ops.load_json("consequences.json")["active"]
-    assert all(c.get("fired") for c in stored if DOOM in c["consequence"])
+    outcome = m.add_clock("Doom", 3, advance_on="event", consequence=DOOM)["outcome"]
+    sign = cm.add_consequence("Dust falls from the ceiling", trigger_type="on_clock",
+                              match="Doom:1")
+    either = cm.add_consequence("The crawlers flee", triggers=[
+        {"type": "on_clock", "match": "Doom:2"}, {"type": "on_time", "match": "night"}])
+    gone = cm.add_consequence("A crack opens", trigger_type="on_clock", match="Doom:2")
+    cm.fire(gone)                                         # what has fired stays
+    assert sorted(m.remove_clock("Doom")) == sorted([outcome, sign])
+    left = {c["id"]: c for c in _store(dcc_world)["active"]}
+    assert outcome not in left and sign not in left and gone in left
+    assert left[either]["triggers"] == [{"type": "on_time", "match": "night"}]
+    assert m.remove_clock("Doom") is None
+
+
+def test_the_command(dcc_world):
+    env = dict(os.environ, GM_WORLD_STATE_BASE=str(dcc_world))
+
+    def run(*words):
+        return subprocess.run(["bash", str(ROOT / "tools" / "gm-clock.sh"), *words],
+                              capture_output=True, text=True, env=env)
+    made = run("add", "Doom", "2", "--on", "event", "--consequence", DOOM)
+    assert made.returncode == 0, made.stderr
+    [outcome] = _doom(dcc_world)
+    assert made.stdout.splitlines()[0] == f"[SUCCESS] Added clock Doom, with its outcome {outcome['id']}"
+    removed = run("remove", "Doom")
+    assert removed.stdout.strip() == f"[SUCCESS] Removed clock Doom, and what waited on it: {outcome['id']}"
