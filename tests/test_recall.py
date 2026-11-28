@@ -289,3 +289,24 @@ def test_a_new_fact_that_repeats_an_earlier_one_is_named_with_the_fix(dcc_world,
     nm.add_fact("Seren is to marry Strake at the last feast of the Steward.", holders=["player"],
                 truth="wrong", version_of=news, nowhere=True)
     assert f"may repeat {news}" not in capsys.readouterr().out
+
+
+def test_an_edit_is_not_checked_for_repeats_again(dcc_world, monkeypatch, capsys):
+    """An edit is mostly the answer to the repeat note; naming the same pair again
+    after it is noise. The rest of recall still runs on the new text."""
+    import os
+    monkeypatch.setenv("GM_EMBEDDER", "fake")
+    nm = NoteManager(dcc_world)
+    news = nm.add_fact("Seren is to marry Strake at the next feast of the Steward.",
+                       holders=["npc:Mordecai"], nowhere=True)
+    told = nm.add_fact("Seren is to marry Strake at the next feast of the Steward, she said.",
+                       holders=["npc:Mordecai"], nowhere=True)
+    assert f"may repeat {news}" in capsys.readouterr().out
+    edited = subprocess.run(
+        ["bash", str(TOOLS / "gm-note.sh"), "edit", told,
+         "Seren is to marry Strake at the next feast of the Steward, and she is glad."],
+        capture_output=True, text=True,
+        env=dict(os.environ, GM_WORLD_STATE_BASE=str(dcc_world), GM_EMBEDDER="fake"))
+    assert edited.returncode == 0, edited.stderr
+    assert edited.stdout.startswith(f"[SUCCESS] Edited fact {told}")
+    assert "may repeat" not in edited.stdout

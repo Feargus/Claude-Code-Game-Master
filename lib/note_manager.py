@@ -592,9 +592,10 @@ class NoteManager:
             fact_file.save(self.json_ops, kept)
         return len(facts) - len(kept)
 
-    def check(self, fact_ids, skip=()) -> list[str]:
+    def check(self, fact_ids, skip=(), twins: bool = True) -> list[str]:
         """Semantic recall on new facts, printed: the consequences they may trigger,
-        a plot they look part of, a person they read like they are about
+        a plot they look part of, a person they read like they are about, an
+        earlier fact they repeat (not with `twins` False: after an edit)
         (recall_notes.py); a plot or person it is confident of is linked at once.
         Returns the lines. `skip`: consequence ids not to name."""
         from embedder import require_embedder
@@ -602,7 +603,7 @@ class NoteManager:
         embedder = require_embedder()
         if embedder is None:                       # GM_EMBEDDER=off: tests without vectors
             return []
-        lines, links = check_facts(self.campaign_dir, fact_ids, embedder, skip)
+        lines, links = check_facts(self.campaign_dir, fact_ids, embedder, skip, twins)
         for kind, fact_id, target in links:
             if kind == "plot":
                 self.set_plots(fact_id, add=[target])
@@ -1003,7 +1004,7 @@ def main():
             for gone in done['dropped']:
                 print(f"  about: {gone} left with the old text; if it still belongs: "
                       f"bash tools/gm-note.sh about {args.fact_id} --add \"{gone}\"")
-            manager.check([args.fact_id])
+            manager.check([args.fact_id], twins=False)
         elif args.action == 'remove':
             done = manager.remove_fact(args.fact_id)
             print(f"[SUCCESS] Removed fact {args.fact_id}")

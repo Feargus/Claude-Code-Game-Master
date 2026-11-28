@@ -17,7 +17,8 @@ the model loaded), and each is compared with:
 - **an earlier fact it repeats** (TWIN_NOTE or more; versions of one truth
   aside): "Seren told Ilaria she is to marry Strake" after the betrothal is on
   record. The GM then tells the earlier fact to those who don't hold it and
-  edits the new one down to what is new, or removes it.
+  edits the new one down to what is new, or removes it. Not after an edit: an
+  edit is mostly the answer to this note, and the note would come again.
 
 A plot or a person from CONFIDENT up is not suggested but linked at once, and the
 output says so with the command to undo it: a wrong link costs less than a missing
@@ -39,7 +40,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 TRIGGER_NOTE = 0.65         # the Long Hull playtest's nine wrong matches scored 0.51–0.62
 PLOT_NOTE, PLOT_MARGIN = 0.45, 0.05
 ABOUT_NOTE = 0.55
-TWIN_NOTE = 0.70            # the Long Hull's "X told Y …" facts and their twins: 0.66–0.81
+TWIN_NOTE = 0.80            # What Remains: a repeat 0.83, the next beat of the same scene
+                            # (no repeat) 0.70–0.77; the Long Hull's "X told Y …" facts
+                            # and their twins 0.66–0.81, which tell --from records now
 CONFIDENT = 0.65            # a plot or person linked by itself from here
 LOG_FLOOR = 0.40            # triggers logged from here, so the misses show too
 LOG = "recall-check.log"
@@ -70,11 +73,13 @@ def log_fired(campaign_dir, consequence_id: str, fact_id: str) -> None:
     _log(Path(campaign_dir), [f"fired {consequence_id} by {fact_id}"])
 
 
-def check_facts(campaign_dir, fact_ids, embedder, skip=()) -> tuple[list[str], list[tuple]]:
+def check_facts(campaign_dir, fact_ids, embedder, skip=(),
+                twins: bool = True) -> tuple[list[str], list[tuple]]:
     """Embed the new facts and the waiting triggers, compare and log. Returns the
     lines to print and the links to make at once, ("plot" | "about", fact id,
     target), which the lines already announce. `skip`: consequence ids not to
-    name (a faction turn's own)."""
+    name (a faction turn's own). `twins`: look for an earlier fact each repeats
+    (not after an edit)."""
     from embedding_store import EmbeddingStore, trigger_texts
     campaign_dir = Path(campaign_dir)
     triggers = trigger_texts(_load(campaign_dir / "consequences.json"))
@@ -135,7 +140,8 @@ def check_facts(campaign_dir, fact_ids, embedder, skip=()) -> tuple[list[str], l
             elif best[0] >= ABOUT_NOTE and best[0] > floor:
                 out.append(f"  {fid} reads like it is about {best[1]} ({best[0]:.2f}), but isn't "
                            f"linked: bash tools/gm-note.sh about {fid} --add \"{best[1]}\"")
-        out += _twins(fid, fact, facts, v, vectors, log, number)
+        if twins:
+            out += _twins(fid, fact, facts, v, vectors, log, number)
     _log(campaign_dir, log)
     return out, links
 
