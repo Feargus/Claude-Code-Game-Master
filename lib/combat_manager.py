@@ -19,6 +19,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from entity_manager import EntityManager
 from game_core import add_condition, remove_condition
 
+ADD_ENEMY = 'bash tools/gm-combat.sh add-enemy "<name>" --as "<NPC or mob>"'
+
 
 class CombatManager(EntityManager):
 
@@ -134,18 +136,24 @@ class CombatManager(EntityManager):
             summary['growth_due'] = result['due']
         return summary
 
-    def header(self) -> str:
-        data = self._load()
-        if not data.get('combatants'):
-            return "(no active combat)"
-        lines = ["⚔ FIGHT"]
-        for c in data['combatants']:
+    def fighter_lines(self) -> list[str]:
+        """One indented line per enemy: its wounds as boxes, its notes and conditions."""
+        lines = []
+        for c in self._load().get('combatants') or []:
             boxes = '●' * c['taken'] + '○' * (c['wounds'] - c['taken'])
             out = ', out' if c['taken'] >= c['wounds'] else ''
             extra = ', '.join(c['notes'] + c['conditions'])
             sheet = f" [rolls as {c['as']}]" if c.get('as') and c['as'].lower() != c['name'].lower() else ""
             lines.append(f"  {c['name']}{sheet}: {boxes}{out}" + (f" ({extra})" if extra else ""))
-        return "\n".join(lines)
+        return lines
+
+    def header(self) -> str:
+        data = self._load()
+        if not data.get('active'):
+            return "No fight running."
+        if not data.get('combatants'):
+            return f"A fight has begun, with no enemies yet: {ADD_ENEMY}"
+        return "\n".join(["⚔ FIGHT", *self.fighter_lines()])
 
 
 def main():
@@ -178,37 +186,50 @@ def main():
         sys.exit(1)
 
     m = CombatManager()
-    out = None
-    if args.action == 'start':
-        try:
-            out = m.start()
-        except ValueError as error:
-            sys.exit(emit_error(str(error)))
-    elif args.action == 'add-enemy':
-        try:
-            out = m.add_combatant(args.name, args.wounds, args.sheet)
-        except ValueError as error:
-            sys.exit(emit_error(str(error)))
-    elif args.action == 'wound':
-        out = m.wound(args.name, args.count, args.note)
-    elif args.action == 'condition':
-        out = m.set_condition(args.name, args.op, args.condition)
-    elif args.action == 'end':
-        out = m.end()
-    elif args.action in ('header', 'status'):
+    if args.action in ('header', 'status'):
         print(m.header())
         return
-
+    actions = {
+        'start': lambda: m.start(),
+        'add-enemy': lambda: m.add_combatant(args.name, args.wounds, args.sheet),
+        'wound': lambda: m.wound(args.name, args.count, args.note),
+        'condition': lambda: m.set_condition(args.name, args.op, args.condition),
+        'end': lambda: m.end(),
+    }
+    try:
+        out = actions[args.action]()
+    except ValueError as error:
+        sys.exit(emit_error(str(error)))
     if out is None:
-        sys.exit(emit_error("combatant not found"))
+        names = ", ".join(c['name'] for c in m._load().get('combatants') or []) or "nobody yet"
+        sys.exit(emit_error(f"'{args.name}' isn't in the fight (in it: {names})."))
+    print("\n".join(_report(m, args, out)))
+
+
+def _report(m: CombatManager, args, out) -> list[str]:
+    """What a command did: a [SUCCESS] line, then the enemies (or what is due)."""
+    if args.action == 'start':
+        return [f"[SUCCESS] A fight has begun; add each enemy: {ADD_ENEMY}"]
     if args.action == 'end':
         defeated = ", ".join(out['defeated']) or "nobody"
-        print(f"Fight over. Defeated: {defeated}"
-              + (f"; +{out['xp']} XP" if out['xp'] else "")
-              + (f"; growth due: {out['growth_due']} level(s) (gm-growth)" if out.get('growth_due') else ""))
+        lines = [f"[SUCCESS] The fight is over. Taken out: {defeated}"
+                 + (f"; +{out['xp']} XP" if out['xp'] else "")]
+        due = out.get('growth_due')
+        if due:
+            lines.append(f"[DO] Growth due ({due} level{'s' if due > 1 else ''}): at the next "
+                         f"quiet moment (rest, sleep, time alone), gm-growth. Don't tell the "
+                         f"player.")
+        return lines
+    if args.action == 'add-enemy':
+        first = (f"[SUCCESS] {out['name']} joins the fight ({out['wounds']} wound"
+                 f"{'s' if out['wounds'] != 1 else ''} take them out)")
+    elif args.action == 'wound':
+        first = (f"[SUCCESS] {out['name']}: {out['taken']} of {out['wounds']} wounds"
+                 + (", out" if out['taken'] >= out['wounds'] else ""))
     else:
-        print(m.header())
-
+        done = "added to" if args.op == 'add' else "removed from"
+        first = f"[SUCCESS] {args.condition} {done} {out['name']}"
+    return [first, *m.fighter_lines()]
 
 if __name__ == "__main__":
     main()

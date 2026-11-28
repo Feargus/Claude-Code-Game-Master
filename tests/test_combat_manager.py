@@ -58,7 +58,7 @@ def test_end_clears_state(dcc_world):
 def test_combat_is_optional(dcc_world):
     # Never starting combat is a valid state (narrated skirmish).
     assert CombatManager(dcc_world).is_active() is False
-    assert CombatManager(dcc_world).header() == "(no active combat)"
+    assert CombatManager(dcc_world).header() == "No fight running."
 
 
 def test_start_refuses_while_a_fight_is_running(dcc_world):
@@ -84,3 +84,31 @@ def test_start_refuses_while_a_fight_is_running(dcc_world):
     assert "gm-combat.sh end" in result.stderr
     assert m.end()["defeated"] == ["rat 1"]      # the fight is as it was
     m.start()                                    # after `end`, a new one starts
+
+
+def test_each_command_says_what_it_did(dcc_world):
+    """A fight just begun said "(no active combat)" (the What Remains playtest): each
+    command's first line now says what it did, then the enemies, one line each."""
+    import os
+    import subprocess
+    from pathlib import Path
+    tool = Path(__file__).resolve().parent.parent / "tools" / "gm-combat.sh"
+    env = dict(os.environ, GM_WORLD_STATE_BASE=dcc_world)
+
+    def run(*words):
+        return subprocess.run(["bash", str(tool), *words], capture_output=True, text=True, env=env)
+    assert run("header").stdout == "No fight running.\n"
+    assert run("start").stdout.startswith("[SUCCESS] A fight has begun; add each enemy: bash tools/")
+    assert run("header").stdout.startswith("A fight has begun, with no enemies yet")
+    assert run("add-enemy", "rat 1", "1").stdout.splitlines() == [
+        "[SUCCESS] rat 1 joins the fight (1 wound take them out)", "  rat 1: ○"]
+    assert run("add-enemy", "rat 2", "2").stdout.splitlines()[0] == (
+        "[SUCCESS] rat 2 joins the fight (2 wounds take them out)")
+    assert run("condition", "rat 2", "add", "prone").stdout.splitlines() == [
+        "[SUCCESS] prone added to rat 2", "  rat 1: ○", "  rat 2: ○○ (prone)"]
+    assert run("wound", "rat 1").stdout.splitlines()[0] == "[SUCCESS] rat 1: 1 of 1 wounds, out"
+    missing = run("wound", "rat 3")
+    assert missing.returncode == 1 and "'rat 3' isn't in the fight (in it: rat 1, rat 2)" in missing.stderr
+    ended = run("end").stdout.splitlines()               # the test character has growth due
+    assert ended[0] == "[SUCCESS] The fight is over. Taken out: rat 1; +10 XP"
+    assert ended[1].startswith("[DO] Growth due (") and len(ended) == 2
